@@ -2447,7 +2447,6 @@
   "designMusicTitle": "音楽",
   "designMusicHint": "このデザインには音声がありません。曲を選ぶか、音楽なしを選んでください。",
   "musicSelectTitle": "音楽を選ぶ",
-  "musicSelectHint": "テンプレートの曲が選ばれています。そのまま使うか、ライブラリから別の曲か音楽なしを選んでください。",
   "musicTemplateSong": "テンプレートの曲",
   "musicFromLibrary": "音楽ライブラリ",
   "musicFromLibrarySub": "別の曲を選ぶ",

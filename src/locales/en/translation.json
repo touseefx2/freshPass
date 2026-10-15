@@ -2503,7 +2503,6 @@
   "designMusicTitle": "Music",
   "designMusicHint": "This design has no sound of its own. Pick a track or choose no music.",
   "musicSelectTitle": "Select music",
-  "musicSelectHint": "The template's song is already selected. Keep it, pick another from the library or choose no music.",
   "musicTemplateSong": "Template's song",
   "musicFromLibrary": "Music library",
   "musicFromLibrarySub": "Pick another song",

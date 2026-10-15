@@ -2447,7 +2447,6 @@
   "designMusicTitle": "Música",
   "designMusicHint": "Este diseño no tiene sonido propio. Elige una canción o ninguna música.",
   "musicSelectTitle": "Elige la música",
-  "musicSelectHint": "La canción de la plantilla ya está elegida. Mantenla, elige otra de la biblioteca o ninguna música.",
   "musicTemplateSong": "Canción de la plantilla",
   "musicFromLibrary": "Biblioteca de música",
   "musicFromLibrarySub": "Elige otra canción",

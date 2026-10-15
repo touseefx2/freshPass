@@ -161,19 +161,68 @@ const createStyles = (theme: Theme) =>
       color: theme.darkGreen,
     },
     chipTextOn: { color: theme.white, fontFamily: fonts.fontBold },
-    // Template song / library rows
-    choiceList: { gap: moderateHeightScale(10) },
-    // Same border width when selected — only colours change (no jump)
-    choiceRow: { borderWidth: 1.5 },
-    // Border + check only: a see-through tint shows the Android shadow inside
-    choiceRowOn: { borderColor: theme.darkGreen },
+    // Template song / library: two rows in one card
+    choiceGroup: {
+      borderRadius: moderateWidthScale(18),
+      borderWidth: 1,
+      borderColor: theme.borderLight,
+      // Opaque, so Android's shadow doesn't show through
+      backgroundColor: theme.white,
+      overflow: "hidden",
+      shadowColor: theme.darkGreen,
+      shadowOffset: { width: 0, height: moderateHeightScale(3) },
+      shadowOpacity: 0.06,
+      shadowRadius: moderateWidthScale(8),
+      elevation: 1,
+    },
+    choiceRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(10),
+      minHeight: moderateHeightScale(56),
+      paddingVertical: moderateHeightScale(8),
+      paddingHorizontal: moderateWidthScale(12),
+    },
+    // Tint inside the opaque card (fine on Android) + the check icon
+    choiceRowOn: { backgroundColor: theme.lightGreen07 },
+    choiceDivider: {
+      height: StyleSheet.hairlineWidth,
+      backgroundColor: theme.borderNormal,
+      marginLeft: moderateWidthScale(60),
+    },
+    choiceTitle: {
+      fontSize: fontSize.size15,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    choiceSub: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+    },
+    smallPlay: {
+      width: moderateWidthScale(38),
+      height: moderateWidthScale(38),
+      borderRadius: moderateWidthScale(19),
+      backgroundColor: theme.selectCard,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    smallIcon: {
+      width: moderateWidthScale(38),
+      height: moderateWidthScale(38),
+      borderRadius: moderateWidthScale(12),
+      backgroundColor: theme.orangeBrown01,
+      alignItems: "center",
+      justifyContent: "center",
+    },
     choiceTrailing: {
       flexDirection: "row",
       alignItems: "center",
       gap: moderateWidthScale(6),
     },
     changeText: {
-      fontSize: fontSize.size14,
+      fontSize: fontSize.size13,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
       textDecorationLine: "underline",
@@ -294,7 +343,7 @@ export default function DesignMusicField({
     ? t("designMusicMinLength", { seconds: Math.ceil(lengthSeconds) })
     : null;
 
-  const renderPlayButton = (track: AutoReelMusic) => {
+  const renderPlayButton = (track: AutoReelMusic, small = false) => {
     const mine = previewUrl === track.url;
     const playing = mine && previewPlaying;
     return (
@@ -302,8 +351,9 @@ export default function DesignMusicField({
         activeOpacity={0.8}
         onPress={() => void togglePreview(track.url)}
         disabled={disabled || (mine && previewLoading)}
-        hitSlop={6}
-        style={styles.playButton}
+        // Small one: 38 + slop ≥ 44pt to tap
+        hitSlop={small ? 8 : 6}
+        style={small ? styles.smallPlay : styles.playButton}
         accessibilityRole="button"
         accessibilityLabel={`${playing ? t("pause") : t("play")}, ${track.title}`}
       >
@@ -312,7 +362,7 @@ export default function DesignMusicField({
         ) : (
           <MaterialIcons
             name={playing ? "pause" : "play-arrow"}
-            size={moderateWidthScale(26)}
+            size={moderateWidthScale(small ? 22 : 26)}
             color={theme.white}
           />
         )}
@@ -361,12 +411,7 @@ export default function DesignMusicField({
           activeOpacity={0.75}
           onPress={onPress}
           disabled={tileOff}
-          style={[
-            styles.card,
-            styles.choiceRow,
-            on && styles.choiceRowOn,
-            tileOff && styles.disabled,
-          ]}
+          style={[styles.choiceRow, on && styles.choiceRowOn]}
           accessibilityRole={role}
           accessibilityLabel={`${title}, ${subtitle}${on ? `, ${t("selected")}` : ""}`}
           accessibilityState={
@@ -377,10 +422,10 @@ export default function DesignMusicField({
         >
           {leading}
           <View style={styles.cardTexts}>
-            <Text style={styles.cardTitle} numberOfLines={2}>
+            <Text style={styles.choiceTitle} numberOfLines={1}>
               {title}
             </Text>
-            <Text style={styles.cardValue} numberOfLines={1}>
+            <Text style={styles.choiceSub} numberOfLines={1}>
               {subtitle}
             </Text>
           </View>
@@ -391,7 +436,7 @@ export default function DesignMusicField({
     const checkIcon = (
       <MaterialIcons
         name="check-circle"
-        size={moderateWidthScale(26)}
+        size={moderateWidthScale(22)}
         color={theme.darkGreen}
       />
     );
@@ -420,21 +465,19 @@ export default function DesignMusicField({
             />
           </TouchableOpacity>
         </View>
-        <Text style={styles.hint}>
-          {noMusic ? t("designNoMusicSub") : (hint ?? t("musicSelectHint"))}
-        </Text>
-        <View style={styles.choiceList}>
+        {hint ? <Text style={styles.hint}>{hint}</Text> : null}
+        <View style={[styles.choiceGroup, tileOff && styles.disabled]}>
           {row({
             selected: isDefault,
             role: "radio",
-            leading: renderPlayButton(defaultMusic),
+            leading: renderPlayButton(defaultMusic, true),
             trailing:
               isDefault && !noMusic ? (
                 checkIcon
               ) : (
                 <MaterialIcons
                   name="radio-button-unchecked"
-                  size={moderateWidthScale(26)}
+                  size={moderateWidthScale(22)}
                   color={theme.lightGreen}
                 />
               ),
@@ -444,16 +487,17 @@ export default function DesignMusicField({
               .join(" · "),
             onPress: () => onChange(defaultMusic),
           })}
+          <View style={styles.choiceDivider} />
           {row({
             selected: !!libraryTrack,
             role: "button",
             leading: libraryTrack ? (
-              renderPlayButton(libraryTrack)
+              renderPlayButton(libraryTrack, true)
             ) : (
-              <View style={styles.cardIcon}>
+              <View style={styles.smallIcon}>
                 <MaterialIcons
                   name="library-music"
-                  size={moderateWidthScale(24)}
+                  size={moderateWidthScale(20)}
                   color={theme.selectCard}
                 />
               </View>
@@ -468,7 +512,7 @@ export default function DesignMusicField({
               ) : (
                 <MaterialIcons
                   name="chevron-right"
-                  size={moderateWidthScale(26)}
+                  size={moderateWidthScale(24)}
                   color={theme.darkGreen}
                 />
               ),

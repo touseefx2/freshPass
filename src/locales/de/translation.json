@@ -2447,7 +2447,6 @@
   "designMusicTitle": "Musik",
   "designMusicHint": "Dieses Design hat keinen eigenen Ton. Wähle einen Titel oder keine Musik.",
   "musicSelectTitle": "Musik auswählen",
-  "musicSelectHint": "Der Song der Vorlage ist bereits ausgewählt. Behalte ihn, wähle einen anderen aus der Bibliothek oder keine Musik.",
   "musicTemplateSong": "Song der Vorlage",
   "musicFromLibrary": "Musikbibliothek",
   "musicFromLibrarySub": "Anderen Song wählen",
