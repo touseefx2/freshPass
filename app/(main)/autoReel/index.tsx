@@ -297,11 +297,6 @@ const createStyles = (theme: Theme) =>
       alignItems: "center",
       justifyContent: "center",
     },
-    rowButtons: {
-      flexDirection: "row",
-      gap: moderateWidthScale(12),
-    },
-    rowButton: { flex: 1 },
     reelCard: {
       flexDirection: "row",
       alignItems: "center",
@@ -316,21 +311,6 @@ const createStyles = (theme: Theme) =>
       overflow: "hidden",
       alignItems: "center",
       justifyContent: "center",
-    },
-    sectionDivider: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: moderateWidthScale(10),
-    },
-    dividerLine: {
-      flex: 1,
-      height: StyleSheet.hairlineWidth,
-      backgroundColor: theme.borderMedium,
-    },
-    dividerText: {
-      fontSize: fontSize.size16,
-      fontFamily: fonts.fontMedium,
-      color: theme.darkGreen,
     },
     publishedPill: {
       flexDirection: "row",
@@ -1742,37 +1722,6 @@ export default function AutoReelScreen() {
           </View>
         ) : null}
 
-        {videoUrl ? (
-          <>
-            <View style={styles.sectionDivider}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>{t("flowSaveOrShareVideo")}</Text>
-              <View style={styles.dividerLine} />
-            </View>
-            <View style={styles.rowButtons}>
-              <FlowButton
-                variant="outline"
-                compact
-                icon="file-download"
-                label={t("download")}
-                onPress={() => downloadMedia(videoUrl, { isVideo: true })}
-                loading={downloading}
-                style={styles.rowButton}
-              />
-              <FlowButton
-                variant="outline"
-                compact
-                icon="ios-share"
-                label={t("flowShareVideo")}
-                onPress={() => setShareVisible(true)}
-                style={styles.rowButton}
-              />
-            </View>
-            {!isPublished ? (
-              <Text style={styles.smallNote}>{t("flowDownloadNotPublish")}</Text>
-            ) : null}
-          </>
-        ) : null}
       </KeyboardAwareScrollView>
 
       {canLinkProduct ? (
