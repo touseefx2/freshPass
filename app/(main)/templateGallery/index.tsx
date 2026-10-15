@@ -92,6 +92,8 @@ import {
   SIDE_SCALE,
   SKELETON_BG,
   SKELETON_HIGHLIGHT,
+  VIDEO_SKELETON_BG,
+  VIDEO_SKELETON_HIGHLIGHT,
   VIDEO_CARD_GAP,
   VIDEO_ART_CENTER,
   VIDEO_HEADLINE_WIDTH,
@@ -1123,6 +1125,7 @@ function VideoTemplateCover({
                       style={[
                         styles.coverTitle,
                         styles.coverTitleAccent,
+                        styles.videoTitle,
                         titleSize,
                       ]}
                       numberOfLines={2}
@@ -1132,15 +1135,16 @@ function VideoTemplateCover({
                   )
                 : null}
             </View>
-            {facts.length
+            {/* Length, clips and song as glass chips in one row */}
+            {facts.length || item.musicTitle
               ? layer(
                   4,
-                  <View style={[styles.coverFacts, styles.videoMeta]}>
+                  <View style={styles.videoChips}>
                     {facts.map((fact) => (
                       <View
                         key={fact.key}
                         style={[
-                          styles.coverFact,
+                          styles.videoChip,
                           fact.key === "tagline" && styles.shrink,
                         ]}
                         accessible
@@ -1148,42 +1152,32 @@ function VideoTemplateCover({
                       >
                         <MaterialIcons
                           name={fact.icon}
-                          size={moderateWidthScale(15)}
+                          size={moderateWidthScale(14)}
                           color={theme.orangeBrown}
                         />
-                        <Text
-                          style={
-                            fact.key === "tagline"
-                              ? styles.metaText
-                              : styles.coverFactText
-                          }
-                          numberOfLines={1}
-                        >
+                        <Text style={styles.videoChipText} numberOfLines={1}>
                           {fact.text}
                         </Text>
                       </View>
                     ))}
-                  </View>,
-                )
-              : null}
-            {item.musicTitle
-              ? layer(
-                  5,
-                  <View
-                    style={[styles.coverMusic, styles.videoMeta]}
-                    accessible
-                    accessibilityLabel={t("includesMusicNamed", {
-                      name: item.musicTitle,
-                    })}
-                  >
-                    <MaterialIcons
-                      name="music-note"
-                      size={moderateWidthScale(15)}
-                      color={theme.orangeBrown}
-                    />
-                    <Text style={styles.metaText} numberOfLines={1}>
-                      {item.musicTitle}
-                    </Text>
+                    {item.musicTitle ? (
+                      <View
+                        style={[styles.videoChip, styles.shrink]}
+                        accessible
+                        accessibilityLabel={t("includesMusicNamed", {
+                          name: item.musicTitle,
+                        })}
+                      >
+                        <MaterialIcons
+                          name="music-note"
+                          size={moderateWidthScale(14)}
+                          color={theme.orangeBrown}
+                        />
+                        <Text style={styles.videoChipText} numberOfLines={1}>
+                          {item.musicTitle}
+                        </Text>
+                      </View>
+                    ) : null}
                   </View>,
                 )
               : null}
@@ -1204,6 +1198,7 @@ function GallerySkeleton({
   cardHeight,
   sideInset,
   withInfo,
+  bottomInset = 0,
   styles,
 }: {
   cardWidth: number;
@@ -1211,17 +1206,51 @@ function GallerySkeleton({
   sideInset: number;
   /** Photo tab: the info row and name card under the covers */
   withInfo: boolean;
+  /** Video tab: height of the footer laid over the bottom */
+  bottomInset?: number;
   styles: Styles;
 }) {
-  // Video tab: one full-width cover down to the bottom of the screen
+  // Video tab: the dark full-screen cover with its title and chips where
+  // they'll show (tabs and footer are laid over it as usual)
   if (!withInfo) {
     return (
-      <SkeletonPlaceholder
-        backgroundColor={SKELETON_BG}
-        highlightColor={SKELETON_HIGHLIGHT}
+      <View
+        style={[
+          styles.videoSkeleton,
+          {
+            width: cardWidth,
+            height: cardHeight,
+            paddingBottom: bottomInset + moderateHeightScale(14),
+          },
+        ]}
       >
-        <View style={{ width: cardWidth, height: cardHeight }} />
-      </SkeletonPlaceholder>
+        <SkeletonPlaceholder
+          backgroundColor={VIDEO_SKELETON_BG}
+          highlightColor={VIDEO_SKELETON_HIGHLIGHT}
+        >
+          <View>
+            <View
+              style={{
+                width: Math.round(cardWidth * 0.62),
+                height: moderateHeightScale(30),
+                borderRadius: moderateWidthScale(6),
+              }}
+            />
+            <View style={styles.videoSkeletonChips}>
+              {[64, 48, 108].map((w) => (
+                <View
+                  key={w}
+                  style={{
+                    width: moderateWidthScale(w),
+                    height: moderateHeightScale(28),
+                    borderRadius: moderateWidthScale(14),
+                  }}
+                />
+              ))}
+            </View>
+          </View>
+        </SkeletonPlaceholder>
+      </View>
     );
   }
   return (
@@ -1564,12 +1593,10 @@ export default function TemplateGalleryScreen() {
       return (
         <GallerySkeleton
           cardWidth={coverWidth}
-          // Video tab: under the tabs, which sit on the cream here
-          cardHeight={
-            isVideoTab ? Math.max(0, cardHeight - tabsHeight) : cardHeight
-          }
+          cardHeight={cardHeight}
           sideInset={sideInset}
           withInfo={!isVideoTab}
+          bottomInset={footerHeight}
           styles={styles}
         />
       );
@@ -1785,7 +1812,8 @@ export default function TemplateGalleryScreen() {
             });
 
   // Video tab with a cover showing: footer laid over the video
-  const overlay = isVideoTab && !tab.loading && !tab.error && !!current;
+  // (also while loading, so the skeleton has the same layout)
+  const overlay = isVideoTab && !tab.error && (tab.loading || !!current);
 
   const renderFooter = () => (
     <View
@@ -1817,11 +1845,13 @@ export default function TemplateGalleryScreen() {
       )}
       {tab.loading ? (
         <SkeletonPlaceholder
-          backgroundColor={SKELETON_BG}
-          highlightColor={SKELETON_HIGHLIGHT}
+          backgroundColor={overlay ? VIDEO_SKELETON_BG : SKELETON_BG}
+          highlightColor={
+            overlay ? VIDEO_SKELETON_HIGHLIGHT : SKELETON_HIGHLIGHT
+          }
         >
           <View style={styles.dots}>
-            {[0, 1, 2, 3].map((i) => (
+            {(overlay ? [0, 1, 2] : [0, 1, 2, 3]).map((i) => (
               <View key={i} style={styles.dotHit}>
                 <View
                   style={
@@ -1857,6 +1887,15 @@ export default function TemplateGalleryScreen() {
             </TouchableOpacity>
           ))}
         </View>
+      ) : null}
+      {/* Video tab loading: room for the credits line, so nothing jumps */}
+      {overlay && tab.loading && !creditsLine ? (
+        <SkeletonPlaceholder
+          backgroundColor={VIDEO_SKELETON_BG}
+          highlightColor={VIDEO_SKELETON_HIGHLIGHT}
+        >
+          <View style={styles.videoSkeletonCredits} />
+        </SkeletonPlaceholder>
       ) : null}
       {creditsLine ? (
         <View
@@ -1901,8 +1940,20 @@ export default function TemplateGalleryScreen() {
             : styles.ctaButton
         }
         textStyle={styles.ctaText}
-        // Over the video: white for contrast on the dark fade
-        {...(overlay ? { textColor: theme.darkGreen } : null)}
+        // Over the video: brand orange pill (5.6:1 with the green label),
+        // matching the orange title
+        {...(overlay
+          ? {
+              textColor: theme.darkGreen,
+              leftIcon: (
+                <MaterialIcons
+                  name="auto-awesome"
+                  size={moderateWidthScale(20)}
+                  color={theme.darkGreen}
+                />
+              ),
+            }
+          : null)}
       />
     </View>
   );

@@ -39,6 +39,10 @@ const CAROUSEL_PAD_TOP = moderateHeightScale(12);
 const CAROUSEL_PAD_BOTTOM = moderateHeightScale(24);
 const PAGE_PAD_BOTTOM = moderateHeightScale(24);
 
+/** Video tab skeleton: lighter greens on the dark cover */
+export const VIDEO_SKELETON_BG = "#34452A";
+export const VIDEO_SKELETON_HIGHLIGHT = "#4A5E37";
+
 /** Same colors as the app's other skeletons */
 export const SKELETON_BG = "#E8DFB8";
 export const SKELETON_HIGHLIGHT = "#DCCF9E";
@@ -367,8 +371,64 @@ export const createStyles = (theme: Theme) =>
     videoCreditsText: {
       color: theme.white,
     },
+    // Brand orange pill over the video
     videoCta: {
-      backgroundColor: theme.white,
+      backgroundColor: theme.orangeBrown,
+      height: moderateHeightScale(54),
+      borderRadius: moderateHeightScale(27),
+      shadowColor: theme.black,
+      shadowOffset: { width: 0, height: moderateHeightScale(6) },
+      shadowOpacity: 0.3,
+      shadowRadius: moderateWidthScale(12),
+      elevation: 6,
+    },
+    // Title over the video: a soft shadow keeps it crisp on bright frames
+    videoTitle: {
+      textShadowColor: "rgba(0, 0, 0, 0.35)",
+      textShadowOffset: { width: 0, height: 1 },
+      textShadowRadius: 6,
+    },
+    // Length, clips and song as glass chips under the title
+    videoChips: {
+      marginTop: moderateHeightScale(12),
+      flexDirection: "row",
+      flexWrap: "wrap",
+      alignItems: "center",
+      gap: moderateWidthScale(8),
+    },
+    videoChip: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(6),
+      paddingHorizontal: moderateWidthScale(11),
+      paddingVertical: moderateHeightScale(6),
+      borderRadius: moderateWidthScale(999),
+      backgroundColor: GLASS,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: GLASS_BORDER,
+    },
+    videoChipText: {
+      flexShrink: 1,
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontBold,
+      color: theme.white,
+    },
+    // Loading: the dark cover with title / chip shapes at the bottom
+    videoSkeleton: {
+      justifyContent: "flex-end",
+      paddingHorizontal: moderateWidthScale(16),
+    },
+    videoSkeletonCredits: {
+      alignSelf: "center",
+      width: moderateWidthScale(250),
+      height: moderateHeightScale(30),
+      borderRadius: moderateWidthScale(999),
+      marginBottom: moderateHeightScale(8),
+    },
+    videoSkeletonChips: {
+      marginTop: moderateHeightScale(12),
+      flexDirection: "row",
+      gap: moderateWidthScale(8),
     },
     // Title, facts and song sit at the bottom; nothing at the top
     videoCardInner: {
@@ -402,10 +462,6 @@ export const createStyles = (theme: Theme) =>
     },
     videoTitleBlock: {
       maxWidth: `${VIDEO_HEADLINE_WIDTH * 100}%`,
-    },
-    // No expand button on this cover, so the facts can run to the edge
-    videoMeta: {
-      marginRight: 0,
     },
     // Brand art medallion, centred on the rings (VIDEO_ART_CENTER of the height)
     videoArtCentre: {
