@@ -1,10 +1,4 @@
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   AppState,
   Modal,
@@ -49,7 +43,7 @@ import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { useVideoPlayer, VideoView } from "expo-video";
-import { Audio } from "expo-av";
+import { useLoopingMusic } from "@/src/hooks/useLoopingMusic";
 import * as Haptics from "expo-haptics";
 import SkeletonPlaceholder from "react-native-skeleton-placeholder";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -811,79 +805,6 @@ function TemplateCover({
 }
 
 /**
- * The template's own song under its Video Reel sample: a fresh copy per
- * template (so it starts from 0:00 with its video), loops while `playing`,
- * pauses with it and stops when the cover is left (unmount / new url).
- * Returns true only when the song couldn't be loaded, so the video's own
- * sound plays instead of silence; a failed start is just tried again.
- */
-function useTemplateMusic(url: string | null, playing: boolean): boolean {
-  const soundRef = useRef<Audio.Sound | null>(null);
-  const playingRef = useRef(playing);
-  playingRef.current = playing;
-  const [failed, setFailed] = useState(false);
-
-  useEffect(() => {
-    setFailed(false);
-    if (!url) return;
-    let alive = true;
-    (async () => {
-      await Audio.setAudioModeAsync({
-        playsInSilentModeIOS: true,
-        staysActiveInBackground: false,
-      }).catch(() => {});
-      let sound: Audio.Sound;
-      try {
-        ({ sound } = await Audio.Sound.createAsync(
-          { uri: url },
-          { isLooping: true, shouldPlay: false },
-        ));
-      } catch (error) {
-        Logger.warn("Template music could not be loaded:", error);
-        if (alive) setFailed(true);
-        return;
-      }
-      if (!alive) {
-        await sound.unloadAsync().catch(() => {});
-        return;
-      }
-      soundRef.current = sound;
-      // The video usually starts while the song is still downloading:
-      // catch up with it now that the song is ready
-      if (playingRef.current) {
-        await sound.playAsync().catch((error) => {
-          Logger.warn("Template music could not start:", error);
-        });
-      }
-    })();
-    return () => {
-      alive = false;
-      const sound = soundRef.current;
-      soundRef.current = null;
-      void sound?.unloadAsync().catch(() => {});
-    };
-  }, [url]);
-
-  useEffect(() => {
-    const sound = soundRef.current;
-    if (!sound) return;
-    (playing ? sound.playAsync() : sound.pauseAsync()).catch(() => {});
-  }, [playing]);
-
-  // The OS stops audio in the background; carry on once the app is back
-  useEffect(() => {
-    const sub = AppState.addEventListener("change", (state) => {
-      if (state === "active" && playingRef.current) {
-        soundRef.current?.playAsync().catch(() => {});
-      }
-    });
-    return () => sub.remove();
-  }, []);
-
-  return failed;
-}
-
-/**
  * Template name for a Video Reel cover without the "Template" word, the
  * number and the brackets: "Template #1 - ( Before & After)" → "Before &
  * After". The full name when nothing is left.
@@ -957,7 +878,7 @@ function VideoTemplateCover({
     if (!videoOn) setVideoPlaying(false);
   }, [videoOn]);
   // The template's song starts with the first frame, in place of the video's sound
-  const musicFailed = useTemplateMusic(
+  const musicFailed = useLoopingMusic(
     videoOn ? item.musicUrl : null,
     playing && videoPlaying,
   );

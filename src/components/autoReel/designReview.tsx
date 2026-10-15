@@ -1,6 +1,13 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Alert, Platform, StyleSheet, Text, View } from "react-native";
 import { useTranslation } from "react-i18next";
+import { useIsFocused } from "@react-navigation/native";
 import * as VideoThumbnails from "expo-video-thumbnails";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
@@ -12,7 +19,10 @@ import {
 } from "@/src/services/reelsService";
 import { VideoTooLargeError } from "@/src/services/mediaLibraryService";
 import { Theme } from "@/src/theme/colors";
-import { moderateHeightScale, moderateWidthScale } from "@/src/theme/dimensions";
+import {
+  moderateHeightScale,
+  moderateWidthScale,
+} from "@/src/theme/dimensions";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import {
   autoReelEditsLeft,
@@ -52,6 +62,7 @@ import {
   type ClipItem,
 } from "@/src/components/autoReel/clipStrip";
 import DesignMusicField from "@/src/components/reelFlow/designMusicField";
+import { useLoopingMusic } from "@/src/hooks/useLoopingMusic";
 import ClipActionSheet, {
   type ClipAction,
 } from "@/src/components/autoReel/clipActionSheet";
@@ -235,7 +246,11 @@ function builtToChoice(
     return { mode: "asset", mediaId: built.mediaId, kind: built.kind };
   }
   if (built?.mode === "pick") {
-    return { mode: "pick", at: built.at, moved: movedFromAi(pick, built.at, true) };
+    return {
+      mode: "pick",
+      at: built.at,
+      moved: movedFromAi(pick, built.at, true),
+    };
   }
   return { mode: "pick", at: null, moved: false };
 }
@@ -298,7 +313,9 @@ function initialTexts(
       slot.prefill === "business_name" &&
       businessName
     ) {
-      value = slot.max_length ? businessName.slice(0, slot.max_length) : businessName;
+      value = slot.max_length
+        ? businessName.slice(0, slot.max_length)
+        : businessName;
     }
     out[slot.key] = value;
   }
@@ -438,6 +455,8 @@ export default function DesignReview({
     startMusic,
   );
   const musicChanged = music !== undefined && !sameMusic(music, startMusic);
+  // The music field's own previews / library sheet have the sound
+  const [musicFieldBusy, setMusicFieldBusy] = useState(false);
   // Known once the template loads — fill it in unless the user already chose
   useEffect(() => {
     if (startMusic === undefined) return;
@@ -469,6 +488,14 @@ export default function DesignReview({
   } | null>(null);
   const [building, setBuilding] = useState(false);
   const buildingRef = useRef(false);
+  // The chosen song plays under the clip preview, like in the reel. Not
+  // while a song is previewed / the library is open, a moment is being
+  // picked, the reel is being built or another screen is in front
+  const focused = useIsFocused();
+  useLoopingMusic(
+    showMusic && music ? music.url : null,
+    focused && !musicFieldBusy && !cutting && !movingSlot && !building,
+  );
   const [uploadPercent, setUploadPercent] = useState<number | null>(null);
 
   // Frames for the picks — taken from the uploaded video at each moment
@@ -565,7 +592,12 @@ export default function DesignReview({
     const choice = choices[slot.key];
     if (choice?.mode !== "file" || !choice.file.source) return;
     const { uri, durationSeconds, at } = choice.file.source;
-    setCutting({ slot, file: choice.file, source: { uri, durationSeconds }, at });
+    setCutting({
+      slot,
+      file: choice.file,
+      source: { uri, durationSeconds },
+      at,
+    });
   };
 
   const cutPart = async (at: number) => {
@@ -578,7 +610,10 @@ export default function DesignReview({
       // Let the trimmer's player let go of the file before exporting from it
       await new Promise<void>((resolve) => setTimeout(resolve, 500));
       const cut = await cutSlotVideo(file, source, at, seconds);
-      setChoices((prev) => ({ ...prev, [slot.key]: { mode: "file", file: cut } }));
+      setChoices((prev) => ({
+        ...prev,
+        [slot.key]: { mode: "file", file: cut },
+      }));
       clearSlotError(slot.key);
     } catch (error) {
       Logger.error("Error cutting own video for design slot:", error);
@@ -664,7 +699,8 @@ export default function DesignReview({
       for (const slot of slots) {
         const choice = choicesRef.current[slot.key];
         // Edit: only what changed — the server keeps the rest of the last build
-        if (edit && !choiceChanged(choice, lastBuild?.slots[slot.key])) continue;
+        if (edit && !choiceChanged(choice, lastBuild?.slots[slot.key]))
+          continue;
         if (choice?.mode === "pick" && choice.at != null) {
           payloadSlots[slot.key] = { at: choice.at };
           continue;
@@ -744,7 +780,10 @@ export default function DesignReview({
         for (const key of Object.keys(slotErrs)) {
           const choice = next[key];
           if (choice?.mode === "file") {
-            next[key] = { mode: "file", file: { ...choice.file, mediaId: null } };
+            next[key] = {
+              mode: "file",
+              file: { ...choice.file, mediaId: null },
+            };
           }
         }
         return next;
@@ -759,7 +798,9 @@ export default function DesignReview({
         error?.data?.errors?.auto_reel?.[0] ||
         // No credits left / edit limit reached
         otherFieldError(error) ||
-        (error instanceof VideoTooLargeError ? t("autoReelVideoTooLarge") : null) ||
+        (error instanceof VideoTooLargeError
+          ? t("autoReelVideoTooLarge")
+          : null) ||
         error?.message ||
         t("failedToStartGeneration");
       showBanner(t("error"), message, "error", 4500);
@@ -833,7 +874,9 @@ export default function DesignReview({
   const titles = !edit
     ? {
         title: t("designReviewTitle"),
-        subtitle: plainCards ? t("autoBuildTapClip") : t("designReviewSubtitle"),
+        subtitle: plainCards
+          ? t("autoBuildTapClip")
+          : t("designReviewSubtitle"),
       }
     : section === "clips"
       ? { title: t("autoBuildEditClipsTitle"), subtitle: t("autoBuildTapClip") }
@@ -936,7 +979,9 @@ export default function DesignReview({
                     })
                   : t("designSheetMainVideoPhotoSub")
                 : seconds
-                  ? t("designSheetMomentClipSub", { seconds: Math.round(seconds) })
+                  ? t("designSheetMomentClipSub", {
+                      seconds: Math.round(seconds),
+                    })
                   : t("designSheetMomentPhotoSub"),
               primary: info.missing,
               disabled,
@@ -954,7 +999,9 @@ export default function DesignReview({
         subtitle:
           slot.kind === "video"
             ? seconds
-              ? t("designSheetFileVideoMinSub", { seconds: Math.round(seconds) })
+              ? t("designSheetFileVideoMinSub", {
+                  seconds: Math.round(seconds),
+                })
               : t("designSheetFileVideoSub")
             : t("designSheetFilePhotoSub"),
         primary: info.missing && !videoUrl,
@@ -1081,7 +1128,9 @@ export default function DesignReview({
             .filter(Boolean)
             .join(" · ")}
           emptyText={
-            info.missing ? t("designChooseMoment") : (badge?.label ?? slot.label)
+            info.missing
+              ? t("designChooseMoment")
+              : (badge?.label ?? slot.label)
           }
           onPress={canChange ? () => openClipSheet(slot.key) : undefined}
         />
@@ -1121,7 +1170,8 @@ export default function DesignReview({
           ? slots.map((slot) => {
               const choice = choices[slot.key];
               const pickAt = choice?.mode === "pick" ? choice.at : null;
-              const ownFile = choice?.mode === "file" || choice?.mode === "asset";
+              const ownFile =
+                choice?.mode === "file" || choice?.mode === "asset";
               const original = design?.picks?.[slot.key];
               const changed = edit
                 ? choiceChanged(choice, lastBuild?.slots[slot.key])
@@ -1153,7 +1203,9 @@ export default function DesignReview({
                       : []),
                     {
                       icon: "upload-file" as const,
-                      label: ownFile ? t("designReplace") : t("designUseOwnFile"),
+                      label: ownFile
+                        ? t("designReplace")
+                        : t("designUseOwnFile"),
                       onPress: () => void attachFile(slot),
                       disabled: disabled || !!pickingSlot,
                     },
@@ -1219,7 +1271,9 @@ export default function DesignReview({
                 onChangeText={(v) => {
                   setTextValues((prev) => ({
                     ...prev,
-                    [slot.key]: slot.max_length ? v.slice(0, slot.max_length) : v,
+                    [slot.key]: slot.max_length
+                      ? v.slice(0, slot.max_length)
+                      : v,
                   }));
                   setTextErrors((prev) => {
                     if (!prev[slot.key]) return prev;
@@ -1255,6 +1309,7 @@ export default function DesignReview({
               disabled={disabled}
               compact
               defaultMusic={templateMusic}
+              onAudioBusyChange={setMusicFieldBusy}
             />
           </>
         ) : null}
@@ -1343,7 +1398,9 @@ export default function DesignReview({
           videoUrl={videoUrl}
           label={movingSlot.label}
           clipSeconds={
-            movingSlot.kind === "video" ? (movingSlot.min_seconds ?? null) : null
+            movingSlot.kind === "video"
+              ? (movingSlot.min_seconds ?? null)
+              : null
           }
           videoSeconds={videoSeconds}
           initialAt={(() => {

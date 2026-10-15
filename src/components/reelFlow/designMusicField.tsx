@@ -74,6 +74,8 @@ type Props = {
   hint?: string | null;
   /** The template's own song → the three-choice layout */
   defaultMusic?: AutoReelMusic | null;
+  /** True while a track preview here or the library sheet has the sound */
+  onAudioBusyChange?: (busy: boolean) => void;
 };
 
 const createStyles = (theme: Theme) =>
@@ -270,6 +272,7 @@ export default function DesignMusicField({
   compact = false,
   hint,
   defaultMusic = null,
+  onAudioBusyChange,
 }: Props) {
   const { t } = useTranslation();
   const { colors } = useTheme();
@@ -377,6 +380,13 @@ export default function DesignMusicField({
       soundRef.current = null;
     };
   }, []);
+
+  // Previews here and the library sheet take the sound from the screen's music
+  const audioBusy = previewUrl != null || sheetOpen;
+  useEffect(() => {
+    onAudioBusyChange?.(audioBusy);
+  }, [audioBusy, onAudioBusyChange]);
+  useEffect(() => () => onAudioBusyChange?.(false), [onAudioBusyChange]);
 
   const lengthLabel = lengthSeconds
     ? t("designMusicMinLength", { seconds: Math.ceil(lengthSeconds) })
