@@ -62,41 +62,34 @@ export const createStyles = (theme: Theme) =>
     swipeArea: {
       flex: 1,
     },
+    // Full-width tabs straight under the header, on its green: the
+    // selected one in bold white with an orange underline
     segmentBar: {
-      paddingHorizontal: moderateWidthScale(8),
-      paddingTop: moderateHeightScale(8),
-      paddingBottom: moderateHeightScale(4),
-      backgroundColor: theme.background,
+      backgroundColor: theme.darkGreen,
     },
     padded: {
       paddingHorizontal: GUTTER,
     },
-
-    // ── Video / Photo segmented control ─────────────────────────────
     segment: {
       flexDirection: "row",
-      borderRadius: moderateWidthScale(13),
-      backgroundColor: theme.white,
-      borderWidth: 1,
-      borderColor: theme.borderNormal,
-      overflow: "hidden",
     },
     segmentTab: {
       flex: 1,
-      minHeight: moderateHeightScale(42),
-      borderRadius: moderateWidthScale(12),
+      minHeight: moderateHeightScale(48),
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "center",
-      gap: moderateWidthScale(10),
+      gap: moderateWidthScale(8),
+      borderBottomWidth: 3,
+      borderBottomColor: "transparent",
     },
     segmentTabActive: {
-      backgroundColor: theme.darkGreen,
+      borderBottomColor: theme.orangeBrown,
     },
     segmentText: {
       fontSize: fontSize.size15,
       fontFamily: fonts.fontMedium,
-      color: theme.lightGreen,
+      color: theme.white85,
     },
     segmentTextActive: {
       fontFamily: fonts.fontBold,
@@ -334,8 +327,9 @@ export const createStyles = (theme: Theme) =>
       left: 0,
       right: 0,
     },
+    // Over the video: the header's green, see-through so the video shows
     videoTabsOverlay: {
-      backgroundColor: "transparent",
+      backgroundColor: "rgba(40, 54, 24, 0.55)",
     },
     videoTopFade: {
       position: "absolute",
@@ -343,19 +337,11 @@ export const createStyles = (theme: Theme) =>
       left: 0,
       right: 0,
     },
-    // Glass tabs on the video: dark see-through bar, white active tab
-    videoSegment: {
-      backgroundColor: "rgba(24, 33, 14, 0.45)",
-      borderColor: GLASS_BORDER,
-    },
-    videoSegmentTabActive: {
-      backgroundColor: theme.white,
-    },
+    // A soft shadow keeps the white labels readable on any video frame
     videoSegmentText: {
-      color: theme.white,
-    },
-    videoSegmentTextActive: {
-      color: theme.darkGreen,
+      textShadowColor: "rgba(0, 0, 0, 0.45)",
+      textShadowOffset: { width: 0, height: 1 },
+      textShadowRadius: 4,
     },
     videoFooter: {
       position: "absolute",

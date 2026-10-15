@@ -1910,20 +1910,13 @@ export default function TemplateGalleryScreen() {
           : undefined
       }
     >
-      <View
-        style={[styles.segment, overlay && styles.videoSegment]}
-        accessibilityRole="tablist"
-      >
+      <View style={styles.segment} accessibilityRole="tablist">
         {KINDS.map((k) => {
           const selected = k.kind === kind;
           return (
             <TouchableOpacity
               key={k.kind}
-              style={[
-                styles.segmentTab,
-                selected && styles.segmentTabActive,
-                overlay && selected && styles.videoSegmentTabActive,
-              ]}
+              style={[styles.segmentTab, selected && styles.segmentTabActive]}
               onPress={() => selectKind(k.kind)}
               activeOpacity={0.85}
               accessibilityRole="tab"
@@ -1932,22 +1925,13 @@ export default function TemplateGalleryScreen() {
               <Ionicons
                 name={k.icon}
                 size={moderateWidthScale(21)}
-                color={
-                  overlay
-                    ? selected
-                      ? theme.darkGreen
-                      : theme.white
-                    : selected
-                      ? theme.white
-                      : theme.lightGreen
-                }
+                color={selected ? theme.white : theme.white85}
               />
               <Text
                 style={[
                   styles.segmentText,
                   selected && styles.segmentTextActive,
                   overlay && styles.videoSegmentText,
-                  overlay && selected && styles.videoSegmentTextActive,
                 ]}
               >
                 {t(k.labelKey)}
@@ -1963,8 +1947,8 @@ export default function TemplateGalleryScreen() {
     <View style={styles.safeArea}>
       <StackHeader
         title={t(activeKind.headerKey)}
-        // Video tab: no divider, the header runs straight into the tabs
-        showLine={!overlay}
+        // No divider: the header runs straight into the tabs
+        showLine={false}
         rightIcon={
           <MaterialIcons
             name="info-outline"
@@ -1997,12 +1981,13 @@ export default function TemplateGalleryScreen() {
           {overlay ? (
             // The header's green running down into the video behind the tabs
             <LinearGradient
+              // Light enough for the video to show behind the tabs
               colors={[
-                theme.darkGreen,
-                `${theme.darkGreen}CC`,
+                `${theme.darkGreen}8C`,
+                `${theme.darkGreen}33`,
                 `${theme.darkGreen}00`,
               ]}
-              locations={[0, 0.4, 1]}
+              locations={[0, 0.45, 1]}
               style={[
                 styles.videoTopFade,
                 { height: tabsHeight + moderateHeightScale(56) },
