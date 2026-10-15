@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   ActivityIndicator,
   StyleSheet,
@@ -42,6 +48,17 @@ export function trackToAutoReelMusic(track: LibraryTrack): AutoReelMusic {
     license_version: track.licenseVersion,
     source_url: track.sourceUrl,
   };
+}
+
+/** Same song: same link, or the same title and artist (a link can differ) */
+function isSameSong(a: AutoReelMusic, b: AutoReelMusic): boolean {
+  if (a.url === b.url) return true;
+  const norm = (text?: string | null) => (text ?? "").trim().toLowerCase();
+  return (
+    !!norm(a.title) &&
+    norm(a.title) === norm(b.title) &&
+    norm(a.artist) === norm(b.artist)
+  );
 }
 
 type Props = {
@@ -264,11 +281,15 @@ export default function DesignMusicField({
   // Last track chosen — "No music" unchecked goes back to it
   const lastTrackRef = useRef<AutoReelMusic | null>(value ?? null);
   if (value) lastTrackRef.current = value;
-  // Last library pick (not the template's song) — its row keeps it to tap again
+  // Last library pick (not the template's song) — its row keeps it to tap again.
+  // The template's song can arrive after `value` (review loads it), so it's
+  // also left out where the row reads this, not only here
   const lastLibraryRef = useRef<AutoReelMusic | null>(
-    value && value.url !== defaultMusic?.url ? value : null,
+    value && !(defaultMusic && isSameSong(value, defaultMusic)) ? value : null,
   );
-  if (value && value.url !== defaultMusic?.url) lastLibraryRef.current = value;
+  if (value && !(defaultMusic && isSameSong(value, defaultMusic))) {
+    lastLibraryRef.current = value;
+  }
 
   // ── Preview of the picked track ───────────────────────────────────
   const soundRef = useRef<Audio.Sound | null>(null);
@@ -302,43 +323,46 @@ export default function DesignMusicField({
     }
   }, []);
 
-  const togglePreview = useCallback(async (url: string) => {
-    // One track loads at a time
-    if (previewLoading) return;
-    if (soundRef.current && previewUrl !== url) await stopPreview();
-    if (soundRef.current) {
-      try {
-        if (previewPlaying) await soundRef.current.pauseAsync();
-        else if (finishedRef.current) await soundRef.current.replayAsync();
-        else await soundRef.current.playAsync();
-        finishedRef.current = false;
-      } catch {}
-      return;
-    }
-    setPreviewUrl(url);
-    setPreviewLoading(true);
-    try {
-      await Audio.setAudioModeAsync({
-        playsInSilentModeIOS: true,
-        staysActiveInBackground: false,
-      });
-      const { sound } = await Audio.Sound.createAsync(
-        { uri: url },
-        { shouldPlay: true },
-        onPreviewStatus,
-      );
-      if (!mountedRef.current) {
-        await sound.unloadAsync();
+  const togglePreview = useCallback(
+    async (url: string) => {
+      // One track loads at a time
+      if (previewLoading) return;
+      if (soundRef.current && previewUrl !== url) await stopPreview();
+      if (soundRef.current) {
+        try {
+          if (previewPlaying) await soundRef.current.pauseAsync();
+          else if (finishedRef.current) await soundRef.current.replayAsync();
+          else await soundRef.current.playAsync();
+          finishedRef.current = false;
+        } catch {}
         return;
       }
-      soundRef.current = sound;
-    } catch (error) {
-      Logger.error("Music preview failed:", error);
-      setPreviewUrl(null);
-    } finally {
-      if (mountedRef.current) setPreviewLoading(false);
-    }
-  }, [onPreviewStatus, previewLoading, previewPlaying, previewUrl, stopPreview]);
+      setPreviewUrl(url);
+      setPreviewLoading(true);
+      try {
+        await Audio.setAudioModeAsync({
+          playsInSilentModeIOS: true,
+          staysActiveInBackground: false,
+        });
+        const { sound } = await Audio.Sound.createAsync(
+          { uri: url },
+          { shouldPlay: true },
+          onPreviewStatus,
+        );
+        if (!mountedRef.current) {
+          await sound.unloadAsync();
+          return;
+        }
+        soundRef.current = sound;
+      } catch (error) {
+        Logger.error("Music preview failed:", error);
+        setPreviewUrl(null);
+      } finally {
+        if (mountedRef.current) setPreviewLoading(false);
+      }
+    },
+    [onPreviewStatus, previewLoading, previewPlaying, previewUrl, stopPreview],
+  );
 
   // New choice / no music / sheet open → stop the old preview
   useEffect(() => {
@@ -400,9 +424,15 @@ export default function DesignMusicField({
   );
 
   if (defaultMusic) {
-    const isDefault = !!value && value.url === defaultMusic.url;
-    const libraryTrack = lastLibraryRef.current;
-    const libraryOn = !!value && !!libraryTrack && value.url === libraryTrack.url;
+    const isDefault = !!value && isSameSong(value, defaultMusic);
+    // Never the template's own song: that one has its own row
+    const libraryTrack =
+      lastLibraryRef.current &&
+      !isSameSong(lastLibraryRef.current, defaultMusic)
+        ? lastLibraryRef.current
+        : null;
+    const libraryOn =
+      !!value && !!libraryTrack && value.url === libraryTrack.url;
     const tileOff = disabled || noMusic;
     const row = ({
       selected,
@@ -473,7 +503,9 @@ export default function DesignMusicField({
             accessibilityLabel={`${t("templateGalleryNoMusic")}, ${t("designNoMusicSub")}`}
             accessibilityState={{ checked: noMusic, disabled }}
           >
-            <Text style={styles.noMusicText}>{t("templateGalleryNoMusic")}</Text>
+            <Text style={styles.noMusicText}>
+              {t("templateGalleryNoMusic")}
+            </Text>
             <MaterialIcons
               name={noMusic ? "check-box" : "check-box-outline-blank"}
               size={moderateWidthScale(24)}
@@ -544,12 +576,12 @@ export default function DesignMusicField({
                 )}
               </>
             ) : (
-                <MaterialIcons
-                  name="chevron-right"
-                  size={moderateWidthScale(24)}
-                  color={theme.darkGreen}
-                />
-              ),
+              <MaterialIcons
+                name="chevron-right"
+                size={moderateWidthScale(24)}
+                color={theme.darkGreen}
+              />
+            ),
             title: libraryTrack ? libraryTrack.title : t("musicFromLibrary"),
             subtitle: libraryTrack
               ? libraryTrack.artist
@@ -587,7 +619,11 @@ export default function DesignMusicField({
           activeOpacity={0.75}
           onPress={() => setSheetOpen(true)}
           disabled={disabled}
-          style={[styles.card, !!error && styles.cardError, disabled && styles.disabled]}
+          style={[
+            styles.card,
+            !!error && styles.cardError,
+            disabled && styles.disabled,
+          ]}
           accessibilityRole="button"
           accessibilityLabel={`${t("designMusicTitle")}, ${valueText}`}
           accessibilityHint={t("designMusicPickTrack")}
@@ -677,7 +713,9 @@ export default function DesignMusicField({
         onPress={() => setSheetOpen(true)}
         disabled={disabled || noMusic}
       />
-      {value ? <Text style={styles.hint}>{t("designMusicCreditNote")}</Text> : null}
+      {value ? (
+        <Text style={styles.hint}>{t("designMusicCreditNote")}</Text>
+      ) : null}
       {error ? (
         <Text style={styles.error} accessibilityRole="alert">
           {error}
