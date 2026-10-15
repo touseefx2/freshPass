@@ -2578,5 +2578,7 @@
   "designSlotVideoTooShortHave": "Dieses Video ist zu kurz. Dieser Teil braucht mindestens {{seconds}} Sekunden – deins hat {{have}} s.",
   "designSlotVideoLengthUnknown": "Die Länge dieses Videos konnte nicht gelesen werden. Versuch ein anderes Video.",
   "designSheetFileVideoMinSub": "Ein Video ab {{seconds}} s von deinem Handy",
-  "designMusicPickMin": "Track wählen · {{seconds}} s+"
+  "designMusicPickMin": "Track wählen · {{seconds}} s+",
+  "autoBuildRegensLeftWord": "Neuerstellungen übrig",
+  "autoBuildCreditsMonthWord": "Credits diesen Monat"
 }

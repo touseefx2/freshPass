@@ -358,6 +358,30 @@ const createStyles = (theme: Theme) =>
     actions: {
       gap: moderateHeightScale(12),
     },
+    countRow: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      justifyContent: "center",
+      gap: moderateWidthScale(8),
+    },
+    countPill: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(6),
+      paddingHorizontal: moderateWidthScale(12),
+      paddingVertical: moderateHeightScale(6),
+      borderRadius: moderateWidthScale(20),
+      backgroundColor: theme.orangeBrown01,
+    },
+    countText: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
+    },
+    countNum: {
+      fontFamily: fonts.fontBold,
+      color: theme.orangeBrownText,
+    },
     remakeBlock: {
       gap: moderateHeightScale(10),
     },
@@ -1396,14 +1420,25 @@ export default function AutoReelScreen() {
         : regenerationsLeft <= 0
           ? t("autoBuildRegenerateLimit", { max: AUTO_REEL_MAX_REGENERATIONS })
           : null;
+    // What's left, as two small pills with the number in bold
     const remakeCounts = [
-      t("autoBuildRegenerationsLeft", { count: regenerationsLeft }),
-      creditsLeft != null
-        ? t("autoBuildCreditsLeft", { count: Math.max(0, creditsLeft) })
-        : null,
-    ]
-      .filter(Boolean)
-      .join(" · ");
+      {
+        key: "regen",
+        icon: "refresh" as const,
+        count: regenerationsLeft,
+        word: t("autoBuildRegensLeftWord"),
+      },
+      ...(creditsLeft != null
+        ? [
+            {
+              key: "credits",
+              icon: "toll" as const,
+              count: Math.max(0, creditsLeft),
+              word: t("autoBuildCreditsMonthWord"),
+            },
+          ]
+        : []),
+    ];
     return (
       <>
         <ScrollView
@@ -1449,7 +1484,26 @@ export default function AutoReelScreen() {
               ...mediaTools,
             ])}
             {remakeOpen ? (
-              <Text style={styles.smallNote}>{remakeCounts}</Text>
+              <View style={styles.countRow}>
+                {remakeCounts.map((item) => (
+                  <View
+                    key={item.key}
+                    style={styles.countPill}
+                    accessible
+                    accessibilityLabel={`${item.count} ${item.word}`}
+                  >
+                    <MaterialIcons
+                      name={item.icon}
+                      size={moderateWidthScale(15)}
+                      color={theme.selectCard}
+                    />
+                    <Text style={styles.countText}>
+                      <Text style={styles.countNum}>{item.count}</Text>
+                      {` ${item.word}`}
+                    </Text>
+                  </View>
+                ))}
+              </View>
             ) : null}
           </View>
           {remakeOpen && remakeLimitNote ? (

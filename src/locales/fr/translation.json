@@ -2578,5 +2578,7 @@
   "designSlotVideoTooShortHave": "Cette vidéo est trop courte. Ce passage demande au moins {{seconds}} secondes — la vôtre fait {{have}} s.",
   "designSlotVideoLengthUnknown": "Impossible de lire la durée de cette vidéo. Essayez-en une autre.",
   "designSheetFileVideoMinSub": "Une vidéo de {{seconds}} s ou plus depuis votre téléphone",
-  "designMusicPickMin": "Choisir un titre · {{seconds}} s+"
+  "designMusicPickMin": "Choisir un titre · {{seconds}} s+",
+  "autoBuildRegensLeftWord": "régénérations restantes",
+  "autoBuildCreditsMonthWord": "crédits ce mois-ci"
 }
