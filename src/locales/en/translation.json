@@ -2775,8 +2775,8 @@
   "bkFlowToday": "Today",
   "bkFlowClosed": "Closed",
   "bkFlowAvailableTimes": "Available times",
-  "bkFlowEvery": "Every {{count}} min",
-  "bkFlowIntervalTitle": "Show times every",
-  "bkFlowIntervalSub": "Choose how far apart the start times are.",
-  "bkFlowNextDay": "Next available day"
+  "bkFlowSlotLength": "{{count}} min slots",
+  "bkFlowNextDay": "Next available day",
+  "bkFlowPrevMonth": "Previous month",
+  "bkFlowNextMonth": "Next month"
 }

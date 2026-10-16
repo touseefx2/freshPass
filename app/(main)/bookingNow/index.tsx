@@ -143,7 +143,7 @@ const SLOT_GAP = moderateWidthScale(8);
 const SLOT_COLUMNS = 4;
 const DATE_CHIP_W = widthScale(54);
 const DATE_CHIP_GAP = moderateWidthScale(8);
-const STRIP_DAYS = 60;
+const NEXT_DAY_LOOKAHEAD = 60;
 const PHOTO_GAP = moderateWidthScale(10);
 
 type StaffCarouselItem = {
@@ -861,26 +861,20 @@ const createStyles = (theme: Theme) =>
       gap: moderateWidthScale(12),
     },
     timeHeaderTitle: {
-      fontSize: fontSize.size17,
+      fontSize: fontSize.size16,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
     },
-    intervalChip: {
+    intervalLink: {
       flexDirection: "row",
       alignItems: "center",
-      gap: moderateWidthScale(4),
-      minHeight: heightScale(36),
-      paddingLeft: moderateWidthScale(12),
-      paddingRight: moderateWidthScale(8),
-      borderRadius: heightScale(20),
-      backgroundColor: theme.white,
-      borderWidth: 1,
-      borderColor: theme.borderNormal,
+      gap: moderateWidthScale(2),
+      minHeight: heightScale(32),
     },
-    intervalChipText: {
+    intervalLinkText: {
       fontSize: fontSize.size14,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
+      fontFamily: fonts.fontMedium,
+      color: theme.orangeBrownText,
     },
     periodIcon: {
       height: moderateHeightScale(18),
@@ -976,53 +970,69 @@ const createStyles = (theme: Theme) =>
       textAlign: "center",
       lineHeight: fontSize.size22,
     },
-    sheetOverlay: {
-      flex: 1,
-      justifyContent: "flex-end",
-      backgroundColor: theme.lightGreen5,
-    },
-    sheet: {
-      backgroundColor: theme.background,
-      borderTopLeftRadius: moderateWidthScale(24),
-      borderTopRightRadius: moderateWidthScale(24),
-      paddingHorizontal: PAGE_PAD,
-      paddingTop: moderateHeightScale(10),
-      gap: moderateHeightScale(8),
-    },
-    sheetHandle: {
-      alignSelf: "center",
-      width: widthScale(40),
-      height: heightScale(5),
-      borderRadius: heightScale(3),
-      backgroundColor: theme.lightGreen2,
-      marginBottom: moderateHeightScale(8),
-    },
-    sheetTitle: {
-      fontSize: fontSize.size19,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-    },
-    sheetSub: {
-      fontSize: fontSize.size14,
-      fontFamily: fonts.fontRegular,
-      color: theme.lightGreen,
-      marginBottom: moderateHeightScale(6),
-    },
-    sheetOption: {
+    monthNav: {
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
-      minHeight: heightScale(56),
-      paddingHorizontal: moderateWidthScale(16),
-      borderRadius: moderateWidthScale(14),
-      backgroundColor: theme.white,
-      borderWidth: 2,
-      borderColor: theme.borderLight,
+      gap: moderateWidthScale(8),
     },
-    sheetOptionText: {
+    monthNavBtn: {
+      width: widthScale(40),
+      height: widthScale(40),
+      borderRadius: moderateWidthScale(10),
+      borderWidth: 1,
+      borderColor: theme.borderNormal,
+      backgroundColor: theme.white,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    monthNavBtnOff: {
+      opacity: 0.35,
+    },
+    monthNavText: {
+      flex: 1,
+      textAlign: "center",
       fontSize: fontSize.size16,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
+    },
+    menu: {
+      position: "absolute",
+      minWidth: widthScale(170),
+      backgroundColor: theme.white,
+      borderRadius: moderateWidthScale(14),
+      borderWidth: 1,
+      borderColor: theme.borderLight,
+      overflow: "hidden",
+      shadowColor: theme.shadow,
+      shadowOffset: { width: 0, height: 6 },
+      shadowOpacity: 0.16,
+      shadowRadius: 12,
+      elevation: 8,
+    },
+    menuItem: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: moderateWidthScale(12),
+      minHeight: heightScale(44),
+      paddingHorizontal: moderateWidthScale(16),
+    },
+    menuItemBorder: {
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: theme.borderNormal,
+    },
+    menuItemOn: {
+      backgroundColor: theme.upcomingCard,
+    },
+    menuText: {
+      fontSize: fontSize.size15,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
+      fontVariant: ["tabular-nums"],
+    },
+    menuTextOn: {
+      fontFamily: fonts.fontBold,
     },
     // ── Photos & note
     photoGrid: {
@@ -2303,21 +2313,45 @@ export default function BookingNow() {
   );
 
   // Scrollable day strip: today up to ~2 months ahead (and the picked day).
+  // Month shown in the day strip (‹ › arrows); follows the picked day.
+  const [visibleMonth, setVisibleMonth] = useState(() =>
+    selectedDate.startOf("month"),
+  );
+  useEffect(() => {
+    setVisibleMonth(selectedDate.startOf("month"));
+  }, [selectedDate]);
+
+  const isCurrentMonth = visibleMonth.isSame(dayjs(), "month");
+
   const stripDays = useMemo(() => {
     const today = dayjs().startOf("day");
-    const lastDay = today.add(STRIP_DAYS - 1, "day");
-    const end = selectedDate.isAfter(lastDay, "day")
-      ? selectedDate.startOf("day").add(7, "day")
-      : lastDay;
+    const start = isCurrentMonth ? today : visibleMonth.startOf("month");
+    const end = visibleMonth.endOf("month");
     const days: dayjs.Dayjs[] = [];
-    for (let d = today; !d.isAfter(end, "day"); d = d.add(1, "day")) {
+    for (let d = start; !d.isAfter(end, "day"); d = d.add(1, "day")) {
       days.push(d);
     }
     return days;
-  }, [selectedDate]);
+  }, [visibleMonth, isCurrentMonth]);
+
+  /** Show another month and pick its first open day (or just show it). */
+  const changeMonth = (delta: 1 | -1) => {
+    const month = visibleMonth.add(delta, "month").startOf("month");
+    if (month.isBefore(dayjs(), "month")) return;
+    const today = dayjs().startOf("day");
+    let day = month.isSame(today, "month") ? today : month;
+    while (day.isSame(month, "month")) {
+      if (!isDateDisabled(day)) {
+        handleDateSelect(day);
+        return;
+      }
+      day = day.add(1, "day");
+    }
+    setVisibleMonth(month);
+  };
 
   const nextOpenDay = useMemo(() => {
-    for (let i = 1; i <= STRIP_DAYS; i++) {
+    for (let i = 1; i <= NEXT_DAY_LOOKAHEAD; i++) {
       const day = selectedDate.add(i, "day");
       if (!isDateDisabled(day)) return day;
     }
@@ -2327,7 +2361,22 @@ export default function BookingNow() {
   }, [selectedDate, selectedStaffMember, businessHours]);
 
   const dateStripRef = useRef<ScrollView>(null);
-  const [intervalSheetOpen, setIntervalSheetOpen] = useState(false);
+  // "30 min slots ⌄" dropdown, placed under the link it opens from.
+  const intervalLinkRef = useRef<View>(null);
+  const [intervalMenu, setIntervalMenu] = useState<{
+    top: number;
+    right: number;
+  } | null>(null);
+  const openIntervalMenu = () => {
+    // measure (page coords), not measureInWindow: the latter is off by the
+    // status bar on edge-to-edge Android.
+    intervalLinkRef.current?.measure((_x, _y, w, h, pageX, pageY) => {
+      setIntervalMenu({
+        top: pageY + h + moderateHeightScale(4),
+        right: Math.max(PAGE_PAD, windowWidth - (pageX + w)),
+      });
+    });
+  };
 
   // Morning / Afternoon / Evening / Night tab; falls back to the picked
   // time's period, then to the first period that has open times.
@@ -2347,7 +2396,10 @@ export default function BookingNow() {
   useEffect(() => {
     if (stepKey !== "time") return;
     const index = stripDays.findIndex((d) => d.isSame(selectedDate, "day"));
-    if (index < 0) return;
+    if (index < 0) {
+      dateStripRef.current?.scrollTo({ x: 0, animated: false });
+      return;
+    }
     const timer = setTimeout(() => {
       dateStripRef.current?.scrollTo({
         x: Math.max(0, index * (DATE_CHIP_W + DATE_CHIP_GAP) - DATE_CHIP_W),
@@ -2356,6 +2408,7 @@ export default function BookingNow() {
     }, 80);
     return () => clearTimeout(timer);
   }, [stepKey, selectedDate, stripDays]);
+
 
   const contentWidth = windowWidth - PAGE_PAD * 2;
   const staffCardWidth = Math.floor((contentWidth - GRID_GAP) / 2);
@@ -3225,7 +3278,39 @@ export default function BookingNow() {
       />
 
       <View style={styles.section}>
-        <SectionLabel label={selectedDate.format("MMMM YYYY")} />
+        <View style={styles.monthNav}>
+          <TouchableOpacity
+            onPress={() => changeMonth(-1)}
+            disabled={isCurrentMonth}
+            style={[styles.monthNavBtn, isCurrentMonth && styles.monthNavBtnOff]}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel={t("bkFlowPrevMonth")}
+            accessibilityState={{ disabled: isCurrentMonth }}
+          >
+            <Feather
+              name="chevron-left"
+              size={moderateWidthScale(20)}
+              color={theme.darkGreen}
+            />
+          </TouchableOpacity>
+          <Text style={styles.monthNavText} accessibilityRole="header">
+            {visibleMonth.format("MMMM YYYY")}
+          </Text>
+          <TouchableOpacity
+            onPress={() => changeMonth(1)}
+            style={styles.monthNavBtn}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel={t("bkFlowNextMonth")}
+          >
+            <Feather
+              name="chevron-right"
+              size={moderateWidthScale(20)}
+              color={theme.darkGreen}
+            />
+          </TouchableOpacity>
+        </View>
         {renderDateStrip()}
         <Text style={styles.timezone}>{getTimezoneText()}</Text>
       </View>
@@ -3236,27 +3321,22 @@ export default function BookingNow() {
             {t("bkFlowAvailableTimes")}
           </Text>
           <TouchableOpacity
-            style={styles.intervalChip}
-            onPress={() => setIntervalSheetOpen(true)}
-            activeOpacity={0.75}
+            ref={intervalLinkRef}
+            style={styles.intervalLink}
+            onPress={openIntervalMenu}
+            activeOpacity={0.6}
+            hitSlop={{ top: 8, bottom: 8, left: 12, right: 8 }}
             accessibilityRole="button"
-            accessibilityLabel={`${t("bkFlowIntervalTitle")}: ${t(
-              "bkFlowEvery",
-              { count: slotMinutes },
-            )}`}
+            accessibilityLabel={t("bkFlowSlotLength", { count: slotMinutes })}
+            accessibilityState={{ expanded: intervalMenu != null }}
           >
-            <MaterialIcons
-              name="schedule"
-              size={moderateWidthScale(16)}
-              color={theme.darkGreen}
-            />
-            <Text style={styles.intervalChipText}>
-              {t("bkFlowEvery", { count: slotMinutes })}
+            <Text style={styles.intervalLinkText}>
+              {t("bkFlowSlotLength", { count: slotMinutes })}
             </Text>
             <MaterialIcons
-              name="expand-more"
+              name={intervalMenu ? "expand-less" : "expand-more"}
               size={moderateWidthScale(18)}
-              color={theme.darkGreen}
+              color={theme.orangeBrownText}
             />
           </TouchableOpacity>
         </View>
@@ -3652,60 +3732,66 @@ export default function BookingNow() {
       </Modal>
 
       <Modal
-        visible={intervalSheetOpen}
+        visible={intervalMenu != null}
         transparent
-        animationType="slide"
-        onRequestClose={() => setIntervalSheetOpen(false)}
+        animationType="fade"
+        onRequestClose={() => setIntervalMenu(null)}
       >
-        <View style={styles.sheetOverlay}>
-          <Pressable
-            style={StyleSheet.absoluteFillObject}
-            onPress={() => setIntervalSheetOpen(false)}
-            accessibilityLabel={t("close")}
-          />
+        <Pressable
+          style={StyleSheet.absoluteFillObject}
+          onPress={() => setIntervalMenu(null)}
+          accessibilityLabel={t("close")}
+        />
+        {intervalMenu ? (
           <View
             style={[
-              styles.sheet,
-              { paddingBottom: flowFooterBottomPad(insets.bottom) },
+              styles.menu,
+              {
+                top: intervalMenu.top,
+                right: intervalMenu.right,
+              },
             ]}
+            accessibilityRole="menu"
           >
-            <View style={styles.sheetHandle} />
-            <Text style={styles.sheetTitle}>{t("bkFlowIntervalTitle")}</Text>
-            <Text style={styles.sheetSub}>{t("bkFlowIntervalSub")}</Text>
-            {SLOT_MINUTE_OPTIONS.map((minutes) => {
+            {SLOT_MINUTE_OPTIONS.map((minutes, index) => {
               const isSelected = slotMinutes === minutes;
               return (
                 <TouchableOpacity
                   key={minutes}
-                  activeOpacity={0.8}
+                  activeOpacity={0.7}
                   style={[
-                    styles.sheetOption,
-                    isSelected && styles.choiceCardSelected,
+                    styles.menuItem,
+                    index > 0 && styles.menuItemBorder,
+                    isSelected && styles.menuItemOn,
                   ]}
                   onPress={() => {
-                    setIntervalSheetOpen(false);
+                    setIntervalMenu(null);
                     if (minutes === slotMinutes) return;
                     setSlotMinutes(minutes);
                     setSelectedTimeSlotState(null);
                     dispatch(setSelectedTimeSlot(null));
                     dispatch(setAssignedStaffId(null));
                   }}
-                  accessibilityRole="radio"
-                  accessibilityState={{ selected: isSelected, checked: isSelected }}
+                  accessibilityRole="menuitem"
+                  accessibilityState={{ selected: isSelected }}
                 >
-                  <Text style={styles.sheetOptionText}>
-                    {t("bkFlowEvery", { count: minutes })}
-                  </Text>
-                  <View
-                    style={[styles.radio, isSelected && styles.radioSelected]}
+                  <Text
+                    style={[styles.menuText, isSelected && styles.menuTextOn]}
                   >
-                    {isSelected ? <View style={styles.radioInner} /> : null}
-                  </View>
+                    {t("bkFlowSlotLength", { count: minutes })}
+                  </Text>
+                  {isSelected ? (
+                    <MaterialIcons
+                      name="check"
+                      size={moderateWidthScale(18)}
+                      color={theme.selectCard}
+                    />
+                  ) : null}
                 </TouchableOpacity>
               );
             })}
           </View>
-        </View>
+        ) : null}
       </Modal>
 
       <OutcomeConfirmSheet

@@ -2719,8 +2719,8 @@
   "bkFlowToday": "اليوم",
   "bkFlowClosed": "مغلق",
   "bkFlowAvailableTimes": "الأوقات المتاحة",
-  "bkFlowEvery": "كل {{count}} د",
-  "bkFlowIntervalTitle": "عرض الأوقات كل",
-  "bkFlowIntervalSub": "اختر المدة بين أوقات البدء.",
-  "bkFlowNextDay": "اليوم المتاح التالي"
+  "bkFlowSlotLength": "فترات {{count}} د",
+  "bkFlowNextDay": "اليوم المتاح التالي",
+  "bkFlowPrevMonth": "الشهر السابق",
+  "bkFlowNextMonth": "الشهر التالي"
 }

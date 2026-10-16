@@ -2719,8 +2719,8 @@
   "bkFlowToday": "Aujourd'hui",
   "bkFlowClosed": "Fermé",
   "bkFlowAvailableTimes": "Horaires disponibles",
-  "bkFlowEvery": "Toutes les {{count}} min",
-  "bkFlowIntervalTitle": "Afficher un horaire toutes les",
-  "bkFlowIntervalSub": "Choisissez l'écart entre les heures de début.",
-  "bkFlowNextDay": "Prochain jour disponible"
+  "bkFlowSlotLength": "Créneaux de {{count}} min",
+  "bkFlowNextDay": "Prochain jour disponible",
+  "bkFlowPrevMonth": "Mois précédent",
+  "bkFlowNextMonth": "Mois suivant"
 }

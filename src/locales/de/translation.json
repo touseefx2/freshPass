@@ -2719,8 +2719,8 @@
   "bkFlowToday": "Heute",
   "bkFlowClosed": "Geschlossen",
   "bkFlowAvailableTimes": "Freie Zeiten",
-  "bkFlowEvery": "Alle {{count}} Min.",
-  "bkFlowIntervalTitle": "Zeiten anzeigen alle",
-  "bkFlowIntervalSub": "Wähle den Abstand zwischen den Startzeiten.",
-  "bkFlowNextDay": "Nächster freier Tag"
+  "bkFlowSlotLength": "{{count}}-Min.-Takt",
+  "bkFlowNextDay": "Nächster freier Tag",
+  "bkFlowPrevMonth": "Vorheriger Monat",
+  "bkFlowNextMonth": "Nächster Monat"
 }

@@ -2719,8 +2719,8 @@
   "bkFlowToday": "今日",
   "bkFlowClosed": "定休日",
   "bkFlowAvailableTimes": "空き時間",
-  "bkFlowEvery": "{{count}}分ごと",
-  "bkFlowIntervalTitle": "表示する間隔",
-  "bkFlowIntervalSub": "開始時間の間隔を選んでください。",
-  "bkFlowNextDay": "次の空いている日"
+  "bkFlowSlotLength": "{{count}}分刻み",
+  "bkFlowNextDay": "次の空いている日",
+  "bkFlowPrevMonth": "前の月",
+  "bkFlowNextMonth": "次の月"
 }
