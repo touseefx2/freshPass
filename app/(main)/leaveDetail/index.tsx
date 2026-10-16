@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { StyleSheet, View, Text, StatusBar } from "react-native";
-import { useTheme } from "@/src/hooks/hooks";
+import { useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useTranslation } from "react-i18next";
@@ -18,6 +18,7 @@ import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import {
   formatLeaveDateDisplay,
   formatLeaveDateTimeDisplay,
+  leaveBadgeLabelKey,
 } from "@/src/utils/leaveDateTime";
 
 const createStyles = (theme: Theme) =>
@@ -92,7 +93,9 @@ export default function LeaveDetail() {
     endTime?: string;
     reason?: string;
     createdAt?: string;
+    closesBusiness?: string;
   }>();
+  const isOwner = useAppSelector((state) => state.user.userRole) === "business";
 
   const [cancelling, setCancelling] = useState(false);
 
@@ -104,6 +107,12 @@ export default function LeaveDetail() {
   const endTime = params.endTime || null;
   const reason = params.reason ?? "";
   const createdAt = params.createdAt ?? "";
+  const closesBusiness =
+    params.closesBusiness === "true"
+      ? true
+      : params.closesBusiness === "false"
+        ? false
+        : undefined;
 
   const detailTitle =
     leaveType === "break" ? "Break Detail" : "Closed Day Detail";
@@ -165,7 +174,12 @@ export default function LeaveDetail() {
             <Text style={styles.label}>Type</Text>
             <View style={styles.typeBadge}>
               <Text style={styles.typeBadgeText}>
-                {leaveType === "break" ? "BREAK" : "CLOSE"}
+                {t(
+                  leaveBadgeLabelKey(
+                    { type: leaveType, closes_business: closesBusiness },
+                    isOwner,
+                  ),
+                )}
               </Text>
             </View>
           </View>

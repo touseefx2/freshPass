@@ -112,11 +112,28 @@ export interface EarningsTips {
   byRecipient: TipRecipient[];
 }
 
+/** "I paid at the salon" claims the business hasn't confirmed yet. */
+export interface CollectedAwaitingConfirmation {
+  total: number;
+  appointmentsCount: number;
+}
+
+/** Cash tips the business confirmed. Not in the online `tips` block. */
+export interface CollectedCashTips {
+  total: number;
+  count: number;
+}
+
 export interface CollectedAtLocation {
+  /** Confirmed in-person payments only. */
   total: number;
   appointmentsCount: number;
   includedInGross: boolean;
   note: string;
+  /** NOT part of `total`. Optional: older backends omit it. */
+  awaitingConfirmation?: CollectedAwaitingConfirmation;
+  /** Optional: older backends omit it. */
+  cashTips?: CollectedCashTips;
 }
 
 export interface FeeDataCoverage {

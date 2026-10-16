@@ -28,6 +28,7 @@ import AppointmentsSection from "./components/AppointmentsSection";
 import AwaitingOutcomeSection, {
   type AwaitingOutcomeAppointment,
 } from "./components/AwaitingOutcomeSection";
+import PaymentsToConfirmSection from "./components/PaymentsToConfirmSection";
 import WorkHistory from "./components/WorkHistory";
 import CustomersSection from "./components/CustomersSection";
 import WelcomeSection from "./components/WelcomeSection";
@@ -140,6 +141,8 @@ export default function HomeScreen() {
     AwaitingOutcomeAppointment[] | null
   >(null);
   const [awaitingOutcomeLoading, setAwaitingOutcomeLoading] = useState(false);
+  // Bumped on pull-to-refresh so "Payments to confirm" reloads too.
+  const [paymentsRefreshKey, setPaymentsRefreshKey] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
 
   const handleFetchUserStatus = async (): Promise<boolean> => {
@@ -496,6 +499,7 @@ export default function HomeScreen() {
         handleFetchStaff();
       }
       handleFetchAwaitingOutcome();
+      setPaymentsRefreshKey((key) => key + 1);
       handleFetchAppointments();
       handleFetchWorkHistory();
     }
@@ -596,6 +600,9 @@ export default function HomeScreen() {
                 loading={awaitingOutcomeLoading}
                 onRefresh={handleFetchAwaitingOutcome}
               />
+            )}
+            {(userRole === "business" || userRole === "staff") && (
+              <PaymentsToConfirmSection refreshKey={paymentsRefreshKey} />
             )}
           </View>
 

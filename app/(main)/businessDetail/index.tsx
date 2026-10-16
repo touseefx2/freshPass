@@ -2402,8 +2402,14 @@ export default function BusinessDetailScreen() {
     });
   }, [businessData]);
 
+  // Customers only see times the whole business is closed. `business_leaves`
+  // also holds owner time off while the team keeps working; it is the
+  // fallback only for backends that don't send `business_closures` yet.
   const businessLeaves = useMemo(() => {
-    const leaves = businessData?.business_leaves;
+    const leaves =
+      businessData?.business_closures !== undefined
+        ? businessData.business_closures
+        : businessData?.business_leaves;
     if (!Array.isArray(leaves) || leaves.length === 0) return [];
     return leaves;
   }, [businessData]);

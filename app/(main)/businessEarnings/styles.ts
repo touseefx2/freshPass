@@ -258,6 +258,27 @@ export const createStyles = (theme: Theme) =>
       color: theme.lightGreen5,
       lineHeight: moderateHeightScale(17),
     },
+    mutedRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(6),
+      marginTop: moderateHeightScale(6),
+    },
+    mutedRowLabel: {
+      flex: 1,
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen6,
+      paddingRight: moderateWidthScale(8),
+    },
+    mutedRowValue: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontBold,
+      color: theme.lightGreen6,
+    },
+    awaitingText: {
+      color: theme.selectCard,
+    },
     feeNote: {
       fontSize: fontSize.size12,
       fontFamily: fonts.fontRegular,

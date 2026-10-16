@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from "react";
+import React, { useCallback, useMemo, useRef } from "react";
 import {
   StyleSheet,
   Text,
@@ -16,15 +16,7 @@ import {
   iconScale,
 } from "@/src/theme/dimensions";
 import { Entypo, Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
-import { ApiService } from "@/src/services/api";
-import { appointmentsEndpoints } from "@/src/services/endpoints";
-import { getStripeModeHeaders } from "@/src/services/stripeService";
-import OutcomeConfirmSheet from "@/src/components/OutcomeConfirmSheet";
-import Logger from "@/src/services/logger";
-import type { OutcomePreview } from "@/src/types/cancellationPolicy";
-import { useNotificationContext } from "@/src/contexts/NotificationContext";
-import { useAppSelector } from "@/src/hooks/hooks";
+import { useFocusEffect, useRouter } from "expo-router";
 import { PersonIcon } from "@/assets/icons";
 import dayjs from "dayjs";
 
@@ -282,134 +274,38 @@ export default function AwaitingOutcomeSection({
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
   const router = useRouter();
-  const { showBanner } = useNotificationContext();
-  const userRole = useAppSelector((state) => state.user.userRole);
+  // Marking happens on the Update status step screen; refresh the list when
+  // coming back from it.
+  const refreshOnReturn = useRef(false);
+  useFocusEffect(
+    useCallback(() => {
+      if (refreshOnReturn.current) {
+        refreshOnReturn.current = false;
+        onRefresh();
+      }
+    }, [onRefresh]),
+  );
 
-  const [sheetVisible, setSheetVisible] = useState(false);
-  const [confirming, setConfirming] = useState(false);
-  const [previewLoading, setPreviewLoading] = useState(false);
-  const [activeId, setActiveId] = useState<number | null>(null);
-  const [activeOutcome, setActiveOutcome] = useState<
-    "completed" | "no_show" | null
-  >(null);
-  const [preview, setPreview] = useState<OutcomePreview | null>(null);
-  const [submitError, setSubmitError] = useState<string | null>(null);
-  // Hide appointments as soon as they're marked so the next one can be processed
-  // while the list refetches.
-  const [processedIds, setProcessedIds] = useState<number[]>([]);
-  // Ignore preview responses that arrive after another appointment was opened.
-  const previewRequestRef = useRef(0);
-
-  const items = (data || []).filter((item) => !processedIds.includes(item.id));
+  const items = data || [];
   if (!loading && items.length === 0) {
     return null;
   }
 
   const openDetails = (id: number) => {
+    refreshOnReturn.current = true;
     router.push({
       pathname: "/(main)/bookingDetailsById",
       params: { bookingId: String(id) },
     });
   };
 
-  const openOutcomePreview = async (
-    id: number,
-    outcome: "completed" | "no_show",
-  ) => {
-    if (confirming) return;
-    const requestId = ++previewRequestRef.current;
-    setActiveId(id);
-    setActiveOutcome(outcome);
-    setPreview(null);
-    setSubmitError(null);
-    setPreviewLoading(true);
-    setSheetVisible(true);
-    try {
-      const response = await ApiService.get<{
-        success: boolean;
-        message?: string;
-        data: OutcomePreview;
-      }>(appointmentsEndpoints.outcomePreview(id, outcome));
-      if (requestId !== previewRequestRef.current) return;
-      if (response.success && response.data) {
-        setPreview(response.data);
-      } else {
-        setSheetVisible(false);
-        showBanner(
-          t("error"),
-          response.message || "Could not load outcome preview.",
-          "error",
-          2500,
-        );
-      }
-    } catch (error: any) {
-      if (requestId !== previewRequestRef.current) return;
-      Logger.error("Outcome preview error:", error);
-      setSheetVisible(false);
-      showBanner(
-        t("error"),
-        error?.response?.data?.message ||
-          error?.message ||
-          "Could not load outcome preview.",
-        "error",
-        2500,
-      );
-    } finally {
-      if (requestId === previewRequestRef.current) setPreviewLoading(false);
-    }
+  const openOutcomeFlow = (id: number, outcome: "completed" | "no_show") => {
+    refreshOnReturn.current = true;
+    router.push({
+      pathname: "/(main)/appointmentOutcome" as any,
+      params: { bookingId: String(id), outcome },
+    });
   };
-
-  const handleConfirm = async () => {
-    if (confirming) return;
-    if (!activeId || !activeOutcome) {
-      setSubmitError("Unable to mark outcome. Please close and try again.");
-      return;
-    }
-    const id = activeId;
-    setSubmitError(null);
-    setConfirming(true);
-    try {
-      const stripeHeaders = await getStripeModeHeaders();
-      const response = await ApiService.post<{
-        success: boolean;
-        message?: string;
-        data?: unknown;
-      }>(
-        appointmentsEndpoints.markOutcome(id),
-        { outcome: activeOutcome },
-        { headers: stripeHeaders },
-      );
-
-      if (response.success) {
-        showBanner(
-          t("success"),
-          response.message || "Outcome marked successfully.",
-          "success",
-          2500,
-        );
-        setProcessedIds((prev) => [...prev, id]);
-        setSheetVisible(false);
-        setPreview(null);
-        setActiveId(null);
-        onRefresh();
-      } else {
-        setSubmitError(response.message || "Unable to mark outcome.");
-      }
-    } catch (error: any) {
-      Logger.error("Mark outcome error:", error);
-      setSubmitError(
-        error?.data?.message ||
-          error?.response?.data?.message ||
-          error?.message ||
-          "Unable to mark outcome.",
-      );
-    } finally {
-      setConfirming(false);
-    }
-  };
-
-  const confirmLabel =
-    activeOutcome === "no_show" ? t("confirmNoShow") : t("markCompleted");
 
   return (
     <View style={styles.container}>
@@ -545,7 +441,7 @@ export default function AwaitingOutcomeSection({
                 <View style={styles.actionsRow}>
                   <TouchableOpacity
                     style={[styles.actionButton, styles.completedButton]}
-                    onPress={() => openOutcomePreview(item.id, "completed")}
+                    onPress={() => openOutcomeFlow(item.id, "completed")}
                   >
                     <Text style={styles.completedButtonText}>
                       {t("markCompleted")}
@@ -553,7 +449,7 @@ export default function AwaitingOutcomeSection({
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={[styles.actionButton, styles.noShowButton]}
-                    onPress={() => openOutcomePreview(item.id, "no_show")}
+                    onPress={() => openOutcomeFlow(item.id, "no_show")}
                   >
                     <Text style={styles.noShowButtonText}>
                       {t("markNoShow")}
@@ -566,39 +462,6 @@ export default function AwaitingOutcomeSection({
         })
       )}
 
-      <OutcomeConfirmSheet
-        visible={sheetVisible}
-        onClose={() => {
-          if (!confirming) {
-            setSheetVisible(false);
-            setPreview(null);
-            setSubmitError(null);
-          }
-        }}
-        onConfirm={handleConfirm}
-        title={
-          preview?.title ||
-          (activeOutcome === "no_show"
-            ? t("confirmNoShow")
-            : t("markCompleted"))
-        }
-        question={
-          preview?.question || (previewLoading ? "Loading..." : "")
-        }
-        message={preview?.message || ""}
-        confirmLabel={confirmLabel}
-        confirmDestructive={activeOutcome === "no_show"}
-        showNoSavedCardWarning={
-          !!preview &&
-          preview.appointmentType !== "subscription" &&
-          activeOutcome === "no_show" &&
-          !preview.hasSavedCard &&
-          !preview.paid
-        }
-        confirming={confirming || previewLoading}
-        submitting={confirming}
-        errorMessage={submitError}
-      />
     </View>
   );
 }

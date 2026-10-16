@@ -477,6 +477,13 @@ export default function AppointmentsList({
           return { label: t("outcomePaymentChargeFailed"), tone: "failed" };
         case "no_charge":
           return { label: t("outcomePaymentNoCharge"), tone: "neutral" };
+        case "paid_in_person":
+          return { label: t("outcomePaymentPaidInPerson"), tone: "paid" };
+        case "awaiting_confirmation":
+          return {
+            label: t("outcomePaymentAwaitingConfirmation"),
+            tone: "due",
+          };
       }
     }
     if (item.appointmentType === "subscription") {

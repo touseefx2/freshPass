@@ -132,7 +132,11 @@ export type OutcomePaymentStatus =
   | "fee_charged"
   | "charge_failed"
   | "no_charge"
-  | "membership";
+  | "membership"
+  /** Business confirmed the visit was paid at the salon. */
+  | "paid_in_person"
+  /** Customer said they paid at the salon; business hasn't confirmed. */
+  | "awaiting_confirmation";
 
 export type AppointmentVisitStatus =
   | "reserved"

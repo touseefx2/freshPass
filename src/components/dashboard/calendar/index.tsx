@@ -27,8 +27,15 @@ import {
   iconScale,
 } from "@/src/theme/dimensions";
 import DashboardHeader from "@/src/components/DashboardHeader";
-import { MaterialIcons, Feather } from "@expo/vector-icons";
+import { MaterialIcons, Feather, Ionicons } from "@expo/vector-icons";
 import TimePickerModal from "@/src/components/timePickerModal";
+import AppImage from "@/src/components/AppImage";
+import EarningsStaffPickerModal, {
+  type StaffPickerRow,
+} from "@/src/components/earningsStaffPickerModal";
+import type { StaffIdFilter } from "@/src/types/businessEarnings";
+import { getStaffInitials } from "@/src/services/businessEarningsService";
+import { isSoloSubscription } from "@/src/state/slices/userSlice";
 import dayjs from "dayjs";
 import weekOfYear from "dayjs/plugin/weekOfYear";
 import isoWeek from "dayjs/plugin/isoWeek";
@@ -44,7 +51,6 @@ import {
   findDefaultBreakEnd,
   findNextAvailableBreakStart,
   getAppointmentsForDay,
-  hasBookedAppointmentsOnDay,
   isValidBreakEndSlot,
   isValidBreakStartSlot,
   isTimeSlotInsideBookedPeriod,
@@ -53,7 +59,9 @@ import {
 import {
   formatLeaveDateDisplay,
   formatLeaveTimeDisplay,
+  leaveBadgeLabelKey,
   leaveCoversDay,
+  sortClosuresFirst,
   timeToMinutes,
   toApiTime,
 } from "@/src/utils/leaveDateTime";
@@ -114,6 +122,8 @@ interface Appointment {
     | {};
   totalPrice: number | {};
   paidAmount: string;
+  staffId?: number | null;
+  staffIsOwner?: boolean;
   staffName: string;
   staffEmail: string;
   notes: string | null;
@@ -149,6 +159,32 @@ interface StaffLeave {
   end_time: string | null;
   reason: string | null;
   created_at: string;
+  /** Owner time off that closes the whole business (older backends omit it). */
+  closes_business?: boolean;
+}
+
+/** `GET /api/staff` row — only the fields the owner's staff filter needs. */
+interface CalendarStaffMember {
+  id: number;
+  name: string;
+  is_owner?: boolean;
+  invitation_token?: string | null;
+  invitation_status?: string;
+  user?: { profile_image_url: string | null } | null;
+}
+
+interface AppointmentsListResponse {
+  success: boolean;
+  message: string;
+  data: {
+    data: Appointment[];
+    meta: {
+      current_page: number;
+      per_page: number;
+      total: number;
+      last_page: number;
+    };
+  };
 }
 
 interface PositionedAppointment {
@@ -179,7 +215,19 @@ const MONTH_CELL_HEIGHT = heightScale(60);
 const DAY_CIRCLE_SIZE = widthScale(36);
 const SWIPE_THRESHOLD = moderateWidthScale(50);
 const APPLY_BOX_WIDTH = widthScale(168);
-const APPLY_BOX_MAX_HEIGHT = heightScale(148);
+// Tallest apply box: break times plus the owner's "close the whole business" option.
+const APPLY_BOX_MAX_HEIGHT = heightScale(200);
+// Backend caps per_page at 100; a busy month is fetched page by page.
+const APPOINTMENTS_PAGE_SIZE = 100;
+const APPOINTMENTS_MAX_PAGES = 20;
+// `without_pending` returns every visit of the day. Cancelled and expired ones
+// free their slot, so they stay off the grid (no lane, no month dot).
+const HIDDEN_CALENDAR_STATUSES = new Set([
+  "cancelled",
+  "canceled",
+  "expired",
+  "pending",
+]);
 const DEFAULT_OVERLAY_ANCHOR = {
   top: moderateHeightScale(42),
   left: moderateWidthScale(12),
@@ -351,6 +399,44 @@ const createStyles = (theme: Theme) =>
     segmentTextActive: {
       color: theme.white,
       fontFamily: fonts.fontMedium,
+    },
+    staffFilterButton: {
+      alignSelf: "stretch",
+      minWidth: widthScale(44),
+      minHeight: widthScale(44),
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: moderateWidthScale(2),
+      marginLeft: moderateWidthScale(8),
+      paddingHorizontal: moderateWidthScale(8),
+      borderRadius: moderateWidthScale(8),
+      borderWidth: 1,
+      borderColor: theme.borderLight,
+      backgroundColor: theme.secondary,
+    },
+    staffFilterButtonActive: {
+      backgroundColor: theme.darkGreen,
+      borderColor: theme.darkGreen,
+    },
+    staffFilterAvatar: {
+      width: widthScale(24),
+      height: widthScale(24),
+      borderRadius: widthScale(12),
+      backgroundColor: theme.white,
+      alignItems: "center",
+      justifyContent: "center",
+      overflow: "hidden",
+    },
+    staffFilterAvatarImage: {
+      width: "100%",
+      height: "100%",
+    },
+    staffFilterAvatarText: {
+      fontSize: fontSize.size10,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+      includeFontPadding: false,
     },
     toolbarRight: {
       flexDirection: "row",
@@ -844,6 +930,25 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontMedium,
       color: theme.text,
     },
+    applyBoxClosureRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(4),
+      minHeight: moderateHeightScale(28),
+    },
+    applyBoxCheckbox: {
+      width: widthScale(12),
+      height: widthScale(12),
+      borderRadius: moderateWidthScale(2),
+      borderWidth: 1.5,
+      borderColor: theme.borderLine,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    applyBoxCheckboxChecked: {
+      borderColor: theme.primary,
+      backgroundColor: theme.primary,
+    },
     applyBoxSlotRow: {
       flexDirection: "row",
       gap: moderateWidthScale(4),
@@ -1163,6 +1268,9 @@ export default function CalendarScreen() {
   const { showBanner } = useNotificationContext();
   const router = useRouter();
   const userRole = useAppSelector((state: any) => state.user.userRole);
+  const businessStatus = useAppSelector(
+    (state: any) => state.user.businessStatus,
+  );
 
   useEffect(() => {
     dayjs.locale(i18n.language || "en");
@@ -1195,12 +1303,23 @@ export default function CalendarScreen() {
     "start" | "end" | null
   >(null);
   const [applyBoxLoading, setApplyBoxLoading] = useState(false);
+  const [applyBoxClosesBusiness, setApplyBoxClosesBusiness] = useState(false);
+  const [staffFilterId, setStaffFilterId] = useState<StaffIdFilter>("all");
+  const [staffOptions, setStaffOptions] = useState<StaffPickerRow[]>([]);
+  const [staffPickerVisible, setStaffPickerVisible] = useState(false);
+  const appointmentsRequestRef = useRef(0);
   const [leaveDetailBoxVisible, setLeaveDetailBoxVisible] = useState(false);
   const [selectedLeave, setSelectedLeave] = useState<StaffLeave | null>(null);
   const [leaveDetailCancelling, setLeaveDetailCancelling] = useState(false);
   const [overlayAnchor, setOverlayAnchor] = useState(DEFAULT_OVERLAY_ANCHOR);
 
   const canManageLeaves = userRole === "staff" || userRole === "business";
+  const isOwner = userRole === "business";
+  // Solo owners are the only provider: their time off always closes the
+  // business and there is no team to filter by.
+  const hasTeamFeatures = isOwner && !isSoloSubscription(businessStatus);
+  const canCloseBusiness = hasTeamFeatures;
+  const showStaffFilter = hasTeamFeatures && staffOptions.length > 0;
   const currentDate = selectedDate.format("YYYY-MM-DD");
   const isPastDate = selectedDate.isBefore(today, "day");
 
@@ -1279,12 +1398,77 @@ export default function CalendarScreen() {
     return () => clearInterval(interval);
   }, []);
 
-  // Fetch appointments whenever the visible range changes
+  // Fetch appointments whenever the visible range or staff filter changes.
+  // Staff accounts only ever get their own, so the filter is owner-only.
   useEffect(() => {
     if (userRole === "business" || userRole === "staff") {
-      fetchAppointments(fetchFrom, fetchTo);
+      fetchAppointments(
+        fetchFrom,
+        fetchTo,
+        userRole === "business" ? staffFilterId : "all",
+      );
     }
-  }, [fetchFrom, fetchTo, userRole]);
+  }, [fetchFrom, fetchTo, userRole, staffFilterId]);
+
+  const fetchStaffOptions = useCallback(async () => {
+    try {
+      const response = await ApiService.get<{
+        success: boolean;
+        message: string;
+        data: CalendarStaffMember[];
+      }>(staffEndpoints.list());
+      if (!response.success || !Array.isArray(response.data)) return;
+      setStaffOptions(
+        response.data
+          // Pending invites have no appointments yet.
+          .filter(
+            (member) =>
+              !(
+                member.invitation_token &&
+                member.invitation_status !== "accepted"
+              ),
+          )
+          .map((member) => ({
+            staffId: member.id,
+            name: member.name,
+            profileImage: member.user?.profile_image_url ?? null,
+            isOwner: member.is_owner === true,
+            removed: false,
+            isUnassigned: false,
+          })),
+      );
+    } catch {
+      // Filter stays hidden; the calendar still shows the whole team.
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (hasTeamFeatures) {
+        fetchStaffOptions();
+      }
+    }, [hasTeamFeatures, fetchStaffOptions]),
+  );
+
+  // Drop a filter whose staff member is gone (or when the filter no longer applies).
+  useEffect(() => {
+    if (staffFilterId === "all") return;
+    if (
+      !hasTeamFeatures ||
+      !staffOptions.some((option) => option.staffId === staffFilterId)
+    ) {
+      setStaffFilterId("all");
+    }
+  }, [hasTeamFeatures, staffOptions, staffFilterId]);
+
+  const selectedStaffOption = useMemo(
+    () =>
+      staffFilterId === "all"
+        ? null
+        : (staffOptions.find((option) => option.staffId === staffFilterId) ??
+          null),
+    [staffFilterId, staffOptions],
+  );
 
   const fetchLeaves = useCallback(async () => {
     try {
@@ -1300,7 +1484,7 @@ export default function CalendarScreen() {
       );
 
       if (response.success && response.data && Array.isArray(response.data)) {
-        setLeaves(response.data);
+        setLeaves(sortClosuresFirst(response.data));
       } else {
         setLeaves([]);
       }
@@ -1377,38 +1561,47 @@ export default function CalendarScreen() {
     return dates;
   }, [leaves]);
 
-  const fetchAppointments = async (fromDate: string, toDate: string) => {
+  const fetchAppointments = async (
+    fromDate: string,
+    toDate: string,
+    staffId: StaffIdFilter,
+  ) => {
+    // Range or filter can change mid-fetch; only the latest request may write.
+    const requestId = ++appointmentsRequestRef.current;
     setLoading(true);
     try {
-      const response = await ApiService.get<{
-        success: boolean;
-        message: string;
-        data: {
-          data: Appointment[];
-          meta: {
-            current_page: number;
-            per_page: number;
-            total: number;
-            last_page: number;
-          };
-        };
-      }>(
-        appointmentsEndpoints.list({
-          appointment_from_date: fromDate,
-          appointment_to_date: toDate,
-          status: "scheduled",
-          per_page: 100,
-          direction: "desc",
-        }),
-      );
-
-      if (response.success && response.data) {
-        const transformedAppointments = transformAppointments(
-          response.data.data,
+      const collected: Appointment[] = [];
+      let page = 1;
+      let lastPage = 1;
+      do {
+        const response = await ApiService.get<AppointmentsListResponse>(
+          appointmentsEndpoints.list({
+            appointment_from_date: fromDate,
+            appointment_to_date: toDate,
+            status: "without_pending",
+            sort: "appointment_date",
+            direction: "asc",
+            per_page: APPOINTMENTS_PAGE_SIZE,
+            page,
+            ...(staffId !== "all" && { staff_id: staffId }),
+          }),
         );
-        setAppointments(transformedAppointments);
-      }
+        if (requestId !== appointmentsRequestRef.current) return;
+        if (!response.success || !response.data) return;
+        collected.push(...(response.data.data ?? []));
+        lastPage = response.data.meta?.last_page ?? 1;
+        page += 1;
+      } while (page <= lastPage && page <= APPOINTMENTS_MAX_PAGES);
+
+      setAppointments(
+        transformAppointments(
+          collected.filter(
+            (appointment) => !HIDDEN_CALENDAR_STATUSES.has(appointment.status),
+          ),
+        ),
+      );
     } catch (error: any) {
+      if (requestId !== appointmentsRequestRef.current) return;
       showBanner(
         t("apiFailed"),
         error?.message || t("failedToFetchAppointments"),
@@ -1416,7 +1609,9 @@ export default function CalendarScreen() {
         2500,
       );
     } finally {
-      setLoading(false);
+      if (requestId === appointmentsRequestRef.current) {
+        setLoading(false);
+      }
     }
   };
 
@@ -1534,6 +1729,18 @@ export default function CalendarScreen() {
     return map;
   }, [appointments]);
 
+  // Break / closed-day checks only count visits still to come (`scheduled`),
+  // the same set the calendar loaded before it showed the whole day.
+  const bookedByDate = useMemo(() => {
+    const map: Record<string, CalendarAppointment[]> = {};
+    appointments.forEach((appointment) => {
+      if (appointment.originalAppointment.status !== "scheduled") return;
+      if (!map[appointment.date]) map[appointment.date] = [];
+      map[appointment.date].push(appointment);
+    });
+    return map;
+  }, [appointments]);
+
   const gridDays = useMemo(
     () => (viewMode === "week" ? week : [selectedDate]),
     [viewMode, week, selectedDate],
@@ -1597,10 +1804,10 @@ export default function CalendarScreen() {
   const applyBoxDayAppointments = useMemo(
     () =>
       getAppointmentsForDay(
-        appointmentsByDate,
+        bookedByDate,
         applyBoxDate.format("YYYY-MM-DD"),
       ),
-    [appointmentsByDate, applyBoxDate],
+    [bookedByDate, applyBoxDate],
   );
 
   const applyBreakStartMinutes =
@@ -1832,9 +2039,10 @@ export default function CalendarScreen() {
       setSelectedDate(targetDate);
     }
     setApplyBoxType(type);
+    setApplyBoxClosesBusiness(false);
 
     const dayAppointments = getAppointmentsForDay(
-      appointmentsByDate,
+      bookedByDate,
       targetDate.format("YYYY-MM-DD"),
     );
     const preferredStart = startMinutes ?? 9 * 60;
@@ -1905,15 +2113,63 @@ export default function CalendarScreen() {
     setApplyBoxTimePickerTarget(null);
   };
 
+  /**
+   * Upcoming visits on a day for the time-off checks. With a staff filter on,
+   * the loaded list is one person's, so fetch the whole team's day instead.
+   */
+  const getBookedAppointmentsForDay = async (
+    dateStr: string,
+  ): Promise<CalendarAppointment[]> => {
+    if (staffFilterId === "all") {
+      return getAppointmentsForDay(bookedByDate, dateStr);
+    }
+    const response = await ApiService.get<AppointmentsListResponse>(
+      appointmentsEndpoints.list({
+        appointment_from_date: dateStr,
+        appointment_to_date: dateStr,
+        status: "scheduled",
+        sort: "appointment_date",
+        direction: "asc",
+        per_page: APPOINTMENTS_PAGE_SIZE,
+      }),
+    );
+    if (!response.success || !response.data) {
+      throw new Error(response.message || t("failedToFetchAppointments"));
+    }
+    return transformAppointments(response.data.data ?? []);
+  };
+
   const applyLeaveBreakFromBox = async () => {
     setApplyBoxLoading(true);
     try {
       const date = applyBoxDate;
       const dateStr = date.format("YYYY-MM-DD");
-      const dayAppointments = getAppointmentsForDay(appointmentsByDate, dateStr);
+      const dayAppointments = await getBookedAppointmentsForDay(dateStr);
+      // Owner only; omitted (not false) otherwise so older backends are unaffected.
+      const closurePayload =
+        canCloseBusiness && applyBoxClosesBusiness
+          ? { closes_business: true }
+          : {};
+
+      // With a team, the owner's own time off (not a closure) only takes the
+      // owner off: only their visits and unassigned ones stand in the way.
+      // Rows without staff info keep the old whole-day check.
+      const ownerStaffId =
+        staffOptions.find((option) => option.isOwner)?.staffId ?? null;
+      const blockingAppointments =
+        canCloseBusiness && !applyBoxClosesBusiness
+          ? dayAppointments.filter((item) => {
+              const appt = item.originalAppointment;
+              return (
+                appt.staffId == null ||
+                appt.staffIsOwner === true ||
+                (ownerStaffId != null && appt.staffId === ownerStaffId)
+              );
+            })
+          : dayAppointments;
 
       if (applyBoxType === "leave") {
-        if (hasBookedAppointmentsOnDay(appointmentsByDate, dateStr)) {
+        if (blockingAppointments.length > 0) {
           showBanner(
             t("apiFailed") || "Error",
             t("cannotCloseDayWithAppointments"),
@@ -1929,6 +2185,7 @@ export default function CalendarScreen() {
           start_time: null,
           end_time: null,
           type: "leave" as const,
+          ...closurePayload,
         };
         const response = await ApiService.post<{
           success: boolean;
@@ -1968,7 +2225,7 @@ export default function CalendarScreen() {
         }
 
         const conflictingAppointments = findBreakConflictingAppointments(
-          dayAppointments,
+          blockingAppointments,
           startMinutes,
           endMinutes,
         );
@@ -1993,6 +2250,7 @@ export default function CalendarScreen() {
           start_time: toApiTime(applyBoxSlotHour, applyBoxBreakStartMinutes),
           end_time: toApiTime(applyBoxBreakEndHour, applyBoxBreakEndMinutes),
           type: "break" as const,
+          ...closurePayload,
         };
         const response = await ApiService.post<{
           success: boolean;
@@ -2288,7 +2546,7 @@ export default function CalendarScreen() {
               onPress={(event) => openLeaveDetailBox(block.leave, event)}
             >
               <Text style={styles.leaveLabelText} numberOfLines={1}>
-                {t("breakUpper")}
+                {t(leaveBadgeLabelKey(block.leave, isOwner))}
               </Text>
             </TouchableOpacity>
           );
@@ -2308,7 +2566,7 @@ export default function CalendarScreen() {
               onPress={(event) => openLeaveDetailBox(dayLeave, event)}
             >
               <Text numberOfLines={1} style={styles.leaveLabelText}>
-                {t("closeUpper")}
+                {t(leaveBadgeLabelKey(dayLeave, isOwner))}
               </Text>
             </TouchableOpacity>
           </>
@@ -2676,6 +2934,49 @@ export default function CalendarScreen() {
               </TouchableOpacity>
             ))}
           </View>
+          {showStaffFilter && (
+            <TouchableOpacity
+              style={[
+                styles.staffFilterButton,
+                selectedStaffOption && styles.staffFilterButtonActive,
+              ]}
+              activeOpacity={0.8}
+              onPress={() => {
+                closeOverlays();
+                setStaffPickerVisible(true);
+              }}
+              accessibilityRole="button"
+              accessibilityLabel={`${t("earningsStaffPickerTitle")}: ${
+                selectedStaffOption?.name ?? t("earningsAllStaff")
+              }`}
+            >
+              {selectedStaffOption ? (
+                <View style={styles.staffFilterAvatar}>
+                  {selectedStaffOption.profileImage ? (
+                    <AppImage
+                      uri={selectedStaffOption.profileImage}
+                      style={styles.staffFilterAvatarImage}
+                    />
+                  ) : (
+                    <Text style={styles.staffFilterAvatarText}>
+                      {getStaffInitials(selectedStaffOption.name)}
+                    </Text>
+                  )}
+                </View>
+              ) : (
+                <Ionicons
+                  name="people-outline"
+                  size={iconScale(18)}
+                  color={theme.darkGreen}
+                />
+              )}
+              <Ionicons
+                name="chevron-down"
+                size={iconScale(14)}
+                color={selectedStaffOption ? theme.white : theme.darkGreen}
+              />
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Navigation: arrows + range label */}
@@ -2750,9 +3051,7 @@ export default function CalendarScreen() {
                         color={theme.primary}
                       />
                       <Text style={styles.leaveBoxText}>
-                        {leaveForSelectedDate.type === "leave"
-                          ? t("closeUpper")
-                          : t("breakUpper")}
+                        {t(leaveBadgeLabelKey(leaveForSelectedDate, isOwner))}
                       </Text>
                     </TouchableOpacity>
                   )}
@@ -2803,7 +3102,9 @@ export default function CalendarScreen() {
                     </TouchableOpacity>
                   </View>
                   <Text style={styles.applyBoxHint}>
-                    {t("takeBreakOrCloseDay")}
+                    {canCloseBusiness
+                      ? t("tOffBoxHintTeam")
+                      : t("takeBreakOrCloseDay")}
                   </Text>
                   <View style={styles.applyBoxRow}>
                     <TouchableOpacity
@@ -2822,7 +3123,11 @@ export default function CalendarScreen() {
                           <View style={styles.applyBoxRadioInner} />
                         )}
                       </View>
-                      <Text style={styles.applyBoxOptionText}>{t("close")}</Text>
+                      {/* With a team, the owner's leave is their own day off;
+                          closing the business is the checkbox below. */}
+                      <Text style={styles.applyBoxOptionText}>
+                        {canCloseBusiness ? t("tOffDayOff") : t("close")}
+                      </Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={styles.applyBoxRadioRow}
@@ -2903,6 +3208,44 @@ export default function CalendarScreen() {
                       </View>
                     </View>
                   )}
+                  {canCloseBusiness && (
+                    <View style={{ marginBottom: moderateHeightScale(3) }}>
+                      <TouchableOpacity
+                        style={styles.applyBoxClosureRow}
+                        onPress={() =>
+                          setApplyBoxClosesBusiness((value) => !value)
+                        }
+                        hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
+                        activeOpacity={0.7}
+                        accessibilityRole="checkbox"
+                        accessibilityState={{ checked: applyBoxClosesBusiness }}
+                      >
+                        <View
+                          style={[
+                            styles.applyBoxCheckbox,
+                            applyBoxClosesBusiness &&
+                              styles.applyBoxCheckboxChecked,
+                          ]}
+                        >
+                          {applyBoxClosesBusiness && (
+                            <Feather
+                              name="check"
+                              size={iconScale(9)}
+                              color={theme.white}
+                            />
+                          )}
+                        </View>
+                        <Text style={styles.applyBoxOptionText}>
+                          {t("tOffClosesBusiness")}
+                        </Text>
+                      </TouchableOpacity>
+                      <Text style={styles.applyBoxHint}>
+                        {applyBoxClosesBusiness
+                          ? t("tOffClosesBusinessOnHint")
+                          : t("tOffClosesBusinessOffHint")}
+                      </Text>
+                    </View>
+                  )}
                   <View style={styles.applyBoxButtonWrap}>
                     <TouchableOpacity
                       style={styles.applyBoxButton}
@@ -2972,9 +3315,7 @@ export default function CalendarScreen() {
                   <View style={styles.leaveDetailBoxTypeWrap}>
                     <View style={styles.leaveDetailBoxTypeBadge}>
                       <Text style={styles.leaveDetailBoxTypeBadgeText}>
-                        {selectedLeave.type === "break"
-                          ? t("breakUpper")
-                          : t("closeUpper")}
+                        {t(leaveBadgeLabelKey(selectedLeave, isOwner))}
                       </Text>
                     </View>
                   </View>
@@ -3100,6 +3441,16 @@ export default function CalendarScreen() {
           setApplyBoxTimePickerTarget(null);
         }}
       />
+
+      {showStaffFilter && (
+        <EarningsStaffPickerModal
+          visible={staffPickerVisible}
+          staff={staffOptions}
+          selectedStaffId={staffFilterId}
+          onClose={() => setStaffPickerVisible(false)}
+          onSelect={setStaffFilterId}
+        />
+      )}
     </View>
   );
 }

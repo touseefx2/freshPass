@@ -8,7 +8,7 @@ import {
   TouchableOpacity,
   TextInput,
 } from "react-native";
-import { useTheme } from "@/src/hooks/hooks";
+import { useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useTranslation } from "react-i18next";
@@ -27,6 +27,8 @@ import dayjs from "dayjs";
 import DatePickerModal from "@/src/components/datePickerModal";
 import TimePickerModal from "@/src/components/timePickerModal";
 import Button from "@/src/components/button";
+import CustomToggle from "@/src/components/customToggle";
+import { isSoloSubscription } from "@/src/state/slices/userSlice";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { toApiTime } from "@/src/utils/leaveDateTime";
 
@@ -122,6 +124,25 @@ const createStyles = (theme: Theme) =>
     applyButton: {
       marginTop: moderateHeightScale(8),
     },
+    closureRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: moderateWidthScale(12),
+      minHeight: moderateHeightScale(44),
+    },
+    closureLabel: {
+      flex: 1,
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontMedium,
+      color: theme.text,
+    },
+    closureHint: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+      marginBottom: moderateHeightScale(16),
+    },
   });
 
 export default function ApplyLeave() {
@@ -131,6 +152,12 @@ export default function ApplyLeave() {
   const router = useRouter();
   const { t } = useTranslation();
   const { showBanner } = useNotificationContext();
+  const userRole = useAppSelector((state) => state.user.userRole);
+  const businessStatus = useAppSelector((state) => state.user.businessStatus);
+  // Owner only. A Solo owner is the only provider, so their time off always
+  // closes the business and the option would do nothing.
+  const canCloseBusiness =
+    userRole === "business" && !isSoloSubscription(businessStatus);
   const params = useLocalSearchParams<{
     type?: string;
     date?: string;
@@ -174,6 +201,7 @@ export default function ApplyLeave() {
     "start" | "end" | null
   >(null);
   const [applyLoading, setApplyLoading] = useState(false);
+  const [closesBusiness, setClosesBusiness] = useState(false);
 
   useEffect(() => {
     const date = params.date
@@ -227,6 +255,9 @@ export default function ApplyLeave() {
     setApplyLoading(true);
     try {
       const reasonPayload = reason.trim() || undefined;
+      // Omitted (not false) when off, so older backends are unaffected.
+      const closurePayload =
+        canCloseBusiness && closesBusiness ? { closes_business: true } : {};
       if (leaveBreakType === "leave") {
         const body = {
           start_date: fromDate.format("YYYY-MM-DD"),
@@ -235,6 +266,7 @@ export default function ApplyLeave() {
           end_time: null,
           type: "leave" as const,
           ...(reasonPayload && { reason: reasonPayload }),
+          ...closurePayload,
         };
         const response = await ApiService.post<{
           success: boolean;
@@ -278,6 +310,7 @@ export default function ApplyLeave() {
           end_time: toApiTime(breakEndHours, breakEndMinutes),
           type: "break" as const,
           ...(reasonPayload && { reason: reasonPayload }),
+          ...closurePayload,
         };
         const response = await ApiService.post<{
           success: boolean;
@@ -477,6 +510,34 @@ export default function ApplyLeave() {
               </TouchableOpacity>
             </View>
           </View>
+        )}
+
+        {canCloseBusiness && (
+          <>
+            <TouchableOpacity
+              style={styles.closureRow}
+              onPress={() => setClosesBusiness((value) => !value)}
+              activeOpacity={0.7}
+              accessibilityRole="switch"
+              accessibilityState={{ checked: closesBusiness }}
+            >
+              <Text style={styles.closureLabel}>
+                {t("tOffClosesBusiness")}
+              </Text>
+              {/* The row handles the tap so the whole line is the target. */}
+              <View pointerEvents="none">
+                <CustomToggle
+                  value={closesBusiness}
+                  onValueChange={setClosesBusiness}
+                />
+              </View>
+            </TouchableOpacity>
+            <Text style={styles.closureHint}>
+              {closesBusiness
+                ? t("tOffClosesBusinessOnHint")
+                : t("tOffClosesBusinessOffHint")}
+            </Text>
+          </>
         )}
 
         <Text style={styles.fieldLabel}>Reason (Optional)</Text>

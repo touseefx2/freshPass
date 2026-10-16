@@ -256,6 +256,10 @@ export default function OutcomeSummaryCard({
         return t("outcomePaymentNoCharge");
       case "membership":
         return t("outcomePaymentMembership");
+      case "paid_in_person":
+        return t("outcomePaymentPaidInPerson");
+      case "awaiting_confirmation":
+        return t("outcomePaymentAwaitingConfirmation");
       default:
         return String(summary.paymentStatus);
     }
@@ -284,31 +288,35 @@ export default function OutcomeSummaryCard({
     summary.isLate === true &&
     summary.cancelledBy === "customer";
 
-  const chipStyle =
+  const isPaidTone =
     summary.paymentStatus === "paid" ||
-    summary.paymentStatus === "membership"
-      ? styles.chipPaid
-      : summary.paymentStatus === "payment_due"
-        ? styles.chipDue
-        : summary.paymentStatus === "charge_failed" ||
-            summary.paymentStatus === "no_charge"
-          ? styles.chipFailed
-          : summary.paymentStatus === "fee_charged"
-            ? styles.chipFee
-            : styles.chip;
+    summary.paymentStatus === "paid_in_person" ||
+    summary.paymentStatus === "membership";
+  const isDueTone =
+    summary.paymentStatus === "payment_due" ||
+    summary.paymentStatus === "awaiting_confirmation";
 
-  const chipTextStyle =
-    summary.paymentStatus === "paid" ||
-    summary.paymentStatus === "membership"
-      ? styles.chipTextPaid
-      : summary.paymentStatus === "payment_due"
-        ? styles.chipTextDue
-        : summary.paymentStatus === "charge_failed" ||
-            summary.paymentStatus === "no_charge"
-          ? styles.chipTextFailed
-          : summary.paymentStatus === "fee_charged"
-            ? styles.chipTextFee
-            : styles.chipText;
+  const chipStyle = isPaidTone
+    ? styles.chipPaid
+    : isDueTone
+      ? styles.chipDue
+      : summary.paymentStatus === "charge_failed" ||
+          summary.paymentStatus === "no_charge"
+        ? styles.chipFailed
+        : summary.paymentStatus === "fee_charged"
+          ? styles.chipFee
+          : styles.chip;
+
+  const chipTextStyle = isPaidTone
+    ? styles.chipTextPaid
+    : isDueTone
+      ? styles.chipTextDue
+      : summary.paymentStatus === "charge_failed" ||
+          summary.paymentStatus === "no_charge"
+        ? styles.chipTextFailed
+        : summary.paymentStatus === "fee_charged"
+          ? styles.chipTextFee
+          : styles.chipText;
 
   const footerParts: string[] = [];
   if (isCancelled) {

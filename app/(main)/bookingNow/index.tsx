@@ -1301,6 +1301,7 @@ export default function BookingNow() {
   }, [attributionReelId]);
 
   const isReschedule = params.is_reschedule === "1";
+  const hasAppliedStaffParam = useRef(false);
   const isSubscriptionBooking = Boolean(params.subscription_id && params.item);
   const subscriptionData: SubscriptionData | null = useMemo(() => {
     if (params.item) {
@@ -1767,6 +1768,22 @@ export default function BookingNow() {
         // Solo plans have no staff picker — keep selection as "anyone"
         if (subscriptionPlanTypeFromApi === "Solo") {
           dispatch(setSelectedStaff("anyone"));
+        } else if (
+          // Book Again: same pro if still on the team (once, so a refetch
+          // never overrides the customer's own pick). Reschedule has its own preset.
+          !isReschedule &&
+          !hasAppliedStaffParam.current &&
+          params.staff_id &&
+          params.staff_id !== "anyone"
+        ) {
+          hasAppliedStaffParam.current = true;
+          const sameStaff = staffMembersData.find(
+            (s: { id: number; active?: boolean }) =>
+              String(s.id) === params.staff_id && s.active !== false,
+          );
+          if (sameStaff) {
+            dispatch(setSelectedStaff(String(sameStaff.id)));
+          }
         }
 
         // Set selected service in selectedServices - skip for subscription booking

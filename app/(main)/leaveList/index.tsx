@@ -8,7 +8,7 @@ import {
   ActivityIndicator,
   FlatList,
 } from "react-native";
-import { useTheme } from "@/src/hooks/hooks";
+import { useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { useRouter, useFocusEffect } from "expo-router";
 import { useTranslation } from "react-i18next";
@@ -26,6 +26,7 @@ import RetryButton from "@/src/components/retryButton";
 import {
   formatLeaveDateDisplay,
   formatLeaveDateTimeDisplay,
+  leaveBadgeLabelKey,
   LeaveRecord,
 } from "@/src/utils/leaveDateTime";
 
@@ -102,6 +103,7 @@ export default function LeaveList() {
   const styles = useMemo(() => createStyles(theme), [colors]);
   const router = useRouter();
   const { t } = useTranslation();
+  const isOwner = useAppSelector((state) => state.user.userRole) === "business";
 
   const [leaves, setLeaves] = useState<LeaveItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -149,6 +151,11 @@ export default function LeaveList() {
         endTime: item.end_time || "",
         reason: item.reason || "",
         createdAt: item.created_at || "",
+        // "" when the backend predates closures.
+        closesBusiness:
+          typeof item.closes_business === "boolean"
+            ? String(item.closes_business)
+            : "",
       },
     });
   };
@@ -171,7 +178,7 @@ export default function LeaveList() {
         <View style={styles.cardRow}>
           <View style={styles.typeBadge}>
             <Text style={styles.typeBadgeText}>
-              {(item.type === "break" ? "Break" : "Close").toUpperCase()}
+              {t(leaveBadgeLabelKey(item, isOwner))}
             </Text>
           </View>
           <MaterialIcons

@@ -15,7 +15,33 @@ export interface LeaveRecord {
   end_time: string | null;
   reason: string | null;
   created_at: string;
+  /** Owner time off that closes the whole business (older backends omit it). */
+  closes_business?: boolean;
 }
+
+/**
+ * Translation key for a leave's badge. Owner time off says whether the whole
+ * business is closed or only the owner is off. Staff leaves and older payloads
+ * (no `closes_business`) keep the plain Close / Break labels.
+ */
+export const leaveBadgeLabelKey = (
+  leave: Pick<LeaveRecord, "type" | "closes_business">,
+  isOwner: boolean,
+): string => {
+  if (leave.closes_business === true) return "tOffBusinessClosedUpper";
+  if (isOwner && leave.closes_business === false && leave.type === "leave") {
+    return "tOffOwnerOffUpper";
+  }
+  return leave.type === "break" ? "breakUpper" : "closeUpper";
+};
+
+/** Closures first, so a day with both a closure and owner time off reads as closed. */
+export const sortClosuresFirst = <T extends Pick<LeaveRecord, "closes_business">>(
+  leaves: T[],
+): T[] =>
+  [...leaves].sort(
+    (a, b) => Number(b.closes_business === true) - Number(a.closes_business === true),
+  );
 
 /** Picker hours/minutes → API `HH:mm:ss` (24-hour, zero-padded). */
 export const toApiTime = (hours: number, minutes: number): string =>

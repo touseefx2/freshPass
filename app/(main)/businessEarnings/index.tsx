@@ -621,6 +621,14 @@ export default function BusinessEarningsScreen() {
       ? report.revenueBySource.filter((src) => src.source !== "subscription")
       : report.revenueBySource;
 
+    // Confirmed in-person money. Unconfirmed "paid at salon" claims are
+    // shown separately and are not part of `total`.
+    const collected = report.collectedAtLocation;
+    const awaitingTotal = collected.awaitingConfirmation?.total ?? 0;
+    const cashTipsTotal = collected.cashTips?.total ?? 0;
+    const showCollectedCard =
+      collected.total > 0 || awaitingTotal > 0 || cashTipsTotal > 0;
+
     return (
       <View style={showFaded ? styles.contentFaded : undefined}>
         <View style={styles.heroCard}>
@@ -721,17 +729,49 @@ export default function BusinessEarningsScreen() {
           </View>
         )}
 
-        {report.collectedAtLocation.total > 0 && (
+        {showCollectedCard && (
           <View style={styles.mutedCard}>
             <Text style={styles.mutedTitle}>
               {t("earningsCollectedInPerson")}
             </Text>
             <Text style={styles.mutedAmount}>
-              {formatMoney(report.collectedAtLocation.total, currency)}
+              {formatMoney(collected.total, currency)}
             </Text>
-            <Text style={styles.mutedNote}>
-              {report.collectedAtLocation.note}
-            </Text>
+            {!!collected.note && (
+              <Text style={styles.mutedNote}>{collected.note}</Text>
+            )}
+            {(awaitingTotal > 0 || cashTipsTotal > 0) && (
+              <View style={styles.divider} />
+            )}
+            {awaitingTotal > 0 && (
+              <View style={styles.mutedRow}>
+                <Ionicons
+                  name="time-outline"
+                  size={iconScale(15)}
+                  color={theme.selectCard}
+                />
+                <Text style={[styles.mutedRowLabel, styles.awaitingText]}>
+                  {t("earningsAwaitingConfirmation", {
+                    count: collected.awaitingConfirmation?.appointmentsCount ?? 0,
+                  })}
+                </Text>
+                <Text style={[styles.mutedRowValue, styles.awaitingText]}>
+                  {formatMoney(awaitingTotal, currency)}
+                </Text>
+              </View>
+            )}
+            {cashTipsTotal > 0 && (
+              <View style={styles.mutedRow}>
+                <Text style={styles.mutedRowLabel}>
+                  {t("earningsCashTips")}
+                </Text>
+                <Text style={styles.mutedRowValue}>
+                  {`${formatMoney(cashTipsTotal, currency)} (${
+                    collected.cashTips?.count ?? 0
+                  })`}
+                </Text>
+              </View>
+            )}
           </View>
         )}
 

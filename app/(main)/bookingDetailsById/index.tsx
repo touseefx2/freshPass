@@ -40,7 +40,6 @@ import { ApiService } from "@/src/services/api";
 import Logger from "@/src/services/logger";
 import {
   appointmentsEndpoints,
-  reviewsEndpoints,
   chatEndpoints,
 } from "@/src/services/endpoints";
 import { useStripe } from "@stripe/stripe-react-native";
@@ -78,10 +77,18 @@ import type {
   AppointmentVisitStatus,
   MembershipPolicy,
   OutcomeCorrectionPreview,
-  OutcomePreview,
   OutcomeSummary,
 } from "@/src/types/cancellationPolicy";
 import OutcomeSummaryCard from "@/src/components/OutcomeSummaryCard";
+import type {
+  AppointmentReview,
+  InPersonPayment,
+} from "@/src/types/afterVisit";
+import {
+  fetchBookAgain,
+  fetchViewAndPay,
+} from "@/src/services/afterVisitService";
+import InPersonPaymentCard from "@/src/components/afterVisit/inPersonPaymentCard";
 import { createStyles } from "./styles";
 import {
   getDefaultAvatarImage,
@@ -343,6 +350,12 @@ interface BookingItem {
   canCorrectOutcome?: boolean;
   canRestoreVisit?: boolean;
   outcomeSummary?: OutcomeSummary | null;
+  /** "I paid at the salon" claim and how the business answered it */
+  inPersonPayment?: InPersonPayment | null;
+  canConfirmInPersonPayment?: boolean;
+  canRejectInPersonPayment?: boolean;
+  /** This visit's review (one per appointment) */
+  review?: AppointmentReview | null;
 }
 
 interface ApiBookingResponse {
@@ -459,6 +472,10 @@ interface ApiBookingResponse {
   canCorrectOutcome?: boolean;
   canRestoreVisit?: boolean;
   outcomeSummary?: OutcomeSummary | null;
+  inPersonPayment?: InPersonPayment | null;
+  canConfirmInPersonPayment?: boolean;
+  canRejectInPersonPayment?: boolean;
+  review?: AppointmentReview | null;
 }
 
 export default function BookingDetailsById() {
@@ -481,16 +498,6 @@ export default function BookingDetailsById() {
   const [rescheduleFeeMessage, setRescheduleFeeMessage] = useState<
     string | null
   >(null);
-  const [outcomeSheetVisible, setOutcomeSheetVisible] = useState(false);
-  const [outcomeConfirming, setOutcomeConfirming] = useState(false);
-  const [outcomePreviewLoading, setOutcomePreviewLoading] = useState(false);
-  const [pendingOutcome, setPendingOutcome] = useState<
-    "completed" | "no_show" | null
-  >(null);
-  const [outcomePreview, setOutcomePreview] = useState<OutcomePreview | null>(
-    null,
-  );
-  const [outcomeError, setOutcomeError] = useState<string | null>(null);
   const [correctionSheetVisible, setCorrectionSheetVisible] = useState(false);
   const [correctionError, setCorrectionError] = useState<string | null>(null);
   const [correctionConfirming, setCorrectionConfirming] = useState(false);
@@ -901,6 +908,10 @@ export default function BookingDetailsById() {
       canCorrectOutcome: apiData.canCorrectOutcome ?? false,
       canRestoreVisit: apiData.canRestoreVisit ?? false,
       outcomeSummary: apiData.outcomeSummary ?? null,
+      inPersonPayment: apiData.inPersonPayment ?? null,
+      canConfirmInPersonPayment: apiData.canConfirmInPersonPayment ?? false,
+      canRejectInPersonPayment: apiData.canRejectInPersonPayment ?? false,
+      review: apiData.review ?? null,
       images:
         Array.isArray(apiData.images) && apiData.images.length > 0
           ? apiData.images.map((img: any) => ({
@@ -1059,6 +1070,45 @@ export default function BookingDetailsById() {
     booking?.status === "no_show";
   const isComplete = booking?.status === "complete";
   const isAwaitingOutcome = booking?.status === "awaiting_outcome";
+  // Completed visits: payment, tip and review all live in View & Pay.
+  const canShowViewAndPay = userRole === "customer" && isComplete;
+
+  const openViewAndPay = (step?: "review") => {
+    if (!bookingId) return;
+    router.push({
+      pathname: "/(main)/viewAndPay" as any,
+      params: {
+        appointmentId: bookingId,
+        fromDetails: "1",
+        ...(step ? { step } : {}),
+      },
+    });
+  };
+
+  // Book Again shows only when the server says this visit can be rebooked.
+  const [canBookAgain, setCanBookAgain] = useState(false);
+  useEffect(() => {
+    const isPast =
+      booking?.status === "complete" ||
+      booking?.status === "cancelled" ||
+      booking?.status === "expired" ||
+      booking?.status === "no_show";
+    if (!booking?.id || userRole !== "customer" || !isPast) {
+      setCanBookAgain(false);
+      return;
+    }
+    let cancelled = false;
+    fetchBookAgain(booking.id)
+      .then((data) => {
+        if (!cancelled) setCanBookAgain(!!data.canBookAgain);
+      })
+      .catch(() => {
+        if (!cancelled) setCanBookAgain(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [booking?.id, booking?.status, userRole]);
 
   const paidTipBreakdown = useMemo(() => {
     if (!booking?.tip) return null;
@@ -1108,21 +1158,13 @@ export default function BookingDetailsById() {
     }
   }, [loading, booking, isComplete, userRole, user?.id]);
 
+  // One review per visit: View & Pay says whether this visit can still be reviewed.
   const checkAndShowReviewPrompt = async () => {
+    if (!bookingId) return;
     try {
-      const businessId = booking?.businessId ?? 0;
-      const userId = user?.id ?? 0;
-      const response = await ApiService.get<{
-        success: boolean;
-        data: unknown[];
-      }>(reviewsEndpoints.list({ business_id: businessId, user_id: userId }));
-
+      const visit = await fetchViewAndPay(bookingId);
       hasShownReviewPromptForVisit.current = true;
-
-      const data = response?.data;
-      const isEmpty = Array.isArray(data) && data.length === 0;
-
-      if (isEmpty) {
+      if (visit.review.canReview && !visit.review.review) {
         setShowReviewModal(true);
       }
     } catch {
@@ -1267,6 +1309,20 @@ export default function BookingDetailsById() {
     return "In-person at the business";
   })();
 
+  // A salon claim is never a payment: it stays "waiting" until the pro confirms.
+  const inPersonStatus = booking?.inPersonPayment?.status;
+  const isPaidBadge =
+    !!booking &&
+    !booking.owesPayment &&
+    (booking.paidAmount != null || inPersonStatus === "confirmed");
+  const paymentBadgeLabel = isPaidBadge
+    ? inPersonStatus === "confirmed"
+      ? t("avBadgePaidInPerson")
+      : t("paidLabel")
+    : inPersonStatus === "claimed"
+      ? t("avBadgeAwaiting")
+      : t("payLaterLabel");
+
   const savedCardLabel =
     !isSubscription && booking?.cardLastFour
       ? t("savedCardLastFour", { lastFour: booking.cardLastFour })
@@ -1403,6 +1459,7 @@ export default function BookingDetailsById() {
   // Pay Now sits beside chat at the top while the customer still owes.
   const canShowPayNow =
     !isCancelled &&
+    !canShowViewAndPay &&
     userRole === "customer" &&
     booking?.type === "service" &&
     !!booking?.owesPayment;
@@ -1728,84 +1785,22 @@ export default function BookingDetailsById() {
     setCancelFeeNotice(null);
   };
 
-  const openOutcomePreview = async (outcome: "completed" | "no_show") => {
+  // Update status (Completed / No-show) and the salon payment are step
+  // screens of their own (appointmentOutcome).
+  const openOutcomeFlow = (outcome: "completed" | "no_show") => {
     if (!bookingId) return;
-    setPendingOutcome(outcome);
-    setOutcomePreview(null);
-    setOutcomeError(null);
-    setOutcomePreviewLoading(true);
-    setOutcomeSheetVisible(true);
-    try {
-      const response = await ApiService.get<{
-        success: boolean;
-        message?: string;
-        data: OutcomePreview;
-      }>(appointmentsEndpoints.outcomePreview(bookingId, outcome));
-      if (response.success && response.data) {
-        setOutcomePreview(response.data);
-      } else {
-        setOutcomeSheetVisible(false);
-        showBanner(
-          t("error"),
-          response.message || "Could not load outcome preview.",
-          "error",
-          2500,
-        );
-      }
-    } catch (error: any) {
-      Logger.error("Outcome preview error:", error);
-      setOutcomeSheetVisible(false);
-      showBanner(
-        t("error"),
-        error?.response?.data?.message ||
-          error?.message ||
-          "Could not load outcome preview.",
-        "error",
-        2500,
-      );
-    } finally {
-      setOutcomePreviewLoading(false);
-    }
+    router.push({
+      pathname: "/(main)/appointmentOutcome" as any,
+      params: { bookingId, outcome },
+    });
   };
 
-  const handleConfirmOutcome = async () => {
-    if (!bookingId || !pendingOutcome || outcomeConfirming) return;
-    setOutcomeError(null);
-    setOutcomeConfirming(true);
-    try {
-      const stripeHeaders = await getStripeModeHeaders();
-      const response = await ApiService.post<{
-        success: boolean;
-        message?: string;
-      }>(
-        appointmentsEndpoints.markOutcome(bookingId),
-        { outcome: pendingOutcome },
-        { headers: stripeHeaders },
-      );
-      if (response.success) {
-        showBanner(
-          t("success"),
-          response.message || "Outcome marked successfully.",
-          "success",
-          2500,
-        );
-        setOutcomeSheetVisible(false);
-        setOutcomePreview(null);
-        await fetchBookingDetails();
-      } else {
-        setOutcomeError(response.message || "Unable to mark outcome.");
-      }
-    } catch (error: any) {
-      Logger.error("Mark outcome error:", error);
-      setOutcomeError(
-        error?.data?.message ||
-          error?.response?.data?.message ||
-          error?.message ||
-          "Unable to mark outcome.",
-      );
-    } finally {
-      setOutcomeConfirming(false);
-    }
+  const openInPersonPaymentFlow = (step: "payment" | "reject") => {
+    if (!bookingId) return;
+    router.push({
+      pathname: "/(main)/appointmentOutcome" as any,
+      params: { bookingId, step },
+    });
   };
 
   const openCorrectionPreview = async () => {
@@ -2089,6 +2084,11 @@ export default function BookingDetailsById() {
   const startPayOnlineFlow = () => {
     if (!booking) return;
 
+    if (canShowViewAndPay) {
+      openViewAndPay();
+      return;
+    }
+
     if (booking.paymentDueNow) {
       const hasBookingPendingTip =
         booking.pendingTip?.source === "booking" &&
@@ -2162,7 +2162,43 @@ export default function BookingDetailsById() {
         >
           {/* Top actions: Pay Now + Chat */}
           <View style={styles.topActionsRow}>
-            {canShowPayNow ? (
+            {canShowViewAndPay ? (
+              <TouchableOpacity
+                style={[styles.topActionCard, styles.topActionPrimary]}
+                activeOpacity={0.8}
+                onPress={() => openViewAndPay()}
+                accessibilityRole="button"
+              >
+                <Ionicons
+                  name="receipt-outline"
+                  size={moderateWidthScale(24)}
+                  color={theme.white}
+                />
+                <View style={styles.topActionTextWrap}>
+                  <Text
+                    style={[styles.topActionTitle, styles.topActionTitlePrimary]}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.8}
+                  >
+                    {t("viewAndPay")}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.topActionSubtitle,
+                      styles.topActionSubtitlePrimary,
+                    ]}
+                    numberOfLines={2}
+                  >
+                    {booking.inPersonPayment?.status === "claimed"
+                      ? t("avCardSubAwaiting")
+                      : booking.owesPayment
+                        ? t("completeYourPayment")
+                        : t("avCardSubDone")}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            ) : canShowPayNow ? (
               <TouchableOpacity
                 style={[styles.topActionCard, styles.topActionPrimary]}
                 activeOpacity={0.8}
@@ -2281,6 +2317,23 @@ export default function BookingDetailsById() {
               isBusinessView={
                 userRole === "business" || userRole === "staff"
               }
+            />
+          ) : null}
+
+          {!isCustomerView &&
+          (booking.inPersonPayment || booking.canConfirmInPersonPayment) ? (
+            <InPersonPaymentCard
+              payment={booking.inPersonPayment}
+              customerName={booking.user}
+              amount={
+                Number.isFinite(booking.serviceTotal)
+                  ? (booking.serviceTotal as number)
+                  : null
+              }
+              canConfirm={!!booking.canConfirmInPersonPayment}
+              canReject={!!booking.canRejectInPersonPayment}
+              onConfirm={() => openInPersonPaymentFlow("payment")}
+              onReject={() => openInPersonPaymentFlow("reject")}
             />
           ) : null}
 
@@ -2470,7 +2523,13 @@ export default function BookingDetailsById() {
                 />
               }
               label={t("paymentStatus")}
-              onPress={canShowPayNow ? startPayOnlineFlow : undefined}
+              onPress={
+                canShowViewAndPay
+                  ? () => openViewAndPay()
+                  : canShowPayNow
+                    ? startPayOnlineFlow
+                    : undefined
+              }
               isLast
               styles={styles}
               theme={theme}
@@ -2479,10 +2538,9 @@ export default function BookingDetailsById() {
                 style={[
                   styles.infoListBadge,
                   {
-                    backgroundColor:
-                      !booking.owesPayment && booking.paidAmount != null
-                        ? theme.apptMintBg
-                        : theme.orangeBrown30,
+                    backgroundColor: isPaidBadge
+                      ? theme.apptMintBg
+                      : theme.orangeBrown30,
                   },
                 ]}
               >
@@ -2490,17 +2548,14 @@ export default function BookingDetailsById() {
                   style={[
                     styles.infoListBadgeText,
                     {
-                      color:
-                        !booking.owesPayment && booking.paidAmount != null
-                          ? theme.apptMintAccent
-                          : theme.orangeBrownText,
+                      color: isPaidBadge
+                        ? theme.apptMintAccent
+                        : theme.orangeBrownText,
                     },
                   ]}
                   numberOfLines={1}
                 >
-                  {!booking.owesPayment && booking.paidAmount != null
-                    ? t("paidLabel")
-                    : t("payLaterLabel")}
+                  {paymentBadgeLabel}
                 </Text>
               </View>
             </InfoRow>
@@ -2667,6 +2722,37 @@ export default function BookingDetailsById() {
               </TouchableOpacity>
             ) : null}
           </View>
+
+          {/* Book Again (past visits the server says can be rebooked) */}
+          {isCustomerView && canBookAgain ? (
+            <View style={styles.inlineActionsRow}>
+              <TouchableOpacity
+                style={[styles.inlineActionButton, styles.rescheduleButton]}
+                activeOpacity={0.7}
+                onPress={() =>
+                  router.push({
+                    pathname: "/(main)/bookAgain" as any,
+                    params: { appointmentId: booking.id },
+                  })
+                }
+                accessibilityRole="button"
+              >
+                <Ionicons
+                  name="repeat"
+                  size={moderateWidthScale(20)}
+                  color={theme.darkGreen}
+                />
+                <Text
+                  style={styles.rescheduleButtonText}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.8}
+                >
+                  {t("bookAgain")}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          ) : null}
 
           {/* Reschedule / Cancel */}
           {canShowBottomButtonRow ? (
@@ -2835,6 +2921,9 @@ export default function BookingDetailsById() {
                     <View style={styles.paymentBreakdownRow}>
                       <Text style={styles.paymentBreakdownLabel}>
                         Tip for {paidTipBreakdown.recipientName}
+                        {booking.tip?.paymentChannel === "in_person"
+                          ? ` · ${t("avTipCashShort")}`
+                          : ""}
                       </Text>
                       <Text style={styles.paymentBreakdownValue}>
                         {formatTipAmount(
@@ -3072,7 +3161,9 @@ export default function BookingDetailsById() {
                       {paidTipBreakdown.recipientName}
                     </Text>
                     <Text style={styles.tipReceiptSubtitle}>
-                      Received your appreciation
+                      {booking.tip?.paymentChannel === "in_person"
+                        ? t("avTipCashChannel")
+                        : "Received your appreciation"}
                     </Text>
                   </View>
 
@@ -3107,6 +3198,7 @@ export default function BookingDetailsById() {
 
           {/* Standalone tip */}
           {userRole === "customer" &&
+            !canShowViewAndPay &&
             booking.canTip &&
             !(booking.tipDeclined ?? false) &&
             !booking.paymentDueNow && (
@@ -3210,7 +3302,7 @@ export default function BookingDetailsById() {
                 <TouchableOpacity
                   style={[styles.outcomeActionButton, styles.outcomeCompletedButton]}
                   activeOpacity={0.7}
-                  onPress={() => openOutcomePreview("completed")}
+                  onPress={() => openOutcomeFlow("completed")}
                 >
                   <Text style={styles.outcomeCompletedButtonText}>
                     {t("markCompleted")}
@@ -3219,7 +3311,7 @@ export default function BookingDetailsById() {
                 <TouchableOpacity
                   style={[styles.outcomeActionButton, styles.outcomeNoShowButton]}
                   activeOpacity={0.7}
-                  onPress={() => openOutcomePreview("no_show")}
+                  onPress={() => openOutcomeFlow("no_show")}
                 >
                   <Text style={styles.outcomeNoShowButtonText}>
                     {t("markNoShow")}
@@ -3273,44 +3365,6 @@ export default function BookingDetailsById() {
         />
 
         <OutcomeConfirmSheet
-          visible={outcomeSheetVisible}
-          onClose={() => {
-            if (!outcomeConfirming) {
-              setOutcomeSheetVisible(false);
-              setOutcomePreview(null);
-              setOutcomeError(null);
-            }
-          }}
-          onConfirm={handleConfirmOutcome}
-          title={
-            outcomePreview?.title ||
-            (pendingOutcome === "no_show"
-              ? t("confirmNoShow")
-              : t("markCompleted"))
-          }
-          question={
-            outcomePreview?.question ||
-            (outcomePreviewLoading ? "Loading..." : "")
-          }
-          message={outcomePreview?.message || ""}
-          confirmLabel={
-            pendingOutcome === "no_show"
-              ? t("confirmNoShow")
-              : t("markCompleted")
-          }
-          confirmDestructive={pendingOutcome === "no_show"}
-          showNoSavedCardWarning={
-            !!outcomePreview &&
-            pendingOutcome === "no_show" &&
-            !outcomePreview.hasSavedCard &&
-            !outcomePreview.paid
-          }
-          confirming={outcomeConfirming || outcomePreviewLoading}
-          submitting={outcomeConfirming}
-          errorMessage={outcomeError}
-        />
-
-        <OutcomeConfirmSheet
           visible={correctionSheetVisible}
           onClose={() => {
             if (!correctionConfirming) {
@@ -3334,17 +3388,7 @@ export default function BookingDetailsById() {
           onClose={() => setShowReviewModal(false)}
           onWriteReview={() => {
             setShowReviewModal(false);
-            router.push({
-              pathname: "/(main)/leaveReview",
-              params: {
-                business_id: booking?.businessId?.toString() ?? "",
-                business_name: businessName,
-                business_address: booking?.businessAddress ?? "",
-                business_logo_url: booking?.businessLogoUrl ?? "",
-                business_latitude: booking?.businessLatitude ?? "",
-                business_longitude: booking?.businessLongitude ?? "",
-              },
-            });
+            openViewAndPay("review");
           }}
           businessName={businessName}
         />
@@ -3390,7 +3434,7 @@ export default function BookingDetailsById() {
 
   return (
     <View style={styles.screen}>
-      <StackHeader title={t("bookingDetail")} showLine={false} />
+      <StackHeader title={t("appointmentDetails")} showLine={false} />
       <View style={styles.sheet}>{renderContent()}</View>
     </View>
   );

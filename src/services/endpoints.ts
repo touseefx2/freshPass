@@ -335,6 +335,8 @@ export const appointmentsEndpoints = {
     appointment_to_date?: string;
     staff_id?: number;
     appointment_type?: string;
+    /** "I paid at the salon" claims: claimed (waiting), confirmed, rejected */
+    in_person_payment_status?: "claimed" | "confirmed" | "rejected";
   }) => {
     const queryParams = new URLSearchParams();
 
@@ -355,6 +357,11 @@ export const appointmentsEndpoints = {
       queryParams.append("staff_id", params.staff_id.toString());
     if (params?.appointment_type)
       queryParams.append("appointment_type", params.appointment_type);
+    if (params?.in_person_payment_status)
+      queryParams.append(
+        "in_person_payment_status",
+        params.in_person_payment_status,
+      );
 
     const queryString = queryParams.toString();
     return `/api/appointments${queryString ? `?${queryString}` : ""}`;
@@ -422,6 +429,19 @@ export const appointmentsEndpoints = {
     `/api/appointments/${id}/outcome/correct`,
   restoreVisit: (id: string | number) =>
     `/api/appointments/${id}/restore-visit`,
+  /** Customer, completed visits only: payment + tip + review in one answer */
+  viewAndPay: (id: string | number) => `/api/appointments/${id}/view-and-pay`,
+  /** Customer: "I paid at the salon" */
+  paidInPerson: (id: string | number) =>
+    `/api/appointments/${id}/paid-in-person`,
+  /** Owner / assigned pro: payment received at the shop (claim or walk-in) */
+  confirmInPersonPayment: (id: string | number) =>
+    `/api/appointments/${id}/in-person-payment/confirm`,
+  /** Owner / assigned pro: the salon payment never arrived (claims only) */
+  rejectInPersonPayment: (id: string | number) =>
+    `/api/appointments/${id}/in-person-payment/reject`,
+  /** Customer: prefill for booking the same visit again (books nothing) */
+  bookAgain: (id: string | number) => `/api/appointments/${id}/book-again`,
   availableSlots: (params: {
     business_id: number;
     date: string;

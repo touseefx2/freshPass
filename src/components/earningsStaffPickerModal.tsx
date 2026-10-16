@@ -118,9 +118,15 @@ const createStyles = (theme: Theme) =>
     },
   });
 
+/** Only what the picker shows, so other screens (e.g. the calendar) can reuse it. */
+export type StaffPickerRow = Pick<
+  StaffEarningsRow,
+  "staffId" | "name" | "profileImage" | "removed" | "isOwner" | "isUnassigned"
+>;
+
 type Props = {
   visible: boolean;
-  staff: StaffEarningsRow[];
+  staff: StaffPickerRow[];
   selectedStaffId: StaffIdFilter;
   onClose: () => void;
   onSelect: (staffId: StaffIdFilter) => void;

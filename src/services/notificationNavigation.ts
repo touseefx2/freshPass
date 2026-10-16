@@ -30,6 +30,9 @@ export type NotificationSubType =
   | "payment_request"
   | "review_request"
   | "tip_request"
+  | "in_person_payment_claimed"
+  | "in_person_payment_confirmed"
+  | "in_person_payment_rejected"
   | "subscription_usage"
   | "affiliation_request"
   | "affiliation_request_sent"
@@ -523,8 +526,34 @@ export function navigateFromNotificationData(
   }
 
   if (type === "appointment") {
-    const modelId = data.model_id as number | undefined;
+    const modelId = pickNumber(data, "model_id") ?? undefined;
     if (modelId != null) {
+      // One completion alert → View & Pay (pay, tip, review in one place).
+      // Old payment / tip / review requests still sit in notification lists
+      // and go there too. Business / staff never get View & Pay.
+      const isCustomer = store.getState().user.userRole === "customer";
+      const opensViewAndPay =
+        data.action === "view_and_pay" ||
+        subType === "appointment_completed" ||
+        subType === "payment_request" ||
+        subType === "tip_request" ||
+        subType === "review_request";
+      if (isCustomer && opensViewAndPay) {
+        router.push({
+          pathname: "/(main)/viewAndPay" as any,
+          params: {
+            appointmentId: String(modelId),
+            ...(subType === "review_request" ? { step: "review" } : {}),
+          },
+        });
+        Logger.log("------>navigateFromNotificationData -> viewAndPay", {
+          appointmentId: modelId,
+          subType,
+          action: data.action,
+        });
+        return;
+      }
+
       switch (subType) {
         case "review_request":
           router.push({

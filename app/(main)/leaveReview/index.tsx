@@ -58,6 +58,8 @@ export default function LeaveReview() {
   const { t } = useTranslation();
   const { showBanner } = useNotificationContext();
   const params = useLocalSearchParams<{
+    /** Set when reviewing a visit: one review per appointment (re-send updates it). */
+    appointment_id?: string;
     business_id?: string;
     business_name?: string;
     business_address?: string;
@@ -218,15 +220,24 @@ export default function LeaveReview() {
   );
 
   const handleContinue = async () => {
-    if (!params.business_id) {
+    const appointmentId = params.appointment_id
+      ? parseInt(params.appointment_id, 10)
+      : NaN;
+    const hasAppointment = Number.isFinite(appointmentId);
+    if (!params.business_id && !hasAppointment) {
       showBanner(t("error"), t("businessIdRequired"), "error", 3000);
       return;
     }
 
     setIsSubmitting(true);
     try {
+      // With a visit, business_id can be left out (the server reads it from the
+      // appointment); without one, the old one-per-business review is used.
       const requestBody = {
-        business_id: parseInt(params.business_id),
+        ...(hasAppointment ? { appointment_id: appointmentId } : {}),
+        ...(params.business_id
+          ? { business_id: parseInt(params.business_id, 10) }
+          : {}),
         overall_rating: rating,
         comment: reviewDetails.trim(),
         review_suggestion_id: selectedSuggestionId || null,

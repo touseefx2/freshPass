@@ -8,7 +8,11 @@ export type TipRecipient = {
   image?: string | null;
 };
 
-export type TipSource = "booking" | "after_service";
+/** "in_person" = cash tip recorded when the business confirmed a salon payment */
+export type TipSource = "booking" | "after_service" | "in_person";
+
+/** "in_person" tips have no Stripe receipt. */
+export type TipPaymentChannel = "online" | "in_person";
 
 export type PaidTip = {
   id: number;
@@ -16,6 +20,7 @@ export type PaidTip = {
   currency: string;
   status?: string;
   source?: TipSource;
+  paymentChannel?: TipPaymentChannel;
   recipientType: "staff" | "business";
   recipientStaffId: number | null;
   recipientName: string;
