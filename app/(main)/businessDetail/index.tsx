@@ -3503,7 +3503,7 @@ export default function BusinessDetailScreen() {
                                     businessData?.id?.toString() ||
                                     params.business_id ||
                                     "",
-                                  businessName: businessData?.name || "",
+                                  businessName: businessData?.title || "",
                                   businessLogo: businessData?.logo_url || "",
                                   screenName: "businessDetail",
                                   ...(attributionReelId
