@@ -35,7 +35,7 @@ const MODE_ICON: Record<UserMode, keyof typeof Ionicons.glyphMap> = {
 const MENU_ORDER: UserMode[] = ["business", "customer"];
 const MENU_CARET = 14;
 const MENU_GUTTER = 16;
-const MENU_MAX_WIDTH = 420;
+const MENU_MAX_WIDTH = 290;
 /** Gap between the logo chevron and the menu card */
 const MENU_OFFSET = 12;
 
@@ -48,9 +48,9 @@ const createStyles = (theme: Theme) =>
     menuCard: {
       position: "absolute",
       backgroundColor: theme.white,
-      borderRadius: moderateWidthScale(22),
-      padding: moderateWidthScale(8),
-      gap: moderateHeightScale(4),
+      borderRadius: moderateWidthScale(18),
+      padding: moderateWidthScale(6),
+      gap: moderateHeightScale(2),
       shadowColor: theme.shadow,
       shadowOffset: { width: 0, height: moderateHeightScale(10) },
       shadowOpacity: 0.18,
@@ -69,19 +69,20 @@ const createStyles = (theme: Theme) =>
     menuRow: {
       flexDirection: "row",
       alignItems: "center",
-      minHeight: moderateHeightScale(72),
-      paddingHorizontal: moderateWidthScale(12),
-      paddingVertical: moderateHeightScale(10),
-      borderRadius: moderateWidthScale(16),
-      gap: moderateWidthScale(14),
+      // Still clears the 48dp touch target
+      minHeight: moderateHeightScale(56),
+      paddingHorizontal: moderateWidthScale(10),
+      paddingVertical: moderateHeightScale(8),
+      borderRadius: moderateWidthScale(13),
+      gap: moderateWidthScale(12),
     },
     menuRowCurrent: {
       backgroundColor: theme.mintTint,
     },
     menuIconTile: {
-      width: moderateWidthScale(48),
-      height: moderateWidthScale(48),
-      borderRadius: moderateWidthScale(14),
+      width: moderateWidthScale(38),
+      height: moderateWidthScale(38),
+      borderRadius: moderateWidthScale(11),
       backgroundColor: theme.menuTileNeutral,
       alignItems: "center",
       justifyContent: "center",
@@ -91,20 +92,20 @@ const createStyles = (theme: Theme) =>
     },
     menuTextWrap: {
       flex: 1,
-      gap: moderateHeightScale(2),
+      gap: moderateHeightScale(1),
     },
     menuTitle: {
-      fontSize: fontSize.size16,
+      fontSize: fontSize.size15,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
     },
     menuSubtitle: {
-      fontSize: fontSize.size13,
+      fontSize: fontSize.size12,
       fontFamily: fonts.fontRegular,
       color: theme.lightGreen,
     },
     menuTrailing: {
-      width: moderateWidthScale(24),
+      width: moderateWidthScale(20),
       alignItems: "center",
       justifyContent: "center",
     },
@@ -237,7 +238,7 @@ export default function ModeSwitchModal({
         >
           <Ionicons
             name={MODE_ICON[mode]}
-            size={iconScale(26)}
+            size={iconScale(20)}
             color={theme.darkGreen}
             // Ionicons' scissors lie on their side; the design has blades up
             style={mode === "business" && { transform: [{ rotate: "-90deg" }] }}
@@ -255,7 +256,7 @@ export default function ModeSwitchModal({
           {isPending ? (
             <ActivityIndicator size="small" color={theme.darkGreen} />
           ) : isCurrent ? (
-            <Feather name="check" size={iconScale(22)} color={theme.darkGreen} />
+            <Feather name="check" size={iconScale(18)} color={theme.darkGreen} />
           ) : null}
         </View>
       </TouchableOpacity>
