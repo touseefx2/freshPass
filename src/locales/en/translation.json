@@ -2746,7 +2746,6 @@
   "bkFlowAnyoneInfo": "About Anyone",
   "bkFlowAnyoneHint": "Any staff available in your time slot will be assigned to you",
   "bkFlowTimeTitle": "Pick a date & time",
-  "bkFlowTimeSubtitle": "Choose a day, then a time that suits you.",
   "bkFlowRescheduleSubtitle": "Select a new date and time for your appointment.",
   "bkFlowTimezone": "In your time zone, {{zone}}",
   "bkFlowMorning": "Morning",

@@ -2690,7 +2690,6 @@
   "bkFlowAnyoneInfo": "Über „Beliebig“",
   "bkFlowAnyoneHint": "Ein Mitarbeiter, der zu deiner Zeit verfügbar ist, wird dir zugewiesen",
   "bkFlowTimeTitle": "Datum & Uhrzeit wählen",
-  "bkFlowTimeSubtitle": "Wähle einen Tag und dann eine passende Uhrzeit.",
   "bkFlowRescheduleSubtitle": "Wähle ein neues Datum und eine neue Uhrzeit für deinen Termin.",
   "bkFlowTimezone": "In deiner Zeitzone, {{zone}}",
   "bkFlowMorning": "Morgen",

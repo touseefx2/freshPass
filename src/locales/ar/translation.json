@@ -2690,7 +2690,6 @@
   "bkFlowAnyoneInfo": "حول «أي شخص»",
   "bkFlowAnyoneHint": "سيتم تعيين أي موظف متاح في الوقت الذي اخترته لك",
   "bkFlowTimeTitle": "اختر التاريخ والوقت",
-  "bkFlowTimeSubtitle": "اختر يومًا، ثم وقتًا يناسبك.",
   "bkFlowRescheduleSubtitle": "اختر تاريخًا ووقتًا جديدين لموعدك.",
   "bkFlowTimezone": "حسب منطقتك الزمنية، {{zone}}",
   "bkFlowMorning": "صباحًا",

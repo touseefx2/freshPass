@@ -2690,7 +2690,6 @@
   "bkFlowAnyoneInfo": "À propos de « N'importe qui »",
   "bkFlowAnyoneHint": "Un membre du personnel disponible sur votre créneau vous sera attribué",
   "bkFlowTimeTitle": "Choisissez la date et l'heure",
-  "bkFlowTimeSubtitle": "Choisissez un jour, puis une heure qui vous convient.",
   "bkFlowRescheduleSubtitle": "Sélectionnez une nouvelle date et heure pour votre rendez-vous.",
   "bkFlowTimezone": "Dans votre fuseau horaire, {{zone}}",
   "bkFlowMorning": "Matin",

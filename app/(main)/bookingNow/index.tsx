@@ -139,9 +139,10 @@ const STAFF_CARD_HEIGHT = heightScale(168);
 const STAFF_CARD_RATIO = STAFF_CARD_HEIGHT / STAFF_CARD_WIDTH;
 const PAGE_PAD = moderateWidthScale(20);
 const GRID_GAP = moderateWidthScale(12);
-const SLOT_GAP = moderateWidthScale(10);
-const DATE_CHIP_W = widthScale(64);
-const DATE_CHIP_GAP = moderateWidthScale(10);
+const SLOT_GAP = moderateWidthScale(8);
+const SLOT_COLUMNS = 4;
+const DATE_CHIP_W = widthScale(54);
+const DATE_CHIP_GAP = moderateWidthScale(8);
 const STRIP_DAYS = 60;
 const PHOTO_GAP = moderateWidthScale(10);
 
@@ -817,8 +818,8 @@ const createStyles = (theme: Theme) =>
     },
     dateChip: {
       width: DATE_CHIP_W,
-      paddingVertical: moderateHeightScale(10),
-      borderRadius: moderateWidthScale(18),
+      paddingVertical: moderateHeightScale(7),
+      borderRadius: moderateWidthScale(14),
       borderWidth: 1.5,
       borderColor: theme.borderLight,
       backgroundColor: theme.white,
@@ -830,11 +831,11 @@ const createStyles = (theme: Theme) =>
       borderColor: theme.selectCard,
     },
     dateChipDisabled: {
-      opacity: 0.4,
+      opacity: 0.35,
       backgroundColor: "transparent",
     },
     dateChipDay: {
-      fontSize: fontSize.size13,
+      fontSize: fontSize.size12,
       fontFamily: fonts.fontMedium,
       color: theme.lightGreen,
     },
@@ -843,15 +844,10 @@ const createStyles = (theme: Theme) =>
       color: theme.darkGreen,
     },
     dateChipNum: {
-      fontSize: fontSize.size20,
+      fontSize: fontSize.size17,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
       fontVariant: ["tabular-nums"],
-    },
-    dateChipSub: {
-      fontSize: fontSize.size11,
-      fontFamily: fonts.fontMedium,
-      color: theme.lightGreen,
     },
     timezone: {
       fontSize: fontSize.size13,
@@ -869,17 +865,11 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
     },
-    timeHeaderSub: {
-      fontSize: fontSize.size14,
-      fontFamily: fonts.fontRegular,
-      color: theme.lightGreen,
-      marginTop: moderateHeightScale(2),
-    },
     intervalChip: {
       flexDirection: "row",
       alignItems: "center",
       gap: moderateWidthScale(4),
-      minHeight: heightScale(40),
+      minHeight: heightScale(36),
       paddingLeft: moderateWidthScale(12),
       paddingRight: moderateWidthScale(8),
       borderRadius: heightScale(20),
@@ -907,7 +897,7 @@ const createStyles = (theme: Theme) =>
       alignItems: "center",
       justifyContent: "center",
       gap: moderateWidthScale(5),
-      minHeight: heightScale(48),
+      minHeight: heightScale(44),
       paddingHorizontal: moderateWidthScale(2),
     },
     periodTabDisabled: {
@@ -937,8 +927,8 @@ const createStyles = (theme: Theme) =>
       gap: SLOT_GAP,
     },
     slotBtn: {
-      height: heightScale(52),
-      borderRadius: moderateWidthScale(14),
+      height: heightScale(44),
+      borderRadius: moderateWidthScale(12),
       borderWidth: 1.5,
       borderColor: theme.borderNormal,
       backgroundColor: theme.white,
@@ -950,7 +940,7 @@ const createStyles = (theme: Theme) =>
       borderColor: theme.darkGreen,
     },
     slotText: {
-      fontSize: fontSize.size16,
+      fontSize: fontSize.size14,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
       fontVariant: ["tabular-nums"],
@@ -959,8 +949,8 @@ const createStyles = (theme: Theme) =>
       color: theme.white,
     },
     slotSkeleton: {
-      height: heightScale(52),
-      borderRadius: moderateWidthScale(14),
+      height: heightScale(44),
+      borderRadius: moderateWidthScale(12),
       backgroundColor: theme.lightGreen07,
     },
     inlineBtn: {
@@ -2369,7 +2359,9 @@ export default function BookingNow() {
 
   const contentWidth = windowWidth - PAGE_PAD * 2;
   const staffCardWidth = Math.floor((contentWidth - GRID_GAP) / 2);
-  const slotWidth = Math.floor((contentWidth - SLOT_GAP * 2) / 3);
+  const slotWidth = Math.floor(
+    (contentWidth - SLOT_GAP * (SLOT_COLUMNS - 1)) / SLOT_COLUMNS,
+  );
   const photoSize = Math.floor((contentWidth - PHOTO_GAP * 2) / 3);
 
   const showTotalBar = !isSubscriptionBooking && !isReschedule;
@@ -3084,7 +3076,11 @@ export default function BookingNow() {
               isDisabled && styles.dateChipDisabled,
             ]}
             accessibilityRole="button"
-            accessibilityLabel={day.format("dddd, MMMM D")}
+            accessibilityLabel={
+              isDisabled
+                ? `${day.format("dddd, MMMM D")}, ${t("bkFlowClosed")}`
+                : day.format("dddd, MMMM D")
+            }
             accessibilityState={{ selected: isSelected, disabled: isDisabled }}
           >
             <Text
@@ -3094,15 +3090,6 @@ export default function BookingNow() {
               {isToday ? t("bkFlowToday") : day.format("ddd")}
             </Text>
             <Text style={styles.dateChipNum}>{day.format("D")}</Text>
-            <Text
-              style={[
-                styles.dateChipSub,
-                isSelected && styles.dateChipDayOn,
-              ]}
-              numberOfLines={1}
-            >
-              {isDisabled ? t("bkFlowClosed") : " "}
-            </Text>
           </TouchableOpacity>
         );
       })}
@@ -3144,7 +3131,7 @@ export default function BookingNow() {
     if (slotsLoading) {
       return (
         <View style={styles.slotsGrid}>
-          {Array.from({ length: 6 }, (_, i) => (
+          {Array.from({ length: 8 }, (_, i) => (
             <View
               key={`skeleton-${i}`}
               style={[styles.slotSkeleton, { width: slotWidth }]}
@@ -3217,6 +3204,9 @@ export default function BookingNow() {
             >
               <Text
                 style={[styles.slotText, isSelected && styles.slotTextSelected]}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.85}
               >
                 {convertTo12Hour(slot)}
               </Text>
@@ -3231,9 +3221,7 @@ export default function BookingNow() {
     <>
       <FlowTitle
         title={t("bkFlowTimeTitle")}
-        subtitle={
-          isReschedule ? t("bkFlowRescheduleSubtitle") : t("bkFlowTimeSubtitle")
-        }
+        subtitle={isReschedule ? t("bkFlowRescheduleSubtitle") : null}
       />
 
       <View style={styles.section}>
@@ -3244,14 +3232,9 @@ export default function BookingNow() {
 
       <View style={styles.section}>
         <View style={styles.timeHeaderRow}>
-          <View style={styles.flexShrink}>
-            <Text style={styles.timeHeaderTitle}>
-              {t("bkFlowAvailableTimes")}
-            </Text>
-            <Text style={styles.timeHeaderSub}>
-              {selectedDate.format("dddd, MMM D")}
-            </Text>
-          </View>
+          <Text style={[styles.timeHeaderTitle, styles.flexShrink]}>
+            {t("bkFlowAvailableTimes")}
+          </Text>
           <TouchableOpacity
             style={styles.intervalChip}
             onPress={() => setIntervalSheetOpen(true)}

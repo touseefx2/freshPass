@@ -2690,7 +2690,6 @@
   "bkFlowAnyoneInfo": "「指名なし」について",
   "bkFlowAnyoneHint": "選んだ時間に空いているスタッフが担当します",
   "bkFlowTimeTitle": "日時を選択",
-  "bkFlowTimeSubtitle": "日にちを選んでから、ご都合の良い時間を選んでください。",
   "bkFlowRescheduleSubtitle": "予約の新しい日時を選択してください。",
   "bkFlowTimezone": "お住まいのタイムゾーン：{{zone}}",
   "bkFlowMorning": "朝",

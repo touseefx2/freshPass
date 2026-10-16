@@ -2690,7 +2690,6 @@
   "bkFlowAnyoneInfo": "Acerca de «Cualquiera»",
   "bkFlowAnyoneHint": "Se te asignará cualquier miembro del personal disponible en tu horario",
   "bkFlowTimeTitle": "Elige fecha y hora",
-  "bkFlowTimeSubtitle": "Elige un día y luego una hora que te convenga.",
   "bkFlowRescheduleSubtitle": "Selecciona una nueva fecha y hora para tu cita.",
   "bkFlowTimezone": "En tu zona horaria, {{zone}}",
   "bkFlowMorning": "Mañana",
