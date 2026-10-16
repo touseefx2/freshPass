@@ -33,8 +33,10 @@ import {
 } from "@/src/state/slices/generalSlice";
 import {
   isBusinessSubscriptionActive,
+  isSoloSubscription,
   isStripeOnboardingCompleted,
 } from "@/src/state/slices/userSlice";
+import SoloProfileView from "@/src/components/SoloProfileView";
 import { Image } from "expo-image";
 import {
   fetchStaffBusinessSummary,
@@ -42,6 +44,19 @@ import {
 } from "@/src/services/staffBusinessService";
 
 const CARD_WIDTH_PERCENT = "48%";
+
+/** Solo profile rows that open a Business Management screen directly. */
+const SOLO_BUSINESS_ROUTES: Record<string, string> = {
+  schedule: "setupAvailability",
+  services: "servicesAndMemberships",
+  portfolio: "portfolio",
+  businessProfile: "businessProfileMenu",
+  products: "products",
+  orders: "orders",
+  socialMedia: "socialMedia",
+  cancellationPolicy: "cancellationPolicy",
+  team: "team",
+};
 
 type IconVariant = "dark" | "accent" | "cream";
 type IconFamily = "material" | "community";
@@ -1001,6 +1016,19 @@ export default function AccountScreen() {
       router.push(
         "/(main)/dashboard/(account)/(businessProfileSettings)/affiliationRequests",
       );
+    } else if (key in SOLO_BUSINESS_ROUTES) {
+      router.push(
+        `/(main)/dashboard/(account)/(businessProfileSettings)/${SOLO_BUSINESS_ROUTES[key]}` as any,
+      );
+    } else if (key === "appointments") {
+      router.push("./allAppointments");
+    } else if (key === "publicProfile") {
+      const bid = user.business_id ?? businessStatus?.business_id;
+      if (!bid) return;
+      router.push({
+        pathname: "/(main)/businessDetail",
+        params: { business_id: bid.toString(), viewMode: "true" },
+      } as any);
     } else if (key === "logout") {
       handleLogout();
     } else if (key === "delete") {
@@ -1063,6 +1091,26 @@ export default function AccountScreen() {
         return { name: "settings", family: "material" };
     }
   };
+
+  /* ════════════════════════════════════════════════
+     Solo plan owner layout — one flat Profile page
+     ════════════════════════════════════════════════ */
+  if (isBusiness && isSoloSubscription(businessStatus)) {
+    return (
+      <View style={styles.container}>
+        <DashboardHeader />
+        <SoloProfileView
+          onRowPress={handleRowPress}
+          deleteLoading={deleteLoading}
+        />
+        <BuyBusinessPlanModal
+          visible={buyPlanModalVisible}
+          onClose={() => setBuyPlanModalVisible(false)}
+          onViewPlans={handleViewPlans}
+        />
+      </View>
+    );
+  }
 
   /* ════════════════════════════════════════════════
      Business owner layout

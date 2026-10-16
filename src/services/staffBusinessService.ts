@@ -9,6 +9,8 @@ export type StaffBusinessSummary = {
   name: string;
   logoUrl: string | null;
   category: StaffBusinessCategory | null;
+  averageRating: number;
+  ratingsCount: number;
 };
 
 /** Staff: their owner's business id (from the store, else staff details). */
@@ -22,12 +24,10 @@ export async function resolveStaffBusinessId(
   return details?.data?.business_id ?? null;
 }
 
-/** Staff: name, logo and category of the business they work for. */
-export async function fetchStaffBusinessSummary(
-  businessId?: number | null,
+/** Name, logo, category and rating of a business (GET /api/business/details). */
+export async function fetchBusinessSummary(
+  id: number,
 ): Promise<StaffBusinessSummary | null> {
-  const id = await resolveStaffBusinessId(businessId);
-  if (!id) return null;
   const response = await ApiService.get<{
     data?: {
       business?: {
@@ -35,19 +35,33 @@ export async function fetchStaffBusinessSummary(
         name?: string;
         logo_url?: string | null;
         category?: { id?: number; name?: string } | null;
+        average_rating?: number | string | null;
+        ratings_count?: number | null;
       };
     };
   }>(businessEndpoints.businessDetails(id));
   const business = response?.data?.business;
   if (!business) return null;
   const category = business.category;
+  const averageRating = Number(business.average_rating);
   return {
     id,
     name: business.title || business.name || "",
     logoUrl: resolveApiImageUrl(business.logo_url),
     category:
       category?.id != null ? { id: category.id, name: category.name ?? "" } : null,
+    averageRating: Number.isFinite(averageRating) ? averageRating : 0,
+    ratingsCount: business.ratings_count ?? 0,
   };
+}
+
+/** Staff: name, logo and category of the business they work for. */
+export async function fetchStaffBusinessSummary(
+  businessId?: number | null,
+): Promise<StaffBusinessSummary | null> {
+  const id = await resolveStaffBusinessId(businessId);
+  if (!id) return null;
+  return fetchBusinessSummary(id);
 }
 
 /**

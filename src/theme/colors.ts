@@ -75,6 +75,8 @@ export const themes = {
     mintTint: "#EDF7EC",
     mintTintStrong: "#DAECD6",
     menuTileNeutral: "#F5F5F5",
+    // Raised card on the cream background (solo profile rows)
+    surfaceRaised: "#FFFDF3",
     apptMintAccent: "#606C38",
     apptPeachBg: "rgba(221, 161, 94, 0.22)",
     apptPeachAccent: "#BC6C25",

@@ -349,9 +349,11 @@ export default function BarberProfileScreen() {
   };
 
   // Solo owner is the business: hours, portfolio, appointments and public
-  // profile are managed from the business side, so hide them here.
+  // profile are managed from the business side, so hide them here. Contact
+  // info opens from the solo Profile card.
   const isSoloPlan = isSoloSubscription(user.businessStatus);
   const soloHiddenKeys: BarberSettingKey[] = [
+    "contact",
     "workingHours",
     "portfolio",
     "appointments",
