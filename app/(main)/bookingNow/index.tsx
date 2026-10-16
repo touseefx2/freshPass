@@ -11,6 +11,7 @@ import {
   View,
   Text,
   TouchableOpacity,
+  ScrollView,
   Image,
   StatusBar,
   ActivityIndicator,
@@ -139,6 +140,9 @@ const STAFF_CARD_RATIO = STAFF_CARD_HEIGHT / STAFF_CARD_WIDTH;
 const PAGE_PAD = moderateWidthScale(20);
 const GRID_GAP = moderateWidthScale(12);
 const SLOT_GAP = moderateWidthScale(10);
+const DATE_CHIP_W = widthScale(64);
+const DATE_CHIP_GAP = moderateWidthScale(10);
+const STRIP_DAYS = 60;
 const PHOTO_GAP = moderateWidthScale(10);
 
 type StaffCarouselItem = {
@@ -179,13 +183,6 @@ const PERIOD_LABEL_KEYS: Record<TimeSlotCategory, string> = {
 const getWeekDays = (date: dayjs.Dayjs) => {
   const startOfWeek = date.startOf("week");
   return Array.from({ length: 7 }).map((_, i) => startOfWeek.add(i, "day"));
-};
-
-const formatWeekRange = (week: dayjs.Dayjs[]) => {
-  if (week.length === 0) return "";
-  const start = week[0];
-  const end = week[6];
-  return `${start.format("MMM D")} - ${end.format("MMM D, YYYY")}`;
 };
 
 const isValidTimeSlot = (slot: unknown): slot is string =>
@@ -807,66 +804,54 @@ const createStyles = (theme: Theme) =>
       justifyContent: "center",
     },
     // ── Date & time
-    weekNav: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-      gap: moderateWidthScale(8),
+    flexShrink: {
+      flexShrink: 1,
     },
-    weekNavBtn: {
-      width: widthScale(44),
-      height: widthScale(44),
-      borderRadius: moderateWidthScale(12),
-      borderWidth: 1,
-      borderColor: theme.borderNormal,
+    dateStrip: {
+      marginHorizontal: -PAGE_PAD,
+    },
+    dateStripContent: {
+      paddingHorizontal: PAGE_PAD,
+      gap: DATE_CHIP_GAP,
+      paddingVertical: moderateHeightScale(2),
+    },
+    dateChip: {
+      width: DATE_CHIP_W,
+      paddingVertical: moderateHeightScale(10),
+      borderRadius: moderateWidthScale(18),
+      borderWidth: 1.5,
+      borderColor: theme.borderLight,
       backgroundColor: theme.white,
       alignItems: "center",
-      justifyContent: "center",
-    },
-    weekRange: {
-      flex: 1,
-      textAlign: "center",
-      fontSize: fontSize.size16,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-    },
-    daysRow: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-    },
-    dayCell: {
-      flex: 1,
-      alignItems: "center",
-    },
-    dayPill: {
-      width: widthScale(44),
-      paddingVertical: moderateHeightScale(8),
-      borderRadius: widthScale(22),
-      alignItems: "center",
       gap: moderateHeightScale(2),
-      borderWidth: 1.5,
-      borderColor: "transparent",
     },
-    dayPillSelected: {
+    dateChipSelected: {
       backgroundColor: theme.orangeBrown30,
       borderColor: theme.selectCard,
     },
-    dayPillDisabled: {
-      opacity: 0.35,
+    dateChipDisabled: {
+      opacity: 0.4,
+      backgroundColor: "transparent",
     },
-    dayName: {
-      fontSize: fontSize.size12,
+    dateChipDay: {
+      fontSize: fontSize.size13,
       fontFamily: fonts.fontMedium,
       color: theme.lightGreen,
     },
-    dayNameSelected: {
+    dateChipDayOn: {
+      fontFamily: fonts.fontBold,
       color: theme.darkGreen,
     },
-    dayNum: {
-      fontSize: fontSize.size17,
+    dateChipNum: {
+      fontSize: fontSize.size20,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
       fontVariant: ["tabular-nums"],
+    },
+    dateChipSub: {
+      fontSize: fontSize.size11,
+      fontFamily: fonts.fontMedium,
+      color: theme.lightGreen,
     },
     timezone: {
       fontSize: fontSize.size13,
@@ -879,79 +864,72 @@ const createStyles = (theme: Theme) =>
       justifyContent: "space-between",
       gap: moderateWidthScale(12),
     },
-    slotMinutes: {
-      flexDirection: "row",
-      alignItems: "center",
-      backgroundColor: theme.white,
-      borderRadius: moderateWidthScale(22),
-      padding: moderateWidthScale(3),
-      borderWidth: 1,
-      borderColor: theme.borderLight,
-    },
-    slotMinutesOption: {
-      minWidth: widthScale(40),
-      height: heightScale(36),
-      paddingHorizontal: moderateWidthScale(8),
-      borderRadius: heightScale(18),
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    slotMinutesOptionSelected: {
-      backgroundColor: theme.orangeBrown30,
-    },
-    slotMinutesText: {
-      fontSize: fontSize.size14,
-      fontFamily: fonts.fontMedium,
-      color: theme.lightGreen,
-      fontVariant: ["tabular-nums"],
-    },
-    slotMinutesTextSelected: {
+    timeHeaderTitle: {
+      fontSize: fontSize.size17,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
     },
-    slotMinutesUnit: {
-      fontSize: fontSize.size13,
+    timeHeaderSub: {
+      fontSize: fontSize.size14,
       fontFamily: fonts.fontRegular,
       color: theme.lightGreen,
-      marginHorizontal: moderateWidthScale(6),
+      marginTop: moderateHeightScale(2),
     },
-    periodRow: {
+    intervalChip: {
       flexDirection: "row",
-      gap: moderateWidthScale(4),
-      padding: moderateWidthScale(4),
-      borderRadius: moderateWidthScale(16),
-      backgroundColor: theme.lightGreen07,
-    },
-    periodTab: {
-      flex: 1,
-      minHeight: heightScale(56),
-      borderRadius: moderateWidthScale(12),
       alignItems: "center",
-      justifyContent: "center",
-      gap: moderateHeightScale(4),
-    },
-    periodTabSelected: {
+      gap: moderateWidthScale(4),
+      minHeight: heightScale(40),
+      paddingLeft: moderateWidthScale(12),
+      paddingRight: moderateWidthScale(8),
+      borderRadius: heightScale(20),
       backgroundColor: theme.white,
-      shadowColor: theme.shadow,
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.1,
-      shadowRadius: 4,
-      elevation: 2,
+      borderWidth: 1,
+      borderColor: theme.borderNormal,
     },
-    periodTabDisabled: {
-      opacity: 0.35,
+    intervalChipText: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
     },
     periodIcon: {
       height: moderateHeightScale(18),
       justifyContent: "center",
     },
+    periodTabs: {
+      flexDirection: "row",
+      borderBottomWidth: 1,
+      borderBottomColor: theme.lightGreen2,
+    },
+    periodTab: {
+      flex: 1,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: moderateWidthScale(5),
+      minHeight: heightScale(48),
+      paddingHorizontal: moderateWidthScale(2),
+    },
+    periodTabDisabled: {
+      opacity: 0.4,
+    },
     periodText: {
+      flexShrink: 1,
       fontSize: fontSize.size13,
       fontFamily: fonts.fontBold,
       color: theme.lightGreen,
     },
     periodTextSelected: {
       color: theme.darkGreen,
+    },
+    periodUnderline: {
+      position: "absolute",
+      left: 0,
+      right: 0,
+      bottom: -1,
+      height: 3,
+      borderRadius: 2,
+      backgroundColor: theme.orangeBrown,
     },
     slotsGrid: {
       flexDirection: "row",
@@ -971,10 +949,6 @@ const createStyles = (theme: Theme) =>
       backgroundColor: theme.darkGreen,
       borderColor: theme.darkGreen,
     },
-    slotBtnDisabled: {
-      opacity: 0.4,
-      backgroundColor: "transparent",
-    },
     slotText: {
       fontSize: fontSize.size16,
       fontFamily: fonts.fontBold,
@@ -989,21 +963,73 @@ const createStyles = (theme: Theme) =>
       borderRadius: moderateWidthScale(14),
       backgroundColor: theme.lightGreen07,
     },
-    retryBtn: {
+    inlineBtn: {
       alignSelf: "flex-start",
     },
-    pickedTime: {
+    centerBtn: {
+      alignSelf: "center",
+    },
+    emptySlots: {
+      alignItems: "center",
+      gap: moderateHeightScale(10),
+      paddingVertical: moderateHeightScale(24),
+      paddingHorizontal: moderateWidthScale(16),
+      borderRadius: moderateWidthScale(18),
+      borderWidth: 1,
+      borderStyle: "dashed",
+      borderColor: theme.borderNormal,
+    },
+    emptySlotsText: {
+      fontSize: fontSize.size16,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
+      textAlign: "center",
+      lineHeight: fontSize.size22,
+    },
+    sheetOverlay: {
+      flex: 1,
+      justifyContent: "flex-end",
+      backgroundColor: theme.lightGreen5,
+    },
+    sheet: {
+      backgroundColor: theme.background,
+      borderTopLeftRadius: moderateWidthScale(24),
+      borderTopRightRadius: moderateWidthScale(24),
+      paddingHorizontal: PAGE_PAD,
+      paddingTop: moderateHeightScale(10),
+      gap: moderateHeightScale(8),
+    },
+    sheetHandle: {
+      alignSelf: "center",
+      width: widthScale(40),
+      height: heightScale(5),
+      borderRadius: heightScale(3),
+      backgroundColor: theme.lightGreen2,
+      marginBottom: moderateHeightScale(8),
+    },
+    sheetTitle: {
+      fontSize: fontSize.size19,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    sheetSub: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+      marginBottom: moderateHeightScale(6),
+    },
+    sheetOption: {
       flexDirection: "row",
       alignItems: "center",
-      gap: moderateWidthScale(10),
-      padding: moderateWidthScale(14),
-      borderRadius: moderateWidthScale(16),
-      backgroundColor: theme.upcomingCard,
-      borderWidth: 1,
-      borderColor: theme.upcomingBorder,
+      justifyContent: "space-between",
+      minHeight: heightScale(56),
+      paddingHorizontal: moderateWidthScale(16),
+      borderRadius: moderateWidthScale(14),
+      backgroundColor: theme.white,
+      borderWidth: 2,
+      borderColor: theme.borderLight,
     },
-    pickedTimeText: {
-      flex: 1,
+    sheetOptionText: {
       fontSize: fontSize.size16,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
@@ -1460,12 +1486,10 @@ export default function BookingNow() {
   const [selectedStaffMember, setSelectedStaffMember] =
     useState<StaffMember | null>(null);
   const [selectedDate, setSelectedDateState] = useState(() => dayjs());
-  const [week, setWeek] = useState(() => getWeekDays(dayjs()));
+  const [, setWeek] = useState(() => getWeekDays(dayjs()));
   const [selectedTimeSlot, setSelectedTimeSlotState] = useState<string | null>(
     null,
   );
-  const [selectedCategory, setSelectedCategory] =
-    useState<TimeSlotCategory>("morning");
   const [slotMinutes, setSlotMinutes] =
     useState<SlotMinutes>(DEFAULT_SLOT_MINUTES);
   const [slotsLoading, setSlotsLoading] = useState(false);
@@ -1546,7 +1570,6 @@ export default function BookingNow() {
     if (timeStr) {
       setSelectedTimeSlotState(timeStr);
       dispatch(setSelectedTimeSlot(timeStr));
-      setSelectedCategory(getSlotCategory(timeStr));
     }
 
     const staffId =
@@ -2061,25 +2084,8 @@ export default function BookingNow() {
     if (isSlotDisabled(slot)) return;
     setSelectedTimeSlotState(slot);
     dispatch(setSelectedTimeSlot(slot));
-    setSelectedCategory(getSlotCategory(slot));
     // Anyone assignment happens via backend round-robin API at checkout/reschedule
     dispatch(setAssignedStaffId(null));
-  };
-
-  const prevWeek = () => {
-    const newWeek = week[0].subtract(1, "week");
-    const newWeekDays = getWeekDays(newWeek);
-    const today = dayjs().startOf("day");
-    const weekStart = newWeekDays[0].startOf("day");
-    if (weekStart.isBefore(today)) {
-      setWeek(getWeekDays(dayjs()));
-    } else {
-      setWeek(newWeekDays);
-    }
-  };
-
-  const nextWeek = () => {
-    setWeek(getWeekDays(week[0].add(1, "week")));
   };
 
   const handleDateSelect = (date: dayjs.Dayjs) => {
@@ -2292,35 +2298,74 @@ export default function BookingNow() {
     }, [onHeaderBack]),
   );
 
-  // Time slots grouped by part of the day; the open tab follows the data.
-  const slotsByCategory = useMemo(() => {
-    const groups: Record<TimeSlotCategory, string[]> = {
-      morning: [],
-      afternoon: [],
-      evening: [],
-      night: [],
-    };
-    sortedTimeSlots.forEach((slot) => groups[getSlotCategory(slot)].push(slot));
-    return groups;
-  }, [sortedTimeSlots]);
-
-  useEffect(() => {
-    if (sortedTimeSlots.length === 0) return;
-    if (selectedTimeSlot && sortedTimeSlots.includes(selectedTimeSlot)) {
-      setSelectedCategory(getSlotCategory(selectedTimeSlot));
-      return;
-    }
-    if (slotsByCategory[selectedCategory].some((s) => !isSlotDisabled(s))) {
-      return;
-    }
-    const firstOpen =
-      TIME_SLOT_CATEGORIES.find((c) =>
-        slotsByCategory[c].some((s) => !isSlotDisabled(s)),
-      ) ?? TIME_SLOT_CATEGORIES.find((c) => slotsByCategory[c].length > 0);
-    if (firstOpen) setSelectedCategory(firstOpen);
-    // Only when a new list of slots arrives
+  // Only times still open, grouped by part of the day (past ones hidden).
+  const openSlotGroups = useMemo(
+    () =>
+      TIME_SLOT_CATEGORIES.map((category) => ({
+        category,
+        slots: sortedTimeSlots.filter(
+          (slot) => getSlotCategory(slot) === category && !isSlotDisabled(slot),
+        ),
+      })).filter((group) => group.slots.length > 0),
+    // isSlotDisabled only depends on the selected date
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sortedTimeSlots]);
+    [sortedTimeSlots, selectedDate],
+  );
+
+  // Scrollable day strip: today up to ~2 months ahead (and the picked day).
+  const stripDays = useMemo(() => {
+    const today = dayjs().startOf("day");
+    const lastDay = today.add(STRIP_DAYS - 1, "day");
+    const end = selectedDate.isAfter(lastDay, "day")
+      ? selectedDate.startOf("day").add(7, "day")
+      : lastDay;
+    const days: dayjs.Dayjs[] = [];
+    for (let d = today; !d.isAfter(end, "day"); d = d.add(1, "day")) {
+      days.push(d);
+    }
+    return days;
+  }, [selectedDate]);
+
+  const nextOpenDay = useMemo(() => {
+    for (let i = 1; i <= STRIP_DAYS; i++) {
+      const day = selectedDate.add(i, "day");
+      if (!isDateDisabled(day)) return day;
+    }
+    return null;
+    // isDateDisabled reads staff / business hours
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedDate, selectedStaffMember, businessHours]);
+
+  const dateStripRef = useRef<ScrollView>(null);
+  const [intervalSheetOpen, setIntervalSheetOpen] = useState(false);
+
+  // Morning / Afternoon / Evening / Night tab; falls back to the picked
+  // time's period, then to the first period that has open times.
+  const [activePeriod, setActivePeriod] = useState<TimeSlotCategory | null>(
+    null,
+  );
+  const activeSlotGroup =
+    openSlotGroups.find((g) => g.category === activePeriod) ??
+    (selectedTimeSlot
+      ? openSlotGroups.find(
+          (g) => g.category === getSlotCategory(selectedTimeSlot),
+        )
+      : undefined) ??
+    openSlotGroups[0];
+
+  // Keep the picked day in view in the strip.
+  useEffect(() => {
+    if (stepKey !== "time") return;
+    const index = stripDays.findIndex((d) => d.isSame(selectedDate, "day"));
+    if (index < 0) return;
+    const timer = setTimeout(() => {
+      dateStripRef.current?.scrollTo({
+        x: Math.max(0, index * (DATE_CHIP_W + DATE_CHIP_GAP) - DATE_CHIP_W),
+        animated: true,
+      });
+    }, 80);
+    return () => clearTimeout(timer);
+  }, [stepKey, selectedDate, stripDays]);
 
   const contentWidth = windowWidth - PAGE_PAD * 2;
   const staffCardWidth = Math.floor((contentWidth - GRID_GAP) / 2);
@@ -3015,11 +3060,91 @@ export default function BookingNow() {
     }
   };
 
+  const renderDateStrip = () => (
+    <ScrollView
+      ref={dateStripRef}
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      style={styles.dateStrip}
+      contentContainerStyle={styles.dateStripContent}
+    >
+      {stripDays.map((day) => {
+        const isSelected = day.isSame(selectedDate, "day");
+        const isDisabled = isDateDisabled(day);
+        const isToday = day.isSame(dayjs(), "day");
+        return (
+          <TouchableOpacity
+            key={day.format("YYYY-MM-DD")}
+            onPress={() => handleDateSelect(day)}
+            disabled={isDisabled}
+            activeOpacity={0.75}
+            style={[
+              styles.dateChip,
+              isSelected && styles.dateChipSelected,
+              isDisabled && styles.dateChipDisabled,
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel={day.format("dddd, MMMM D")}
+            accessibilityState={{ selected: isSelected, disabled: isDisabled }}
+          >
+            <Text
+              style={[styles.dateChipDay, isSelected && styles.dateChipDayOn]}
+              numberOfLines={1}
+            >
+              {isToday ? t("bkFlowToday") : day.format("ddd")}
+            </Text>
+            <Text style={styles.dateChipNum}>{day.format("D")}</Text>
+            <Text
+              style={[
+                styles.dateChipSub,
+                isSelected && styles.dateChipDayOn,
+              ]}
+              numberOfLines={1}
+            >
+              {isDisabled ? t("bkFlowClosed") : " "}
+            </Text>
+          </TouchableOpacity>
+        );
+      })}
+    </ScrollView>
+  );
+
+  const renderPeriodTabs = () => (
+    <View style={styles.periodTabs} accessibilityRole="tablist">
+      {TIME_SLOT_CATEGORIES.map((category) => {
+        const hasSlots = openSlotGroups.some((g) => g.category === category);
+        const isSelected = activeSlotGroup?.category === category;
+        return (
+          <TouchableOpacity
+            key={category}
+            activeOpacity={0.7}
+            style={[styles.periodTab, !hasSlots && styles.periodTabDisabled]}
+            disabled={!hasSlots}
+            onPress={() => setActivePeriod(category)}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: isSelected, disabled: !hasSlots }}
+          >
+            <View style={styles.periodIcon}>{renderPeriodIcon(category)}</View>
+            <Text
+              style={[styles.periodText, isSelected && styles.periodTextSelected]}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.8}
+            >
+              {t(PERIOD_LABEL_KEYS[category])}
+            </Text>
+            {isSelected ? <View style={styles.periodUnderline} /> : null}
+          </TouchableOpacity>
+        );
+      })}
+    </View>
+  );
+
   const renderSlots = () => {
     if (slotsLoading) {
       return (
         <View style={styles.slotsGrid}>
-          {Array.from({ length: 9 }, (_, i) => (
+          {Array.from({ length: 6 }, (_, i) => (
             <View
               key={`skeleton-${i}`}
               style={[styles.slotSkeleton, { width: slotWidth }]}
@@ -3043,19 +3168,36 @@ export default function BookingNow() {
             icon="refresh"
             label={t("retry")}
             onPress={fetchAvailableSlots}
-            style={styles.retryBtn}
+            style={styles.inlineBtn}
           />
         </View>
       );
     }
-    if (sortedTimeSlots.length === 0) {
-      return <InfoNote icon="event-busy" text={t("bkFlowNoSlots")} />;
+    if (openSlotGroups.length === 0) {
+      return (
+        <View style={styles.emptySlots}>
+          <MaterialIcons
+            name="event-busy"
+            size={moderateWidthScale(36)}
+            color={theme.lightGreen5}
+          />
+          <Text style={styles.emptySlotsText}>{t("bkFlowNoSlots")}</Text>
+          {nextOpenDay ? (
+            <FlowButton
+              variant="outline"
+              compact
+              trailingIcon="chevron-right"
+              label={t("bkFlowNextDay")}
+              onPress={() => handleDateSelect(nextOpenDay)}
+              style={styles.centerBtn}
+            />
+          ) : null}
+        </View>
+      );
     }
-    const slots = slotsByCategory[selectedCategory];
     return (
       <View style={styles.slotsGrid}>
-        {slots.map((slot) => {
-          const isDisabled = isSlotDisabled(slot);
+        {(activeSlotGroup?.slots ?? []).map((slot) => {
           const isSelected = selectedTimeSlot === slot;
           return (
             <TouchableOpacity
@@ -3065,15 +3207,12 @@ export default function BookingNow() {
                 styles.slotBtn,
                 { width: slotWidth },
                 isSelected && styles.slotBtnSelected,
-                isDisabled && styles.slotBtnDisabled,
               ]}
               onPress={() => handleSlotSelect(slot)}
-              disabled={isDisabled}
               accessibilityRole="radio"
               accessibilityState={{
                 selected: isSelected,
                 checked: isSelected,
-                disabled: isDisabled,
               }}
             >
               <Text
@@ -3098,174 +3237,51 @@ export default function BookingNow() {
       />
 
       <View style={styles.section}>
-        <SectionLabel label={t("date")} />
-        <View style={styles.weekNav}>
-          <TouchableOpacity
-            onPress={prevWeek}
-            style={styles.weekNavBtn}
-            activeOpacity={0.7}
-            accessibilityRole="button"
-            accessibilityLabel={t("bkFlowPrevWeek")}
-          >
-            <Feather
-              name="chevron-left"
-              size={moderateWidthScale(22)}
-              color={theme.darkGreen}
-            />
-          </TouchableOpacity>
-          <Text style={styles.weekRange}>{formatWeekRange(week)}</Text>
-          <TouchableOpacity
-            onPress={nextWeek}
-            style={styles.weekNavBtn}
-            activeOpacity={0.7}
-            accessibilityRole="button"
-            accessibilityLabel={t("bkFlowNextWeek")}
-          >
-            <Feather
-              name="chevron-right"
-              size={moderateWidthScale(22)}
-              color={theme.darkGreen}
-            />
-          </TouchableOpacity>
-        </View>
-        <View style={styles.daysRow}>
-          {week.map((day) => {
-            const isSelected = day.isSame(selectedDate, "day");
-            const isDisabled = isDateDisabled(day);
-            return (
-              <TouchableOpacity
-                key={day.format("YYYY-MM-DD")}
-                style={styles.dayCell}
-                onPress={() => handleDateSelect(day)}
-                disabled={isDisabled}
-                activeOpacity={0.7}
-                accessibilityRole="button"
-                accessibilityLabel={day.format("dddd, MMMM D")}
-                accessibilityState={{
-                  selected: isSelected,
-                  disabled: isDisabled,
-                }}
-              >
-                <View
-                  style={[
-                    styles.dayPill,
-                    isSelected && styles.dayPillSelected,
-                    isDisabled && styles.dayPillDisabled,
-                  ]}
-                >
-                  <Text
-                    style={[styles.dayName, isSelected && styles.dayNameSelected]}
-                  >
-                    {day.format("ddd")}
-                  </Text>
-                  <Text style={styles.dayNum}>{day.format("D")}</Text>
-                </View>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
+        <SectionLabel label={selectedDate.format("MMMM YYYY")} />
+        {renderDateStrip()}
         <Text style={styles.timezone}>{getTimezoneText()}</Text>
       </View>
 
       <View style={styles.section}>
         <View style={styles.timeHeaderRow}>
-          <SectionLabel label={t("time")} />
-          <View style={styles.slotMinutes}>
-            {SLOT_MINUTE_OPTIONS.map((minutes) => {
-              const isSelected = slotMinutes === minutes;
-              return (
-                <TouchableOpacity
-                  key={minutes}
-                  style={[
-                    styles.slotMinutesOption,
-                    isSelected && styles.slotMinutesOptionSelected,
-                  ]}
-                  onPress={() => {
-                    if (minutes === slotMinutes) return;
-                    setSlotMinutes(minutes);
-                    setSelectedTimeSlotState(null);
-                    dispatch(setSelectedTimeSlot(null));
-                    dispatch(setAssignedStaffId(null));
-                  }}
-                  activeOpacity={0.7}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: isSelected }}
-                  accessibilityLabel={t("bkFlowSlotMinutes", {
-                    count: minutes,
-                  })}
-                >
-                  <Text
-                    style={[
-                      styles.slotMinutesText,
-                      isSelected && styles.slotMinutesTextSelected,
-                    ]}
-                  >
-                    {minutes}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-            <Text style={styles.slotMinutesUnit}>{t("bkFlowMin")}</Text>
-          </View>
-        </View>
-
-        <View style={styles.periodRow} accessibilityRole="tablist">
-          {TIME_SLOT_CATEGORIES.map((category) => {
-            const hasSlots = slotsByCategory[category].length > 0;
-            const isSelected = selectedCategory === category && hasSlots;
-            return (
-              <TouchableOpacity
-                key={category}
-                activeOpacity={0.7}
-                style={[
-                  styles.periodTab,
-                  isSelected && styles.periodTabSelected,
-                  !hasSlots && styles.periodTabDisabled,
-                ]}
-                disabled={!hasSlots}
-                onPress={() => setSelectedCategory(category)}
-                accessibilityRole="tab"
-                accessibilityState={{
-                  selected: isSelected,
-                  disabled: !hasSlots,
-                }}
-              >
-                <View style={styles.periodIcon}>
-                  {renderPeriodIcon(category)}
-                </View>
-                <Text
-                  style={[
-                    styles.periodText,
-                    isSelected && styles.periodTextSelected,
-                  ]}
-                  numberOfLines={1}
-                  adjustsFontSizeToFit
-                  minimumFontScale={0.85}
-                >
-                  {t(PERIOD_LABEL_KEYS[category])}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-
-        {renderSlots()}
-
-        {selectedTimeSlot ? (
-          <View style={styles.pickedTime} accessibilityLiveRegion="polite">
-            <MaterialIcons
-              name="event-available"
-              size={moderateWidthScale(22)}
-              color={theme.selectCard}
-            />
-            <Text style={styles.pickedTimeText}>
-              {t("bkFlowPickedTime", {
-                date: selectedDate.format("ddd, MMM D"),
-                time: convertTo12Hour(selectedTimeSlot),
-              })}
+          <View style={styles.flexShrink}>
+            <Text style={styles.timeHeaderTitle}>
+              {t("bkFlowAvailableTimes")}
+            </Text>
+            <Text style={styles.timeHeaderSub}>
+              {selectedDate.format("dddd, MMM D")}
             </Text>
           </View>
-        ) : null}
+          <TouchableOpacity
+            style={styles.intervalChip}
+            onPress={() => setIntervalSheetOpen(true)}
+            activeOpacity={0.75}
+            accessibilityRole="button"
+            accessibilityLabel={`${t("bkFlowIntervalTitle")}: ${t(
+              "bkFlowEvery",
+              { count: slotMinutes },
+            )}`}
+          >
+            <MaterialIcons
+              name="schedule"
+              size={moderateWidthScale(16)}
+              color={theme.darkGreen}
+            />
+            <Text style={styles.intervalChipText}>
+              {t("bkFlowEvery", { count: slotMinutes })}
+            </Text>
+            <MaterialIcons
+              name="expand-more"
+              size={moderateWidthScale(18)}
+              color={theme.darkGreen}
+            />
+          </TouchableOpacity>
+        </View>
+
+        {!slotsLoading && !slotsError && openSlotGroups.length > 0
+          ? renderPeriodTabs()
+          : null}
+        {renderSlots()}
       </View>
     </>
   );
@@ -3648,6 +3664,63 @@ export default function BookingNow() {
               />
             </TouchableOpacity>
             <Text style={styles.anyoneHintText}>{t("bkFlowAnyoneHint")}</Text>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        visible={intervalSheetOpen}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setIntervalSheetOpen(false)}
+      >
+        <View style={styles.sheetOverlay}>
+          <Pressable
+            style={StyleSheet.absoluteFillObject}
+            onPress={() => setIntervalSheetOpen(false)}
+            accessibilityLabel={t("close")}
+          />
+          <View
+            style={[
+              styles.sheet,
+              { paddingBottom: flowFooterBottomPad(insets.bottom) },
+            ]}
+          >
+            <View style={styles.sheetHandle} />
+            <Text style={styles.sheetTitle}>{t("bkFlowIntervalTitle")}</Text>
+            <Text style={styles.sheetSub}>{t("bkFlowIntervalSub")}</Text>
+            {SLOT_MINUTE_OPTIONS.map((minutes) => {
+              const isSelected = slotMinutes === minutes;
+              return (
+                <TouchableOpacity
+                  key={minutes}
+                  activeOpacity={0.8}
+                  style={[
+                    styles.sheetOption,
+                    isSelected && styles.choiceCardSelected,
+                  ]}
+                  onPress={() => {
+                    setIntervalSheetOpen(false);
+                    if (minutes === slotMinutes) return;
+                    setSlotMinutes(minutes);
+                    setSelectedTimeSlotState(null);
+                    dispatch(setSelectedTimeSlot(null));
+                    dispatch(setAssignedStaffId(null));
+                  }}
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected: isSelected, checked: isSelected }}
+                >
+                  <Text style={styles.sheetOptionText}>
+                    {t("bkFlowEvery", { count: minutes })}
+                  </Text>
+                  <View
+                    style={[styles.radio, isSelected && styles.radioSelected]}
+                  >
+                    {isSelected ? <View style={styles.radioInner} /> : null}
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
           </View>
         </View>
       </Modal>
