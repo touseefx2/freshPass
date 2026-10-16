@@ -356,6 +356,9 @@ interface BookingItem {
   canRejectInPersonPayment?: boolean;
   /** This visit's review (one per appointment) */
   review?: AppointmentReview | null;
+  /** false = guest booked by the owner (no FreshPass app) */
+  customerHasAppAccount?: boolean | null;
+  userEmail?: string | null;
 }
 
 interface ApiBookingResponse {
@@ -383,7 +386,9 @@ interface ApiBookingResponse {
   userId: number;
   user: string;
   userProfilePic: string | null;
-  userEmail: string;
+  /** null for guests booked without an email */
+  userEmail: string | null;
+  customerHasAppAccount?: boolean | null;
   appointmentType: "service" | "subscription";
   paymentMethod: string;
   subscriptionId: number | null;
@@ -912,6 +917,8 @@ export default function BookingDetailsById() {
       canConfirmInPersonPayment: apiData.canConfirmInPersonPayment ?? false,
       canRejectInPersonPayment: apiData.canRejectInPersonPayment ?? false,
       review: apiData.review ?? null,
+      customerHasAppAccount: apiData.customerHasAppAccount ?? null,
+      userEmail: apiData.userEmail ?? null,
       images:
         Array.isArray(apiData.images) && apiData.images.length > 0
           ? apiData.images.map((img: any) => ({
@@ -2416,12 +2423,22 @@ export default function BookingDetailsById() {
                   }
                 />
               ) : null}
-              <Text
-                style={[styles.infoListValue, styles.infoListValueName]}
-                numberOfLines={2}
-              >
-                {staffClientname}
-              </Text>
+              <View style={{ flexShrink: 1 }}>
+                <Text
+                  style={[styles.infoListValue, styles.infoListValueName]}
+                  numberOfLines={2}
+                >
+                  {staffClientname}
+                </Text>
+                {/* Guest booked by the owner: no app, confirmations by email (if any) */}
+                {!isCustomerView && booking.customerHasAppAccount === false ? (
+                  <Text style={styles.infoListGuestTag} numberOfLines={1}>
+                    {booking.userEmail?.trim()
+                      ? t("oaNoAppEmailOnly")
+                      : t("oaNoApp")}
+                  </Text>
+                ) : null}
+              </View>
             </InfoRow>
 
             {hasAssignedStaff ? (

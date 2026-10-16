@@ -884,6 +884,33 @@ const createStyles = (theme: Theme) =>
       marginTop: moderateHeightScale(-2),
       marginRight: moderateWidthScale(-2),
     },
+    slotMenu: {
+      gap: moderateHeightScale(6),
+      paddingHorizontal: moderateWidthScale(6),
+      paddingVertical: moderateHeightScale(8),
+    },
+    slotMenuRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(6),
+      minHeight: heightScale(40),
+      paddingHorizontal: moderateWidthScale(8),
+      borderRadius: moderateWidthScale(6),
+      borderWidth: 1,
+      borderColor: theme.borderNormal,
+      backgroundColor: theme.white,
+    },
+    slotMenuRowPrimary: {
+      backgroundColor: theme.darkGreen,
+      borderColor: theme.darkGreen,
+    },
+    slotMenuText: {
+      flexShrink: 1,
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    slotMenuTextPrimary: { color: theme.white },
     applyBoxDateText: {
       fontSize: fontSize.size11,
       fontFamily: fonts.fontBold,
@@ -1312,6 +1339,13 @@ export default function CalendarScreen() {
   const [selectedLeave, setSelectedLeave] = useState<StaffLeave | null>(null);
   const [leaveDetailCancelling, setLeaveDetailCancelling] = useState(false);
   const [overlayAnchor, setOverlayAnchor] = useState(DEFAULT_OVERLAY_ANCHOR);
+  // Owner tapped a free slot: choose New appointment or Break / time off.
+  const [slotMenu, setSlotMenu] = useState<{
+    day: dayjs.Dayjs;
+    minutes: number;
+  } | null>(null);
+  // Set when the owner leaves to book; the calendar reloads on return.
+  const refreshAppointmentsOnReturn = useRef(false);
 
   const canManageLeaves = userRole === "staff" || userRole === "business";
   const isOwner = userRole === "business";
@@ -1506,6 +1540,16 @@ export default function CalendarScreen() {
         fetchLeaves();
       }
     }, [canManageLeaves, fetchLeaves]),
+  );
+
+  // Back from New appointment: show the booking that was just made.
+  useFocusEffect(
+    useCallback(() => {
+      if (!refreshAppointmentsOnReturn.current) return;
+      refreshAppointmentsOnReturn.current = false;
+      fetchAppointments(fetchFrom, fetchTo, staffFilterId);
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [fetchFrom, fetchTo, staffFilterId]),
   );
 
   const leaveForSelectedDate = useMemo(() => {
@@ -1871,6 +1915,7 @@ export default function CalendarScreen() {
   }, [viewMode, currentDate, selectedDayAppointments.length]);
 
   const closeOverlays = () => {
+    setSlotMenu(null);
     setApplyBoxVisible(false);
     setLeaveDetailBoxVisible(false);
     setOverlapListVisible(false);
@@ -2026,11 +2071,14 @@ export default function CalendarScreen() {
     startMinutes?: number,
     date?: dayjs.Dayjs,
     event?: GestureResponderEvent,
+    /** Opened from the slot menu: stay where the owner tapped. */
+    keepAnchor = false,
   ) => {
     setLeaveDetailBoxVisible(false);
+    setSlotMenu(null);
     if (event) {
       setAnchorFromEvent(event);
-    } else {
+    } else if (!keepAnchor) {
       setOverlayAnchor(DEFAULT_OVERLAY_ANCHOR);
     }
     const targetDate = date ?? selectedDate;
@@ -2302,7 +2350,7 @@ export default function CalendarScreen() {
   ) => {
     if (!canManageLeaves) return;
 
-    if (applyBoxVisible || leaveDetailBoxVisible) {
+    if (applyBoxVisible || leaveDetailBoxVisible || slotMenu) {
       closeOverlays();
       return;
     }
@@ -2335,7 +2383,39 @@ export default function CalendarScreen() {
       Math.floor(rawMinutes / SLOT_INTERVAL_MINUTES) * SLOT_INTERVAL_MINUTES,
     );
 
+    // Owners can also book a customer in here (staff only take time off).
+    if (isOwner) {
+      setAnchorFromEvent(event);
+      if (!day.isSame(selectedDate, "day")) {
+        setSelectedDate(day);
+      }
+      setSlotMenu({ day, minutes: snapped });
+      return;
+    }
+
     openApplyBox("break", snapped, day, event);
+  };
+
+  const openNewAppointment = () => {
+    if (!slotMenu) return;
+    const { day, minutes } = slotMenu;
+    setSlotMenu(null);
+    refreshAppointmentsOnReturn.current = true;
+    router.push({
+      pathname: "/(main)/addAppointment" as any,
+      params: {
+        date: day.format("YYYY-MM-DD"),
+        time: `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`,
+        // Preselect the barber whose calendar is on screen.
+        ...(staffFilterId !== "all" ? { staff_id: String(staffFilterId) } : {}),
+      },
+    });
+  };
+
+  const openTimeOffFromMenu = () => {
+    if (!slotMenu) return;
+    const { day, minutes } = slotMenu;
+    openApplyBox("break", minutes, day, undefined, true);
   };
 
   const MAX_DAY_LANES = 3;
@@ -3068,6 +3148,62 @@ export default function CalendarScreen() {
                 </View>
               </View>
             </TouchableOpacity>
+
+            {slotMenu && (
+              <Pressable
+                style={styles.applyBoxOverlay}
+                onPress={() => setSlotMenu(null)}
+              >
+                <Pressable
+                  style={[
+                    styles.applyBoxDropdown,
+                    styles.slotMenu,
+                    { top: overlayAnchor.top, left: overlayAnchor.left },
+                  ]}
+                  onPress={(event) => event.stopPropagation()}
+                >
+                  <Text style={styles.applyBoxDateText} numberOfLines={1}>
+                    {`${slotMenu.day.format("ddd, MMM D")} · ${formatApplyBoxTime(
+                      Math.floor(slotMenu.minutes / 60),
+                      slotMenu.minutes % 60,
+                    )}`}
+                  </Text>
+                  <TouchableOpacity
+                    style={[styles.slotMenuRow, styles.slotMenuRowPrimary]}
+                    onPress={openNewAppointment}
+                    activeOpacity={0.75}
+                    accessibilityRole="button"
+                  >
+                    <MaterialIcons
+                      name="event-available"
+                      size={iconScale(16)}
+                      color={theme.white}
+                    />
+                    <Text
+                      style={[styles.slotMenuText, styles.slotMenuTextPrimary]}
+                      numberOfLines={1}
+                    >
+                      {t("calNewAppointment")}
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.slotMenuRow}
+                    onPress={openTimeOffFromMenu}
+                    activeOpacity={0.75}
+                    accessibilityRole="button"
+                  >
+                    <MaterialIcons
+                      name="free-breakfast"
+                      size={iconScale(16)}
+                      color={theme.darkGreen}
+                    />
+                    <Text style={styles.slotMenuText} numberOfLines={1}>
+                      {t("calBreakTimeOff")}
+                    </Text>
+                  </TouchableOpacity>
+                </Pressable>
+              </Pressable>
+            )}
 
             {applyBoxVisible && (
               <Pressable

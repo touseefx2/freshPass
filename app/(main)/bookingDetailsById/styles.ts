@@ -185,6 +185,12 @@ export const createStyles = (theme: Theme) =>
       marginTop: moderateHeightScale(2),
       textAlign: "right",
     },
+    infoListGuestTag: {
+      marginTop: moderateHeightScale(2),
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontMedium,
+      color: theme.orangeBrownText,
+    },
     serviceCard: {
       backgroundColor: theme.white,
       borderRadius: moderateWidthScale(14),

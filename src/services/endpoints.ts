@@ -448,12 +448,17 @@ export const appointmentsEndpoints = {
     staff_id?: number;
     slot_minutes?: number;
     exclude_appointment_id?: number;
+    /** Free times for these services' full length (owner booking). */
+    service_ids?: number[];
   }) => {
     const queryParams = new URLSearchParams();
     queryParams.append("business_id", params.business_id.toString());
     queryParams.append("date", params.date);
     if (params.staff_id != null)
       queryParams.append("staff_id", params.staff_id.toString());
+    (params.service_ids ?? []).forEach((id) =>
+      queryParams.append("service_ids[]", String(id)),
+    );
     if (params.slot_minutes != null)
       queryParams.append("slot_minutes", params.slot_minutes.toString());
     if (params.exclude_appointment_id != null)

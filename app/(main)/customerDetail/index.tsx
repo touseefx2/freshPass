@@ -285,7 +285,7 @@ interface CustomerRole {
 interface CustomerDetailData {
   id: number;
   name: string;
-  email: string;
+  email: string | null;
   phone: string | null;
   country_code: string | null;
   country_name: string | null;
@@ -515,19 +515,22 @@ export default function CustomerDetail() {
         </View>
 
         <View style={styles.card}>
-          <View style={styles.phoneRow}>
-            <Text style={styles.label}>{t("email")}</Text>
-            <View style={styles.phoneValueWrap}>
-              <Text style={styles.value}>{data.email}</Text>
+          {/* Guests booked by the owner can have no email */}
+          {data.email?.trim() ? (
+            <View style={styles.phoneRow}>
+              <Text style={styles.label}>{t("email")}</Text>
+              <View style={styles.phoneValueWrap}>
+                <Text style={styles.value}>{data.email}</Text>
+              </View>
+              <TouchableOpacity
+                style={styles.callNowButton}
+                onPress={handleEmailNow}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="mail" size={widthScale(12)} color={theme.white} />
+              </TouchableOpacity>
             </View>
-            <TouchableOpacity
-              style={styles.callNowButton}
-              onPress={handleEmailNow}
-              activeOpacity={0.7}
-            >
-              <Ionicons name="mail" size={widthScale(12)} color={theme.white} />
-            </TouchableOpacity>
-          </View>
+          ) : null}
           {latestBusinessTitle ? (
             <View style={styles.row}>
               <Text style={styles.label}>{t("business")}</Text>

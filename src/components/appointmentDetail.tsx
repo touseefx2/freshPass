@@ -21,7 +21,8 @@ export interface Appointment {
   appointmentType: "subscription" | "service";
   status: string;
   user: string;
-  userEmail: string;
+  /** null for guests booked without an email */
+  userEmail: string | null;
   subscription: string | null;
   subscriptionServices:
     | Array<{
@@ -571,9 +572,11 @@ export default function AppointmentDetail({
               <Text style={styles.infoValueBold} numberOfLines={1}>
                 {appointment.user}
               </Text>
-              <Text style={styles.infoSubValue} numberOfLines={1}>
-                {appointment.userEmail}
-              </Text>
+              {appointment.userEmail?.trim() ? (
+                <Text style={styles.infoSubValue} numberOfLines={1}>
+                  {appointment.userEmail}
+                </Text>
+              ) : null}
             </View>
           </View>
 
