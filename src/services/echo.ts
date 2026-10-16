@@ -212,7 +212,7 @@ export function getEcho(
         forceTLS: config.forceTLS,
         authEndpoint: config.authEndpoint,
       });
-      (Pusher as unknown as { logToConsole?: boolean }).logToConsole = true;
+      // (Pusher as unknown as { logToConsole?: boolean }).logToConsole = true;
     }
 
     echoInstance = new Echo({
