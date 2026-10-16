@@ -921,19 +921,23 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
     },
+    // Shadow on the outer view: iOS drops shadows on overflow:hidden views.
     menu: {
       position: "absolute",
       minWidth: widthScale(170),
+      borderRadius: moderateWidthScale(14),
       backgroundColor: theme.white,
+      shadowColor: theme.darkGreen,
+      shadowOffset: { width: 0, height: 8 },
+      shadowOpacity: 0.18,
+      shadowRadius: 16,
+      elevation: 8,
+    },
+    menuInner: {
       borderRadius: moderateWidthScale(14),
       borderWidth: 1,
-      borderColor: theme.borderLight,
+      borderColor: theme.borderNormal,
       overflow: "hidden",
-      shadowColor: theme.shadow,
-      shadowOffset: { width: 0, height: 6 },
-      shadowOpacity: 0.16,
-      shadowRadius: 12,
-      elevation: 8,
     },
     menuItem: {
       flexDirection: "row",
@@ -3611,43 +3615,45 @@ export default function BookingNow() {
             ]}
             accessibilityRole="menu"
           >
-            {SLOT_MINUTE_OPTIONS.map((minutes, index) => {
-              const isSelected = slotMinutes === minutes;
-              return (
-                <TouchableOpacity
-                  key={minutes}
-                  activeOpacity={0.7}
-                  style={[
-                    styles.menuItem,
-                    index > 0 && styles.menuItemBorder,
-                    isSelected && styles.menuItemOn,
-                  ]}
-                  onPress={() => {
-                    setIntervalMenu(null);
-                    if (minutes === slotMinutes) return;
-                    setSlotMinutes(minutes);
-                    setSelectedTimeSlotState(null);
-                    dispatch(setSelectedTimeSlot(null));
-                    dispatch(setAssignedStaffId(null));
-                  }}
-                  accessibilityRole="menuitem"
-                  accessibilityState={{ selected: isSelected }}
-                >
-                  <Text
-                    style={[styles.menuText, isSelected && styles.menuTextOn]}
+            <View style={styles.menuInner}>
+              {SLOT_MINUTE_OPTIONS.map((minutes, index) => {
+                const isSelected = slotMinutes === minutes;
+                return (
+                  <TouchableOpacity
+                    key={minutes}
+                    activeOpacity={0.7}
+                    style={[
+                      styles.menuItem,
+                      index > 0 && styles.menuItemBorder,
+                      isSelected && styles.menuItemOn,
+                    ]}
+                    onPress={() => {
+                      setIntervalMenu(null);
+                      if (minutes === slotMinutes) return;
+                      setSlotMinutes(minutes);
+                      setSelectedTimeSlotState(null);
+                      dispatch(setSelectedTimeSlot(null));
+                      dispatch(setAssignedStaffId(null));
+                    }}
+                    accessibilityRole="menuitem"
+                    accessibilityState={{ selected: isSelected }}
                   >
-                    {t("bkFlowSlotLength", { count: minutes })}
-                  </Text>
-                  {isSelected ? (
-                    <MaterialIcons
-                      name="check"
-                      size={moderateWidthScale(18)}
-                      color={theme.selectCard}
-                    />
-                  ) : null}
-                </TouchableOpacity>
-              );
-            })}
+                    <Text
+                      style={[styles.menuText, isSelected && styles.menuTextOn]}
+                    >
+                      {t("bkFlowSlotLength", { count: minutes })}
+                    </Text>
+                    {isSelected ? (
+                      <MaterialIcons
+                        name="check"
+                        size={moderateWidthScale(18)}
+                        color={theme.selectCard}
+                      />
+                    ) : null}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
           </View>
         ) : null}
       </Modal>
