@@ -14,8 +14,8 @@ import ModeSwitchModal, {
 
 /**
  * Business ↔ customer mode switch: dropdown menu hanging from the FreshPass
- * logo chevron in the dashboard headers. Mounted at the root so it stays up while the dashboard
- * swaps to the other mode underneath and can show the success state.
+ * logo chevron in the dashboard headers. Mounted at the root so it stays up
+ * while the dashboard swaps to the other mode underneath.
  */
 export default function ModeSwitchModalHandler() {
   const dispatch = useAppDispatch();
@@ -57,7 +57,8 @@ export default function ModeSwitchModalHandler() {
         resetToDashboardHome();
       }
 
-      setPhase("success");
+      // No congrats card — the new side's Home is the confirmation
+      close();
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       AccessibilityInfo.announceForAccessibility(
         toMode === "customer"
@@ -72,7 +73,7 @@ export default function ModeSwitchModalHandler() {
         setErrorMessage(error?.message || t("modeSwitchFailed"));
       }
     }
-  }, [dispatch, fromMode, phase, segments, t]);
+  }, [close, dispatch, fromMode, phase, segments, t]);
 
   return (
     <ModeSwitchModal
@@ -83,7 +84,6 @@ export default function ModeSwitchModalHandler() {
       errorMessage={errorMessage}
       onSelect={handleSelect}
       onCancel={close}
-      onDone={close}
     />
   );
 }

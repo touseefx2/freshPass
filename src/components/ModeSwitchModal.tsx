@@ -21,12 +21,11 @@ import {
   iconScale,
   moderateHeightScale,
   moderateWidthScale,
-  widthScale,
 } from "@/src/theme/dimensions";
 import type { UserMode } from "@/src/state/slices/userSlice";
 import type { ModeSwitchAnchor } from "@/src/state/slices/generalSlice";
 
-export type ModeSwitchPhase = "menu" | "switching" | "success";
+export type ModeSwitchPhase = "menu" | "switching";
 
 const MODE_ICON: Record<UserMode, keyof typeof Ionicons.glyphMap> = {
   business: "cut",
@@ -42,97 +41,6 @@ const MENU_OFFSET = 12;
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
-    modalOverlay: {
-      flex: 1,
-      backgroundColor: "rgba(0, 0, 0, 0.5)",
-      justifyContent: "center",
-      alignItems: "center",
-      paddingHorizontal: moderateWidthScale(24),
-    },
-    modalContainer: {
-      backgroundColor: theme.white,
-      borderRadius: moderateWidthScale(28),
-      width: "100%",
-      maxWidth: widthScale(340),
-      paddingHorizontal: moderateWidthScale(24),
-      paddingTop: moderateHeightScale(28),
-      paddingBottom: moderateHeightScale(16),
-      alignItems: "center",
-      shadowColor: theme.shadow,
-      shadowOffset: {
-        width: 0,
-        height: moderateHeightScale(8),
-      },
-      shadowOpacity: 0.15,
-      shadowRadius: moderateWidthScale(20),
-      elevation: 8,
-    },
-    iconWrap: {
-      width: moderateWidthScale(112),
-      height: moderateWidthScale(112),
-      alignItems: "center",
-      justifyContent: "center",
-      marginBottom: moderateHeightScale(16),
-    },
-    iconHalo: {
-      position: "absolute",
-      width: moderateWidthScale(96),
-      height: moderateWidthScale(96),
-      borderRadius: moderateWidthScale(48),
-      backgroundColor: theme.lightGreen05,
-    },
-    iconCircle: {
-      width: moderateWidthScale(68),
-      height: moderateWidthScale(68),
-      borderRadius: moderateWidthScale(34),
-      backgroundColor: theme.buttonBack,
-      justifyContent: "center",
-      alignItems: "center",
-      zIndex: 1,
-    },
-    confettiDot: {
-      position: "absolute",
-      borderRadius: moderateWidthScale(50),
-    },
-    confettiTriangle: {
-      position: "absolute",
-      width: 0,
-      height: 0,
-      backgroundColor: "transparent",
-      borderStyle: "solid",
-      borderLeftWidth: moderateWidthScale(5),
-      borderRightWidth: moderateWidthScale(5),
-      borderBottomWidth: moderateWidthScale(9),
-      borderLeftColor: "transparent",
-      borderRightColor: "transparent",
-    },
-    confettiBar: {
-      position: "absolute",
-      borderRadius: moderateWidthScale(2),
-    },
-    title: {
-      fontSize: fontSize.size22,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-      textAlign: "center",
-      marginBottom: moderateHeightScale(6),
-    },
-    subtitle: {
-      fontSize: fontSize.size15,
-      fontFamily: fonts.fontBold,
-      color: theme.buttonBack,
-      textAlign: "center",
-      marginBottom: moderateHeightScale(18),
-    },
-    message: {
-      fontSize: fontSize.size14,
-      fontFamily: fonts.fontRegular,
-      color: theme.lightGreen,
-      textAlign: "center",
-      lineHeight: fontSize.size21,
-      marginBottom: moderateHeightScale(20),
-      paddingHorizontal: moderateWidthScale(4),
-    },
     menuOverlay: {
       flex: 1,
       backgroundColor: "rgba(0, 0, 0, 0.4)",
@@ -212,25 +120,6 @@ const createStyles = (theme: Theme) =>
       paddingTop: moderateHeightScale(4),
       paddingBottom: moderateHeightScale(8),
     },
-    buttonContainer: {
-      width: "100%",
-      gap: moderateHeightScale(4),
-    },
-    primaryButton: {
-      backgroundColor: theme.buttonBack,
-      borderRadius: moderateWidthScale(28),
-      height: moderateHeightScale(52),
-      alignItems: "center",
-      justifyContent: "center",
-      flexDirection: "row",
-      gap: moderateWidthScale(8),
-      paddingHorizontal: moderateWidthScale(20),
-    },
-    primaryButtonText: {
-      fontSize: fontSize.size15,
-      fontFamily: fonts.fontBold,
-      color: theme.buttonText,
-    },
   });
 
 interface ModeSwitchModalProps {
@@ -243,7 +132,6 @@ interface ModeSwitchModalProps {
   errorMessage: string | null;
   onSelect: (mode: UserMode) => void;
   onCancel: () => void;
-  onDone: () => void;
 }
 
 export default function ModeSwitchModal({
@@ -254,24 +142,19 @@ export default function ModeSwitchModal({
   errorMessage,
   onSelect,
   onCancel,
-  onDone,
 }: ModeSwitchModalProps) {
   const { colors } = useTheme();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
   const { t } = useTranslation();
 
-  const toMode: UserMode = fromMode === "business" ? "customer" : "business";
-  const toCustomer = toMode === "customer";
   const isSwitching = phase === "switching";
-  const isSuccess = phase === "success";
 
   const { width: windowWidth } = useWindowDimensions();
   const insets = useSafeAreaInsets();
 
   const reduceMotionRef = useRef(false);
   const appear = useRef(new Animated.Value(0)).current;
-  const pop = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     void AccessibilityInfo.isReduceMotionEnabled().then((enabled) => {
@@ -279,8 +162,7 @@ export default function ModeSwitchModal({
     });
   }, []);
 
-  // Menu drops in on open, success card scales in after the switch; on close
-  // the Modal's fade takes it out as-is
+  // Menu drops in on open; on close the Modal's fade takes it out as-is
   useEffect(() => {
     if (!visible) return;
     if (reduceMotionRef.current) {
@@ -294,27 +176,11 @@ export default function ModeSwitchModal({
       tension: 90,
       useNativeDriver: true,
     }).start();
-  }, [visible, isSuccess, appear]);
-
-  // Success icon pops in once the switch lands
-  useEffect(() => {
-    if (!isSuccess || reduceMotionRef.current) {
-      pop.setValue(1);
-      return;
-    }
-    pop.setValue(0.6);
-    Animated.spring(pop, {
-      toValue: 1,
-      friction: 5,
-      tension: 120,
-      useNativeDriver: true,
-    }).start();
-  }, [isSuccess, pop]);
+  }, [visible, appear]);
 
   const handleRequestClose = () => {
     if (isSwitching) return;
-    if (isSuccess) onDone();
-    else onCancel();
+    onCancel();
   };
 
   // Card spans the screen (capped on tablets); caret points at the chevron
@@ -336,99 +202,6 @@ export default function ModeSwitchModal({
   const caretLeft = Math.min(
     Math.max(anchorCenterX - menuLeft - MENU_CARET / 2, caretInset),
     menuWidth - caretInset - MENU_CARET,
-  );
-
-  const renderConfetti = (full: boolean) => (
-    <>
-      <View
-        style={[
-          styles.confettiDot,
-          {
-            width: moderateWidthScale(7),
-            height: moderateWidthScale(7),
-            backgroundColor: theme.orangeBrown,
-            top: moderateHeightScale(16),
-            left: moderateWidthScale(16),
-          },
-        ]}
-      />
-      <View
-        style={[
-          styles.confettiDot,
-          {
-            width: moderateWidthScale(5),
-            height: moderateWidthScale(5),
-            backgroundColor: theme.link,
-            top: moderateHeightScale(24),
-            right: moderateWidthScale(18),
-          },
-        ]}
-      />
-      <View
-        style={[
-          styles.confettiBar,
-          {
-            width: moderateWidthScale(8),
-            height: moderateHeightScale(3),
-            backgroundColor: theme.green,
-            bottom: moderateHeightScale(20),
-            left: moderateWidthScale(12),
-            transform: [{ rotate: "-40deg" }],
-          },
-        ]}
-      />
-      {full && (
-        <>
-          <View
-            style={[
-              styles.confettiDot,
-              {
-                width: moderateWidthScale(6),
-                height: moderateWidthScale(6),
-                backgroundColor: theme.green,
-                bottom: moderateHeightScale(18),
-                left: moderateWidthScale(26),
-              },
-            ]}
-          />
-          <View
-            style={[
-              styles.confettiTriangle,
-              {
-                borderBottomColor: theme.primary,
-                top: moderateHeightScale(20),
-                right: moderateWidthScale(10),
-                transform: [{ rotate: "25deg" }],
-              },
-            ]}
-          />
-          <View
-            style={[
-              styles.confettiTriangle,
-              {
-                borderBottomColor: theme.link,
-                bottom: moderateHeightScale(24),
-                right: moderateWidthScale(16),
-                transform: [{ rotate: "-30deg" }],
-              },
-            ]}
-          />
-          <View
-            style={[
-              styles.confettiBar,
-              {
-                width: moderateWidthScale(7),
-                height: moderateHeightScale(3),
-                backgroundColor: theme.orangeBrown,
-                top: moderateHeightScale(40),
-                left: moderateWidthScale(6),
-                transform: [{ rotate: "50deg" }],
-              },
-            ]}
-          />
-        </>
-      )}
-    </>
   );
 
   const renderMenuRow = (mode: UserMode) => {
@@ -536,49 +309,6 @@ export default function ModeSwitchModal({
     </View>
   );
 
-  const renderSuccess = () => (
-    <>
-      <Animated.View style={[styles.iconWrap, { transform: [{ scale: pop }] }]}>
-        <View style={styles.iconHalo} />
-        {renderConfetti(true)}
-        <View style={styles.iconCircle}>
-          <Feather name="check" size={iconScale(32)} color={theme.white} />
-        </View>
-      </Animated.View>
-
-      <Text style={styles.title} accessibilityRole="header">
-        {toCustomer
-          ? t("modeSwitchedCustomerTitle")
-          : t("modeSwitchedBusinessTitle")}
-      </Text>
-      <Text style={styles.message}>
-        {toCustomer
-          ? t("modeSwitchedCustomerMessage")
-          : t("modeSwitchedBusinessMessage")}
-      </Text>
-
-      <View style={styles.buttonContainer}>
-        <TouchableOpacity
-          style={styles.primaryButton}
-          onPress={onDone}
-          activeOpacity={0.7}
-          accessibilityRole="button"
-        >
-          <Feather
-            name={toCustomer ? "compass" : "grid"}
-            size={iconScale(17)}
-            color={theme.buttonText}
-          />
-          <Text style={styles.primaryButtonText}>
-            {toCustomer
-              ? t("modeSwitchedCustomerCta")
-              : t("modeSwitchedBusinessCta")}
-          </Text>
-        </TouchableOpacity>
-      </View>
-    </>
-  );
-
   return (
     <Modal
       transparent
@@ -587,37 +317,7 @@ export default function ModeSwitchModal({
       statusBarTranslucent
       onRequestClose={handleRequestClose}
     >
-      {isSuccess ? (
-        <View style={styles.modalOverlay}>
-          <Pressable
-            style={StyleSheet.absoluteFill}
-            onPress={handleRequestClose}
-            accessible={false}
-            importantForAccessibility="no"
-          />
-          <Animated.View
-            accessibilityViewIsModal
-            style={[
-              styles.modalContainer,
-              {
-                opacity: appear,
-                transform: [
-                  {
-                    scale: appear.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [0.94, 1],
-                    }),
-                  },
-                ],
-              },
-            ]}
-          >
-            {renderSuccess()}
-          </Animated.View>
-        </View>
-      ) : (
-        renderMenu()
-      )}
+      {renderMenu()}
     </Modal>
   );
 }
