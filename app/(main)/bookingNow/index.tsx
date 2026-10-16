@@ -2693,7 +2693,7 @@ export default function BookingNow() {
         assignedStaffId: businessData?.assignedStaffId ?? null,
       });
 
-      if (selectedStaff === "anyone") {
+      if (selectedStaff === "anyone" && !isSoloPlan) {
         if (serviceIds.length === 0) {
           showBanner(
             t("error"),
@@ -3799,7 +3799,7 @@ export default function BookingNow() {
                   return;
                 }
 
-                if (selectedStaff === "anyone") {
+                if (selectedStaff === "anyone" && !isSoloPlan) {
                   setContinueLoading(true);
                   try {
                     const assigned = await assignAnyoneStaff({
@@ -3877,7 +3877,7 @@ export default function BookingNow() {
                 return;
               }
 
-              if (selectedStaff === "anyone") {
+              if (selectedStaff === "anyone" && !isSoloPlan) {
                 setContinueLoading(true);
                 try {
                   const assigned = await assignAnyoneStaff({

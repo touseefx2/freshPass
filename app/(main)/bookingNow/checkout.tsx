@@ -1481,7 +1481,12 @@ function CheckoutContent() {
     assignedStaffId: reduxAssignedStaffId,
     selectedPaymentMethod: reduxPaymentMethod,
     selectedNote: reduxNote,
+    subscriptionPlanType,
   } = businessData;
+  // Solo plans have no staff — backend assigns the owner, so skip staff checks
+  const isSoloPlan =
+    typeof subscriptionPlanType === "string" &&
+    subscriptionPlanType.toLowerCase() === "solo";
   const bookingTryOnImageUrls = useAppSelector(
     (state) => state.general.bookingTryOnImageUrls,
   );
@@ -1765,7 +1770,11 @@ function CheckoutContent() {
       assignedStaffId,
     });
 
-    if (selectedStaffId === "anyone" && resolvedStaffId == null) {
+    if (
+      selectedStaffId === "anyone" &&
+      resolvedStaffId == null &&
+      !isSoloPlan
+    ) {
       dispatch(setActionLoader(false));
       showBanner(
         "Booking Failed",
@@ -2067,7 +2076,11 @@ function CheckoutContent() {
       assignedStaffId,
     });
 
-    if (selectedStaffId === "anyone" && resolvedStaffId == null) {
+    if (
+      selectedStaffId === "anyone" &&
+      resolvedStaffId == null &&
+      !isSoloPlan
+    ) {
       dispatch(setActionLoader(false));
       showBanner(
         "Booking Failed",
@@ -2584,57 +2597,59 @@ function CheckoutContent() {
             </Text>
           </View>
 
-          <View style={styles.sectionCard}>
-            <View style={styles.sectionCardHeader}>
-              <Text style={styles.sectionCardTitle}>Staff</Text>
-              <View style={[styles.iconChip, styles.iconChipMuted]}>
-                <SummaryIcon type="person" color={theme.darkGreen} />
+          {!isSoloPlan && (
+            <View style={styles.sectionCard}>
+              <View style={styles.sectionCardHeader}>
+                <Text style={styles.sectionCardTitle}>Staff</Text>
+                <View style={[styles.iconChip, styles.iconChipMuted]}>
+                  <SummaryIcon type="person" color={theme.darkGreen} />
+                </View>
               </View>
-            </View>
-            <View style={styles.staffRowModern}>
-              <View style={styles.staffAvatarWrap}>
-                {staffImageUri ? (
-                  <AppImage
-                    uri={staffImageUri}
-                    style={styles.staffAvatar}
-                    resizeMode="cover"
-                  />
-                ) : (
-                  <View style={styles.staffAvatar} />
-                )}
-                {selectedStaffId !== "anyone" && selectedStaffMember && (
-                  <View
-                    style={[
-                      styles.staffStatusDot,
-                      selectedStaffMember.active
-                        ? styles.staffStatusDotActive
-                        : styles.staffStatusDotInactive,
-                    ]}
-                  />
-                )}
-              </View>
-              <View style={styles.staffInfoModern}>
-                <Text style={styles.staffNameModern}>
-                  {selectedStaffId === "anyone" && assignedStaffId == null
-                    ? "Anyone available"
-                    : (selectedStaffMember?.name ?? "—")}
-                </Text>
-                {selectedStaffId !== "anyone" &&
-                  selectedStaffMember?.experience != null && (
+              <View style={styles.staffRowModern}>
+                <View style={styles.staffAvatarWrap}>
+                  {staffImageUri ? (
+                    <AppImage
+                      uri={staffImageUri}
+                      style={styles.staffAvatar}
+                      resizeMode="cover"
+                    />
+                  ) : (
+                    <View style={styles.staffAvatar} />
+                  )}
+                  {selectedStaffId !== "anyone" && selectedStaffMember && (
+                    <View
+                      style={[
+                        styles.staffStatusDot,
+                        selectedStaffMember.active
+                          ? styles.staffStatusDotActive
+                          : styles.staffStatusDotInactive,
+                      ]}
+                    />
+                  )}
+                </View>
+                <View style={styles.staffInfoModern}>
+                  <Text style={styles.staffNameModern}>
+                    {selectedStaffId === "anyone" && assignedStaffId == null
+                      ? "Anyone available"
+                      : (selectedStaffMember?.name ?? "—")}
+                  </Text>
+                  {selectedStaffId !== "anyone" &&
+                    selectedStaffMember?.experience != null && (
+                      <Text style={styles.staffExperience} numberOfLines={1}>
+                        {selectedStaffMember.experience === 1
+                          ? "1 year experience"
+                          : `${selectedStaffMember.experience} years experience`}
+                      </Text>
+                    )}
+                  {selectedStaffId === "anyone" && assignedStaffId != null && (
                     <Text style={styles.staffExperience} numberOfLines={1}>
-                      {selectedStaffMember.experience === 1
-                        ? "1 year experience"
-                        : `${selectedStaffMember.experience} years experience`}
+                      Auto-assigned for this slot
                     </Text>
                   )}
-                {selectedStaffId === "anyone" && assignedStaffId != null && (
-                  <Text style={styles.staffExperience} numberOfLines={1}>
-                    Auto-assigned for this slot
-                  </Text>
-                )}
+                </View>
               </View>
             </View>
-          </View>
+          )}
 
           {!isSubscriptionMode && (
             <View style={styles.sectionCard}>
