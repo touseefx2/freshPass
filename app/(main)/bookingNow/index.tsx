@@ -130,6 +130,8 @@ dayjs.extend(isoWeek);
 
 const PAGE_PAD = moderateWidthScale(20);
 const SLOT_GAP = moderateWidthScale(8);
+const STAFF_TILE_GAP = moderateWidthScale(10);
+const STAFF_TILE_PAD = moderateWidthScale(6);
 const SLOT_COLUMNS = 4;
 const DATE_CHIP_W = widthScale(54);
 const DATE_CHIP_GAP = moderateWidthScale(8);
@@ -628,69 +630,88 @@ const createStyles = (theme: Theme) =>
       backgroundColor: theme.white,
       borderRadius: moderateWidthScale(12),
     },
-    staffRow: {
+    staffGrid: {
       flexDirection: "row",
-      alignItems: "center",
-      gap: moderateWidthScale(14),
-      minHeight: heightScale(76),
-      paddingHorizontal: moderateWidthScale(14),
-      paddingVertical: moderateHeightScale(12),
+      flexWrap: "wrap",
+      gap: STAFF_TILE_GAP,
+    },
+    staffTile: {
+      padding: STAFF_TILE_PAD,
+      paddingBottom: moderateHeightScale(10),
       borderRadius: moderateWidthScale(18),
       borderWidth: 2,
       borderColor: theme.borderLight,
       backgroundColor: theme.white,
+      alignItems: "center",
+      gap: moderateHeightScale(2),
     },
-    staffRowSelected: {
+    staffTileSelected: {
       borderColor: theme.selectCard,
+      backgroundColor: theme.upcomingCard,
     },
-    staffAvatar: {
-      width: widthScale(52),
-      height: widthScale(52),
-      borderRadius: widthScale(26),
+    staffPhoto: {
+      width: "100%",
+      height: "100%",
+      borderRadius: moderateWidthScale(13),
       backgroundColor: theme.emptyProfileImage,
     },
-    staffText: {
-      flex: 1,
-      minWidth: 0,
-      gap: moderateHeightScale(3),
-    },
-    staffNameRow: {
-      flexDirection: "row",
+    staffCheck: {
+      position: "absolute",
+      top: moderateWidthScale(6),
+      right: moderateWidthScale(6),
+      width: widthScale(24),
+      height: widthScale(24),
+      borderRadius: widthScale(12),
+      backgroundColor: theme.selectCard,
+      borderWidth: 2,
+      borderColor: theme.white,
       alignItems: "center",
-      gap: moderateWidthScale(8),
+      justifyContent: "center",
     },
-    staffName: {
-      flexShrink: 1,
-      fontSize: fontSize.size17,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-    },
-    staffNameCap: {
-      textTransform: "capitalize",
+    ownerBadgeWrap: {
+      position: "absolute",
+      left: 0,
+      right: 0,
+      bottom: -moderateHeightScale(8),
+      alignItems: "center",
     },
     ownerBadge: {
       paddingHorizontal: moderateWidthScale(8),
       paddingVertical: moderateHeightScale(2),
       borderRadius: moderateWidthScale(10),
-      backgroundColor: theme.upcomingCard,
-      borderWidth: 1,
-      borderColor: theme.upcomingBorder,
+      backgroundColor: theme.selectCard,
+      borderWidth: 1.5,
+      borderColor: theme.white,
     },
     ownerBadgeText: {
-      fontSize: fontSize.size11,
+      fontSize: fontSize.size10,
       fontFamily: fonts.fontBold,
-      color: theme.orangeBrownText,
+      color: theme.white,
+      letterSpacing: 0.3,
     },
-    staffInfoBtn: {
-      width: widthScale(24),
-      height: widthScale(24),
+    staffNameRow: {
+      flexDirection: "row",
       alignItems: "center",
       justifyContent: "center",
+      gap: moderateWidthScale(4),
+      marginTop: moderateHeightScale(10),
+      maxWidth: "100%",
+    },
+    staffName: {
+      flexShrink: 1,
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+      textAlign: "center",
+    },
+    staffNameCap: {
+      textTransform: "capitalize",
     },
     staffSub: {
-      fontSize: fontSize.size14,
+      fontSize: fontSize.size12,
       fontFamily: fonts.fontRegular,
       color: theme.lightGreen,
+      textAlign: "center",
     },
     anyoneHintOverlay: {
       flex: 1,
@@ -1119,9 +1140,10 @@ const createStyles = (theme: Theme) =>
     },
   });
 
-type StaffRowProps = {
+type StaffTileProps = {
   staff: StaffCarouselItem;
   isSelected: boolean;
+  width: number;
   styles: ReturnType<typeof createStyles>;
   theme: Theme;
   ownerLabel: string;
@@ -1132,10 +1154,11 @@ type StaffRowProps = {
   onAnyoneInfoPress: () => void;
 };
 
-/** One selectable staff row: photo, name (+ Owner badge), experience, radio. */
-function StaffRow({
+/** Grid tile (3 per row): photo first, then name and experience. */
+function StaffTile({
   staff,
   isSelected,
+  width,
   styles,
   theme,
   ownerLabel,
@@ -1144,7 +1167,7 @@ function StaffRow({
   anyoneInfoLabel,
   onSelect,
   onAnyoneInfoPress,
-}: StaffRowProps) {
+}: StaffTileProps) {
   const isAnyone = staff.id === "anyone";
   const name = isAnyone ? anyoneLabel : staff.name;
   const subLine = isAnyone
@@ -1152,65 +1175,82 @@ function StaffRow({
     : staff.experience
       ? String(staff.experience)
       : null;
+  const photoSize = width - STAFF_TILE_PAD * 2 - 4; // minus the 2px border
 
   return (
     <TouchableOpacity
       activeOpacity={0.8}
       onPress={() => onSelect(staff.id)}
-      style={[styles.staffRow, isSelected && styles.staffRowSelected]}
+      style={[
+        styles.staffTile,
+        { width },
+        isSelected && styles.staffTileSelected,
+      ]}
       accessibilityRole="radio"
       accessibilityLabel={[name, staff.is_owner ? ownerLabel : null, subLine]
         .filter(Boolean)
         .join(", ")}
       accessibilityState={{ selected: isSelected, checked: isSelected }}
     >
-      <Image
-        source={
-          isAnyone
-            ? IMAGES.anyoneStaff
-            : { uri: staff.image || getDefaultAvatarImage() }
-        }
-        style={styles.staffAvatar}
-        resizeMode="cover"
-      />
-      <View style={styles.staffText}>
-        <View style={styles.staffNameRow}>
-          <Text
-            style={[styles.staffName, !isAnyone && styles.staffNameCap]}
-            numberOfLines={1}
-          >
-            {name}
-          </Text>
-          {staff.is_owner ? (
+      <View style={{ width: photoSize, height: photoSize }}>
+        <Image
+          source={
+            isAnyone
+              ? IMAGES.anyoneStaff
+              : { uri: staff.image || getDefaultAvatarImage() }
+          }
+          style={styles.staffPhoto}
+          resizeMode="cover"
+        />
+        {staff.is_owner ? (
+          <View style={styles.ownerBadgeWrap} pointerEvents="none">
             <View style={styles.ownerBadge}>
-              <Text style={styles.ownerBadgeText}>{ownerLabel}</Text>
+              <Text style={styles.ownerBadgeText} numberOfLines={1}>
+                {ownerLabel}
+              </Text>
             </View>
-          ) : null}
-          {isAnyone ? (
-            <TouchableOpacity
-              onPress={onAnyoneInfoPress}
-              hitSlop={10}
-              style={styles.staffInfoBtn}
-              accessibilityRole="button"
-              accessibilityLabel={anyoneInfoLabel}
-            >
-              <MaterialIcons
-                name="info-outline"
-                size={moderateWidthScale(18)}
-                color={theme.lightGreen}
-              />
-            </TouchableOpacity>
-          ) : null}
-        </View>
-        {subLine ? (
-          <Text style={styles.staffSub} numberOfLines={1}>
-            {subLine}
-          </Text>
+          </View>
+        ) : null}
+        {isSelected ? (
+          <View style={styles.staffCheck}>
+            <MaterialIcons
+              name="check"
+              size={moderateWidthScale(14)}
+              color={theme.white}
+            />
+          </View>
         ) : null}
       </View>
-      <View style={[styles.radio, isSelected && styles.radioSelected]}>
-        {isSelected ? <View style={styles.radioInner} /> : null}
+      <View style={styles.staffNameRow}>
+        <Text
+          style={[styles.staffName, !isAnyone && styles.staffNameCap]}
+          numberOfLines={1}
+        >
+          {name}
+        </Text>
+        {isAnyone ? (
+          <TouchableOpacity
+            onPress={onAnyoneInfoPress}
+            hitSlop={10}
+            accessibilityRole="button"
+            accessibilityLabel={anyoneInfoLabel}
+          >
+            <MaterialIcons
+              name="info-outline"
+              size={moderateWidthScale(15)}
+              color={theme.lightGreen}
+            />
+          </TouchableOpacity>
+        ) : null}
       </View>
+      <Text
+        style={styles.staffSub}
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.85}
+      >
+        {subLine ?? " "}
+      </Text>
     </TouchableOpacity>
   );
 }
@@ -2275,6 +2315,9 @@ export default function BookingNow() {
 
 
   const contentWidth = windowWidth - PAGE_PAD * 2;
+  const staffTileWidth = Math.floor(
+    (contentWidth - STAFF_TILE_GAP * 2) / 3,
+  );
   const slotWidth = Math.floor(
     (contentWidth - SLOT_GAP * (SLOT_COLUMNS - 1)) / SLOT_COLUMNS,
   );
@@ -2912,11 +2955,12 @@ export default function BookingNow() {
       {staffList.length === 0 ? (
         <InfoNote text={t("bkFlowStaffEmpty")} />
       ) : (
-        <View style={styles.list} accessibilityRole="radiogroup">
+        <View style={styles.staffGrid} accessibilityRole="radiogroup">
           {staffList.map((staff) => (
-            <StaffRow
+            <StaffTile
               key={staff.id}
               staff={staff}
+              width={staffTileWidth}
               isSelected={selectedStaff === staff.id}
               styles={styles}
               theme={theme}
