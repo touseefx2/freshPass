@@ -96,6 +96,9 @@ const HERO_HEIGHT = heightScale(340);
 const SHEET_OVERLAP = moderateHeightScale(28);
 const HEADER_BUTTON_SIZE = moderateWidthScale(40);
 const ACTION_BUTTON_SIZE = moderateHeightScale(48);
+// Translucent surfaces that sit on the dark-green info sheet
+const SHEET_SURFACE = "rgba(255, 255, 255, 0.07)";
+const SHEET_BORDER = "rgba(255, 255, 255, 0.12)";
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -244,12 +247,12 @@ const createStyles = (theme: Theme) =>
     },
     infoSheet: {
       marginTop: -SHEET_OVERLAP,
-      backgroundColor: theme.background,
+      backgroundColor: theme.darkGreen,
       borderTopLeftRadius: moderateWidthScale(28),
       borderTopRightRadius: moderateWidthScale(28),
       paddingHorizontal: moderateWidthScale(20),
       paddingTop: moderateHeightScale(22),
-      paddingBottom: moderateHeightScale(8),
+      paddingBottom: moderateHeightScale(24),
     },
     identityRow: {
       flexDirection: "row",
@@ -260,9 +263,9 @@ const createStyles = (theme: Theme) =>
       width: moderateWidthScale(64),
       height: moderateWidthScale(64),
       borderRadius: moderateWidthScale(18),
-      backgroundColor: theme.lightGreen07,
+      backgroundColor: theme.white15,
       borderWidth: 1,
-      borderColor: theme.borderNormal,
+      borderColor: theme.white15,
       overflow: "hidden",
     },
     identityText: {
@@ -277,14 +280,14 @@ const createStyles = (theme: Theme) =>
       flexShrink: 1,
       fontSize: fontSize.size22,
       fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
+      color: theme.white,
       textTransform: "capitalize",
     },
     businessCategory: {
       marginTop: moderateHeightScale(2),
       fontSize: fontSize.size13,
       fontFamily: fonts.fontRegular,
-      color: theme.lightGreen,
+      color: theme.white70,
     },
     metaRow: {
       flexDirection: "row",
@@ -301,16 +304,16 @@ const createStyles = (theme: Theme) =>
     metaRatingValue: {
       fontSize: fontSize.size13,
       fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
+      color: theme.white,
     },
     metaText: {
       fontSize: fontSize.size13,
       fontFamily: fonts.fontRegular,
-      color: theme.lightGreen,
+      color: theme.white70,
     },
     metaDot: {
       fontSize: fontSize.size13,
-      color: theme.lightGreen4,
+      color: theme.white50,
       marginHorizontal: moderateWidthScale(2),
     },
     badgeRow: {
@@ -326,12 +329,12 @@ const createStyles = (theme: Theme) =>
       paddingHorizontal: moderateWidthScale(10),
       paddingVertical: moderateHeightScale(6),
       borderRadius: moderateWidthScale(999),
-      backgroundColor: theme.mintTintStrong,
+      backgroundColor: theme.white15,
     },
     verifiedChipText: {
       fontSize: fontSize.size12,
       fontFamily: fonts.fontMedium,
-      color: theme.darkGreen,
+      color: theme.white,
     },
     offerChip: {
       flexDirection: "row",
@@ -340,12 +343,12 @@ const createStyles = (theme: Theme) =>
       paddingHorizontal: moderateWidthScale(10),
       paddingVertical: moderateHeightScale(6),
       borderRadius: moderateWidthScale(999),
-      backgroundColor: theme.orangeBrown30,
+      backgroundColor: theme.orangeBrown,
     },
     offerChipText: {
       fontSize: fontSize.size12,
       fontFamily: fonts.fontMedium,
-      color: theme.orangeBrownText,
+      color: theme.darkGreen,
     },
     actionRow: {
       flexDirection: "row",
@@ -356,32 +359,32 @@ const createStyles = (theme: Theme) =>
       flex: 1,
       height: ACTION_BUTTON_SIZE,
       borderRadius: moderateWidthScale(14),
-      backgroundColor: theme.darkGreen,
+      backgroundColor: theme.orangeBrown,
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "center",
       gap: moderateWidthScale(6),
     },
     followCtaActive: {
-      backgroundColor: theme.white,
+      backgroundColor: "transparent",
       borderWidth: 1,
-      borderColor: theme.borderMedium,
+      borderColor: theme.white50,
     },
     followCtaText: {
       fontSize: fontSize.size15,
       fontFamily: fonts.fontBold,
-      color: theme.background,
+      color: theme.darkGreen,
     },
     followCtaTextActive: {
-      color: theme.darkGreen,
+      color: theme.white,
     },
     actionIconButton: {
       width: ACTION_BUTTON_SIZE,
       height: ACTION_BUTTON_SIZE,
       borderRadius: moderateWidthScale(14),
-      backgroundColor: theme.white,
+      backgroundColor: SHEET_SURFACE,
       borderWidth: 1,
-      borderColor: theme.borderNormal,
+      borderColor: SHEET_BORDER,
       alignItems: "center",
       justifyContent: "center",
     },
@@ -391,10 +394,10 @@ const createStyles = (theme: Theme) =>
     },
     infoCard: {
       marginTop: moderateHeightScale(16),
-      backgroundColor: theme.white,
+      backgroundColor: SHEET_SURFACE,
       borderRadius: moderateWidthScale(18),
       borderWidth: 1,
-      borderColor: theme.borderLight,
+      borderColor: SHEET_BORDER,
     },
     infoRow: {
       flexDirection: "row",
@@ -406,14 +409,14 @@ const createStyles = (theme: Theme) =>
     },
     infoRowDivider: {
       height: 1,
-      backgroundColor: theme.borderLight,
+      backgroundColor: SHEET_BORDER,
       marginLeft: moderateWidthScale(14 + 34 + 12),
     },
     infoRowIcon: {
       width: moderateWidthScale(34),
       height: moderateWidthScale(34),
       borderRadius: moderateWidthScale(10),
-      backgroundColor: theme.orangeBrown01,
+      backgroundColor: "rgba(221, 161, 94, 0.16)",
       alignItems: "center",
       justifyContent: "center",
     },
@@ -423,14 +426,14 @@ const createStyles = (theme: Theme) =>
     infoRowText: {
       fontSize: fontSize.size13,
       fontFamily: fonts.fontMedium,
-      color: theme.darkGreen,
+      color: theme.white,
       lineHeight: moderateHeightScale(18),
     },
     infoRowSubText: {
       marginTop: moderateHeightScale(2),
       fontSize: fontSize.size12,
       fontFamily: fonts.fontRegular,
-      color: theme.lightGreen,
+      color: theme.white70,
     },
     infoRowStrong: {
       fontFamily: fonts.fontBold,
@@ -444,7 +447,7 @@ const createStyles = (theme: Theme) =>
       height: moderateWidthScale(28),
       borderRadius: moderateWidthScale(14),
       borderWidth: 2,
-      borderColor: theme.white,
+      borderColor: theme.darkGreen,
       backgroundColor: theme.emptyProfileImage,
       overflow: "hidden",
     },
@@ -457,7 +460,7 @@ const createStyles = (theme: Theme) =>
       width: moderateWidthScale(36),
       height: moderateWidthScale(36),
       borderRadius: moderateWidthScale(18),
-      backgroundColor: theme.lightGreen07,
+      backgroundColor: theme.white15,
       alignItems: "center",
       justifyContent: "center",
     },
@@ -466,7 +469,6 @@ const createStyles = (theme: Theme) =>
       backgroundColor: theme.background,
       borderBottomWidth: 1,
       borderBottomColor: theme.borderNormal,
-      marginTop: moderateHeightScale(12),
       paddingHorizontal: moderateWidthScale(8),
     },
     tab: {
@@ -4281,7 +4283,10 @@ export default function BusinessDetailScreen() {
           </View>
 
           {/* Business Info Sheet */}
-          <View style={styles.infoSheet}>
+          <LinearGradient
+            colors={[theme.darkGreen, theme.darkGreenDeep]}
+            style={styles.infoSheet}
+          >
             <View style={styles.identityRow}>
               <AppImage
                 uri={getBusinessLogoUrl()}
@@ -4297,7 +4302,7 @@ export default function BusinessDetailScreen() {
                     <MaterialIcons
                       name="verified"
                       size={moderateWidthScale(18)}
-                      color={theme.buttonBack}
+                      color={theme.orangeBrown}
                     />
                   ) : null}
                 </View>
@@ -4316,7 +4321,7 @@ export default function BusinessDetailScreen() {
                     <MaterialIcons
                       name="star"
                       size={moderateWidthScale(16)}
-                      color={theme.selectCard}
+                      color={theme.orangeBrown}
                     />
                     <Text style={styles.metaRatingValue}>
                       {averageRating.toFixed(1)}
@@ -4342,7 +4347,7 @@ export default function BusinessDetailScreen() {
                 <MaterialIcons
                   name="verified-user"
                   size={moderateWidthScale(14)}
-                  color={theme.buttonBack}
+                  color={theme.white}
                 />
                 <Text style={styles.verifiedChipText}>
                   {t("platformVerified")}
@@ -4352,7 +4357,7 @@ export default function BusinessDetailScreen() {
                 <MaterialIcons
                   name="local-offer"
                   size={moderateWidthScale(14)}
-                  color={theme.orangeBrownText}
+                  color={theme.darkGreen}
                 />
                 <Text style={styles.offerChipText}>
                   {t("discountBadgeText")}
@@ -4377,14 +4382,14 @@ export default function BusinessDetailScreen() {
                   {followLoading ? (
                     <ActivityIndicator
                       size="small"
-                      color={isFollowing ? theme.darkGreen : theme.background}
+                      color={isFollowing ? theme.white : theme.darkGreen}
                     />
                   ) : (
                     <>
                       <MaterialIcons
                         name={isFollowing ? "check" : "add"}
                         size={moderateWidthScale(18)}
-                        color={isFollowing ? theme.darkGreen : theme.background}
+                        color={isFollowing ? theme.white : theme.darkGreen}
                       />
                       <Text
                         style={[
@@ -4414,7 +4419,7 @@ export default function BusinessDetailScreen() {
                   <ChatIcon
                     width={widthScale(20)}
                     height={heightScale(20)}
-                    color={theme.darkGreen}
+                    color={theme.white}
                   />
                 </TouchableOpacity>
               )}
@@ -4434,7 +4439,7 @@ export default function BusinessDetailScreen() {
                   <Ionicons
                     name="call-outline"
                     size={moderateWidthScale(20)}
-                    color={theme.darkGreen}
+                    color={theme.white}
                   />
                 </TouchableOpacity>
               )}
@@ -4452,13 +4457,13 @@ export default function BusinessDetailScreen() {
                   <Ionicons
                     name="navigate-outline"
                     size={moderateWidthScale(20)}
-                    color={theme.darkGreen}
+                    color={theme.white}
                   />
                 </TouchableOpacity>
               )}
             </View>
 
-            <View style={[styles.infoCard, styles.cardShadow]}>
+            <View style={styles.infoCard}>
               <TouchableOpacity
                 style={styles.infoRow}
                 activeOpacity={0.7}
@@ -4469,7 +4474,7 @@ export default function BusinessDetailScreen() {
                   <Ionicons
                     name="location-outline"
                     size={moderateWidthScale(18)}
-                    color={theme.selectCard}
+                    color={theme.orangeBrown}
                   />
                 </View>
                 <View style={styles.infoRowBody}>
@@ -4485,7 +4490,7 @@ export default function BusinessDetailScreen() {
                 <MaterialIcons
                   name="chevron-right"
                   size={moderateWidthScale(20)}
-                  color={theme.lightGreen5}
+                  color={theme.white50}
                 />
               </TouchableOpacity>
 
@@ -4502,7 +4507,7 @@ export default function BusinessDetailScreen() {
                       <Ionicons
                         name="people-outline"
                         size={moderateWidthScale(18)}
-                        color={theme.selectCard}
+                        color={theme.orangeBrown}
                       />
                     </View>
                     <Text style={[styles.infoRowText, styles.infoRowBody]}>
@@ -4532,7 +4537,7 @@ export default function BusinessDetailScreen() {
                     <MaterialIcons
                       name="chevron-right"
                       size={moderateWidthScale(20)}
-                      color={theme.lightGreen5}
+                      color={theme.white50}
                     />
                   </TouchableOpacity>
                 </>
@@ -4558,7 +4563,7 @@ export default function BusinessDetailScreen() {
                       <Ionicons
                         name="storefront-outline"
                         size={moderateWidthScale(18)}
-                        color={theme.selectCard}
+                        color={theme.orangeBrown}
                       />
                     </View>
                     <Text
@@ -4573,7 +4578,7 @@ export default function BusinessDetailScreen() {
                     <MaterialIcons
                       name="chevron-right"
                       size={moderateWidthScale(20)}
-                      color={theme.lightGreen5}
+                      color={theme.white50}
                     />
                   </TouchableOpacity>
                 </>
@@ -4587,7 +4592,7 @@ export default function BusinessDetailScreen() {
                       <Ionicons
                         name="globe-outline"
                         size={moderateWidthScale(18)}
-                        color={theme.selectCard}
+                        color={theme.orangeBrown}
                       />
                     </View>
                     <Text style={[styles.infoRowText, styles.infoRowBody]}>
@@ -4608,7 +4613,7 @@ export default function BusinessDetailScreen() {
                           <FontAwesome5
                             name={link.icon}
                             size={moderateWidthScale(16)}
-                            color={theme.darkGreen}
+                            color={theme.white}
                           />
                         </TouchableOpacity>
                       ))}
@@ -4617,7 +4622,7 @@ export default function BusinessDetailScreen() {
                 </>
               )}
             </View>
-          </View>
+          </LinearGradient>
 
           {/* Tabs */}
           <View style={styles.tabsContainer}>
