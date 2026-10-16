@@ -507,7 +507,7 @@ export default function NotificationsScreen() {
       const response = await ApiService.post<{
         success: boolean;
         message: string;
-      }>(notificationsEndpoints.markAllAsRead);
+      }>(notificationsEndpoints.markAllAsRead(notificationMode));
 
       if (response.success) {
         fetchNotifications(1, false);

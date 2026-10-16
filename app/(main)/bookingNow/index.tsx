@@ -1,3 +1,4 @@
+import { useOwnBusinessGuard } from "@/src/hooks/useOwnBusinessGuard";
 import React, {
   useMemo,
   useState,
@@ -1684,6 +1685,9 @@ export default function BookingNow() {
     /** "1" when the customer already agreed to the late reschedule fee. */
     late_fee_accepted?: string;
   }>();
+
+  // Customer mode can't book the user's own business — leave before any call
+  useOwnBusinessGuard(params.business_id);
 
   const attributionReelId = params.reel_id ? Number(params.reel_id) : null;
   const attributionSavedLookId = params.saved_look_id

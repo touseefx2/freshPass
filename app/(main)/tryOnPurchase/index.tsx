@@ -30,7 +30,14 @@ import {
 import NotificationBanner from "@/src/components/notificationBanner";
 import { ApiService } from "@/src/services/api";
 import { businessEndpoints, userEndpoints } from "@/src/services/endpoints";
-import { setUserDetails } from "@/src/state/slices/userSlice";
+import {
+  setCustomerAiQuota,
+  setUserDetails,
+  type UserMode,
+} from "@/src/state/slices/userSlice";
+import { useStore } from "react-redux";
+import type { RootState } from "@/src/state/store";
+import { getModeParam } from "@/src/services/userModeService";
 import { router, useLocalSearchParams } from "expo-router";
 import { createStyles } from "./styles";
 import {
@@ -50,6 +57,7 @@ export default function TryOnPurchase() {
   const dispatch = useAppDispatch();
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
   const user = useAppSelector((state) => state.user);
+  const store = useStore<RootState>();
   const aiService = useAppSelector((state) => state.general.aiService);
   const purchaseSource = useAppSelector(
     (state) => state.general.tryOnPurchaseSuccessSource,
@@ -176,13 +184,24 @@ export default function TryOnPurchase() {
     router.back();
   };
 
-  const refreshQuotaAndShowSuccess = async (quotaFromVerify?: number) => {
+  const refreshQuotaAndShowSuccess = async (
+    quotaFromVerify?: number,
+    creditedMode?: UserMode,
+  ) => {
     dispatch(setActionLoader(true));
     dispatch(setActionLoaderTitle(t("pleaseWait")));
 
     try {
+      // Read now, not at tap time: the user may have switched mid-purchase
+      const activeMode: UserMode =
+        store.getState().user.active_mode ?? "business";
       if (typeof quotaFromVerify === "number") {
-        dispatch(setUserDetails({ ai_quota: quotaFromVerify }));
+        if (!creditedMode || creditedMode === activeMode) {
+          dispatch(setUserDetails({ ai_quota: quotaFromVerify }));
+        } else if (creditedMode === "customer") {
+          dispatch(setCustomerAiQuota(quotaFromVerify));
+        }
+        // Business balance credited while in customer mode: shown after switching back
       } else {
         const response = await ApiService.get<{
           success: boolean;
@@ -213,7 +232,7 @@ export default function TryOnPurchase() {
     }
   };
 
-  const handleIapPayment = async () => {
+  const handleIapPayment = async (purchaseMode?: UserMode) => {
     let appleProductId = service?.appleProductId;
     if (!appleProductId?.trim()) {
       const response = await ApiService.get<{
@@ -237,17 +256,24 @@ export default function TryOnPurchase() {
 
     const verifyResponse = await purchaseAndVerifyIosIap({
       productId,
+      mode: purchaseMode,
     });
 
-    await refreshQuotaAndShowSuccess(verifyResponse.data?.ai_quota);
+    await refreshQuotaAndShowSuccess(
+      verifyResponse.data?.ai_quota,
+      verifyResponse.data?.mode,
+    );
   };
 
-  const handleStripePayment = async (serviceIdForPurchase: number) => {
+  const handleStripePayment = async (
+    serviceIdForPurchase: number,
+    purchaseMode?: UserMode,
+  ) => {
     // Retry Stripe key from API if startup fetch failed (e.g. no network)
     await ensureStripeReady();
 
     const { customer, paymentIntent, customerSessionClientSecret } =
-      await fetchAiToolsPaymentSheetParams(serviceIdForPurchase);
+      await fetchAiToolsPaymentSheetParams(serviceIdForPurchase, purchaseMode);
     dispatch(setActionLoader(false));
     await new Promise((resolve) => setTimeout(resolve, 1000));
 
@@ -320,13 +346,16 @@ export default function TryOnPurchase() {
     dispatch(setActionLoader(true));
     dispatch(setActionLoaderTitle(t("paymentprocessing")));
 
+    // Credits go to the mode active right now, even if the user switches later
+    const purchaseMode = getModeParam(user);
+
     try {
       if (isIos) {
-        await handleIapPayment();
+        await handleIapPayment(purchaseMode);
         return;
       }
 
-      await handleStripePayment(service.id);
+      await handleStripePayment(service.id, purchaseMode);
     } catch (err: unknown) {
       const ax = err as { message?: string; data?: { message?: string } };
       const message =

@@ -27,6 +27,7 @@ import {
   type AppStateStatus,
 } from "react-native";
 import { useTheme, useAppSelector } from "@/src/hooks/hooks";
+import { getActingSide } from "@/src/state/slices/userSlice";
 import AppImage from "@/src/components/AppImage";
 import { useDownloadMedia } from "@/src/hooks/useDownloadMedia";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
@@ -97,6 +98,9 @@ type ApiMessage = {
   sender: { id: number; name: string; email?: string };
   attachments?: string[];
   created_at: string;
+  /** Side each party is on; null on messages from before modes existed */
+  sender_mode?: "business" | "customer" | null;
+  receiver_mode?: "business" | "customer" | null;
 };
 
 type MessagesResponse = {
@@ -1980,6 +1984,9 @@ export default function ChatBoxScreen() {
   const insets = useSafeAreaInsets();
   const user = useAppSelector((state: any) => state.user);
   const currentUserId = user?.id ?? null;
+  const actingSide = useAppSelector((state) => getActingSide(state.user));
+  const actingSideRef = useRef(actingSide);
+  actingSideRef.current = actingSide;
   const currentUserName = user?.name ?? "Me";
   const accessToken = user?.accessToken ?? null;
   const [keyboardHeight, setKeyboardHeight] = useState(0);
@@ -2193,6 +2200,11 @@ export default function ChatBoxScreen() {
         return;
       }
       if (msg.sender.id === currentUserId) return; // skip own message from socket
+      // Same two people, other side of the app (e.g. their business ↔ my
+      // customer side): it belongs to the other inbox, not this thread
+      if (msg.receiver_mode && msg.receiver_mode !== actingSideRef.current) {
+        return;
+      }
       setIsTyping(false);
       // Mark that user's messages as read when we receive their message
       ApiService.post(MARK_READ_URL(String(msg.sender.id)), {}).catch(() => {});

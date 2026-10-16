@@ -36,7 +36,7 @@ export default function OnboardingHandler() {
     businessStatus &&
     !businessStatus.onboarding_completed;
 
-  const modalVisible = shouldShowModal && !isInOnboardingFlow;
+  const modalVisible = !!shouldShowModal && !isInOnboardingFlow;
 
   const handleContinue = useCallback(() => {
     if (businessStatus?.next_step) {

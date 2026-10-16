@@ -1,3 +1,4 @@
+import { useOwnBusinessGuard } from "@/src/hooks/useOwnBusinessGuard";
 import React, {
   useMemo,
   useState,
@@ -411,6 +412,9 @@ function CheckoutSubscriptionContent() {
     screenName?: string;
     reel_id?: string;
   }>();
+
+  // Customer mode can't buy a membership at the user's own business
+  useOwnBusinessGuard(params.businessId);
 
   const attributionReelId = params.reel_id ? Number(params.reel_id) : null;
   const membershipViewSentRef = useRef(false);

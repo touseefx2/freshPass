@@ -88,8 +88,17 @@ export const pickUserModeDetails = (data: UserModeDetailsFields) => {
 };
 
 /**
- * `?mode=` for notification list / unread count. Only switchable accounts send it —
- * without it the server returns everything, which is right for plain customers.
+ * `mode` sent on notification list / unread count / mark-all-read and on AI
+ * credit purchases. Only switchable accounts send it — without it the server
+ * uses everything / the current mode, which is right for plain customers.
  */
-export const getNotificationMode = (user: UserState): UserMode | undefined =>
+export const getModeParam = (user: UserState): UserMode | undefined =>
   user.can_switch_mode ? (user.active_mode ?? "business") : undefined;
+
+export const getNotificationMode = getModeParam;
+
+/** Server `error_code` from an ApiService error (`data.error_code` in the body) */
+export const getApiErrorCode = (error: any): string | undefined => {
+  const code = error?.data?.data?.error_code;
+  return typeof code === "string" ? code : undefined;
+};

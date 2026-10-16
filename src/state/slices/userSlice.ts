@@ -278,6 +278,25 @@ export const getOwnBusinessIds = (user: UserState): number[] => {
   );
 };
 
+/**
+ * Customer mode at a business this account owns / works at. The server
+ * refuses booking, buying, following, reviews and chat there.
+ */
+export const isOwnBusinessInCustomerMode = (
+  user: UserState,
+  businessId: string | number | null | undefined,
+): boolean => {
+  if (user.isGuest || !isInCustomerMode(user) || businessId == null) {
+    return false;
+  }
+  const id = Number(businessId);
+  return Number.isFinite(id) && getOwnBusinessIds(user).includes(id);
+};
+
+/** The chat / inbox side the user is on right now. */
+export const getActingSide = (user: UserState): UserMode =>
+  user.userRole === "customer" ? "customer" : "business";
+
 const applyActiveMode = (state: UserState, mode: UserMode | null) => {
   const accountRole = getAccountRole(state);
   state.accountRole = accountRole;

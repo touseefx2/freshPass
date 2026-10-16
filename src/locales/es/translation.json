@@ -2649,5 +2649,8 @@
   "modeSwitchedCustomerCta": "Empezar a explorar",
   "modeSwitchedBusinessCta": "Ir al panel",
   "modeSwitchBackHint": "Toca el logo de FreshPass cuando quieras para volver.",
-  "ownBusinessCustomerModeBanner": "Este es tu negocio: las reservas están desactivadas en modo cliente"
+  "ownBusinessCustomerModeBanner": "Este es tu negocio: las reservas están desactivadas en modo cliente",
+  "ownBusinessBlockedTitle": "Este es tu negocio",
+  "ownBusinessBlockedMessage": "En modo cliente no puedes reservar, comprar ni seguir tu propio negocio.",
+  "modeChangedOnAnotherDevice": "Tu cuenta cambió de modo en otro dispositivo."
 }

@@ -5,7 +5,10 @@ import { useTranslation } from "react-i18next";
 import * as Haptics from "expo-haptics";
 import { useAppDispatch, useAppSelector } from "@/src/hooks/hooks";
 import { setModeSwitchModalVisible } from "@/src/state/slices/generalSlice";
-import type { UserMode } from "@/src/state/slices/userSlice";
+import {
+  setCanSwitchMode,
+  type UserMode,
+} from "@/src/state/slices/userSlice";
 import { switchActiveMode } from "@/src/state/thunks/userModeThunks";
 import { resetToDashboardHome } from "@/src/utils/navigation";
 import ModeSwitchModal, {
@@ -68,6 +71,10 @@ export default function ModeSwitchModalHandler() {
     } catch (error: any) {
       setPhase("menu");
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      // Owner hasn't finished onboarding: hide the switch until they have
+      if (error?.errorCode === "onboarding_incomplete") {
+        dispatch(setCanSwitchMode(false));
+      }
       // No-internet toast is already shown by ApiService
       if (!error?.isNoInternet) {
         setErrorMessage(error?.message || t("modeSwitchFailed"));

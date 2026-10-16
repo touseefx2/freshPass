@@ -1607,6 +1607,8 @@ export default function BusinessDetailScreen() {
     user.userRole === "staff" ||
     isOwnBusinessInCustomerMode;
   const showViewerBanner = isOwnerPreviewMode || isOwnBusinessInCustomerMode;
+  // Messaging your own business from customer mode is refused by the server
+  const isChatBlocked = isOwnerPreviewMode || isOwnBusinessInCustomerMode;
   const viewerBannerOffset = showViewerBanner
     ? insets.top + VIEWER_BANNER_CONTENT_HEIGHT + moderateHeightScale(6)
     : 0;
@@ -2820,12 +2822,10 @@ export default function BusinessDetailScreen() {
                       <TouchableOpacity
                         style={[
                           styles.chatIconButton,
-                          isOwnerPreviewMode && styles.disabledAction,
+                          isChatBlocked && styles.disabledAction,
                         ]}
-                        onPress={
-                          isOwnerPreviewMode ? undefined : handleChatPress
-                        }
-                        disabled={isOwnerPreviewMode}
+                        onPress={isChatBlocked ? undefined : handleChatPress}
+                        disabled={isChatBlocked}
                       >
                         <ChatIcon
                           width={widthScale(17)}

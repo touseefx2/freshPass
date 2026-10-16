@@ -1,8 +1,10 @@
 import { Tabs, useSegments } from "expo-router";
 import { useTheme, useAppSelector, useAppDispatch } from "@/src/hooks/hooks";
-import { useMemo, useEffect, useState, useCallback } from "react";
+import { useMemo, useEffect, useState, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { Platform, StyleSheet, View, Text } from "react-native";
+import { AppState, Platform, StyleSheet, View, Text } from "react-native";
+import { useStore } from "react-redux";
+import type { RootState } from "@/src/state/store";
 import { MaterialIcons } from "@expo/vector-icons";
 import { Theme } from "@/src/theme/colors";
 import {
@@ -24,7 +26,17 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AiChatBot from "@/src/components/AiChatBot";
 import BusinessCreateMediaMenu from "@/src/components/businessCreateMediaMenu";
 import { setUserDetails } from "@/src/state/slices/userSlice";
-import { resetChatContacts } from "@/src/state/slices/generalSlice";
+import {
+  resetChatContacts,
+  setModeSwitchModalVisible,
+} from "@/src/state/slices/generalSlice";
+import {
+  syncModeFromServer,
+  type ServerModeState,
+} from "@/src/state/thunks/userModeThunks";
+import { getUserMode } from "@/src/services/userModeService";
+import { resetToDashboardHome } from "@/src/utils/navigation";
+import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { ApiService } from "@/src/services/api";
 import Logger from "@/src/services/logger";
 import { userEndpoints } from "@/src/services/endpoints";
@@ -38,6 +50,8 @@ import {
 } from "@/src/services/userModeService";
 
 const CHAT_MESSAGE_SENT = ".message.sent";
+/** Broadcast after every mode switch, on any of the user's devices */
+const MODE_CHANGED = ".mode.changed";
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -119,6 +133,8 @@ export default function DashboardLayout() {
   const isCustomer = userRole === "customer" && !isGuest;
   const isBusiness = userRole === "business";
   const dispatch = useAppDispatch();
+  const store = useStore<RootState>();
+  const { showBanner } = useNotificationContext();
   const [createMenuOpen, setCreateMenuOpen] = useState(false);
 
   const closeCreateMenu = useCallback(() => setCreateMenuOpen(false), []);
@@ -131,6 +147,48 @@ export default function DashboardLayout() {
     if (!isCustomer) return;
     fetchUserDetails();
   }, [isCustomer, dispatch]);
+
+  // Mode switched elsewhere (another device): follow it here too
+  const applyServerMode = useCallback(
+    async (server: ServerModeState) => {
+      const mode = await dispatch(syncModeFromServer(server)).unwrap();
+      if (!mode) return;
+      dispatch(setModeSwitchModalVisible(false));
+      resetToDashboardHome();
+      showBanner(
+        mode === "customer"
+          ? t("modeSwitchedCustomerTitle")
+          : t("modeSwitchedBusinessTitle"),
+        t("modeChangedOnAnotherDevice"),
+        "info",
+        3000,
+      );
+    },
+    [dispatch, showBanner, t],
+  );
+  const applyServerModeRef = useRef(applyServerMode);
+  applyServerModeRef.current = applyServerMode;
+
+  // The socket can miss `.mode.changed` while backgrounded — re-check on return
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", (nextState) => {
+      if (nextState !== "active") return;
+      const { can_switch_mode, isGuest: guest, accessToken } =
+        store.getState().user;
+      if (!can_switch_mode || guest || !accessToken) return;
+      getUserMode()
+        .then((response) => {
+          if (response?.success && response.data) {
+            void applyServerModeRef.current({
+              active_mode: response.data.active_mode,
+              can_switch: response.data.can_switch,
+            });
+          }
+        })
+        .catch(() => {});
+    });
+    return () => subscription.remove();
+  }, [store]);
 
   // Socket: users.{userId} for inbox updates. Only when !isGuest. Close on logout (isGuest) or unmount; keep on in background.
   useEffect(() => {
@@ -164,8 +222,13 @@ export default function DashboardLayout() {
       dispatch(refreshChatInbox());
     });
 
+    channel.listen(MODE_CHANGED, (payload: ServerModeState) => {
+      void applyServerModeRef.current(payload ?? {});
+    });
+
     return () => {
       channel.stopListening(CHAT_MESSAGE_SENT);
+      channel.stopListening(MODE_CHANGED);
       echo.leave(channelName);
     };
   }, [isGuest, user?.id, user?.accessToken, dispatch]);

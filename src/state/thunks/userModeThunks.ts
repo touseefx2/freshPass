@@ -14,7 +14,9 @@ import { userEndpoints } from "@/src/services/endpoints";
 import Logger from "@/src/services/logger";
 import {
   beginModeSwitch,
+  canApplyServerMode,
   endModeSwitch,
+  getApiErrorCode,
   switchUserMode,
   type SwitchModeResponse,
   type UserModeDetailsFields,
@@ -30,6 +32,8 @@ export interface SwitchActiveModeError {
   message: string;
   /** "No internet" toast was already shown by ApiService */
   isNoInternet?: boolean;
+  /** e.g. `onboarding_incomplete` — owner must finish setup first */
+  errorCode?: string;
 }
 
 /**
@@ -78,10 +82,62 @@ export const switchActiveMode = createAsyncThunk<
     return rejectWithValue({
       message: error?.message ?? "",
       isNoInternet: error?.isNoInternet === true,
+      errorCode: getApiErrorCode(error),
     });
   } finally {
     endModeSwitch();
   }
+});
+
+/** Mode as reported by the server: `.mode.changed` socket event or GET /api/user/mode */
+export interface ServerModeState {
+  active_mode?: string | null;
+  ai_quota?: number | null;
+  can_switch?: boolean | null;
+}
+
+/**
+ * The mode changed somewhere else (another device, or a socket event that
+ * outran this one). Applies it like a local switch; resolves to the new mode,
+ * or null when nothing changed. The caller resets navigation and tells the user.
+ */
+export const syncModeFromServer = createAsyncThunk<
+  UserMode | null,
+  ServerModeState,
+  { dispatch: AppDispatch; state: RootState }
+>("user/syncModeFromServer", async (server, { dispatch, getState }) => {
+  const user = getState().user;
+  const serverMode = normalizeUserMode(server.active_mode);
+  const currentMode: UserMode = user.active_mode ?? "business";
+
+  // Our own switch (and its echo) is still settling, or nothing changed
+  if (!serverMode || serverMode === currentMode || !canApplyServerMode()) {
+    return null;
+  }
+
+  // Same stale-response guard as a local switch
+  beginModeSwitch();
+  try {
+    dispatch(setActiveMode(serverMode));
+    if (typeof server.can_switch === "boolean") {
+      dispatch(setCanSwitchMode(server.can_switch));
+    }
+    if (typeof server.ai_quota === "number") {
+      dispatch(setUserDetails({ ai_quota: server.ai_quota }));
+    }
+    dispatch(setUnreadCount(0));
+    dispatch(resetChatContacts());
+
+    await Promise.allSettled([
+      refreshModeDetails(dispatch),
+      dispatch(fetchNotificationUnreadCount()),
+      dispatch(refreshChatInbox()),
+    ]);
+  } finally {
+    endModeSwitch();
+  }
+
+  return serverMode;
 });
 
 /** Fresh after the switch, so applied directly (not through the stale-response guard). */

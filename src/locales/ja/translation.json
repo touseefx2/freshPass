@@ -2649,5 +2649,8 @@
   "modeSwitchedCustomerCta": "探索をはじめる",
   "modeSwitchedBusinessCta": "ダッシュボードへ",
   "modeSwitchBackHint": "FreshPassのロゴをタップすればいつでも戻れます。",
-  "ownBusinessCustomerModeBanner": "あなたのビジネスです — カスタマーモードでは予約できません"
+  "ownBusinessCustomerModeBanner": "あなたのビジネスです — カスタマーモードでは予約できません",
+  "ownBusinessBlockedTitle": "あなたのビジネスです",
+  "ownBusinessBlockedMessage": "カスタマーモードでは自分のビジネスの予約、購入、フォローはできません。",
+  "modeChangedOnAnotherDevice": "別のデバイスでアカウントのモードが切り替わりました。"
 }

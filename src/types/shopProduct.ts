@@ -29,6 +29,8 @@ export const SHOP_PRODUCT_CATEGORIES: ShopProductCategory[] = [
 
 export interface ShopProduct {
   id: string;
+  /** Owning business — lets customer mode block buying your own product */
+  business_id?: number | null;
   name: string;
   brand: string;
   category: ShopProductCategory | string;

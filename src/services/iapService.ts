@@ -16,6 +16,8 @@ import {
 import { ApiService } from "@/src/services/api";
 import { iapEndpoints } from "@/src/services/endpoints";
 import Logger from "@/src/services/logger";
+import { LocalStorageService } from "@/src/services/storage";
+import type { UserMode } from "@/src/state/slices/userSlice";
 
 export const APP_STORE_CONFIG_NOT_SET_ERROR =
   "App Store configuration is not set for this plan. Please try again later.";
@@ -41,7 +43,9 @@ interface VerifyAiIapResponse {
   data?: {
     granted?: boolean;
     credits?: number;
+    /** New balance of the credited mode (see `mode`) */
     ai_quota?: number;
+    mode?: UserMode;
   };
 }
 
@@ -226,11 +230,49 @@ interface VerifyBusinessPlanIapPayload {
   transaction_id: string;
 }
 
-const verifyAiIapPurchase = async (transactionId: string) => {
+const verifyAiIapPurchase = async (transactionId: string, mode?: UserMode) => {
   return ApiService.post<VerifyAiIapResponse>(iapEndpoints.verifyAi, {
     transaction_id: transactionId,
+    ...(mode && { mode }),
   });
 };
+
+/**
+ * Credits go to the mode the purchase started in. Remember it per product
+ * until verified, so a recovery verify on a later launch (maybe in the other
+ * mode) still sends the right one.
+ */
+const PENDING_PURCHASE_MODES_KEY = "iapPendingPurchaseModes";
+
+const readPendingPurchaseModes = async (): Promise<Record<string, UserMode>> => {
+  try {
+    const raw = await LocalStorageService.getItem(PENDING_PURCHASE_MODES_KEY);
+    return raw ? (JSON.parse(raw) as Record<string, UserMode>) : {};
+  } catch {
+    return {};
+  }
+};
+
+const setPendingPurchaseMode = async (
+  productId: string,
+  mode: UserMode | undefined,
+) => {
+  try {
+    const modes = await readPendingPurchaseModes();
+    if (mode) modes[productId] = mode;
+    else delete modes[productId];
+    await LocalStorageService.setItem(
+      PENDING_PURCHASE_MODES_KEY,
+      JSON.stringify(modes),
+    );
+  } catch (error) {
+    Logger.warn("Could not save IAP purchase mode", error);
+  }
+};
+
+const getPendingPurchaseMode = async (
+  productId: string,
+): Promise<UserMode | undefined> => (await readPendingPurchaseModes())[productId];
 
 const verifyBusinessPlanIapPurchase = async (
   payload: VerifyBusinessPlanIapPayload,
@@ -353,8 +395,9 @@ const recoverPurchase = async (purchase: Purchase): Promise<boolean> => {
 
       await finishTransaction({ purchase, isConsumable: false });
     } else {
+      const mode = await getPendingPurchaseMode(productId);
       const verifyResponse = await verifyWithRetry(() =>
-        verifyAiIapPurchase(transactionId),
+        verifyAiIapPurchase(transactionId, mode),
       );
 
       if (!verifyResponse.success) {
@@ -362,6 +405,7 @@ const recoverPurchase = async (purchase: Purchase): Promise<boolean> => {
       }
 
       await finishTransaction({ purchase, isConsumable: true });
+      await setPendingPurchaseMode(productId, undefined);
     }
 
     return true;
@@ -446,23 +490,29 @@ export const stopIapRecoveryListener = () => {
   recoveryListener = undefined;
 };
 
-/** AI try-on IAP — verify API receives transaction_id only. */
+/**
+ * AI credits IAP. `mode` (Business/Staff only) is the mode active when Buy was
+ * tapped — the server credits that balance even if the user switches meanwhile.
+ */
 export const purchaseAndVerifyIosIap = async (params: {
   productId: string;
+  mode?: UserMode;
 }) => {
-  const { productId } = params;
+  const { productId, mode } = params;
   const kind: IapPurchaseKind = "ai_service";
 
   await ensureIapConnection();
   await getProductOrThrow(productId, kind);
 
   const appAccountToken = await getAppleAccountToken();
+  // Saved before the purchase so a killed app still verifies the right mode
+  await setPendingPurchaseMode(productId, mode);
   const purchase = await requestIosPurchase(productId, kind, appAccountToken);
 
   const transactionId = getPurchaseTransactionId(purchase);
 
   const verifyResponse = await verifyWithRetry(() =>
-    verifyAiIapPurchase(transactionId),
+    verifyAiIapPurchase(transactionId, mode),
   );
 
   if (!verifyResponse.success) {
@@ -473,6 +523,7 @@ export const purchaseAndVerifyIosIap = async (params: {
     purchase,
     isConsumable: true,
   });
+  await setPendingPurchaseMode(productId, undefined);
 
   return verifyResponse;
 };

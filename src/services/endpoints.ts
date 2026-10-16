@@ -494,7 +494,8 @@ export const notificationsEndpoints = {
   },
   markAsRead: (notificationId: number) =>
     `/api/notifications/${notificationId}/read`,
-  markAllAsRead: `/api/notifications/mark-all-read`,
+  markAllAsRead: (mode?: "business" | "customer") =>
+    `/api/notifications/mark-all-read${mode ? `?mode=${mode}` : ""}`,
   unreadCount: (mode?: "business" | "customer") =>
     `/api/notifications/unread-count${mode ? `?mode=${mode}` : ""}`,
   preferences: `/api/notification-preferences`,

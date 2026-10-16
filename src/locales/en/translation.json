@@ -2705,5 +2705,8 @@
   "modeSwitchedCustomerCta": "Start exploring",
   "modeSwitchedBusinessCta": "Go to dashboard",
   "modeSwitchBackHint": "Tap the FreshPass logo anytime to switch back.",
-  "ownBusinessCustomerModeBanner": "This is your business — booking is off in customer mode"
+  "ownBusinessCustomerModeBanner": "This is your business — booking is off in customer mode",
+  "ownBusinessBlockedTitle": "This is your business",
+  "ownBusinessBlockedMessage": "You can't book, buy or follow your own business in customer mode.",
+  "modeChangedOnAnotherDevice": "Your account switched modes on another device."
 }

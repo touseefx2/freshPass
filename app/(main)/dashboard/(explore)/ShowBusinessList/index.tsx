@@ -9,7 +9,8 @@ import {
 import AppImage from "@/src/components/AppImage";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { useTheme } from "@/src/hooks/hooks";
+import { useAppSelector, useTheme } from "@/src/hooks/hooks";
+import { isOwnBusinessInCustomerMode } from "@/src/state/slices/userSlice";
 import { Theme } from "@/src/theme/colors";
 import {
   heightScale,
@@ -178,6 +179,10 @@ export function BusinessCardType({
   const [inclusionsModalVisible, setInclusionsModalVisible] = useState(false);
   const [selectedInclusions, setSelectedInclusions] = useState<string[]>([]);
 
+  // Customer mode: no booking / membership at the user's own business
+  const isOwnBusiness = useAppSelector((state) =>
+    isOwnBusinessInCustomerMode(state.user, salon.id),
+  );
   const hasServices = (salon.services?.length ?? 0) > 0;
   const hasSubscriptions = (salon.subscriptions?.length ?? 0) > 0;
   const isIndividual = type === "individual";
@@ -251,6 +256,7 @@ export function BusinessCardType({
                 <View style={styles.serviceButtonContainer}>
                   <Button
                     title={t("bookNow")}
+                    disabled={isOwnBusiness}
                     onPress={() => {
                       router.push({
                         pathname: "/(main)/bookingNow",
@@ -366,6 +372,7 @@ export function BusinessCardType({
                   <View style={styles.subscriptionButtonContainer}>
                     <Button
                       title={t("bookNow")}
+                      disabled={isOwnBusiness}
                       onPress={() => {
                         router.push({
                           pathname: "/(main)/bookingNow/checkoutSubscription",

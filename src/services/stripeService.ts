@@ -433,13 +433,18 @@ interface AiToolsPaymentSheetApiResponse {
   };
 }
 
+/**
+ * `mode` (Business/Staff only): the mode active when Buy was tapped. The
+ * webhook credits that balance even if the user switches before it runs.
+ */
 export const fetchAiToolsPaymentSheetParams = async (
   serviceId: number,
+  mode?: "business" | "customer",
 ): Promise<PaymentSheetParams> => {
   try {
     const response = await ApiService.post<AiToolsPaymentSheetApiResponse>(
       stripeEndpoints.paymentSheetAiTools,
-      { service_id: serviceId },
+      { service_id: serviceId, ...(mode && { mode }) },
       { headers: await getStripeModeHeaders() },
     );
 

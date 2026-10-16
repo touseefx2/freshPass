@@ -10,6 +10,7 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
+import { isOwnBusinessInCustomerMode } from "@/src/state/slices/userSlice";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import {
@@ -255,6 +256,11 @@ export default function ProductDetailScreen() {
     if (quantity > stockCap) dispatch(setShopQuantity(stockCap));
   }, [dispatch, quantity, stockCap]);
 
+  // Customer mode: the server refuses buying from your own business
+  const isOwnProduct = useAppSelector((s) =>
+    isOwnBusinessInCustomerMode(s.user, product?.business_id),
+  );
+
   const header = (
     <FlowHeader
       title={t("shopFlowTitle")}
@@ -277,7 +283,7 @@ export default function ProductDetailScreen() {
 
   const outOfStock = product.trackInventory && product.inventoryCount <= 0;
   const takingOrders = !!product.delivery?.configured;
-  const canBuy = takingOrders && !outOfStock && !unavailable;
+  const canBuy = takingOrders && !outOfStock && !unavailable && !isOwnProduct;
   const lowStock =
     product.trackInventory &&
     product.inventoryCount > 0 &&
@@ -417,11 +423,13 @@ export default function ProductDetailScreen() {
 
       <FlowFooter
         primary={{
-          label: unavailable
-            ? t("productUnavailableTitle")
-            : outOfStock
-              ? t("outOfStock")
-              : t("shopNextDelivery"),
+          label: isOwnProduct
+            ? t("ownBusinessBlockedTitle")
+            : unavailable
+              ? t("productUnavailableTitle")
+              : outOfStock
+                ? t("outOfStock")
+                : t("shopNextDelivery"),
           disabled: !canBuy,
           trailingIcon: canBuy ? "chevron-right" : undefined,
           onPress: () => {
