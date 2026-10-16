@@ -2,7 +2,11 @@ import type { Router } from "expo-router";
 import { InteractionManager } from "react-native";
 import Logger from "@/src/services/logger";
 import { store } from "@/src/state/store";
-import { normalizeUserMode, type UserMode } from "@/src/state/slices/userSlice";
+import {
+  canUseModeSwitch,
+  normalizeUserMode,
+  type UserMode,
+} from "@/src/state/slices/userSlice";
 import { switchActiveMode } from "@/src/state/thunks/userModeThunks";
 import { resetToDashboardHome } from "@/src/utils/navigation";
 import { fetchProductById } from "@/src/services/productService";
@@ -329,12 +333,7 @@ export async function navigateFromPushNotification(
   const user = store.getState().user;
   const currentMode: UserMode = user.active_mode ?? "business";
 
-  if (
-    targetMode &&
-    targetMode !== currentMode &&
-    user.can_switch_mode &&
-    !user.isGuest
-  ) {
+  if (targetMode && targetMode !== currentMode && canUseModeSwitch(user)) {
     try {
       await store.dispatch(switchActiveMode(targetMode)).unwrap();
       Logger.log("------>navigateFromPushNotification switched mode", {

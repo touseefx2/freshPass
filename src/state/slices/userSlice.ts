@@ -248,6 +248,19 @@ export const isInCustomerMode = (user: UserState): boolean =>
   user.active_mode === "customer" && isModeSwitchableRole(getAccountRole(user));
 
 /**
+ * Whether the business ↔ customer switch is offered. A business owner needs
+ * finished onboarding first (a plan or Stripe Connect is not required).
+ * Switching back to business is always allowed.
+ */
+export const canUseModeSwitch = (user: UserState): boolean =>
+  user.can_switch_mode === true &&
+  !user.isGuest &&
+  !!user.accessToken &&
+  (isInCustomerMode(user) ||
+    getAccountRole(user) !== "business" ||
+    user.businessStatus?.onboarding_completed === true);
+
+/**
  * Businesses customer mode can't act on (book, review, follow, buy, tip).
  * Owner: their own business. Staff: the business they work at (`business_id`
  * is filled from the staff status call).

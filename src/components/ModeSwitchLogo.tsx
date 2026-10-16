@@ -5,6 +5,7 @@ import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { setModeSwitchModalVisible } from "@/src/state/slices/generalSlice";
+import { canUseModeSwitch } from "@/src/state/slices/userSlice";
 import { Theme } from "@/src/theme/colors";
 import { moderateWidthScale } from "@/src/theme/dimensions";
 
@@ -40,7 +41,7 @@ interface ModeSwitchLogoProps {
 }
 
 /**
- * Header logo. For Business/Staff accounts (`can_switch_mode`) it opens the
+ * Header logo. For Business/Staff accounts (`canUseModeSwitch`) it opens the
  * business ↔ customer mode switch; for everyone else it's just the logo.
  */
 export default function ModeSwitchLogo({
@@ -52,12 +53,7 @@ export default function ModeSwitchLogo({
   const styles = useMemo(() => createStyles(theme), [colors]);
   const { t } = useTranslation();
   const dispatch = useAppDispatch();
-  const canSwitch = useAppSelector(
-    (state) =>
-      state.user.can_switch_mode === true &&
-      !state.user.isGuest &&
-      !!state.user.accessToken,
-  );
+  const canSwitch = useAppSelector((state) => canUseModeSwitch(state.user));
   const isCustomerMode = useAppSelector(
     (state) => state.user.active_mode === "customer",
   );
