@@ -21,7 +21,11 @@ import {
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { useVideoPlayer, VideoView } from "expo-video";
 import { useTranslation } from "react-i18next";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import {
+  useFocusEffect,
+  useLocalSearchParams,
+  useRouter,
+} from "expo-router";
 import { useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { createStyles } from "./styles";
@@ -32,10 +36,13 @@ import { importVideoFromAi } from "@/src/services/mediaLibraryService";
 import {
   getGenerationStatus,
   getMyReel,
+  unpublishReel,
 } from "@/src/services/reelsService";
+import { canChangeReel } from "@/src/types/reels";
 import type {
   GenerationStatusResponse,
   OwnerReel,
+  ReelStatus,
   ReelVideo,
 } from "@/src/types/reels";
 import type { MediaVideo } from "@/src/types/media";
@@ -785,6 +792,14 @@ export default function AiResults() {
   const [editableCaption, setEditableCaption] = useState("");
   const [editableCompletePost, setEditableCompletePost] = useState("");
   const [publishingAsReel, setPublishingAsReel] = useState(false);
+  /** Draft / published state of the owner reel (reelId flow only) */
+  const [reelStatus, setReelStatus] = useState<ReelStatus | null>(null);
+  const [reelIsMine, setReelIsMine] = useState<boolean | undefined>(undefined);
+  const [unpublishing, setUnpublishing] = useState(false);
+  const userRole = useAppSelector((s: any) => s.user.userRole);
+  // Staff may only change reels they made (backend answers 403 otherwise)
+  const canChangeThisReel = canChangeReel({ is_mine: reelIsMine }, userRole);
+  const lastFetchKeyRef = useRef<string | null>(null);
 
   const [shareSheetVisible, setShareSheetVisible] = useState(false);
   const [shareContext, setShareContext] = useState<
@@ -945,6 +960,8 @@ export default function AiResults() {
             getGenerationStatus(id).catch(() => null),
           ]);
           setNormalized(normalizeShotstackReel(reel, gen));
+          setReelStatus(reel.status ?? null);
+          setReelIsMine(reel.is_mine);
           setError(null);
         } else if (jobId) {
           const result = await ApiService.get<AiRequestByJobIdResponse>(
@@ -971,9 +988,19 @@ export default function AiResults() {
     [jobId, reelId, t],
   );
 
-  useEffect(() => {
-    fetchStatus();
-  }, [fetchStatus]);
+  useFocusEffect(
+    useCallback(() => {
+      const key = `${jobId ?? ""}|${reelId ?? ""}`;
+      if (lastFetchKeyRef.current !== key) {
+        lastFetchKeyRef.current = key;
+        fetchStatus();
+        return;
+      }
+      // Back from Publish (or anywhere else): quietly reload so the reel's
+      // draft / published state is current
+      if (reelId) fetchStatus(true);
+    }, [fetchStatus, jobId, reelId]),
+  );
 
   useEffect(() => {
     if (
@@ -1065,6 +1092,38 @@ export default function AiResults() {
       setPublishingAsReel(false);
     }
   }, [jobId, reelId, publishingAsReel, router, showBanner, t]);
+
+  // Published: take the reel off FreshPass (same call as the media library)
+  const handleUnpublish = useCallback(async () => {
+    if (!reelId || unpublishing) return;
+    setUnpublishing(true);
+    try {
+      const updated = await unpublishReel(reelId);
+      setReelStatus(updated.status ?? "draft");
+      showBanner(t("success"), t("reelUnpublished"), "success", 2500);
+    } catch (error: any) {
+      showBanner(
+        t("error"),
+        error?.message || t("failedToUpdateReel"),
+        "error",
+        3000,
+      );
+    } finally {
+      setUnpublishing(false);
+    }
+  }, [reelId, unpublishing, showBanner, t]);
+
+  const confirmUnpublish = useCallback(() => {
+    if (unpublishing) return;
+    Alert.alert(t("autoReelUnpublishTitle"), t("autoReelUnpublishBody"), [
+      { text: t("cancel"), style: "cancel" },
+      {
+        text: t("unpublish"),
+        style: "destructive",
+        onPress: () => void handleUnpublish(),
+      },
+    ]);
+  }, [handleUnpublish, t, unpublishing]);
 
   const handleCopy = async (text: string) => {
     try {
@@ -1574,35 +1633,83 @@ export default function AiResults() {
                   </>
                 )}
               </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.publishReelChip}
-                onPress={handlePublishAsReel}
-                disabled={publishingAsReel}
-                activeOpacity={0.7}
-                accessibilityRole="button"
-                accessibilityLabel={t("publishAsReel")}
-              >
-                {publishingAsReel ? (
-                  <ActivityIndicator
-                    size="small"
-                    color={theme.buttonBack}
-                  />
-                ) : (
-                  <>
-                    <MaterialIcons
-                      name="video-library"
-                      size={moderateWidthScale(16)}
+              {reelStatus === "published" && canChangeThisReel ? (
+                <TouchableOpacity
+                  style={styles.publishedReelChip}
+                  onPress={confirmUnpublish}
+                  disabled={unpublishing}
+                  activeOpacity={0.7}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${t("published")}. ${t("unpublish")}`}
+                  accessibilityState={{ busy: unpublishing }}
+                >
+                  {unpublishing ? (
+                    <ActivityIndicator
+                      size="small"
                       color={theme.buttonBack}
                     />
-                    <Text
-                      style={styles.publishReelChipText}
-                      numberOfLines={1}
-                    >
-                      {t("publishReel")}
-                    </Text>
-                  </>
-                )}
-              </TouchableOpacity>
+                  ) : (
+                    <>
+                      <MaterialIcons
+                        name="unpublished"
+                        size={moderateWidthScale(16)}
+                        color={theme.buttonBack}
+                      />
+                      <Text
+                        style={styles.publishReelChipText}
+                        numberOfLines={1}
+                      >
+                        {t("unpublish")}
+                      </Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              ) : reelStatus === "published" ? (
+                <View
+                  style={styles.publishedReelChip}
+                  accessibilityRole="text"
+                  accessibilityLabel={t("published")}
+                >
+                  <MaterialIcons
+                    name="check-circle"
+                    size={moderateWidthScale(16)}
+                    color={theme.buttonBack}
+                  />
+                  <Text style={styles.publishReelChipText} numberOfLines={1}>
+                    {t("published")}
+                  </Text>
+                </View>
+              ) : (
+                <TouchableOpacity
+                  style={styles.publishReelChip}
+                  onPress={handlePublishAsReel}
+                  disabled={publishingAsReel}
+                  activeOpacity={0.7}
+                  accessibilityRole="button"
+                  accessibilityLabel={t("publishAsReel")}
+                >
+                  {publishingAsReel ? (
+                    <ActivityIndicator
+                      size="small"
+                      color={theme.buttonBack}
+                    />
+                  ) : (
+                    <>
+                      <MaterialIcons
+                        name="video-library"
+                        size={moderateWidthScale(16)}
+                        color={theme.buttonBack}
+                      />
+                      <Text
+                        style={styles.publishReelChipText}
+                        numberOfLines={1}
+                      >
+                        {t("publishReel")}
+                      </Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              )}
               <TouchableOpacity
                 style={styles.reelShareIconButton}
                 onPress={() =>
