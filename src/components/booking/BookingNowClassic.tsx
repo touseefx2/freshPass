@@ -1,0 +1,3986 @@
+/**
+ * Original single-page booking screen (before the step flow, 2026-10-16).
+ * Not used. To switch back, make app/(main)/bookingNow/index.tsx:
+ *   export { default } from "@/src/components/booking/BookingNowClassic";
+ */
+import { useOwnBusinessGuard } from "@/src/hooks/useOwnBusinessGuard";
+import React, {
+  useMemo,
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+} from "react";
+import {
+  StyleSheet,
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  Image,
+  StatusBar,
+  ActivityIndicator,
+  TextInput,
+  Pressable,
+  Linking,
+  Dimensions,
+  Modal,
+  Platform,
+} from "react-native";
+import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
+import { useTheme, useAppSelector, useAppDispatch } from "@/src/hooks/hooks";
+import { useTranslation } from "react-i18next";
+import {
+  formatCustomerScheduleDate,
+  getCustomerScheduleDateLabel,
+  getCustomerSubscriptionDateDisplay,
+  getCustomerSubscriptionDisplayPrice,
+  getCustomerSubscriptionPill,
+} from "@/src/utils/customerSubscriptionLifecycle";
+import {
+  setSelectedServices,
+  setSelectedStaff,
+  setSelectedDate,
+  setSelectedTimeSlot,
+  setAssignedStaffId,
+  setSelectedPaymentMethod,
+  setSelectedNote,
+  resetBusiness,
+  setBusinessData as setBusinessDataAction,
+  type StaffMember,
+  type BusinessHours,
+} from "@/src/state/slices/bsnsSlice";
+import {
+  setBookingTryOnImageUrls,
+  clearBookingTryOnImageUrls,
+  setBookingTryOnPreselectedUrls,
+} from "@/src/state/slices/generalSlice";
+import { ApiService } from "@/src/services/api";
+import Logger from "@/src/services/logger";
+import { reportReelEvent } from "@/src/services/reelsService";
+import {
+  businessEndpoints,
+  appointmentsEndpoints,
+  type AvailableSlot,
+  resolveAppointmentStaffId,
+} from "@/src/services/endpoints";
+import { assignAnyoneStaff } from "@/src/services/anyoneStaffService";
+import { useNotificationContext } from "@/src/contexts/NotificationContext";
+import { Theme } from "@/src/theme/colors";
+import { fontSize, fonts } from "@/src/theme/fonts";
+import {
+  heightScale,
+  moderateWidthScale,
+  moderateHeightScale,
+  widthScale,
+} from "@/src/theme/dimensions";
+import { SvgXml } from "react-native-svg";
+import {
+  LeafLogo,
+  SearchIcon,
+  MorningIcon,
+  EveningIcon,
+  NightIcon,
+  CloseIcon,
+} from "@/assets/icons";
+import Button from "@/src/components/button";
+import FloatingInput from "@/src/components/floatingInput";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { MaterialIcons, Octicons } from "@expo/vector-icons";
+import { Feather } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
+import Animated, {
+  interpolate,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from "react-native-reanimated";
+import AddServiceBottomSheet from "@/src/components/AddServiceBottomSheet";
+import OutcomeConfirmSheet from "@/src/components/OutcomeConfirmSheet";
+import ImagePickerModal from "@/src/components/imagePickerModal";
+import { IMAGES } from "@/src/constant/images";
+import dayjs from "dayjs";
+import weekOfYear from "dayjs/plugin/weekOfYear";
+import isoWeek from "dayjs/plugin/isoWeek";
+import {
+  getDefaultAvatarImage,
+} from "@/src/services/remoteConfigService";
+
+dayjs.extend(weekOfYear);
+dayjs.extend(isoWeek);
+
+const STAFF_CARD_WIDTH = widthScale(140);
+const STAFF_CARD_HEIGHT = heightScale(168);
+const STAFF_CARD_GAP = moderateWidthScale(14);
+const STAFF_LIST_PADDING = moderateWidthScale(20);
+
+type StaffCarouselItem = {
+  id: string;
+  name: string;
+  experience: string | number | null;
+  image: string | null;
+  active: boolean | null | undefined;
+  is_owner: boolean;
+};
+
+const getWeekDays = (date: dayjs.Dayjs) => {
+  const startOfWeek = date.startOf("week");
+  return Array.from({ length: 7 }).map((_, i) => startOfWeek.add(i, "day"));
+};
+
+const formatWeekRange = (week: dayjs.Dayjs[]) => {
+  if (week.length === 0) return "";
+  const start = week[0];
+  const end = week[6];
+  return `${start.format("MMM D")} - ${end.format("MMM D, YYYY")}`;
+};
+
+const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+const allTimeSlots = [
+  "08:00",
+  "08:30",
+  "09:00",
+  "09:30",
+  "10:00",
+  "10:30",
+  "11:00",
+  "11:30",
+  "12:00",
+  "12:30",
+  "13:00",
+  "13:30",
+  "14:00",
+  "14:30",
+  "15:00",
+  "15:30",
+  "16:00",
+  "16:30",
+  "17:00",
+  "17:30",
+  "18:00",
+  "18:30",
+  "19:00",
+  "19:30",
+  "20:00",
+  "20:30",
+  "21:00",
+  "21:30",
+  "22:00",
+];
+
+const isValidTimeSlot = (slot: unknown): slot is string =>
+  typeof slot === "string" && /^\d{1,2}:\d{2}/.test(slot);
+
+const convertTo12Hour = (time24: string): string => {
+  if (!isValidTimeSlot(time24)) return "";
+  const [hours, minutes] = time24.split(":").map(Number);
+  const hour12 =
+    hours === 0 ? 12 : hours > 12 ? hours - 12 : hours === 12 ? 12 : hours;
+  const ampm = hours < 12 ? "AM" : "PM";
+  return `${hour12}:${minutes.toString().padStart(2, "0")} ${ampm}`;
+};
+
+type TimeSlotCategory = "morning" | "afternoon" | "evening" | "night";
+
+const TIME_SLOT_CATEGORIES: TimeSlotCategory[] = [
+  "morning",
+  "afternoon",
+  "evening",
+  "night",
+];
+
+const SLOT_MINUTE_OPTIONS = [5, 15, 30, 45] as const;
+type SlotMinutes = (typeof SLOT_MINUTE_OPTIONS)[number];
+const DEFAULT_SLOT_MINUTES: SlotMinutes = 30;
+
+const getSlotHour = (slot: string): number => {
+  if (!isValidTimeSlot(slot)) return 0;
+  return Number(slot.split(":")[0] ?? 0);
+};
+
+const sortTimeSlots = (slots: string[]): string[] =>
+  [...slots].filter(isValidTimeSlot).sort((a, b) => {
+    const [ah, am] = a.split(":").map(Number);
+    const [bh, bm] = b.split(":").map(Number);
+    return ah * 60 + am - (bh * 60 + bm);
+  });
+
+/** Normalize available-slots API payloads (string | start | start_time). */
+const normalizeAvailableSlots = (raw: unknown): AvailableSlot[] => {
+  if (!Array.isArray(raw)) return [];
+  const slots: AvailableSlot[] = [];
+  for (const item of raw) {
+    if (typeof item === "string" && isValidTimeSlot(item)) {
+      slots.push({ start: item, end: item });
+      continue;
+    }
+    if (!item || typeof item !== "object") continue;
+    const row = item as Record<string, unknown>;
+    const startRaw = row.start ?? row.start_time;
+    const endRaw = row.end ?? row.end_time ?? startRaw;
+    if (!isValidTimeSlot(startRaw)) continue;
+    const availableStaff = Array.isArray(row.available_staff)
+      ? (row.available_staff as AvailableSlot["available_staff"])
+      : Array.isArray(row.availableStaff)
+        ? (row.availableStaff as AvailableSlot["available_staff"])
+        : undefined;
+    slots.push({
+      start: startRaw,
+      end: isValidTimeSlot(endRaw) ? endRaw : startRaw,
+      available_staff: availableStaff,
+    });
+  }
+  return slots;
+};
+
+const resolveRouteParam = (
+  value: string | string[] | undefined | null,
+): string => {
+  if (Array.isArray(value)) return value[0] ?? "";
+  return value ?? "";
+};
+
+const resolveBusinessIdParam = (
+  ...candidates: Array<string | number | null | undefined>
+): string => {
+  for (const candidate of candidates) {
+    if (candidate == null || candidate === "") continue;
+    const raw = String(candidate).trim();
+    if (!raw || raw === "null" || raw === "undefined" || raw === "NaN") {
+      continue;
+    }
+    const numeric = Number(raw);
+    if (!Number.isFinite(numeric) || numeric <= 0) continue;
+    return String(Math.trunc(numeric));
+  }
+  return "";
+};
+
+/** Canonical section for a slot hour (null = before morning, e.g. 12 AM – 4:59 AM). */
+const getSlotCategoryFromHour = (
+  hours: number,
+): TimeSlotCategory | null => {
+  if (hours >= 5 && hours < 12) return "morning";
+  if (hours >= 12 && hours < 17) return "afternoon";
+  if (hours >= 17 && hours < 20) return "evening";
+  if (hours >= 20) return "night";
+  return null;
+};
+
+/** Tab highlight while scrolling — early-day slots map to Morning. */
+const getSlotCategory = (slot: string): TimeSlotCategory => {
+  const category = getSlotCategoryFromHour(getSlotHour(slot));
+  return category ?? "morning";
+};
+
+const slotBelongsToCategory = (
+  slot: string,
+  category: TimeSlotCategory,
+): boolean => getSlotCategoryFromHour(getSlotHour(slot)) === category;
+
+/** First scroll index for a tab — first slot that belongs to that section in the list. */
+const getCategoryStartIndex = (
+  slots: string[],
+  category: TimeSlotCategory,
+): number => {
+  if (category === "morning") {
+    // Includes early-day slots (12 AM – 4:59 AM) and 5 AM – 11:59 AM
+    return slots.findIndex((slot) => getSlotCategory(slot) === "morning");
+  }
+  return slots.findIndex((slot) => slotBelongsToCategory(slot, category));
+};
+
+const categoryHasSlots = (
+  slots: string[],
+  category: TimeSlotCategory,
+): boolean => getCategoryStartIndex(slots, category) >= 0;
+
+// Back Arrow Icon SVG
+const backArrowIconSvg = `
+<svg width="{{WIDTH}}" height="{{HEIGHT}}" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M20 11H7.83L13.42 5.41L12 4L4 12L12 20L13.41 18.59L7.83 13H20V11Z" fill="{{COLOR}}"/>
+</svg>
+`;
+
+const BackArrowIcon = ({ width = 24, height = 24, color = "#FFFFFF" }) => {
+  const svgXml = backArrowIconSvg
+    .replace(/{{WIDTH}}/g, width.toString())
+    .replace(/{{HEIGHT}}/g, height.toString())
+    .replace(/{{COLOR}}/g, color);
+  return <SvgXml xml={svgXml} />;
+};
+
+interface Service {
+  id: number;
+  name: string;
+  description: string;
+  price: number;
+  originalPrice: number;
+  duration: string;
+  label?: string | null;
+}
+
+interface SubscriptionPlanService {
+  id: number;
+  name: string;
+  price: string;
+  description: string | null;
+  durationHours: number;
+  durationMinutes: number;
+  quantity?: number;
+}
+
+interface SubscriptionData {
+  id: number;
+  subscriptionPlanId: number;
+  subscriptionPlan: string;
+  subscriptionPlanPrice: string;
+  totalPrice?: number;
+  subscriptionPlanServices?: SubscriptionPlanService[];
+  subscriptionPlanType: string;
+  subscriptionPlanDescription: string;
+  userId: number;
+  user: string;
+  businessId: number;
+  business: string;
+  subscriber: string;
+  status: string;
+  stripeStatus?: string | null;
+  hasAccess?: boolean;
+  hasEnded?: boolean;
+  endsAt?: string | null;
+  paymentDate: string | null;
+  nextPaymentDate: string | null;
+  remainingDays: number | null;
+  stripePaymentIntentId: string | null;
+  stripePaymentUrl: string;
+  cardLastFour: string | null;
+  createdAt: string;
+  deleted_at: string | null;
+  appointments: any[];
+}
+
+const createStyles = (theme: Theme) => {
+  const { width: screenWidth } = Dimensions.get("window");
+  const tryOnPaddingH = moderateWidthScale(20);
+  const tryOnGap = moderateWidthScale(12);
+  const tryOnNumCols = 4;
+  const tryOnBoxSize = Math.floor(
+    (screenWidth - tryOnPaddingH * 2 - tryOnGap * (tryOnNumCols - 1)) /
+      tryOnNumCols,
+  );
+
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: theme.background,
+    },
+    header: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      paddingHorizontal: moderateWidthScale(20),
+    },
+    headerLeft: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(8),
+    },
+    backButton: {
+      width: widthScale(32),
+      height: heightScale(32),
+      borderRadius: moderateWidthScale(8),
+      backgroundColor: "rgba(255, 255, 255, 0.2)",
+      alignItems: "center",
+      justifyContent: "center",
+      marginRight: moderateWidthScale(8),
+    },
+    logoContainer: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(4),
+    },
+    logoText: {
+      fontSize: fontSize.size18,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    line: {
+      width: "100%",
+      height: 1.1,
+      backgroundColor: theme.borderLight,
+      marginTop: moderateHeightScale(12),
+    },
+    attachmentRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginTop: moderateHeightScale(16),
+      marginBottom: moderateHeightScale(4),
+      paddingHorizontal: moderateWidthScale(20),
+    },
+    hairIconsRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(12),
+    },
+    hairIconBox: {},
+    attachmentButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(8),
+      paddingVertical: moderateHeightScale(8),
+      paddingHorizontal: moderateWidthScale(12),
+    },
+    attachmentLabel: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontMedium,
+      color: theme.lightGreen,
+    },
+    scrollContent: {},
+    title: {
+      fontSize: fontSize.size24,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+      marginBottom: moderateHeightScale(24),
+    },
+    serviceCard: {
+      backgroundColor: theme.white,
+      borderRadius: moderateWidthScale(12),
+      padding: moderateWidthScale(16),
+      borderBottomWidth: 1,
+      borderColor: theme.borderLight,
+    },
+    serviceHeader: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "flex-start",
+      marginBottom: moderateHeightScale(12),
+    },
+    serviceName: {
+      flex: 1,
+      fontSize: fontSize.size16,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+      maxWidth: "80%",
+    },
+    deleteButton: {},
+    priceContainer: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(8),
+    },
+    originalPrice: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontMedium,
+      color: theme.lightGreen4,
+      textDecorationLine: "line-through",
+    },
+    currentPrice: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
+    },
+    descriptionText: {
+      flex: 1,
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontRegular,
+      color: theme.darkGreen,
+    },
+    addServiceSection: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: moderateHeightScale(20),
+      paddingHorizontal: moderateWidthScale(20),
+      backgroundColor: theme.orangeBrown30,
+      paddingVertical: moderateHeightScale(12),
+    },
+    addServiceText: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
+    },
+    addServiceButton: {
+      width: widthScale(22),
+      height: heightScale(22),
+      borderRadius: 4,
+      alignItems: "center",
+      justifyContent: "center",
+      borderWidth: 1.5,
+      borderColor: theme.selectCard,
+    },
+    staffSection: {
+      paddingTop: moderateHeightScale(4),
+    },
+    staffSearchContainer: {
+      paddingHorizontal: moderateWidthScale(20),
+      marginBottom: moderateHeightScale(16),
+      marginTop: moderateHeightScale(2),
+    },
+    staffSearchInput: {
+      backgroundColor: theme.white,
+      borderRadius: moderateWidthScale(12),
+    },
+    staffTitle: {
+      fontSize: fontSize.size18,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+      marginBottom: moderateHeightScale(12),
+      paddingHorizontal: moderateWidthScale(20),
+    },
+    staffList: {
+      flexDirection: "row",
+      gap: STAFF_CARD_GAP,
+      paddingHorizontal: STAFF_LIST_PADDING,
+      paddingBottom: moderateHeightScale(10),
+      paddingTop: moderateHeightScale(4),
+    },
+    staffCardWrap: {
+      width: STAFF_CARD_WIDTH,
+    },
+    staffCardShell: {
+      width: STAFF_CARD_WIDTH,
+      borderRadius: moderateWidthScale(14),
+      backgroundColor:
+        Platform.OS === "android" ? theme.lightGreen05 : theme.lightGreen1,
+      paddingBottom:
+        Platform.OS === "android"
+          ? moderateHeightScale(2)
+          : moderateHeightScale(3),
+    },
+    staffCard: {
+      width: STAFF_CARD_WIDTH,
+      height: STAFF_CARD_HEIGHT,
+      backgroundColor: theme.emptyProfileImage,
+      borderRadius: moderateWidthScale(14),
+      overflow: "hidden",
+      borderWidth: 1.5,
+      borderColor: theme.borderLight,
+      position: "relative",
+    },
+    staffCardShadow: {
+      ...Platform.select({
+        ios: {
+          shadowColor: theme.shadow,
+          shadowOffset: {
+            width: 0,
+            height: moderateHeightScale(2),
+          },
+          shadowOpacity: 0.1,
+          shadowRadius: moderateWidthScale(3),
+        },
+        android: {
+          elevation: 1,
+          shadowColor: theme.lightGreen2,
+        },
+        default: {
+          shadowColor: theme.shadow,
+          shadowOffset: {
+            width: 0,
+            height: moderateHeightScale(2),
+          },
+          shadowOpacity: 0.1,
+          shadowRadius: moderateWidthScale(3),
+        },
+      }),
+    },
+    shadow: {
+      shadowColor: theme.shadow,
+      shadowOffset: {
+        width: 0,
+        height: 3,
+      },
+      shadowOpacity: 0.1,
+      shadowRadius: 6,
+      elevation: 3,
+    },
+    staffCardSelected: {
+      borderColor: theme.orangeBrown,
+      borderWidth: 2,
+    },
+    staffCardSelectedShadow: {
+      ...Platform.select({
+        ios: {
+          shadowColor: theme.orangeBrown,
+          shadowOffset: {
+            width: 0,
+            height: moderateHeightScale(4),
+          },
+          shadowOpacity: 0.28,
+          shadowRadius: moderateWidthScale(8),
+        },
+        android: {
+          elevation: 4,
+          shadowColor: theme.orangeBrown,
+        },
+        default: {
+          shadowColor: theme.orangeBrown,
+          shadowOffset: {
+            width: 0,
+            height: moderateHeightScale(4),
+          },
+          shadowOpacity: 0.28,
+          shadowRadius: moderateWidthScale(8),
+        },
+      }),
+    },
+    staffImage: {
+      ...StyleSheet.absoluteFillObject,
+      width: "100%",
+      height: "100%",
+      backgroundColor: theme.emptyProfileImage,
+    },
+    staffRadio: {
+      position: "absolute",
+      top: moderateHeightScale(8),
+      right: moderateWidthScale(8),
+      width: moderateWidthScale(20),
+      height: moderateWidthScale(20),
+      borderRadius: moderateWidthScale(10),
+      borderWidth: 2,
+      borderColor: theme.white,
+      backgroundColor: theme.lightGreen22,
+      alignItems: "center",
+      justifyContent: "center",
+      zIndex: 2,
+    },
+    staffRadioSelected: {
+      borderColor: theme.orangeBrown,
+      backgroundColor: theme.white,
+    },
+    staffRadioInner: {
+      width: moderateWidthScale(10),
+      height: moderateWidthScale(10),
+      borderRadius: moderateWidthScale(5),
+      backgroundColor: theme.orangeBrown,
+    },
+    staffInfoStrip: {
+      position: "absolute",
+      left: 0,
+      right: 0,
+      bottom: 0,
+      paddingHorizontal: moderateWidthScale(10),
+      paddingTop: moderateHeightScale(52),
+      paddingBottom: moderateHeightScale(10),
+      justifyContent: "flex-end",
+      gap: moderateHeightScale(2),
+    },
+    staffNameRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(4),
+      width: "100%",
+    },
+    staffName: {
+      flexShrink: 1,
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontBold,
+      color: theme.white,
+      textTransform: "capitalize",
+      textShadowColor: theme.black,
+      textShadowOffset: { width: 0, height: 1 },
+      textShadowRadius: 6,
+    },
+    staffNameAnyone: {
+      flexShrink: 1,
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontBold,
+      color: theme.white,
+      textTransform: "none",
+      textShadowColor: theme.black,
+      textShadowOffset: { width: 0, height: 1 },
+      textShadowRadius: 6,
+    },
+    staffAnyoneInfoButton: {
+      width: moderateWidthScale(16),
+      height: moderateWidthScale(16),
+      borderRadius: moderateWidthScale(8),
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    staffExperience: {
+      fontSize: fontSize.size11,
+      fontFamily: fonts.fontRegular,
+      color: theme.white,
+      width: "100%",
+      textShadowColor: theme.black,
+      textShadowOffset: { width: 0, height: 1 },
+      textShadowRadius: 6,
+    },
+    staffEmptyText: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+      paddingHorizontal: moderateWidthScale(20),
+      paddingVertical: moderateHeightScale(8),
+    },
+    anyoneHintOverlay: {
+      flex: 1,
+      backgroundColor: theme.lightGreen22,
+      justifyContent: "center",
+      alignItems: "center",
+      paddingHorizontal: moderateWidthScale(28),
+    },
+    anyoneHintBubble: {
+      backgroundColor: theme.white,
+      borderRadius: moderateWidthScale(14),
+      paddingVertical: moderateHeightScale(16),
+      paddingHorizontal: moderateWidthScale(16),
+      paddingRight: moderateWidthScale(36),
+      borderWidth: 1,
+      borderColor: theme.borderLight,
+      maxWidth: widthScale(320),
+      shadowColor: theme.shadow,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.18,
+      shadowRadius: 8,
+      elevation: 8,
+    },
+    anyoneHintText: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontRegular,
+      color: theme.darkGreen,
+      lineHeight: moderateHeightScale(20),
+    },
+    anyoneHintClose: {
+      position: "absolute",
+      top: moderateHeightScale(8),
+      right: moderateWidthScale(8),
+      padding: moderateWidthScale(4),
+    },
+    section: {
+      marginTop: moderateHeightScale(16),
+    },
+    sectionHeaderRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: moderateHeightScale(20),
+      paddingHorizontal: moderateWidthScale(20),
+      gap: moderateWidthScale(12),
+    },
+    sectionTitle: {
+      fontSize: fontSize.size16,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+      marginBottom: moderateHeightScale(20),
+      paddingHorizontal: moderateWidthScale(20),
+    },
+    availabilityTitle: {
+      fontSize: fontSize.size16,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+      flexShrink: 1,
+    },
+    slotMinutesSelector: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: theme.background,
+      borderRadius: moderateWidthScale(20),
+      padding: moderateWidthScale(3),
+      gap: moderateWidthScale(2),
+      shadowColor: theme.shadow,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.12,
+      shadowRadius: 4,
+      elevation: 3,
+    },
+    slotMinutesOption: {
+      minWidth: widthScale(32),
+      paddingHorizontal: moderateWidthScale(8),
+      paddingVertical: moderateHeightScale(5),
+      borderRadius: moderateWidthScale(16),
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    slotMinutesOptionSelected: {
+      backgroundColor: theme.orangeBrown30,
+    },
+    slotMinutesOptionText: {
+      fontSize: fontSize.size11,
+      fontFamily: fonts.fontMedium,
+      color: theme.lightGreen,
+    },
+    slotMinutesOptionTextSelected: {
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    slotMinutesUnit: {
+      fontSize: fontSize.size10,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+      marginLeft: moderateWidthScale(4),
+      marginRight: moderateWidthScale(4),
+    },
+    sectionTitleTryon: {
+      fontSize: fontSize.size16,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    sectionSubTitleTryon: {
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+    },
+    tryOnImagesRow: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      alignItems: "center",
+      gap: moderateWidthScale(12),
+      marginTop: moderateHeightScale(12),
+      paddingHorizontal: moderateWidthScale(20),
+      paddingBottom: moderateHeightScale(8),
+    },
+    tryOnImageBox: {
+      width: tryOnBoxSize,
+      height: tryOnBoxSize,
+      borderRadius: moderateWidthScale(8),
+      overflow: "hidden",
+      backgroundColor: theme.borderLight,
+      borderWidth: 1,
+      borderColor: theme.borderLine,
+      position: "relative",
+    },
+    tryOnImageThumb: {
+      width: "100%",
+      height: "100%",
+    },
+    tryOnImageRemoveBtn: {
+      position: "absolute",
+      top: moderateWidthScale(2),
+      right: moderateWidthScale(2),
+      width: moderateWidthScale(22),
+      height: moderateWidthScale(22),
+      borderRadius: moderateWidthScale(11),
+      backgroundColor: "rgba(0,0,0,0.6)",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    tryOnPlusBox: {
+      width: tryOnBoxSize,
+      height: tryOnBoxSize,
+      borderRadius: moderateWidthScale(8),
+      borderWidth: 2,
+      borderStyle: "dashed",
+      borderColor: theme.lightGreen2,
+      backgroundColor: theme.lightGreen015,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    paymentCard: {
+      backgroundColor: theme.white,
+      borderRadius: moderateWidthScale(8),
+      marginHorizontal: moderateWidthScale(20),
+      overflow: "hidden",
+      marginBottom: moderateHeightScale(12),
+    },
+    paymentOption: {
+      flexDirection: "row",
+      alignItems: "center",
+      padding: moderateWidthScale(12),
+    },
+    paymentDivider: {
+      height: 1,
+      backgroundColor: theme.borderLight,
+    },
+    paymentRadioButton: {
+      width: moderateWidthScale(20),
+      height: moderateWidthScale(20),
+      borderRadius: moderateWidthScale(10),
+      borderWidth: 2,
+      borderColor: theme.darkGreen,
+      alignItems: "center",
+      justifyContent: "center",
+      marginRight: moderateWidthScale(12),
+      marginTop: moderateHeightScale(2),
+    },
+    paymentRadioButtonSelected: {},
+    paymentRadioButtonInner: {
+      width: moderateWidthScale(10),
+      height: moderateWidthScale(10),
+      borderRadius: moderateWidthScale(5),
+      backgroundColor: theme.orangeBrown,
+    },
+    paymentOptionContent: {
+      flex: 1,
+    },
+    paymentOptionTitle: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
+      marginBottom: moderateHeightScale(3),
+    },
+    paymentOptionDescription: {
+      fontSize: fontSize.size11,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+    },
+    privacyText: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+      lineHeight: moderateHeightScale(16),
+      marginHorizontal: moderateWidthScale(20),
+    },
+    privacyLink: {
+      color: theme.primary,
+      fontFamily: fonts.fontMedium,
+    },
+    noteInputContainer: {
+      marginTop: moderateHeightScale(16),
+      marginBottom: moderateHeightScale(20),
+      marginHorizontal: moderateWidthScale(20),
+      position: "relative",
+    },
+    noteInput: {
+      borderRadius: moderateWidthScale(12),
+      borderWidth: 1,
+      borderColor: theme.lightGreen2,
+      backgroundColor: theme.white,
+      paddingHorizontal: moderateWidthScale(16),
+      paddingVertical: moderateHeightScale(12),
+      paddingRight: moderateWidthScale(40),
+      fontSize: fontSize.size15,
+      fontFamily: fonts.fontRegular,
+      color: theme.darkGreen,
+      minHeight: heightScale(100),
+      textAlignVertical: "top",
+    },
+    noteInputIcon: {
+      position: "absolute",
+      left: moderateWidthScale(16),
+      top: moderateHeightScale(12),
+      zIndex: 1,
+    },
+    noteInputWithIcon: {
+      paddingLeft: moderateWidthScale(48),
+    },
+    noteClearButton: {
+      position: "absolute",
+      top: moderateHeightScale(12),
+      right: moderateWidthScale(12),
+      zIndex: 1,
+    },
+    weekNavigation: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: moderateHeightScale(16),
+      paddingHorizontal: moderateWidthScale(20),
+    },
+    weekNavigationButton: {
+      width: moderateWidthScale(32),
+      height: moderateWidthScale(40),
+      borderRadius: moderateWidthScale(6),
+      alignItems: "center",
+      justifyContent: "center",
+      borderWidth: 1,
+      borderColor: theme.borderLight,
+    },
+    weekRangeText: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
+    },
+    calendarGrid: {
+      marginBottom: moderateHeightScale(16),
+      paddingHorizontal: moderateWidthScale(20),
+    },
+    daysHeader: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      marginBottom: moderateHeightScale(12),
+    },
+    dayHeader: {
+      flex: 1,
+      alignItems: "center",
+    },
+    dayHeaderText: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
+    },
+    daysRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+    },
+    dayContainer: {
+      flex: 1,
+      alignItems: "center",
+    },
+    dayNumberContainer: {
+      width: widthScale(35),
+      height: widthScale(35),
+      borderRadius: widthScale(35 / 2),
+      alignItems: "center",
+      justifyContent: "center",
+      borderWidth: 1,
+      borderColor: "transparent",
+    },
+    dayNumberSelected: {
+      backgroundColor: theme.orangeBrown30,
+      borderColor: theme.selectCard,
+    },
+    dayNumber: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
+    },
+    dayNumberSelectedText: {
+      color: theme.darkGreen,
+    },
+    dayNumberDisabled: {
+      opacity: 0.3,
+    },
+    dayNumberDisabledText: {
+      color: theme.lightGreen,
+    },
+    timezoneText: {
+      fontSize: fontSize.size11,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+      marginBottom: moderateHeightScale(5),
+      paddingHorizontal: moderateWidthScale(20),
+    },
+    timeSlotSection: {
+      marginTop: moderateHeightScale(16),
+    },
+    timeSlotCategoryRow: {
+      flexDirection: "row",
+      paddingHorizontal: moderateWidthScale(20),
+      marginBottom: moderateHeightScale(16),
+      borderBottomWidth: 1,
+      borderBottomColor: theme.lightGreen2,
+    },
+    timeSlotCategoryButton: {
+      flex: 1,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      paddingVertical: moderateHeightScale(12),
+      position: "relative",
+    },
+    timeSlotCategoryButtonDisabled: {
+      opacity: 0.4,
+    },
+    timeSlotCategoryUnderline: {
+      position: "absolute",
+      bottom: -1,
+      left: 0,
+      right: 0,
+      height: 2,
+      backgroundColor: theme.orangeBrown,
+    },
+    timeSlotCategoryIcon: {
+      marginRight: moderateWidthScale(6),
+    },
+    timeSlotCategoryText: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontBold,
+      color: theme.lightGreen,
+    },
+    timeSlotCategoryTextSelected: {
+      color: theme.darkGreen,
+    },
+    timeSlotsContainer: {
+      marginBottom: moderateHeightScale(5),
+    },
+    timeSlotsContentContainer: {
+      marginBottom: moderateHeightScale(16),
+      paddingHorizontal: moderateWidthScale(20),
+      gap: moderateWidthScale(12),
+    },
+    timeSlotButton: {
+      width: widthScale(90),
+      paddingVertical: moderateHeightScale(10),
+      borderRadius: moderateWidthScale(6),
+      borderWidth: 1,
+      borderColor: theme.lightGreen2,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    timeSlotButtonSelected: {
+      backgroundColor: theme.darkGreenLight,
+      borderColor: theme.darkGreen,
+    },
+    timeSlotButtonDisabled: {
+      opacity: 0.4,
+      backgroundColor: theme.background,
+    },
+    timeSlotSkeleton: {
+      width: widthScale(90),
+      paddingVertical: moderateHeightScale(10),
+      borderRadius: moderateWidthScale(6),
+      borderWidth: 1,
+      borderColor: theme.borderLight,
+      backgroundColor: theme.orangeBrown015,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    timeSlotText: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    timeSlotTextSelected: {
+      color: theme.white,
+    },
+    timeSlotTextDisabled: {
+      color: theme.lightGreen,
+    },
+    noSlotsContainer: {
+      paddingVertical: moderateHeightScale(20),
+      paddingHorizontal: moderateWidthScale(20),
+      alignItems: "center",
+    },
+    noSlotsText: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+      textAlign: "center",
+    },
+    slotsErrorTitle: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontBold,
+      color: theme.red,
+      textAlign: "center",
+      marginBottom: moderateHeightScale(8),
+      maxWidth: widthScale(260),
+    },
+    slotsErrorReason: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontRegular,
+      color: theme.darkGreen,
+      textAlign: "center",
+      maxWidth: widthScale(300),
+    },
+    slotsErrorButton: {
+      marginTop: moderateHeightScale(14),
+      width: widthScale(116),
+      height: heightScale(42),
+    },
+    priceBreakdown: {
+      padding: moderateWidthScale(20),
+    },
+    priceRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: moderateHeightScale(12),
+    },
+    priceRowLast: {
+      marginBottom: 0,
+    },
+    priceLabel: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontRegular,
+      color: theme.darkGreen,
+    },
+    priceValue: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
+    },
+    bottom: {
+      backgroundColor: theme.white,
+      paddingHorizontal: moderateWidthScale(20),
+      gap: moderateHeightScale(16),
+      paddingVertical: moderateHeightScale(12),
+      borderColor: theme.borderLight,
+      borderTopWidth: 1,
+    },
+    totalSection: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+    },
+    totalLabel: {
+      fontSize: fontSize.size16,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    totalValue: {
+      fontSize: fontSize.size16,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
+    },
+    // Subscription Card (when isSubscriptionBooking)
+    subscriptionCard: {
+      marginHorizontal: moderateWidthScale(20),
+      marginTop: moderateHeightScale(16),
+      marginBottom: moderateHeightScale(12),
+      borderRadius: moderateWidthScale(16),
+      backgroundColor: theme.background,
+      padding: moderateWidthScale(16),
+      borderWidth: 1,
+      borderColor: theme.borderLight,
+      shadowColor: theme.shadow,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+      elevation: 3,
+    },
+    cardHeader: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "flex-start",
+      marginBottom: moderateHeightScale(10),
+    },
+    planTitleRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      flex: 1,
+      marginRight: moderateWidthScale(8),
+    },
+    starIcon: {
+      marginRight: moderateWidthScale(6),
+    },
+    planTitle: {
+      fontSize: fontSize.size20,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+      textTransform: "capitalize",
+      flex: 1,
+    },
+    statusBadge: {
+      paddingHorizontal: moderateWidthScale(12),
+      paddingVertical: moderateHeightScale(4),
+      borderRadius: moderateWidthScale(20),
+      backgroundColor: theme.orangeBrown015,
+      borderWidth: 1,
+      borderColor: theme.orangeBrown,
+    },
+    statusText: {
+      fontSize: fontSize.size11,
+      fontFamily: fonts.fontBold,
+      color: theme.orangeBrown,
+      letterSpacing: 0.5,
+    },
+    topSection: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: moderateHeightScale(8),
+    },
+    userInfoRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      flex: 1,
+    },
+    userIcon: {
+      marginRight: moderateWidthScale(6),
+    },
+    userText: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
+      opacity: 0.75,
+    },
+    priceBadge: {
+      backgroundColor: theme.buttonBack,
+      paddingHorizontal: moderateWidthScale(14),
+      paddingVertical: moderateHeightScale(8),
+      borderRadius: moderateWidthScale(12),
+      alignItems: "center",
+      minWidth: moderateWidthScale(90),
+    },
+    priceText: {
+      fontSize: fontSize.size20,
+      fontFamily: fonts.fontBold,
+      color: theme.white,
+    },
+    planPriceLabel: {
+      fontSize: fontSize.size10,
+      fontFamily: fonts.fontRegular,
+      color: theme.white,
+      marginTop: moderateHeightScale(1),
+      opacity: 0.9,
+    },
+    subscriptionDescriptionText: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontRegular,
+      color: theme.darkGreen,
+      marginBottom: moderateHeightScale(10),
+      opacity: 0.65,
+      lineHeight: fontSize.size18,
+    },
+    usageSection: {
+      marginTop: moderateHeightScale(8),
+      marginBottom: moderateHeightScale(8),
+      paddingTop: moderateHeightScale(10),
+      borderTopWidth: 1,
+      borderTopColor: theme.borderLight,
+    },
+    usageHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      marginBottom: moderateHeightScale(8),
+    },
+    usageTitle: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+      marginLeft: moderateWidthScale(6),
+      flex: 1,
+    },
+    usageStats: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      gap: moderateWidthScale(6),
+    },
+    usageItem: {
+      alignItems: "center",
+      flex: 1,
+      paddingVertical: moderateHeightScale(8),
+      backgroundColor: theme.lightGreen015,
+      borderRadius: moderateWidthScale(10),
+      borderWidth: 1,
+      borderColor: theme.borderLight,
+    },
+    usageLabel: {
+      fontSize: fontSize.size10,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
+      marginBottom: moderateHeightScale(3),
+      opacity: 0.65,
+    },
+    usageValue: {
+      fontSize: fontSize.size16,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    paymentRenewalRow: {
+      flexDirection: "row",
+      marginTop: moderateHeightScale(6),
+      marginBottom: moderateHeightScale(6),
+      paddingTop: moderateHeightScale(8),
+      borderTopWidth: 1,
+      borderTopColor: theme.borderLight,
+    },
+    paymentDateContainer: {
+      flex: 1,
+      flexDirection: "row",
+      alignItems: "center",
+      marginRight: moderateWidthScale(8),
+    },
+    renewalContainer: {
+      flex: 1,
+      flexDirection: "row",
+      alignItems: "center",
+      marginLeft: moderateWidthScale(8),
+    },
+    dateInfoContainer: {
+      marginLeft: moderateWidthScale(4),
+    },
+    dateLabel: {
+      fontSize: fontSize.size10,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
+      opacity: 0.7,
+    },
+    dateValue: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    subSeeDetailRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      paddingVertical: moderateHeightScale(8),
+      marginTop: moderateHeightScale(4),
+      marginBottom: moderateHeightScale(4),
+      borderTopWidth: 1,
+      borderTopColor: theme.borderLight,
+    },
+    subSeeDetailText: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontMedium,
+      color: theme.orangeBrown,
+      marginRight: moderateWidthScale(6),
+    },
+    subExpandedDetailSection: {
+      marginTop: moderateHeightScale(4),
+      paddingTop: moderateHeightScale(10),
+      borderTopWidth: 1,
+      borderTopColor: theme.borderLight,
+    },
+    subServicesSectionTitle: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+      marginBottom: moderateHeightScale(8),
+    },
+    subServiceRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      paddingVertical: moderateHeightScale(6),
+      paddingHorizontal: moderateWidthScale(10),
+      backgroundColor: theme.lightGreen015,
+      borderRadius: moderateWidthScale(8),
+      marginBottom: moderateHeightScale(6),
+      borderWidth: 1,
+      borderColor: theme.borderLight,
+    },
+    subServiceNameContainer: {
+      flex: 1,
+      marginRight: moderateWidthScale(8),
+    },
+    subServiceNameText: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
+    },
+    subServicePriceText: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    subServiceDurationText: {
+      fontSize: fontSize.size10,
+      fontFamily: fonts.fontRegular,
+      color: theme.darkGreen,
+      opacity: 0.7,
+      marginTop: moderateHeightScale(2),
+    },
+    subServiceDescriptionText: {
+      fontSize: fontSize.size10,
+      fontFamily: fonts.fontRegular,
+      color: theme.darkGreen,
+      opacity: 0.65,
+      marginTop: moderateHeightScale(2),
+      lineHeight: fontSize.size14,
+    },
+    subServiceRowSelectable: {
+      paddingVertical: moderateHeightScale(8),
+      paddingHorizontal: moderateWidthScale(12),
+    },
+    subServiceRowDisabled: {
+      opacity: 0.5,
+      backgroundColor: theme.borderLight,
+    },
+    subServiceSelectableContent: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      justifyContent: "space-between",
+      width: "100%",
+      gap: moderateWidthScale(10),
+    },
+    subServiceLeftSection: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      flex: 1,
+      marginRight: moderateWidthScale(8),
+    },
+    subServiceCheckWrap: {
+      marginTop: moderateHeightScale(1),
+      marginRight: moderateWidthScale(10),
+    },
+    subServiceCheckOuter: {
+      width: moderateWidthScale(18),
+      height: moderateWidthScale(18),
+      borderRadius: moderateWidthScale(9),
+      borderWidth: 1,
+      borderColor: theme.lightGreen2,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: theme.background,
+    },
+    subServiceCheckOuterSelected: {
+      borderColor: theme.darkGreen,
+      backgroundColor: theme.lightGreen015,
+    },
+    subServiceCheckInner: {
+      width: moderateWidthScale(8),
+      height: moderateWidthScale(8),
+      borderRadius: moderateWidthScale(4),
+      backgroundColor: theme.lightGreen,
+    },
+    rescheduleHeaderRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingHorizontal: moderateWidthScale(20),
+      paddingTop: moderateHeightScale(16),
+      paddingBottom: moderateHeightScale(12),
+    },
+    rescheduleIconWrap: {
+      marginRight: moderateWidthScale(12),
+    },
+    rescheduleTitle: {
+      fontSize: fontSize.size18,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+      marginBottom: moderateHeightScale(4),
+    },
+    rescheduleSubtitle: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+    },
+  });
+};
+
+type StaffCardProps = {
+  staff: StaffCarouselItem;
+  isSelected: boolean;
+  styles: ReturnType<typeof createStyles>;
+  theme: Theme;
+  ownerLabel: string;
+  onSelect: (id: string) => void;
+  onAnyoneInfoPress: () => void;
+};
+
+function StaffCard({
+  staff,
+  isSelected,
+  styles,
+  theme,
+  ownerLabel,
+  onSelect,
+  onAnyoneInfoPress,
+}: StaffCardProps) {
+  const isAnyone = staff.id === "anyone";
+  const imageUri = staff.image || getDefaultAvatarImage();
+  const selectProgress = useSharedValue(isSelected ? 1 : 0);
+  const pressScale = useSharedValue(1);
+
+  useEffect(() => {
+    selectProgress.value = withSpring(isSelected ? 1 : 0, {
+      damping: 16,
+      stiffness: 220,
+      mass: 0.7,
+    });
+  }, [isSelected, selectProgress]);
+
+  const pressStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: pressScale.value }],
+  }));
+
+  const radioInnerStyle = useAnimatedStyle(() => ({
+    opacity: selectProgress.value,
+    transform: [
+      {
+        scale: interpolate(selectProgress.value, [0, 1], [0.4, 1]),
+      },
+    ],
+  }));
+
+  const handlePressIn = () => {
+    pressScale.value = withSpring(0.97, {
+      damping: 18,
+      stiffness: 320,
+    });
+  };
+
+  const handlePressOut = () => {
+    pressScale.value = withSpring(1, {
+      damping: 14,
+      stiffness: 260,
+    });
+  };
+
+  return (
+    <Animated.View style={[styles.staffCardWrap, pressStyle]}>
+      <View
+        style={[
+          styles.staffCardShell,
+          isSelected ? styles.staffCardSelectedShadow : styles.staffCardShadow,
+        ]}
+      >
+        <Pressable
+          style={[styles.staffCard, isSelected && styles.staffCardSelected]}
+          onPress={() => onSelect(staff.id)}
+          onPressIn={handlePressIn}
+          onPressOut={handlePressOut}
+        >
+          <Image
+            source={isAnyone ? IMAGES.anyoneStaff : { uri: imageUri }}
+            style={styles.staffImage}
+            resizeMode="cover"
+          />
+
+          <View
+            style={[
+              styles.staffRadio,
+              isSelected && styles.staffRadioSelected,
+            ]}
+          >
+            <Animated.View style={[styles.staffRadioInner, radioInnerStyle]} />
+          </View>
+
+          <LinearGradient
+            colors={[
+              "transparent",
+              theme.lightGreen5,
+              theme.lightGreen,
+              theme.black,
+            ]}
+            locations={[0, 0.35, 0.7, 1]}
+            style={styles.staffInfoStrip}
+            pointerEvents="box-none"
+          >
+            {isAnyone ? (
+              <>
+                <View style={styles.staffNameRow}>
+                  <Text style={styles.staffNameAnyone} numberOfLines={1}>
+                    Anyone
+                  </Text>
+                  <TouchableOpacity
+                    style={styles.staffAnyoneInfoButton}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    onPress={onAnyoneInfoPress}
+                  >
+                    <MaterialIcons
+                      name="info-outline"
+                      size={moderateWidthScale(14)}
+                      color={theme.white}
+                    />
+                  </TouchableOpacity>
+                </View>
+                <Text style={styles.staffExperience} numberOfLines={1}>
+                  Any available staff
+                </Text>
+              </>
+            ) : (
+              <>
+                <Text style={styles.staffName} numberOfLines={1}>
+                  {staff.is_owner
+                    ? `${staff.name} · ${ownerLabel}`
+                    : staff.name}
+                </Text>
+                {staff.experience ? (
+                  <Text style={styles.staffExperience} numberOfLines={1}>
+                    {staff.experience}
+                  </Text>
+                ) : null}
+              </>
+            )}
+          </LinearGradient>
+        </Pressable>
+      </View>
+    </Animated.View>
+  );
+}
+
+export default function BookingNow() {
+  const { colors } = useTheme();
+  const { t } = useTranslation();
+  const theme = colors as Theme;
+  const styles = useMemo(() => createStyles(theme), [colors]);
+  const { showBanner } = useNotificationContext();
+  const router = useRouter();
+  const dispatch = useAppDispatch();
+  const params = useLocalSearchParams<{
+    business_id?: string;
+    service_id?: string;
+    subscription_id?: string;
+    service_ids?: string;
+    item?: string;
+    is_reschedule?: string;
+    booking_id?: string;
+    appointment_type?: string;
+    notes?: string;
+    appointment_date?: string;
+    appointment_time?: string;
+    staff_id?: string;
+    reel_id?: string;
+    saved_look_id?: string;
+    /** "1" when the customer already agreed to the late reschedule fee. */
+    late_fee_accepted?: string;
+  }>();
+
+  // Customer mode can't book the user's own business — leave before any call
+  useOwnBusinessGuard(params.business_id);
+
+  const attributionReelId = params.reel_id ? Number(params.reel_id) : null;
+  const attributionSavedLookId = params.saved_look_id
+    ? Number(params.saved_look_id)
+    : null;
+  const bookingStartedSentRef = useRef(false);
+
+  useEffect(() => {
+    if (!attributionReelId || bookingStartedSentRef.current) return;
+    bookingStartedSentRef.current = true;
+    reportReelEvent(attributionReelId, "booking_started");
+  }, [attributionReelId]);
+
+  const isReschedule = params.is_reschedule === "1";
+  const isSubscriptionBooking = Boolean(params.subscription_id && params.item);
+  const subscriptionData: SubscriptionData | null = useMemo(() => {
+    if (params.item) {
+      try {
+        return JSON.parse(params.item);
+      } catch (e) {
+        return null;
+      }
+    }
+    return null;
+  }, [params.item]);
+  const [selectedSubscriptionServiceIds, setSelectedSubscriptionServiceIds] =
+    useState<number[]>([]);
+
+  useEffect(() => {
+    if (!isSubscriptionBooking || !subscriptionData?.subscriptionPlanServices) {
+      setSelectedSubscriptionServiceIds([]);
+      return;
+    }
+
+    setSelectedSubscriptionServiceIds([]);
+  }, [isSubscriptionBooking, subscriptionData]);
+
+  const toggleSubscriptionServiceSelection = useCallback(
+    (serviceId: number) => {
+      setSelectedSubscriptionServiceIds((prev) =>
+        prev.includes(serviceId)
+          ? prev.filter((id) => id !== serviceId)
+          : [...prev, serviceId],
+      );
+    },
+    [],
+  );
+
+  const formatServiceDuration = useCallback(
+    (hours: number, minutes: number): string => {
+      if (hours > 0 && minutes > 0) return `${hours}h ${minutes}m`;
+      if (hours > 0) return `${hours}h`;
+      if (minutes > 0) return `${minutes}m`;
+      return "";
+    },
+    [],
+  );
+
+  // Get data from Redux
+  const businessData = useAppSelector((state) => state.bsns);
+  const {
+    allServices,
+    staffMembers,
+    selectedServices: reduxSelectedServices,
+    selectedStaff: reduxSelectedStaff,
+    businessId: reduxBusinessId,
+    businessHours,
+    selectedPaymentMethod: reduxPaymentMethod,
+    subscriptionPlanType,
+  } = businessData || {
+    selectedService: null,
+    allServices: [],
+    staffMembers: [],
+    selectedServices: [],
+    selectedStaff: "anyone",
+    businessId: "",
+    businessHours: null,
+    selectedPaymentMethod: "payNow",
+    subscriptionPlanType: null,
+  };
+
+  const isSoloPlan =
+    typeof subscriptionPlanType === "string" &&
+    subscriptionPlanType.toLowerCase() === "solo";
+
+  // Use Redux directly - no local state needed
+  const selectedServices = useMemo(() => {
+    if (reduxSelectedServices.length > 0) {
+      return reduxSelectedServices;
+    } else {
+      return [];
+    }
+  }, [reduxSelectedServices]);
+
+  const selectedStaff = reduxSelectedStaff || "anyone";
+  const [addServiceModalVisible, setAddServiceModalVisible] = useState(false);
+  const [staffSearchQuery, setStaffSearchQuery] = useState("");
+  const [showAnyoneHint, setShowAnyoneHint] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedStaffMember, setSelectedStaffMember] =
+    useState<StaffMember | null>(null);
+  const [selectedDate, setSelectedDateState] = useState(() => dayjs());
+  const [week, setWeek] = useState(() => getWeekDays(dayjs()));
+  const [selectedTimeSlot, setSelectedTimeSlotState] = useState<string | null>(
+    null,
+  );
+  const [selectedCategory, setSelectedCategory] =
+    useState<TimeSlotCategory>("morning");
+  const [slotMinutes, setSlotMinutes] =
+    useState<SlotMinutes>(DEFAULT_SLOT_MINUTES);
+  const scrollViewRef = useRef<ScrollView>(null);
+  const [slotsLoading, setSlotsLoading] = useState(false);
+  const [apiSlots, setApiSlots] = useState<AvailableSlot[]>([]);
+  const [slotsError, setSlotsError] = useState<string | null>(null);
+  const [note, setNote] = useState("");
+  const [tryOnImageUrls, setTryOnImageUrls] = useState<string[]>([]);
+  const [galleryImageUris, setGalleryImageUris] = useState<string[]>([]);
+  const [imagePickerVisible, setImagePickerVisible] = useState(false);
+  const [rescheduleLoading, setRescheduleLoading] = useState(false);
+  // Backend refused the reschedule until the late fee is accepted.
+  const [rescheduleFeeMessage, setRescheduleFeeMessage] = useState<
+    string | null
+  >(null);
+  const [continueLoading, setContinueLoading] = useState(false);
+  const hasInitializedReschedulePreset = useRef(false);
+  const hasScrolledToRescheduleSlot = useRef(false);
+
+  // Pre-fill note when in reschedule mode and notes param is passed
+  useEffect(() => {
+    if (
+      isReschedule &&
+      params.notes != null &&
+      String(params.notes).trim() !== ""
+    ) {
+      setNote(String(params.notes).trim());
+    }
+  }, [isReschedule, params.notes]);
+
+  const bookingTryOnFromRedux = useAppSelector(
+    (state) => state.general.bookingTryOnImageUrls,
+  );
+  // When returning from AI Results: replace try-on list with Redux (one-way), then clear Redux
+  useFocusEffect(
+    useCallback(() => {
+      if (bookingTryOnFromRedux?.length) {
+        setTryOnImageUrls(
+          bookingTryOnFromRedux.filter((u) => /^https?:\/\//i.test(u)),
+        );
+        dispatch(clearBookingTryOnImageUrls());
+      }
+    }, [bookingTryOnFromRedux, dispatch]),
+  );
+
+  // When reschedule mode and params have date/time/staff, pre-select them once data is loaded
+  useEffect(() => {
+    if (
+      !isReschedule ||
+      hasInitializedReschedulePreset.current ||
+      !params.appointment_date ||
+      !params.appointment_time ||
+      loading
+    ) {
+      return;
+    }
+    hasInitializedReschedulePreset.current = true;
+
+    const dateStr = params.appointment_date.trim();
+    const timeStr = params.appointment_time.trim();
+    const staffIdParam = params.staff_id?.trim();
+
+    // Parse date: support MM/DD/YYYY or YYYY-MM-DD
+    let parsedDate = dayjs();
+    if (dateStr.includes("/")) {
+      const parts = dateStr.split("/").map(Number);
+      if (parts.length >= 3) {
+        const [m, d, y] = parts;
+        if (y && m && d) parsedDate = dayjs(new Date(y, m - 1, d));
+      }
+    } else {
+      const d = dayjs(dateStr);
+      if (d.isValid()) parsedDate = d;
+    }
+
+    setSelectedDateState(parsedDate);
+    dispatch(setSelectedDate(parsedDate.format("YYYY-MM-DD")));
+    setWeek(getWeekDays(parsedDate));
+
+    if (timeStr) {
+      setSelectedTimeSlotState(timeStr);
+      dispatch(setSelectedTimeSlot(timeStr));
+      setSelectedCategory(getSlotCategory(timeStr));
+    }
+
+    const staffId =
+      staffIdParam && staffIdParam !== "anyone" ? staffIdParam : "anyone";
+    dispatch(setSelectedStaff(staffId));
+  }, [
+    isReschedule,
+    params.appointment_date,
+    params.appointment_time,
+    params.staff_id,
+    loading,
+    dispatch,
+  ]);
+
+  // Always fetch business data - API call happens in both cases
+  const fetchBusinessDetails = useCallback(async () => {
+    // Get business_id from params or from Redux (when coming from businessDetail)
+    const businessId = resolveBusinessIdParam(
+      resolveRouteParam(params.business_id),
+      reduxBusinessId,
+    );
+    if (!businessId) {
+      setError("Business ID is missing. Please go back and try again.");
+      showBanner(
+        t("error"),
+        "Business ID is missing. Please go back and try again.",
+        "error",
+        4000,
+      );
+      return;
+    }
+
+    // Check if Redux already has data - if yes, don't show loader
+    const hasReduxData =
+      reduxBusinessId === businessId && allServices.length > 0;
+
+    try {
+      // Only show loading indicator if Redux doesn't have data
+      if (!hasReduxData) {
+        setLoading(true);
+      }
+      setError(null);
+      const response = await ApiService.get<{
+        success: boolean;
+        message: string;
+        data: {
+          business: any;
+          subscription_plan_type?: "Solo" | "Business" | null;
+          subscription_status?: "active" | "inactive";
+        };
+      }>(businessEndpoints.businessDetails(businessId));
+
+      if (response.success && response.data?.business) {
+        const businessData = response.data.business;
+        const planTypeRaw = response.data.subscription_plan_type ?? null;
+        const subscriptionPlanTypeFromApi: "Solo" | "Business" | null =
+          planTypeRaw === "Solo" || planTypeRaw === "Business"
+            ? planTypeRaw
+            : null;
+        const subscriptionStatusFromApi: "active" | "inactive" =
+          response.data.subscription_status === "active"
+            ? "active"
+            : "inactive";
+
+        // Parse business hours from API format to Redux format
+        const parseTimeToHoursMinutes = (
+          timeString: string | null | undefined,
+        ): { hours: number; minutes: number } => {
+          if (!timeString || typeof timeString !== "string") {
+            return { hours: 0, minutes: 0 };
+          }
+          const [hours, minutes] = timeString.split(":").map(Number);
+          return { hours: hours || 0, minutes: minutes || 0 };
+        };
+
+        const getDayDisplayFormat = (day: string): string => {
+          if (!day) return day;
+          const dayLower = day.toLowerCase();
+          const dayMap: { [key: string]: string } = {
+            monday: "Monday",
+            tuesday: "Tuesday",
+            wednesday: "Wednesday",
+            thursday: "Thursday",
+            friday: "Friday",
+            saturday: "Saturday",
+            sunday: "Sunday",
+          };
+          return dayMap[dayLower] || day;
+        };
+
+        const parseBusinessHours = (hoursArray: any[] | null | undefined) => {
+          if (
+            !hoursArray ||
+            !Array.isArray(hoursArray) ||
+            hoursArray.length === 0
+          ) {
+            return null;
+          }
+
+          const businessHours: { [key: string]: any } = {};
+
+          // Initialize all days with default closed state
+          const DAYS = [
+            "Monday",
+            "Tuesday",
+            "Wednesday",
+            "Thursday",
+            "Friday",
+            "Saturday",
+            "Sunday",
+          ];
+          DAYS.forEach((day) => {
+            businessHours[day] = {
+              isOpen: false,
+              fromHours: 0,
+              fromMinutes: 0,
+              tillHours: 0,
+              tillMinutes: 0,
+              breaks: [],
+            };
+          });
+
+          // Parse API hours
+          hoursArray.forEach((dayData: any) => {
+            const dayName = getDayDisplayFormat(dayData.day);
+            if (!DAYS.includes(dayName)) return;
+
+            let fromHours = 0;
+            let fromMinutes = 0;
+            let tillHours = 0;
+            let tillMinutes = 0;
+
+            if (dayData.opening_time) {
+              const parsed = parseTimeToHoursMinutes(dayData.opening_time);
+              fromHours = parsed.hours;
+              fromMinutes = parsed.minutes;
+            }
+
+            if (dayData.closing_time) {
+              const parsed = parseTimeToHoursMinutes(dayData.closing_time);
+              tillHours = parsed.hours;
+              tillMinutes = parsed.minutes;
+            }
+
+            const breaks = (dayData.break_hours || []).map((breakTime: any) => {
+              const { hours: breakFromHours, minutes: breakFromMinutes } =
+                parseTimeToHoursMinutes(breakTime.start || "00:00");
+              const { hours: breakTillHours, minutes: breakTillMinutes } =
+                parseTimeToHoursMinutes(breakTime.end || "00:00");
+              return {
+                fromHours: breakFromHours,
+                fromMinutes: breakFromMinutes,
+                tillHours: breakTillHours,
+                tillMinutes: breakTillMinutes,
+              };
+            });
+
+            businessHours[dayName] = {
+              isOpen: !dayData.closed,
+              fromHours,
+              fromMinutes,
+              tillHours,
+              tillMinutes,
+              breaks,
+            };
+          });
+
+          return businessHours;
+        };
+
+        // Get individual services
+        const individualServices = businessData.services || [];
+
+        // Map all services - convert API format to Redux format
+        const allServicesData = individualServices.map((s: any) => {
+          // Convert price from string to number
+          const price = parseFloat(s.price) || 0;
+          // Calculate originalPrice (10% more) or use same as price if not available
+          const originalPrice = s.originalPrice
+            ? parseFloat(s.originalPrice)
+            : parseFloat((price * 1.1).toFixed(2));
+
+          // Format duration from hours and minutes
+          const durationHours = s.duration_hours || 0;
+          const durationMinutes = s.duration_minutes || 0;
+          let durationText = "";
+          if (durationHours > 0 && durationMinutes > 0) {
+            durationText = `${durationHours} hr ${durationMinutes} min`;
+          } else if (durationHours > 0) {
+            durationText = `${durationHours} hr`;
+          } else if (durationMinutes > 0) {
+            durationText = `${durationMinutes} min`;
+          } else {
+            durationText = "N/A";
+          }
+
+          return {
+            id: s.id,
+            name: s.name,
+            description: s.description || "",
+            price: price,
+            originalPrice: originalPrice,
+            duration: durationText,
+            label: s.label || null,
+          };
+        });
+
+        // Map staff members with working_hours
+        const staffMembersData = (businessData?.staff || [])
+          .filter((staff: any) => staff.invitation_status === "accepted")
+          .map((staff: any) => {
+            // Construct image URL from API response
+            let image = getDefaultAvatarImage();
+            if (staff.avatar) {
+              const isAbsoluteUrl =
+                typeof staff.avatar === "string" &&
+                (staff.avatar.startsWith("http://") ||
+                  staff.avatar.startsWith("https://"));
+
+              if (isAbsoluteUrl) {
+                image = staff.avatar;
+              } else {
+                image = `${process.env.EXPO_PUBLIC_API_BASE_URL}${staff.avatar}`;
+              }
+            }
+
+            // Parse working_hours if available (even if empty array)
+            const staffWorkingHours = parseBusinessHours(staff.working_hours);
+
+            return {
+              id: staff.id || staff.user_id || 0,
+              name: staff.name || "Staff Member",
+              experience: staff?.description ?? null,
+              image: image,
+              working_hours: staffWorkingHours,
+              active: staff.active,
+              is_owner: staff.is_owner === true,
+            };
+          });
+
+        const businessHoursData = parseBusinessHours(businessData?.hours);
+
+        // Find the service(s) to select - skip when coming from subscription booking
+        let serviceIdsToSelect: number[] = [];
+        if (!params.subscription_id) {
+          if (params.service_ids) {
+            try {
+              serviceIdsToSelect = JSON.parse(params.service_ids) as number[];
+            } catch (_) {
+              serviceIdsToSelect = params.service_ids
+                .split(",")
+                .map((id) => parseInt(id.trim(), 10))
+                .filter((n) => !Number.isNaN(n));
+            }
+          } else if (params.service_id) {
+            serviceIdsToSelect = [parseInt(params.service_id, 10)];
+          }
+        }
+
+        let serviceToSelect = null;
+        let servicesToSelect: Service[] = [];
+        if (!params.subscription_id && allServicesData.length > 0) {
+          if (serviceIdsToSelect.length > 0) {
+            servicesToSelect = serviceIdsToSelect
+              .map((id) => allServicesData.find((s: Service) => s.id === id))
+              .filter(Boolean) as Service[];
+            serviceToSelect = servicesToSelect[0] || allServicesData[0];
+          } else if (hasReduxData && reduxSelectedServices.length > 0) {
+            const selectedServiceId = reduxSelectedServices[0].id;
+            serviceToSelect =
+              allServicesData.find(
+                (s: Service) => s.id === selectedServiceId,
+              ) || allServicesData[0];
+          } else if (allServicesData.length > 0) {
+            serviceToSelect = allServicesData[0];
+          }
+        }
+
+        const businessPayload = {
+          selectedService: serviceToSelect,
+          allServices: allServicesData,
+          staffMembers: staffMembersData,
+          businessId: businessId,
+          businessHours: businessHoursData,
+          subscriptionPlanType: subscriptionPlanTypeFromApi,
+          subscriptionStatus: subscriptionStatusFromApi,
+        };
+
+        dispatch(setBusinessDataAction(businessPayload));
+
+        // Solo plans have no staff picker — keep selection as "anyone"
+        if (subscriptionPlanTypeFromApi === "Solo") {
+          dispatch(setSelectedStaff("anyone"));
+        }
+
+        // Set selected service in selectedServices - skip for subscription booking
+        if (params.subscription_id) {
+          dispatch(setSelectedServices([]));
+        } else if (servicesToSelect.length > 0) {
+          dispatch(setSelectedServices(servicesToSelect));
+        } else if (serviceToSelect) {
+          if (hasReduxData && reduxSelectedServices.length > 0) {
+            const existingService = allServicesData.find(
+              (s: Service) => s.id === reduxSelectedServices[0].id,
+            );
+            if (existingService) {
+              dispatch(setSelectedServices([existingService]));
+            } else {
+              dispatch(setSelectedServices([serviceToSelect]));
+            }
+          } else {
+            dispatch(setSelectedServices([serviceToSelect]));
+          }
+        }
+      } else {
+        setError("Failed to load business details");
+        showBanner(t("error"), t("failedToLoadBusinessDetails"), "error", 4000);
+      }
+    } catch (err: any) {
+      setError(err.message || "Failed to load business details");
+      showBanner(
+        "Error",
+        err.message || "Failed to load business details. Please try again.",
+        "error",
+        4000,
+      );
+    } finally {
+      // Only set loading to false if we were showing loader
+      if (!hasReduxData) {
+        setLoading(false);
+      }
+    }
+  }, [
+    params.business_id,
+    params.service_id,
+    params.service_ids,
+    params.subscription_id,
+    reduxBusinessId,
+    allServices.length,
+    reduxSelectedServices,
+    dispatch,
+    showBanner,
+  ]);
+
+  // Fetch data on mount - check both params and Redux for business_id
+  useEffect(() => {
+    // Call API when we have business_id from params (including subscription) or from Redux
+    if (
+      resolveBusinessIdParam(
+        resolveRouteParam(params.business_id),
+        reduxBusinessId,
+      )
+    ) {
+      fetchBusinessDetails();
+    } else {
+      setError("Business ID is missing. Please go back and try again.");
+    }
+
+    return () => {
+      dispatch(resetBusiness());
+    };
+  }, []);
+
+  // Update selected staff member when staff ID changes
+  useEffect(() => {
+    if (selectedStaff === "anyone") {
+      setSelectedStaffMember(null);
+    } else {
+      const foundStaff = staffMembers.find(
+        (s) => s.id.toString() === selectedStaff,
+      );
+      if (foundStaff) {
+        setSelectedStaffMember(foundStaff);
+      } else {
+        setSelectedStaffMember(null);
+      }
+    }
+    setSelectedTimeSlotState(null);
+    dispatch(setSelectedTimeSlot(null));
+    dispatch(setAssignedStaffId(null));
+  }, [selectedStaff, staffMembers, dispatch]);
+
+  const getDayNameFromDate = (date: dayjs.Dayjs): string => {
+    const dayNamesFull = [
+      "Sunday",
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday",
+      "Saturday",
+    ];
+    return dayNamesFull[date.day()];
+  };
+
+  // Clear selected time slot when date changes (new date has different slots)
+  useEffect(() => {
+    setSelectedTimeSlotState(null);
+    dispatch(setSelectedTimeSlot(null));
+    dispatch(setAssignedStaffId(null));
+  }, [selectedDate, dispatch]);
+
+  const fetchAvailableSlots = useCallback(() => {
+    const businessId = resolveBusinessIdParam(
+      reduxBusinessId,
+      resolveRouteParam(params.business_id),
+    );
+    if (!businessId || !selectedDate) {
+      setApiSlots([]);
+      setSlotsError(null);
+      return;
+    }
+    const dateStr = selectedDate.format("YYYY-MM-DD");
+    const staffId =
+      selectedStaff !== "anyone" ? parseInt(selectedStaff, 10) : undefined;
+    const excludeAppointmentId =
+      isReschedule && params.booking_id
+        ? parseInt(String(params.booking_id), 10)
+        : undefined;
+    if (excludeAppointmentId && isNaN(excludeAppointmentId)) {
+      setApiSlots([]);
+      setSlotsError(null);
+      return;
+    }
+    setSlotsLoading(true);
+    setSlotsError(null);
+    ApiService.get<{
+      success?: boolean;
+      message?: string;
+      data?: AvailableSlot[] | { slots?: AvailableSlot[] } | unknown;
+    }>(
+      appointmentsEndpoints.availableSlots({
+        business_id: parseInt(businessId, 10),
+        date: dateStr,
+        staff_id: staffId,
+        slot_minutes: slotMinutes,
+        // ...(excludeAppointmentId != null && !isNaN(excludeAppointmentId)
+        //   ? { exclude_appointment_id: excludeAppointmentId }
+        //   : {}),
+      }),
+    )
+      .then((res) => {
+        Logger.log("-------->res", res);
+
+        if (res?.success === false) {
+          setApiSlots([]);
+          setSlotsError(res.message || "Failed to load available slots.");
+          return;
+        }
+        const rawList = Array.isArray(res?.data)
+          ? res.data
+          : Array.isArray((res?.data as { slots?: unknown })?.slots)
+            ? (res.data as { slots: unknown[] }).slots
+            : [];
+        setApiSlots(normalizeAvailableSlots(rawList));
+      })
+      .catch((err: any) => {
+        setApiSlots([]);
+        setSlotsError(
+          err?.response?.data?.message ||
+            err?.message ||
+            "Failed to load available slots. Please try again.",
+        );
+      })
+      .finally(() => {
+        setSlotsLoading(false);
+      });
+  }, [
+    selectedDate,
+    reduxBusinessId,
+    params.business_id,
+    params.booking_id,
+    selectedStaff,
+    isReschedule,
+    slotMinutes,
+  ]);
+
+  // Fetch available slots from API when date or staff changes
+  useEffect(() => {
+    fetchAvailableSlots();
+  }, [fetchAvailableSlots]);
+
+  const availableTimeSlots = useMemo(
+    () =>
+      apiSlots
+        .map((s) => s.start)
+        .filter((start): start is string => isValidTimeSlot(start)),
+    [apiSlots],
+  );
+
+  const sortedTimeSlots = useMemo(
+    () => sortTimeSlots(availableTimeSlots),
+    [availableTimeSlots],
+  );
+
+  const scrollToCategory = (category: TimeSlotCategory) => {
+    const startIndex = getCategoryStartIndex(sortedTimeSlots, category);
+    if (startIndex < 0) return;
+    const slotWidth = widthScale(90);
+    const gap = moderateWidthScale(12);
+    const scrollPosition = startIndex * (slotWidth + gap);
+    scrollViewRef.current?.scrollTo({ x: scrollPosition, animated: true });
+  };
+
+  // In reschedule mode, scroll time slot list to the selected slot once slots are loaded
+  useEffect(() => {
+    if (
+      !isReschedule ||
+      !selectedTimeSlot ||
+      hasScrolledToRescheduleSlot.current ||
+      apiSlots.length === 0
+    ) {
+      return;
+    }
+    const allSlots = sortedTimeSlots;
+    const index = allSlots.indexOf(selectedTimeSlot);
+    if (index < 0) return;
+    hasScrolledToRescheduleSlot.current = true;
+    const slotWidth = widthScale(90);
+    const gap = moderateWidthScale(12);
+    const scrollPosition = index * (slotWidth + gap);
+    const timer = setTimeout(() => {
+      scrollViewRef.current?.scrollTo({
+        x: scrollPosition,
+        animated: true,
+      });
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [isReschedule, selectedTimeSlot, apiSlots.length, sortedTimeSlots]);
+
+  const handleScroll = (event: any) => {
+    const allSlots = sortedTimeSlots;
+    if (allSlots.length === 0) return;
+    const scrollX = event.nativeEvent.contentOffset.x;
+    const slotWidth = widthScale(90);
+    const gap = moderateWidthScale(12);
+    const paddingHorizontal = moderateWidthScale(20);
+    const visibleIndex = Math.round(
+      (scrollX - paddingHorizontal + slotWidth / 2) / (slotWidth + gap),
+    );
+    const clampedIndex = Math.max(
+      0,
+      Math.min(visibleIndex, allSlots.length - 1),
+    );
+    const visibleSlot = allSlots[clampedIndex];
+    if (!isValidTimeSlot(visibleSlot)) return;
+    const category = getSlotCategory(visibleSlot);
+    if (category !== selectedCategory) setSelectedCategory(category);
+  };
+
+  const isSlotDisabled = (slot: string): boolean => {
+    if (!isValidTimeSlot(slot)) return true;
+    const today = dayjs().startOf("day");
+    const selectedDay = selectedDate.startOf("day");
+    if (!selectedDay.isSame(today, "day")) return false;
+    const now = dayjs();
+    const [hours, minutes] = slot.split(":").map(Number);
+    const slotTime = dayjs()
+      .hour(hours)
+      .minute(minutes)
+      .second(0)
+      .millisecond(0);
+    return slotTime.isBefore(now);
+  };
+
+  const handleSlotSelect = (slot: string) => {
+    if (isSlotDisabled(slot)) return;
+    setSelectedTimeSlotState(slot);
+    dispatch(setSelectedTimeSlot(slot));
+    setSelectedCategory(getSlotCategory(slot));
+    // Anyone assignment happens via backend round-robin API at checkout/reschedule
+    dispatch(setAssignedStaffId(null));
+  };
+
+  const prevWeek = () => {
+    const newWeek = week[0].subtract(1, "week");
+    const newWeekDays = getWeekDays(newWeek);
+    const today = dayjs().startOf("day");
+    const weekStart = newWeekDays[0].startOf("day");
+    if (weekStart.isBefore(today)) {
+      setWeek(getWeekDays(dayjs()));
+    } else {
+      setWeek(newWeekDays);
+    }
+  };
+
+  const nextWeek = () => {
+    setWeek(getWeekDays(week[0].add(1, "week")));
+  };
+
+  const handleDateSelect = (date: dayjs.Dayjs) => {
+    if (isDateDisabled(date)) return;
+    setSelectedDateState(date);
+    dispatch(setSelectedDate(date.format("YYYY-MM-DD")));
+    setWeek(getWeekDays(date));
+  };
+
+  const isDateDisabled = (date: dayjs.Dayjs): boolean => {
+    const today = dayjs().startOf("day");
+    const selectedDay = date.startOf("day");
+    if (selectedDay.isBefore(today)) return true;
+    const dayName = getDayNameFromDate(date);
+    if (selectedStaff !== "anyone" && selectedStaffMember?.working_hours) {
+      const staffDayHours = selectedStaffMember.working_hours[dayName];
+      if (staffDayHours && !staffDayHours.isOpen) return true;
+    }
+    if (businessHours) {
+      const dayHours = businessHours[dayName];
+      if (dayHours && !dayHours.isOpen) return true;
+    }
+    return false;
+  };
+
+  useEffect(() => {
+    if (!businessHours) return;
+    // In reschedule mode, keep the date from params; do not reset to today
+    if (params.is_reschedule === "1" && params.appointment_date) return;
+    const today = dayjs().startOf("day");
+    const currentSelected = selectedDate.startOf("day");
+    if (currentSelected.isSame(today, "day") && !isDateDisabled(today)) return;
+    if (!isDateDisabled(today)) {
+      setSelectedDateState(today);
+      dispatch(setSelectedDate(today.format("YYYY-MM-DD")));
+      setWeek(getWeekDays(today));
+      return;
+    }
+    for (let i = 0; i < 30; i++) {
+      const checkDate = today.add(i, "day");
+      if (!isDateDisabled(checkDate)) {
+        setSelectedDateState(checkDate);
+        dispatch(setSelectedDate(checkDate.format("YYYY-MM-DD")));
+        setWeek(getWeekDays(checkDate));
+        return;
+      }
+    }
+    // Only run when business hours first load - do NOT reset date when staff changes
+  }, [businessHours]);
+
+  const getTimezoneText = () => {
+    try {
+      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const offset = new Date().getTimezoneOffset();
+      const offsetHours = Math.abs(Math.floor(offset / 60));
+      const offsetMinutes = Math.abs(offset % 60);
+      const sign = offset <= 0 ? "+" : "-";
+      const gmtOffset = `GMT${sign}${offsetHours}${
+        offsetMinutes > 0 ? `:${offsetMinutes.toString().padStart(2, "0")}` : ""
+      }`;
+      return `In your time zone, ${timezone} (${gmtOffset})`;
+    } catch {
+      return "In your time zone, South Africa (GMT +1:00)";
+    }
+  };
+
+  const staffList = useMemo(() => {
+    const query = staffSearchQuery.trim().toLowerCase();
+    const anyoneItem = {
+      id: "anyone",
+      name: "Anyone",
+      experience: "Any available staff" as string | number | null,
+      image: null,
+      active: null as boolean | null,
+      is_owner: false,
+    };
+    const filteredStaff = staffMembers
+      .filter((staff) => {
+        if (!query) return true;
+        return staff.name.toLowerCase().includes(query);
+      })
+      .map((staff) => ({
+        id: staff.id.toString(),
+        name: staff.name,
+        experience: staff.experience ?? null,
+        image: staff.image,
+        active: staff.active,
+        is_owner: staff.is_owner === true,
+      }));
+
+    const showAnyone =
+      !query ||
+      "anyone".includes(query) ||
+      "anyone who's available".includes(query) ||
+      "any available staff".includes(query);
+
+    return showAnyone ? [anyoneItem, ...filteredStaff] : filteredStaff;
+  }, [staffMembers, staffSearchQuery]);
+
+  const totalPrice = selectedServices.reduce(
+    (sum, service) => sum + service.price,
+    0,
+  );
+  const taxRate = 0.0;
+  const tax = totalPrice * taxRate;
+  const estimatedTotal = totalPrice + tax;
+
+  const handleDeleteService = (serviceId: number) => {
+    const updatedServices = selectedServices.filter(
+      (service) => service.id !== serviceId,
+    );
+    dispatch(setSelectedServices(updatedServices));
+  };
+
+  const handleAddService = () => {
+    setAddServiceModalVisible(true);
+  };
+
+  const handleCloseModal = useCallback(() => {
+    setAddServiceModalVisible(false);
+  }, []);
+
+  const handleUpdateSelectedServices = useCallback(
+    (services: Service[]) => {
+      dispatch(setSelectedServices(services));
+    },
+    [dispatch],
+  );
+
+  // Memoize selectedServiceIds to prevent infinite loops
+  const selectedServiceIds = useMemo(
+    () => selectedServices.map((s) => s.id),
+    [selectedServices],
+  );
+
+  // Show loading indicator while fetching data
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <StatusBar barStyle="dark-content" />
+        <View style={styles.header}>
+          <View style={styles.headerLeft}>
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={() => {
+                router.back();
+              }}
+            >
+              <BackArrowIcon
+                width={widthScale(25)}
+                height={heightScale(25)}
+                color={theme.darkGreen}
+              />
+            </TouchableOpacity>
+            <View style={styles.logoContainer}>
+              <LeafLogo
+                width={widthScale(22)}
+                height={heightScale(22)}
+                color1={theme.darkGreen}
+                color2={theme.darkGreen}
+              />
+              <Text style={styles.logoText}>FRESHPASS</Text>
+            </View>
+          </View>
+        </View>
+        <View style={styles.line} />
+        <View
+          style={{
+            flex: 1,
+            justifyContent: "center",
+            alignItems: "center",
+          }}
+        >
+          <ActivityIndicator size="large" color={theme.darkGreen} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  const submitReschedule = async (lateFeeAccepted: boolean) => {
+    const bookingId = params.booking_id;
+    const businessId = params.business_id;
+    if (!bookingId || !businessId) {
+      showBanner(
+        t("error"),
+        "Booking or business missing.",
+        "error",
+        4000,
+      );
+      return;
+    }
+    if (!selectedTimeSlot) {
+      showBanner(
+        "Select time",
+        "Please select a date and time slot.",
+        "warning",
+        4000,
+      );
+      return;
+    }
+    const appointmentDate = selectedDate.format("YYYY-MM-DD");
+    const appointmentTime = selectedTimeSlot;
+    const appointmentType =
+      params.appointment_type === "subscription"
+        ? "subscription"
+        : "service";
+
+    let serviceIds: number[] = [];
+    if (appointmentType === "service" && params.service_ids) {
+      try {
+        serviceIds = JSON.parse(params.service_ids) as number[];
+      } catch (_) {
+        serviceIds = params.service_ids
+          .split(",")
+          .map((id) => parseInt(id.trim(), 10))
+          .filter((n) => !Number.isNaN(n));
+      }
+    }
+    if (serviceIds.length === 0 && selectedServices.length > 0) {
+      serviceIds = selectedServices.map((s) => s.id);
+    }
+
+    setRescheduleLoading(true);
+    try {
+      let resolvedStaffId = resolveAppointmentStaffId({
+        selectedStaff,
+        assignedStaffId: businessData?.assignedStaffId ?? null,
+      });
+
+      if (selectedStaff === "anyone" && !isSoloPlan) {
+        if (serviceIds.length === 0) {
+          showBanner(
+            t("error"),
+            "Services are required to assign staff.",
+            "error",
+            4000,
+          );
+          return;
+        }
+        const assigned = await assignAnyoneStaff({
+          business_id: parseInt(businessId, 10),
+          service_ids: serviceIds,
+          date: appointmentDate,
+          start_time: appointmentTime,
+        });
+        resolvedStaffId = assigned.staff_id;
+        dispatch(setAssignedStaffId(assigned.staff_id));
+      }
+
+      const body: {
+        business_id: number;
+        appointment_type: string;
+        staff_id?: number;
+        appointment_date: string;
+        appointment_time: string;
+        notes?: string;
+        service_ids?: number[];
+        subscription_id?: number;
+        late_fee_accepted?: boolean;
+      } = {
+        business_id: parseInt(businessId, 10),
+        appointment_type: appointmentType,
+        appointment_date: appointmentDate,
+        appointment_time: appointmentTime,
+        notes: note.trim() || undefined,
+      };
+      if (resolvedStaffId != null) {
+        body.staff_id = resolvedStaffId;
+      }
+      if (appointmentType === "service" && serviceIds.length > 0) {
+        body.service_ids = serviceIds;
+      }
+      if (
+        appointmentType === "subscription" &&
+        params.subscription_id != null &&
+        params.subscription_id !== ""
+      ) {
+        body.subscription_id = parseInt(params.subscription_id, 10);
+      }
+
+      if (lateFeeAccepted) {
+        body.late_fee_accepted = true;
+      }
+
+      const response = await ApiService.put<{
+        success: boolean;
+        message: string;
+        data?: {
+          id: number;
+          appointmentDate: string;
+          appointmentTime: string;
+          status: string;
+        };
+      }>(appointmentsEndpoints.reschedule(bookingId), body);
+      if (response.success) {
+        showBanner(
+          t("success"),
+          response.message || "Appointment rescheduled successfully.",
+          "success",
+          3000,
+        );
+        router.back();
+      } else {
+        showBanner(
+          t("error"),
+          response.message || "Failed to reschedule.",
+          "error",
+          4000,
+        );
+      }
+    } catch (err: any) {
+      // Late reschedule fee not confirmed yet (e.g. the free window passed
+      // while the customer was picking a slot). Nothing changed; ask and resend.
+      if (err?.status === 422 && err?.data?.errors?.late_fee_accepted) {
+        setRescheduleFeeMessage(err?.data?.message || err?.message || "");
+        return;
+      }
+      showBanner(
+        t("error"),
+        err?.message ||
+          err?.data?.message ||
+          "Failed to reschedule. Please try again.",
+        "error",
+        4000,
+      );
+    } finally {
+      setRescheduleLoading(false);
+    }
+  };
+
+  const handleConfirmRescheduleFee = () => {
+    setRescheduleFeeMessage(null);
+    submitReschedule(true);
+  };
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="dark-content" />
+      {/* Header */}
+      <View style={styles.header}>
+        <View style={styles.headerLeft}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => {
+              router.back();
+            }}
+          >
+            <BackArrowIcon
+              width={widthScale(25)}
+              height={heightScale(25)}
+              color={theme.darkGreen}
+            />
+          </TouchableOpacity>
+          <View style={styles.logoContainer}>
+            <LeafLogo
+              width={widthScale(22)}
+              height={heightScale(22)}
+              color1={theme.darkGreen}
+              color2={theme.darkGreen}
+            />
+            <Text style={styles.logoText}>FRESHPASS</Text>
+          </View>
+        </View>
+      </View>
+
+      <View style={styles.line} />
+
+      {isReschedule && (
+        <View style={styles.rescheduleHeaderRow}>
+          <View style={styles.rescheduleIconWrap}>
+            <Feather
+              name="calendar"
+              size={moderateWidthScale(22)}
+              color={theme.darkGreen}
+            />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.rescheduleTitle}>Reschedule Appointment</Text>
+            <Text style={styles.rescheduleSubtitle}>
+              Select a new date and time for your appointment.
+            </Text>
+          </View>
+        </View>
+      )}
+
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
+        <View
+          style={[
+            styles.line,
+            {
+              marginTop: moderateHeightScale(10),
+              backgroundColor: "transparent",
+            },
+          ]}
+        />
+
+        {/* Staff Selection — hidden for Solo subscription plan */}
+        {!isSoloPlan && (
+          <View style={styles.staffSection}>
+            <Text style={styles.staffTitle}>Choose staff members</Text>
+
+            <View style={styles.staffSearchContainer}>
+              <FloatingInput
+                label="Search staff"
+                value={staffSearchQuery}
+                onChangeText={setStaffSearchQuery}
+                placeholder="Search staff by name"
+                placeholderTextColor={theme.lightGreen2}
+                containerStyle={styles.staffSearchInput}
+                returnKeyType="search"
+                showClearButton
+                onClear={() => setStaffSearchQuery("")}
+                renderLeftAccessory={() => (
+                  <SearchIcon
+                    width={widthScale(18)}
+                    height={heightScale(18)}
+                    color={theme.darkGreen}
+                  />
+                )}
+              />
+            </View>
+
+            {staffList.length === 0 ? (
+              <Text style={styles.staffEmptyText}>No staff members found</Text>
+            ) : (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.staffList}
+                nestedScrollEnabled
+                decelerationRate="fast"
+              >
+                {staffList.map((staff) => (
+                  <StaffCard
+                    key={staff.id}
+                    staff={staff}
+                    isSelected={selectedStaff === staff.id}
+                    styles={styles}
+                    theme={theme}
+                    ownerLabel={t("owner")}
+                    onSelect={(id) => dispatch(setSelectedStaff(id))}
+                    onAnyoneInfoPress={() => setShowAnyoneHint(true)}
+                  />
+                ))}
+              </ScrollView>
+            )}
+
+            <Modal
+              visible={showAnyoneHint}
+              transparent
+              animationType="fade"
+              onRequestClose={() => setShowAnyoneHint(false)}
+            >
+              <View style={styles.anyoneHintOverlay}>
+                <Pressable
+                  style={StyleSheet.absoluteFillObject}
+                  onPress={() => setShowAnyoneHint(false)}
+                />
+                <View style={styles.anyoneHintBubble}>
+                  <TouchableOpacity
+                    style={styles.anyoneHintClose}
+                    onPress={() => setShowAnyoneHint(false)}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    <Feather
+                      name="x"
+                      size={moderateWidthScale(16)}
+                      color={theme.darkGreen}
+                    />
+                  </TouchableOpacity>
+                  <Text style={styles.anyoneHintText}>
+                    Any staff available in your time slot will be assigned to
+                    you
+                  </Text>
+                </View>
+              </View>
+            </Modal>
+          </View>
+        )}
+
+        {!isSoloPlan && (
+          <View
+            style={[styles.line, { marginTop: moderateHeightScale(20) }]}
+          />
+        )}
+
+        {/* Availability Section */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeaderRow}>
+            <Text style={styles.availabilityTitle}>Availability</Text>
+            <View style={styles.slotMinutesSelector}>
+              {SLOT_MINUTE_OPTIONS.map((minutes) => {
+                const isSelected = slotMinutes === minutes;
+                return (
+                  <TouchableOpacity
+                    key={minutes}
+                    style={[
+                      styles.slotMinutesOption,
+                      isSelected && styles.slotMinutesOptionSelected,
+                    ]}
+                    onPress={() => {
+                      if (minutes === slotMinutes) return;
+                      setSlotMinutes(minutes);
+                      setSelectedTimeSlotState(null);
+                      dispatch(setSelectedTimeSlot(null));
+                      dispatch(setAssignedStaffId(null));
+                    }}
+                    activeOpacity={0.7}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: isSelected }}
+                    accessibilityLabel={`${minutes} minute slots`}
+                  >
+                    <Text
+                      style={[
+                        styles.slotMinutesOptionText,
+                        isSelected && styles.slotMinutesOptionTextSelected,
+                      ]}
+                    >
+                      {minutes}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+              <Text style={styles.slotMinutesUnit}>min</Text>
+            </View>
+          </View>
+
+          <View style={styles.weekNavigation}>
+            <TouchableOpacity
+              onPress={prevWeek}
+              style={styles.weekNavigationButton}
+              activeOpacity={0.7}
+            >
+              <Feather
+                name="chevron-left"
+                size={moderateWidthScale(17)}
+                color={theme.darkGreen}
+              />
+            </TouchableOpacity>
+            <Text style={styles.weekRangeText}>{formatWeekRange(week)}</Text>
+            <TouchableOpacity
+              onPress={nextWeek}
+              style={styles.weekNavigationButton}
+              activeOpacity={0.7}
+            >
+              <Feather
+                name="chevron-right"
+                size={moderateWidthScale(17)}
+                color={theme.darkGreen}
+              />
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.calendarGrid}>
+            <View style={styles.daysHeader}>
+              {dayNames.map((dayName) => (
+                <View key={dayName} style={styles.dayHeader}>
+                  <Text style={styles.dayHeaderText}>{dayName}</Text>
+                </View>
+              ))}
+            </View>
+
+            <View style={styles.daysRow}>
+              {week.map((day) => {
+                const isSelected = day.isSame(selectedDate, "day");
+                const isDisabled = isDateDisabled(day);
+                return (
+                  <TouchableOpacity
+                    key={day.format("YYYY-MM-DD")}
+                    style={styles.dayContainer}
+                    onPress={() => handleDateSelect(day)}
+                    disabled={isDisabled}
+                    activeOpacity={isDisabled ? 1 : 0.7}
+                  >
+                    <View
+                      style={[
+                        styles.dayNumberContainer,
+                        isSelected && styles.dayNumberSelected,
+                        isDisabled && styles.dayNumberDisabled,
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.dayNumber,
+                          isSelected && styles.dayNumberSelectedText,
+                          isDisabled && styles.dayNumberDisabledText,
+                        ]}
+                      >
+                        {day.format("D")}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+
+          <Text style={styles.timezoneText}>{getTimezoneText()}</Text>
+
+          <View style={styles.timeSlotSection}>
+            <View style={styles.timeSlotCategoryRow}>
+              {TIME_SLOT_CATEGORIES.map((category) => {
+                const hasSlots = categoryHasSlots(sortedTimeSlots, category);
+                const isSelected = selectedCategory === category;
+
+                const renderIcon = () => {
+                  switch (category) {
+                    case "morning":
+                      return (
+                        <MorningIcon
+                          width={moderateWidthScale(18)}
+                          height={moderateHeightScale(13)}
+                        />
+                      );
+                    case "afternoon":
+                      return (
+                        <MaterialIcons
+                          name="wb-sunny"
+                          size={moderateWidthScale(16)}
+                          color={colors.darkGreen}
+                        />
+                      );
+                    case "evening":
+                      return (
+                        <EveningIcon
+                          width={moderateWidthScale(18)}
+                          height={moderateHeightScale(10)}
+                        />
+                      );
+                    case "night":
+                      return (
+                        <NightIcon
+                          width={moderateWidthScale(15)}
+                          height={moderateHeightScale(15)}
+                        />
+                      );
+                  }
+                };
+
+                const label =
+                  category.charAt(0).toUpperCase() + category.slice(1);
+
+                return (
+                  <TouchableOpacity
+                    key={category}
+                    activeOpacity={hasSlots ? 0.7 : 1}
+                    style={[
+                      styles.timeSlotCategoryButton,
+                      !hasSlots && styles.timeSlotCategoryButtonDisabled,
+                    ]}
+                    disabled={!hasSlots}
+                    onPress={() => {
+                      setSelectedCategory(category);
+                      scrollToCategory(category);
+                    }}
+                  >
+                    <View style={styles.timeSlotCategoryIcon}>
+                      {renderIcon()}
+                    </View>
+                    <Text
+                      style={[
+                        styles.timeSlotCategoryText,
+                        isSelected && styles.timeSlotCategoryTextSelected,
+                      ]}
+                    >
+                      {label}
+                    </Text>
+                    {isSelected && (
+                      <View style={styles.timeSlotCategoryUnderline} />
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            <ScrollView
+              ref={scrollViewRef}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              onScroll={handleScroll}
+              scrollEventThrottle={16}
+              style={styles.timeSlotsContainer}
+              contentContainerStyle={styles.timeSlotsContentContainer}
+            >
+              {slotsLoading ? (
+                <>
+                  {[1, 2, 3, 4, 5, 6, 7].map((i) => (
+                    <View key={`skeleton-${i}`} style={styles.timeSlotSkeleton}>
+                      <Text
+                        style={[styles.timeSlotText, { opacity: 0 }]}
+                        numberOfLines={1}
+                      >
+                        9:00 AM
+                      </Text>
+                    </View>
+                  ))}
+                </>
+              ) : slotsError ? (
+                <View style={styles.noSlotsContainer}>
+                  <Text style={styles.slotsErrorTitle}>
+                    Available slot API failed
+                  </Text>
+                  <Text style={styles.slotsErrorReason}>{slotsError}</Text>
+                  <Button
+                    title="Retry"
+                    onPress={fetchAvailableSlots}
+                    containerStyle={styles.slotsErrorButton}
+                  />
+                </View>
+              ) : sortedTimeSlots.length > 0 ? (
+                sortedTimeSlots.map((slot) => {
+                  const isDisabled = isSlotDisabled(slot);
+                  return (
+                    <TouchableOpacity
+                      activeOpacity={isDisabled ? 1 : 0.7}
+                      key={slot}
+                      style={[
+                        styles.timeSlotButton,
+                        selectedTimeSlot === slot &&
+                          styles.timeSlotButtonSelected,
+                        isDisabled && styles.timeSlotButtonDisabled,
+                      ]}
+                      onPress={() => handleSlotSelect(slot)}
+                      disabled={isDisabled}
+                    >
+                      <Text
+                        style={[
+                          styles.timeSlotText,
+                          selectedTimeSlot === slot &&
+                            styles.timeSlotTextSelected,
+                          isDisabled && styles.timeSlotTextDisabled,
+                        ]}
+                      >
+                        {convertTo12Hour(slot)}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })
+              ) : (
+                <View style={styles.noSlotsContainer}>
+                  <Text style={styles.noSlotsText}>
+                    No available time slots for this day
+                  </Text>
+                </View>
+              )}
+            </ScrollView>
+          </View>
+        </View>
+
+        <View style={[styles.line, { marginTop: moderateHeightScale(20) }]} />
+
+        {isReschedule ? (
+          <>
+            {/* Privacy Policy Section - reschedule mode */}
+            <View style={styles.section}>
+              <Text style={styles.privacyText}>
+                By placing this order, you agree to our{" "}
+                <Text
+                  style={styles.privacyLink}
+                  onPress={() => {
+                    const url = process.env.EXPO_PUBLIC_PRIVACY_URL;
+                    if (url) Linking.openURL(url);
+                  }}
+                >
+                  Privacy Policy
+                </Text>
+                . Your personal data will be processed by the partner with whom
+                you're booking an appointment.
+              </Text>
+            </View>
+
+            {/* Leave a Note Section - reschedule mode */}
+            <View style={styles.noteInputContainer}>
+              <View style={styles.noteInputIcon}>
+                <Feather
+                  name="file-text"
+                  size={moderateWidthScale(18)}
+                  color={theme.lightGreen}
+                />
+              </View>
+              <TextInput
+                style={[styles.noteInput, styles.noteInputWithIcon]}
+                value={note}
+                onChangeText={setNote}
+                placeholder="Leave a note (optional)"
+                placeholderTextColor={theme.lightGreen2}
+                multiline
+                numberOfLines={4}
+              />
+              {note.length > 0 && (
+                <Pressable
+                  onPress={() => setNote("")}
+                  style={styles.noteClearButton}
+                  hitSlop={moderateWidthScale(8)}
+                >
+                  <CloseIcon color={theme.darkGreen} />
+                </Pressable>
+              )}
+            </View>
+          </>
+        ) : (
+          <>
+            {/* Service Details - hide for subscription booking */}
+            {!isSubscriptionBooking &&
+              selectedServices.map((service) => (
+                <View key={service.id} style={styles.serviceCard}>
+                  <View style={styles.serviceHeader}>
+                    <Text style={styles.serviceName}>{service.name}</Text>
+                    <TouchableOpacity
+                      style={styles.deleteButton}
+                      onPress={() => handleDeleteService(service.id)}
+                    >
+                      <MaterialIcons
+                        name="delete-outline"
+                        size={moderateWidthScale(20)}
+                        color={theme.red}
+                      />
+                    </TouchableOpacity>
+                  </View>
+
+                  <View style={{ gap: moderateHeightScale(4) }}>
+                    <View style={styles.priceContainer}>
+                      <Text style={styles.currentPrice}>
+                        - ${service.price.toFixed(2)} USD
+                      </Text>
+                      <Text style={styles.originalPrice}>
+                        ${service.originalPrice.toFixed(2)} USD
+                      </Text>
+                    </View>
+
+                    <Text style={styles.descriptionText}>
+                      - {service.description}
+                    </Text>
+                  </View>
+                </View>
+              ))}
+
+            {/* Add Another Service - hide for subscription booking */}
+            {!isSubscriptionBooking && (
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={handleAddService}
+                style={styles.addServiceSection}
+              >
+                <Text style={styles.addServiceText}>Add another service</Text>
+                <View style={styles.addServiceButton}>
+                  <Octicons
+                    name="plus"
+                    size={moderateWidthScale(16)}
+                    color={theme.selectCard}
+                  />
+                </View>
+              </TouchableOpacity>
+            )}
+
+            {/* Payment Method Section - hide for subscription booking */}
+            {!isSubscriptionBooking && (
+              <>
+                <View
+                  style={[styles.line, { marginTop: moderateHeightScale(20) }]}
+                />
+
+                <View style={styles.section}>
+                  <Text style={styles.sectionTitle}>Choose payment method</Text>
+                  <View style={[styles.paymentCard, styles.shadow]}>
+                    <TouchableOpacity
+                      style={styles.paymentOption}
+                      onPress={() =>
+                        dispatch(setSelectedPaymentMethod("payNow"))
+                      }
+                    >
+                      <View
+                        style={[
+                          styles.paymentRadioButton,
+                          reduxPaymentMethod === "payNow" &&
+                            styles.paymentRadioButtonSelected,
+                        ]}
+                      >
+                        {reduxPaymentMethod === "payNow" && (
+                          <View style={styles.paymentRadioButtonInner} />
+                        )}
+                      </View>
+                      <View style={styles.paymentOptionContent}>
+                        <Text style={styles.paymentOptionTitle}>Pay now</Text>
+                        <Text style={styles.paymentOptionDescription}>
+                          Securely pay online to confirm your booking instantly.
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+
+                    <View style={styles.paymentDivider} />
+
+                    <TouchableOpacity
+                      style={styles.paymentOption}
+                      onPress={() =>
+                        dispatch(setSelectedPaymentMethod("payLater"))
+                      }
+                    >
+                      <View
+                        style={[
+                          styles.paymentRadioButton,
+                          reduxPaymentMethod === "payLater" &&
+                            styles.paymentRadioButtonSelected,
+                        ]}
+                      >
+                        {reduxPaymentMethod === "payLater" && (
+                          <View style={styles.paymentRadioButtonInner} />
+                        )}
+                      </View>
+                      <View style={styles.paymentOptionContent}>
+                        <Text style={styles.paymentOptionTitle}>Pay later</Text>
+                        <Text style={styles.paymentOptionDescription}>
+                          Pay in person at the salon.
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </>
+            )}
+
+            <View
+              style={[styles.line, { marginTop: moderateHeightScale(20) }]}
+            />
+
+            <View style={styles.attachmentRow}>
+              <View style={styles.hairIconsRow}>
+                <Feather
+                  name="scissors"
+                  size={moderateWidthScale(14)}
+                  color={theme.darkGreen}
+                />
+                <Text style={styles.sectionTitleTryon}>Attach image</Text>
+              </View>
+            </View>
+
+            <View style={styles.tryOnImagesRow}>
+              {tryOnImageUrls.map((uri, index) => (
+                <View key={`tryon-${uri}-${index}`} style={styles.tryOnImageBox}>
+                  <Image
+                    source={{ uri }}
+                    style={styles.tryOnImageThumb}
+                    resizeMode="cover"
+                  />
+                  <TouchableOpacity
+                    style={styles.tryOnImageRemoveBtn}
+                    onPress={() =>
+                      setTryOnImageUrls((prev) =>
+                        prev.filter((_, i) => i !== index),
+                      )
+                    }
+                    activeOpacity={0.7}
+                  >
+                    <Feather
+                      name="x"
+                      size={moderateWidthScale(14)}
+                      color={theme.white}
+                    />
+                  </TouchableOpacity>
+                </View>
+              ))}
+              {galleryImageUris.map((uri, index) => (
+                <View
+                  key={`gallery-${uri}-${index}`}
+                  style={styles.tryOnImageBox}
+                >
+                  <Image
+                    source={{ uri }}
+                    style={styles.tryOnImageThumb}
+                    resizeMode="cover"
+                  />
+                  <TouchableOpacity
+                    style={styles.tryOnImageRemoveBtn}
+                    onPress={() =>
+                      setGalleryImageUris((prev) =>
+                        prev.filter((_, i) => i !== index),
+                      )
+                    }
+                    activeOpacity={0.7}
+                  >
+                    <Feather
+                      name="x"
+                      size={moderateWidthScale(14)}
+                      color={theme.white}
+                    />
+                  </TouchableOpacity>
+                </View>
+              ))}
+              <TouchableOpacity
+                style={styles.tryOnPlusBox}
+                onPress={() => setImagePickerVisible(true)}
+                activeOpacity={0.7}
+              >
+                <Feather
+                  name="plus"
+                  size={moderateWidthScale(28)}
+                  color={theme.darkGreen}
+                />
+              </TouchableOpacity>
+            </View>
+
+            <View
+              style={[styles.line, { marginTop: moderateHeightScale(20) }]}
+            />
+
+            {/* Privacy Policy Section */}
+            <View style={styles.section}>
+              <Text style={styles.privacyText}>
+                By placing this order, you agree to our{" "}
+                <Text
+                  style={styles.privacyLink}
+                  onPress={() => {
+                    const url = process.env.EXPO_PUBLIC_PRIVACY_URL;
+                    if (url) Linking.openURL(url);
+                  }}
+                >
+                  Privacy Policy
+                </Text>
+                . Your personal data will be processed by the partner with whom
+                you're booking an appointment.
+              </Text>
+            </View>
+
+            {/* Leave a Note Section */}
+            <View style={styles.noteInputContainer}>
+              <View style={styles.noteInputIcon}>
+                <Feather
+                  name="file-text"
+                  size={moderateWidthScale(18)}
+                  color={theme.lightGreen}
+                />
+              </View>
+              <TextInput
+                style={[styles.noteInput, styles.noteInputWithIcon]}
+                value={note}
+                onChangeText={setNote}
+                placeholder="Leave a note (optional)"
+                placeholderTextColor={theme.lightGreen2}
+                multiline
+                numberOfLines={4}
+              />
+              {note.length > 0 && (
+                <Pressable
+                  onPress={() => setNote("")}
+                  style={styles.noteClearButton}
+                  hitSlop={moderateWidthScale(8)}
+                >
+                  <CloseIcon color={theme.darkGreen} />
+                </Pressable>
+              )}
+            </View>
+
+            {/* Subscription Card - below Leave a note when isSubscriptionBooking */}
+              {isSubscriptionBooking && subscriptionData && (
+                <View style={styles.subscriptionCard}>
+                  {(() => {
+                    const pill = getCustomerSubscriptionPill(subscriptionData);
+                    const dateDisplay =
+                      getCustomerSubscriptionDateDisplay(subscriptionData);
+                    const scheduleDate = formatCustomerScheduleDate(
+                      dateDisplay.kind,
+                      dateDisplay.date,
+                    );
+                    const displayPrice =
+                      getCustomerSubscriptionDisplayPrice(subscriptionData);
+                    return (
+                      <>
+                <View style={styles.cardHeader}>
+                  <View style={styles.planTitleRow}>
+                    <Feather
+                      name="star"
+                      size={moderateWidthScale(16)}
+                      color={theme.orangeBrown}
+                      style={styles.starIcon}
+                    />
+                    <Text style={styles.planTitle}>
+                      {subscriptionData.subscriptionPlan}
+                    </Text>
+                  </View>
+                  <View style={styles.statusBadge}>
+                    <Text style={styles.statusText}>
+                      {pill.label.toUpperCase()}
+                    </Text>
+                  </View>
+                </View>
+                <View style={styles.topSection}>
+                  <View style={styles.userInfoRow}>
+                    <Feather
+                      name="user"
+                      size={moderateWidthScale(14)}
+                      color={theme.darkGreen}
+                      style={styles.userIcon}
+                    />
+                    <Text style={styles.userText} numberOfLines={1}>
+                      {subscriptionData.business}
+                    </Text>
+                  </View>
+                  <View style={styles.priceBadge}>
+                    <Text style={styles.priceText}>
+                      ${displayPrice}
+                    </Text>
+                    <Text style={styles.planPriceLabel}>/month</Text>
+                  </View>
+                </View>
+                <View style={styles.subExpandedDetailSection}>
+                  {subscriptionData.subscriptionPlanDescription && (
+                    <Text style={styles.subscriptionDescriptionText}>
+                      {subscriptionData.subscriptionPlanDescription}
+                    </Text>
+                  )}
+
+                  {(subscriptionData.paymentDate || scheduleDate) && (
+                    <View style={styles.paymentRenewalRow}>
+                      {subscriptionData.paymentDate && (
+                        <View style={styles.paymentDateContainer}>
+                          <Feather
+                            name="credit-card"
+                            size={moderateWidthScale(12)}
+                            color={theme.darkGreen}
+                          />
+                          <View style={styles.dateInfoContainer}>
+                            <Text style={styles.dateLabel}>Payment</Text>
+                            <Text style={styles.dateValue}>
+                              {subscriptionData.paymentDate}
+                            </Text>
+                          </View>
+                        </View>
+                      )}
+                      {scheduleDate && (
+                        <View
+                          style={[
+                            styles.renewalContainer,
+                            !subscriptionData.paymentDate && {
+                              marginLeft: 0,
+                            },
+                          ]}
+                        >
+                          <Feather
+                            name="calendar"
+                            size={moderateWidthScale(12)}
+                            color={theme.darkGreen}
+                          />
+                          <View style={styles.dateInfoContainer}>
+                            <Text style={styles.dateLabel}>
+                              {getCustomerScheduleDateLabel(dateDisplay.kind)}
+                            </Text>
+                            <Text style={styles.dateValue}>{scheduleDate}</Text>
+                          </View>
+                        </View>
+                      )}
+                    </View>
+                  )}
+
+                  {subscriptionData.subscriptionPlanServices &&
+                    subscriptionData.subscriptionPlanServices.length > 0 && (
+                      <>
+                        <Text style={styles.subServicesSectionTitle}>
+                          Plan services
+                        </Text>
+                        {subscriptionData.subscriptionPlanServices.map(
+                          (svc) => {
+                            const serviceQuantity = svc.quantity ?? 1;
+                            const isServiceDisabled = serviceQuantity <= 0;
+
+                            return (
+                              <TouchableOpacity
+                                key={svc.id}
+                                style={[
+                                  styles.subServiceRow,
+                                  styles.subServiceRowSelectable,
+                                  isServiceDisabled &&
+                                    styles.subServiceRowDisabled,
+                                ]}
+                                activeOpacity={isServiceDisabled ? 1 : 0.7}
+                                onPress={() => {
+                                  if (isServiceDisabled) return;
+                                  toggleSubscriptionServiceSelection(svc.id);
+                                }}
+                              >
+                                <View
+                                  style={styles.subServiceSelectableContent}
+                                >
+                                  <View style={styles.subServiceLeftSection}>
+                                    <View style={styles.subServiceCheckWrap}>
+                                      <View
+                                        style={[
+                                          styles.subServiceCheckOuter,
+                                          isServiceDisabled && {
+                                            borderColor: theme.borderLine,
+                                            backgroundColor: theme.borderLight,
+                                          },
+                                          selectedSubscriptionServiceIds.includes(
+                                            svc.id,
+                                          ) &&
+                                            styles.subServiceCheckOuterSelected,
+                                        ]}
+                                      >
+                                        {selectedSubscriptionServiceIds.includes(
+                                          svc.id,
+                                        ) && (
+                                          <View
+                                            style={styles.subServiceCheckInner}
+                                          />
+                                        )}
+                                      </View>
+                                    </View>
+
+                                    <View
+                                      style={styles.subServiceNameContainer}
+                                    >
+                                      <Text style={styles.subServiceNameText}>
+                                        {svc.name} x {serviceQuantity}
+                                      </Text>
+                                      {(svc.durationHours > 0 ||
+                                        svc.durationMinutes > 0) && (
+                                        <Text
+                                          style={styles.subServiceDurationText}
+                                        >
+                                          {formatServiceDuration(
+                                            svc.durationHours,
+                                            svc.durationMinutes,
+                                          )}
+                                        </Text>
+                                      )}
+                                      {!!svc.description && (
+                                        <Text
+                                          style={
+                                            styles.subServiceDescriptionText
+                                          }
+                                        >
+                                          {svc.description}
+                                        </Text>
+                                      )}
+                                    </View>
+                                  </View>
+                                  <Text style={styles.subServicePriceText}>
+                                    ${svc.price}
+                                  </Text>
+                                </View>
+                              </TouchableOpacity>
+                            );
+                          },
+                        )}
+                      </>
+                    )}
+                </View>
+                      </>
+                    );
+                  })()}
+              </View>
+            )}
+
+            <View
+              style={[styles.line, { marginTop: moderateHeightScale(10) }]}
+            />
+            {/* Price Breakdown - hide for subscription booking */}
+            {!isSubscriptionBooking && (
+              <View style={styles.priceBreakdown}>
+                <View style={styles.priceRow}>
+                  <Text style={styles.priceLabel}>Subtotal:</Text>
+                  <Text style={styles.priceValue}>
+                    ${totalPrice.toFixed(2)} USD
+                  </Text>
+                </View>
+                <View style={styles.priceRow}>
+                  <Text style={styles.priceLabel}>Tax:</Text>
+                  <Text style={styles.priceValue}>${tax.toFixed(2)} USD</Text>
+                </View>
+              </View>
+            )}
+          </>
+        )}
+      </ScrollView>
+
+      <View style={styles.bottom}>
+        {/* Final Total - hide for subscription booking and reschedule */}
+        {!isSubscriptionBooking && !isReschedule && (
+          <View style={styles.totalSection}>
+            <Text style={styles.totalLabel}>Estimated total:</Text>
+            <Text style={styles.totalValue}>
+              ${estimatedTotal.toFixed(2)} USD
+            </Text>
+          </View>
+        )}
+
+        {/* Reschedule Appointment Button */}
+        {isReschedule ? (
+          <Button
+            title="Reschedule Appointment"
+            onPress={() => submitReschedule(params.late_fee_accepted === "1")}
+            disabled={rescheduleLoading}
+            loading={rescheduleLoading}
+          />
+        ) : (
+          <Button
+            title={t("continue")}
+            loading={continueLoading}
+            disabled={continueLoading}
+            onPress={async () => {
+              const businessIdForCheckout = resolveBusinessIdParam(
+                resolveRouteParam(params.business_id),
+                reduxBusinessId,
+              );
+              if (!businessIdForCheckout) {
+                showBanner(
+                  t("error"),
+                  "Business ID is missing. Please go back and try again.",
+                  "error",
+                  4000,
+                );
+                return;
+              }
+              if (isSubscriptionBooking) {
+                if (selectedSubscriptionServiceIds.length === 0) {
+                  showBanner(
+                    "No Service Selected",
+                    "Please select at least one plan service before checkout.",
+                    "warning",
+                    4000,
+                  );
+                  return;
+                }
+                if (!selectedTimeSlot) {
+                  showBanner(
+                    "Select time",
+                    "Please select a date and time slot before checkout.",
+                    "warning",
+                    4000,
+                  );
+                  return;
+                }
+
+                if (selectedStaff === "anyone" && !isSoloPlan) {
+                  setContinueLoading(true);
+                  try {
+                    const assigned = await assignAnyoneStaff({
+                      business_id: parseInt(businessIdForCheckout, 10),
+                      service_ids: selectedSubscriptionServiceIds,
+                      date: selectedDate.format("YYYY-MM-DD"),
+                      start_time: selectedTimeSlot,
+                    });
+                    dispatch(setAssignedStaffId(assigned.staff_id));
+                  } catch (err: any) {
+                    showBanner(
+                      t("error"),
+                      err?.message ||
+                        err?.data?.message ||
+                        "No staff available for this time slot.",
+                      "error",
+                      4000,
+                    );
+                    return;
+                  } finally {
+                    setContinueLoading(false);
+                  }
+                } else {
+                  dispatch(setAssignedStaffId(null));
+                }
+
+                dispatch(setSelectedDate(selectedDate.format("YYYY-MM-DD")));
+                dispatch(setSelectedTimeSlot(selectedTimeSlot));
+                dispatch(setSelectedNote(note));
+                dispatch(setBookingTryOnImageUrls(tryOnImageUrls));
+                router.push({
+                  pathname: "/(main)/bookingNow/checkout",
+                  params: {
+                    subscription_id: params.subscription_id || "",
+                    business_id: businessIdForCheckout,
+                    item: params.item || "",
+                    try_on_image_urls:
+                      tryOnImageUrls.length > 0
+                        ? JSON.stringify(tryOnImageUrls)
+                        : "",
+                    gallery_image_uris:
+                      galleryImageUris.length > 0
+                        ? JSON.stringify(galleryImageUris)
+                        : "",
+                    selected_subscription_service_ids: JSON.stringify(
+                      selectedSubscriptionServiceIds,
+                    ),
+                    subscription_plan_type: subscriptionPlanType ?? "",
+                    ...(attributionReelId
+                      ? { reel_id: String(attributionReelId) }
+                      : {}),
+                    ...(attributionSavedLookId
+                      ? { saved_look_id: String(attributionSavedLookId) }
+                      : {}),
+                  },
+                });
+                return;
+              }
+              if (selectedServices.length === 0) {
+                showBanner(
+                  t("noServiceSelected"),
+                  t("pleaseSelectAtLeastOneService"),
+                  "warning",
+                  4000,
+                );
+                return;
+              }
+              if (!selectedTimeSlot) {
+                showBanner(
+                  "Select time",
+                  "Please select a date and time slot before checkout.",
+                  "warning",
+                  4000,
+                );
+                return;
+              }
+
+              if (selectedStaff === "anyone" && !isSoloPlan) {
+                setContinueLoading(true);
+                try {
+                  const assigned = await assignAnyoneStaff({
+                    business_id: parseInt(businessIdForCheckout, 10),
+                    service_ids: selectedServices.map((s) => s.id),
+                    date: selectedDate.format("YYYY-MM-DD"),
+                    start_time: selectedTimeSlot,
+                  });
+                  dispatch(setAssignedStaffId(assigned.staff_id));
+                } catch (err: any) {
+                  showBanner(
+                    t("error"),
+                    err?.message ||
+                      err?.data?.message ||
+                      "No staff available for this time slot.",
+                    "error",
+                    4000,
+                  );
+                  return;
+                } finally {
+                  setContinueLoading(false);
+                }
+              } else {
+                dispatch(setAssignedStaffId(null));
+              }
+
+              dispatch(setSelectedDate(selectedDate.format("YYYY-MM-DD")));
+              dispatch(setSelectedTimeSlot(selectedTimeSlot));
+              dispatch(setSelectedNote(note));
+              dispatch(setBookingTryOnImageUrls(tryOnImageUrls));
+              router.push({
+                pathname: "/(main)/bookingNow/checkout",
+                params: {
+                  try_on_image_urls:
+                    tryOnImageUrls.length > 0
+                      ? JSON.stringify(tryOnImageUrls)
+                      : "",
+                  gallery_image_uris:
+                    galleryImageUris.length > 0
+                      ? JSON.stringify(galleryImageUris)
+                      : "",
+                  subscription_plan_type: subscriptionPlanType ?? "",
+                  ...(attributionReelId
+                    ? { reel_id: String(attributionReelId) }
+                    : {}),
+                  ...(attributionSavedLookId
+                    ? { saved_look_id: String(attributionSavedLookId) }
+                    : {}),
+                },
+              });
+            }}
+          />
+        )}
+      </View>
+
+      {/* Add Service Bottom Sheet */}
+      <OutcomeConfirmSheet
+        visible={rescheduleFeeMessage != null}
+        onClose={() => setRescheduleFeeMessage(null)}
+        onConfirm={handleConfirmRescheduleFee}
+        title={t("lateRescheduleFeeTitle")}
+        question={t("lateRescheduleFeeQuestion")}
+        message={rescheduleFeeMessage ?? ""}
+        confirmLabel={t("acceptFeeAndReschedule")}
+      />
+
+      <AddServiceBottomSheet
+        visible={addServiceModalVisible}
+        onClose={handleCloseModal}
+        services={allServices}
+        selectedServiceIds={selectedServiceIds}
+        onUpdateServices={handleUpdateSelectedServices}
+      />
+      <ImagePickerModal
+        visible={imagePickerVisible}
+        onClose={() => setImagePickerVisible(false)}
+        allowsMultipleSelection
+        showCameraOption={false}
+        showTryOnOption
+        onFromTryOnPress={() => {
+          setImagePickerVisible(false);
+          dispatch(setBookingTryOnPreselectedUrls(tryOnImageUrls));
+          router.push({
+            pathname: "/aiRequests",
+            params: { returnTo: "booking" },
+          });
+        }}
+        onImageSelected={(uri) => {
+          setGalleryImageUris((prev) => [...prev, uri]);
+        }}
+        onImagesSelected={(uris) => {
+          setGalleryImageUris((prev) => [...prev, ...uris]);
+        }}
+      />
+    </SafeAreaView>
+  );
+}

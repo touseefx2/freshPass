@@ -10,7 +10,6 @@ import {
   StyleSheet,
   View,
   Text,
-  ScrollView,
   TouchableOpacity,
   Image,
   StatusBar,
@@ -18,13 +17,25 @@ import {
   TextInput,
   Pressable,
   Linking,
-  Dimensions,
   Modal,
   Platform,
+  BackHandler,
+  Keyboard,
+  useWindowDimensions,
 } from "react-native";
-import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
+import {
+  useRouter,
+  useLocalSearchParams,
+  useFocusEffect,
+  useNavigation,
+} from "expo-router";
 import { useTheme, useAppSelector, useAppDispatch } from "@/src/hooks/hooks";
 import { useTranslation } from "react-i18next";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import {
+  KeyboardAwareScrollView,
+  KeyboardStickyView,
+} from "react-native-keyboard-controller";
 import {
   formatCustomerScheduleDate,
   getCustomerScheduleDateLabel,
@@ -69,22 +80,19 @@ import {
   moderateHeightScale,
   widthScale,
 } from "@/src/theme/dimensions";
-import { SvgXml } from "react-native-svg";
 import {
-  LeafLogo,
   SearchIcon,
   MorningIcon,
   EveningIcon,
   NightIcon,
-  CloseIcon,
 } from "@/assets/icons";
-import Button from "@/src/components/button";
 import FloatingInput from "@/src/components/floatingInput";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { MaterialIcons, Octicons } from "@expo/vector-icons";
-import { Feather } from "@expo/vector-icons";
+import { MaterialIcons, Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import Animated, {
+  FadeInLeft,
+  FadeInRight,
+  ReduceMotion,
   interpolate,
   useAnimatedStyle,
   useSharedValue,
@@ -93,6 +101,17 @@ import Animated, {
 import AddServiceBottomSheet from "@/src/components/AddServiceBottomSheet";
 import OutcomeConfirmSheet from "@/src/components/OutcomeConfirmSheet";
 import ImagePickerModal from "@/src/components/imagePickerModal";
+import FlowHeader from "@/src/components/reelFlow/flowHeader";
+import FlowFooter, {
+  flowFooterBottomPad,
+} from "@/src/components/reelFlow/flowFooter";
+import FlowButton from "@/src/components/reelFlow/flowButton";
+import {
+  FlowCard,
+  FlowTitle,
+  InfoNote,
+  SectionLabel,
+} from "@/src/components/reelFlow/flowParts";
 import { IMAGES } from "@/src/constant/images";
 import dayjs from "dayjs";
 import weekOfYear from "dayjs/plugin/weekOfYear";
@@ -101,13 +120,26 @@ import {
   getDefaultAvatarImage,
 } from "@/src/services/remoteConfigService";
 
+/*
+ * Step-by-step booking (2026-10-16), same look as the reel / product flows.
+ *   Book Now:          Services → Staff → Date & time → Payment → Photos & note → Checkout
+ *   Subscription:      Plan services → Staff → Date & time → Photos & note → Checkout
+ *   Reschedule:        Staff → Date & time → Confirm
+ * Solo plans skip the Staff step. Data, APIs and checkout params are the same
+ * as the old single-page screen, which is kept in
+ * src/components/booking/BookingNowClassic.tsx (see its header to switch back).
+ */
+
 dayjs.extend(weekOfYear);
 dayjs.extend(isoWeek);
 
 const STAFF_CARD_WIDTH = widthScale(140);
 const STAFF_CARD_HEIGHT = heightScale(168);
-const STAFF_CARD_GAP = moderateWidthScale(14);
-const STAFF_LIST_PADDING = moderateWidthScale(20);
+const STAFF_CARD_RATIO = STAFF_CARD_HEIGHT / STAFF_CARD_WIDTH;
+const PAGE_PAD = moderateWidthScale(20);
+const GRID_GAP = moderateWidthScale(12);
+const SLOT_GAP = moderateWidthScale(10);
+const PHOTO_GAP = moderateWidthScale(10);
 
 type StaffCarouselItem = {
   id: string;
@@ -116,6 +148,32 @@ type StaffCarouselItem = {
   image: string | null;
   active: boolean | null | undefined;
   is_owner: boolean;
+};
+
+type StepKey =
+  | "services"
+  | "planServices"
+  | "staff"
+  | "time"
+  | "payment"
+  | "extras"
+  | "confirm";
+
+const STEP_LABEL_KEYS: Record<StepKey, string> = {
+  services: "bkFlowStepServices",
+  planServices: "bkFlowStepPlanServices",
+  staff: "bkFlowStepStaff",
+  time: "bkFlowStepTime",
+  payment: "bkFlowStepPayment",
+  extras: "bkFlowStepExtras",
+  confirm: "bkFlowStepConfirm",
+};
+
+const PERIOD_LABEL_KEYS: Record<TimeSlotCategory, string> = {
+  morning: "bkFlowMorning",
+  afternoon: "bkFlowAfternoon",
+  evening: "bkFlowEvening",
+  night: "bkFlowNight",
 };
 
 const getWeekDays = (date: dayjs.Dayjs) => {
@@ -129,40 +187,6 @@ const formatWeekRange = (week: dayjs.Dayjs[]) => {
   const end = week[6];
   return `${start.format("MMM D")} - ${end.format("MMM D, YYYY")}`;
 };
-
-const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-
-const allTimeSlots = [
-  "08:00",
-  "08:30",
-  "09:00",
-  "09:30",
-  "10:00",
-  "10:30",
-  "11:00",
-  "11:30",
-  "12:00",
-  "12:30",
-  "13:00",
-  "13:30",
-  "14:00",
-  "14:30",
-  "15:00",
-  "15:30",
-  "16:00",
-  "16:30",
-  "17:00",
-  "17:30",
-  "18:00",
-  "18:30",
-  "19:00",
-  "19:30",
-  "20:00",
-  "20:30",
-  "21:00",
-  "21:30",
-  "22:00",
-];
 
 const isValidTimeSlot = (slot: unknown): slot is string =>
   typeof slot === "string" && /^\d{1,2}:\d{2}/.test(slot);
@@ -269,43 +293,6 @@ const getSlotCategory = (slot: string): TimeSlotCategory => {
   return category ?? "morning";
 };
 
-const slotBelongsToCategory = (
-  slot: string,
-  category: TimeSlotCategory,
-): boolean => getSlotCategoryFromHour(getSlotHour(slot)) === category;
-
-/** First scroll index for a tab — first slot that belongs to that section in the list. */
-const getCategoryStartIndex = (
-  slots: string[],
-  category: TimeSlotCategory,
-): number => {
-  if (category === "morning") {
-    // Includes early-day slots (12 AM – 4:59 AM) and 5 AM – 11:59 AM
-    return slots.findIndex((slot) => getSlotCategory(slot) === "morning");
-  }
-  return slots.findIndex((slot) => slotBelongsToCategory(slot, category));
-};
-
-const categoryHasSlots = (
-  slots: string[],
-  category: TimeSlotCategory,
-): boolean => getCategoryStartIndex(slots, category) >= 0;
-
-// Back Arrow Icon SVG
-const backArrowIconSvg = `
-<svg width="{{WIDTH}}" height="{{HEIGHT}}" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-<path d="M20 11H7.83L13.42 5.41L12 4L4 12L12 20L13.41 18.59L7.83 13H20V11Z" fill="{{COLOR}}"/>
-</svg>
-`;
-
-const BackArrowIcon = ({ width = 24, height = 24, color = "#FFFFFF" }) => {
-  const svgXml = backArrowIconSvg
-    .replace(/{{WIDTH}}/g, width.toString())
-    .replace(/{{HEIGHT}}/g, height.toString())
-    .replace(/{{COLOR}}/g, color);
-  return <SvgXml xml={svgXml} />;
-};
-
 interface Service {
   id: number;
   name: string;
@@ -356,188 +343,310 @@ interface SubscriptionData {
   appointments: any[];
 }
 
-const createStyles = (theme: Theme) => {
-  const { width: screenWidth } = Dimensions.get("window");
-  const tryOnPaddingH = moderateWidthScale(20);
-  const tryOnGap = moderateWidthScale(12);
-  const tryOnNumCols = 4;
-  const tryOnBoxSize = Math.floor(
-    (screenWidth - tryOnPaddingH * 2 - tryOnGap * (tryOnNumCols - 1)) /
-      tryOnNumCols,
-  );
-
-  return StyleSheet.create({
-    container: {
+const createStyles = (theme: Theme) =>
+  StyleSheet.create({
+    root: {
       flex: 1,
       backgroundColor: theme.background,
     },
-    header: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      alignItems: "center",
-      paddingHorizontal: moderateWidthScale(20),
-    },
-    headerLeft: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: moderateWidthScale(8),
-    },
-    backButton: {
-      width: widthScale(32),
-      height: heightScale(32),
-      borderRadius: moderateWidthScale(8),
-      backgroundColor: "rgba(255, 255, 255, 0.2)",
+    flex: { flex: 1 },
+    center: {
+      flex: 1,
       alignItems: "center",
       justifyContent: "center",
-      marginRight: moderateWidthScale(8),
     },
-    logoContainer: {
+    content: {
+      paddingHorizontal: PAGE_PAD,
+      paddingTop: moderateHeightScale(16),
+      paddingBottom: moderateHeightScale(32),
+    },
+    stepBody: {
+      gap: moderateHeightScale(20),
+    },
+    section: {
+      gap: moderateHeightScale(12),
+    },
+    list: {
+      gap: moderateHeightScale(12),
+    },
+    // ── Services
+    serviceCard: {
       flexDirection: "row",
-      alignItems: "center",
-      gap: moderateWidthScale(4),
+      alignItems: "flex-start",
+      gap: moderateWidthScale(12),
+      padding: moderateWidthScale(16),
     },
-    logoText: {
+    serviceInfo: {
+      flex: 1,
+      minWidth: 0,
+      gap: moderateHeightScale(4),
+    },
+    serviceName: {
       fontSize: fontSize.size18,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
+      lineHeight: fontSize.size24,
     },
-    line: {
-      width: "100%",
-      height: 1.1,
-      backgroundColor: theme.borderLight,
-      marginTop: moderateHeightScale(12),
-    },
-    attachmentRow: {
+    metaRow: {
       flexDirection: "row",
       alignItems: "center",
-      justifyContent: "space-between",
-      marginTop: moderateHeightScale(16),
-      marginBottom: moderateHeightScale(4),
-      paddingHorizontal: moderateWidthScale(20),
+      gap: moderateWidthScale(6),
     },
-    hairIconsRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: moderateWidthScale(12),
-    },
-    hairIconBox: {},
-    attachmentButton: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: moderateWidthScale(8),
-      paddingVertical: moderateHeightScale(8),
-      paddingHorizontal: moderateWidthScale(12),
-    },
-    attachmentLabel: {
+    metaText: {
       fontSize: fontSize.size14,
-      fontFamily: fonts.fontMedium,
+      fontFamily: fonts.fontRegular,
       color: theme.lightGreen,
     },
-    scrollContent: {},
-    title: {
-      fontSize: fontSize.size24,
+    serviceDesc: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+      lineHeight: fontSize.size20,
+    },
+    priceRow: {
+      flexDirection: "row",
+      alignItems: "baseline",
+      flexWrap: "wrap",
+      gap: moderateWidthScale(8),
+      marginTop: moderateHeightScale(4),
+    },
+    price: {
+      fontSize: fontSize.size18,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
-      marginBottom: moderateHeightScale(24),
+      fontVariant: ["tabular-nums"],
     },
-    serviceCard: {
-      backgroundColor: theme.white,
-      borderRadius: moderateWidthScale(12),
-      padding: moderateWidthScale(16),
-      borderBottomWidth: 1,
-      borderColor: theme.borderLight,
+    priceOriginal: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontMedium,
+      color: theme.lightGreen5,
+      textDecorationLine: "line-through",
+      fontVariant: ["tabular-nums"],
     },
-    serviceHeader: {
+    roundAction: {
+      width: widthScale(44),
+      height: widthScale(44),
+      borderRadius: widthScale(22),
+      backgroundColor: theme.lightGreen07,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    addServiceBtn: {
       flexDirection: "row",
+      alignItems: "center",
       justifyContent: "space-between",
-      alignItems: "flex-start",
-      marginBottom: moderateHeightScale(12),
+      minHeight: heightScale(60),
+      paddingHorizontal: moderateWidthScale(18),
+      borderRadius: moderateWidthScale(16),
+      borderWidth: 1.5,
+      borderStyle: "dashed",
+      borderColor: theme.selectCard,
+      backgroundColor: theme.upcomingCard,
     },
-    serviceName: {
-      flex: 1,
+    addServiceText: {
       fontSize: fontSize.size16,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
-      maxWidth: "80%",
     },
-    deleteButton: {},
-    priceContainer: {
+    addServiceIcon: {
+      width: widthScale(32),
+      height: widthScale(32),
+      borderRadius: moderateWidthScale(8),
+      borderWidth: 1.5,
+      borderColor: theme.selectCard,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    // ── Subscription plan
+    planCard: {
+      padding: moderateWidthScale(16),
+      gap: moderateHeightScale(10),
+    },
+    planHeaderRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: moderateWidthScale(10),
+    },
+    planTitleRow: {
+      flex: 1,
       flexDirection: "row",
       alignItems: "center",
       gap: moderateWidthScale(8),
     },
-    originalPrice: {
+    planTitle: {
+      flexShrink: 1,
+      fontSize: fontSize.size20,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+      textTransform: "capitalize",
+    },
+    statusPill: {
+      paddingHorizontal: moderateWidthScale(12),
+      paddingVertical: moderateHeightScale(4),
+      borderRadius: moderateWidthScale(20),
+      backgroundColor: theme.upcomingCard,
+      borderWidth: 1,
+      borderColor: theme.upcomingBorder,
+    },
+    statusText: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontBold,
+      color: theme.orangeBrownText,
+      letterSpacing: 0.5,
+    },
+    planMetaRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: moderateWidthScale(10),
+    },
+    planBusiness: {
+      flex: 1,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(6),
+    },
+    planPrice: {
+      fontSize: fontSize.size20,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+      fontVariant: ["tabular-nums"],
+    },
+    planPriceUnit: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+    },
+    planDates: {
+      flexDirection: "row",
+      gap: moderateWidthScale(12),
+      paddingTop: moderateHeightScale(10),
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: theme.borderNormal,
+    },
+    planDate: {
+      flex: 1,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(8),
+    },
+    planDateLabel: {
       fontSize: fontSize.size12,
       fontFamily: fonts.fontMedium,
-      color: theme.lightGreen4,
-      textDecorationLine: "line-through",
+      color: theme.lightGreen,
     },
-    currentPrice: {
+    planDateValue: {
       fontSize: fontSize.size14,
-      fontFamily: fonts.fontMedium,
+      fontFamily: fonts.fontBold,
       color: theme.darkGreen,
     },
-    descriptionText: {
-      flex: 1,
-      fontSize: fontSize.size13,
-      fontFamily: fonts.fontRegular,
-      color: theme.darkGreen,
-    },
-    addServiceSection: {
+    // ── Selectable cards (plan services, payment)
+    choiceCard: {
       flexDirection: "row",
-      justifyContent: "space-between",
       alignItems: "center",
-      marginBottom: moderateHeightScale(20),
-      paddingHorizontal: moderateWidthScale(20),
-      backgroundColor: theme.orangeBrown30,
-      paddingVertical: moderateHeightScale(12),
+      gap: moderateWidthScale(14),
+      padding: moderateWidthScale(16),
+      minHeight: heightScale(76),
+      borderWidth: 2,
+      borderColor: theme.borderLight,
     },
-    addServiceText: {
-      fontSize: fontSize.size14,
-      fontFamily: fonts.fontMedium,
-      color: theme.darkGreen,
-    },
-    addServiceButton: {
-      width: widthScale(22),
-      height: heightScale(22),
-      borderRadius: 4,
-      alignItems: "center",
-      justifyContent: "center",
-      borderWidth: 1.5,
+    choiceCardSelected: {
       borderColor: theme.selectCard,
     },
-    staffSection: {
-      paddingTop: moderateHeightScale(4),
+    choiceCardDisabled: {
+      opacity: 0.5,
     },
-    staffSearchContainer: {
-      paddingHorizontal: moderateWidthScale(20),
-      marginBottom: moderateHeightScale(16),
-      marginTop: moderateHeightScale(2),
+    choiceText: {
+      flex: 1,
+      minWidth: 0,
+      gap: moderateHeightScale(3),
     },
+    choiceTitle: {
+      fontSize: fontSize.size17,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    choiceSub: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+      lineHeight: fontSize.size20,
+    },
+    checkBox: {
+      width: widthScale(28),
+      height: widthScale(28),
+      borderRadius: moderateWidthScale(8),
+      borderWidth: 2,
+      borderColor: theme.borderNormal,
+      backgroundColor: theme.white,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    checkBoxSelected: {
+      backgroundColor: theme.selectCard,
+      borderColor: theme.selectCard,
+    },
+    leftChip: {
+      alignSelf: "flex-start",
+      marginTop: moderateHeightScale(4),
+      paddingHorizontal: moderateWidthScale(10),
+      paddingVertical: moderateHeightScale(3),
+      borderRadius: moderateWidthScale(12),
+      backgroundColor: theme.lightGreen07,
+    },
+    leftChipText: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    choicePrice: {
+      fontSize: fontSize.size16,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+      fontVariant: ["tabular-nums"],
+    },
+    payIcon: {
+      width: widthScale(48),
+      height: widthScale(48),
+      borderRadius: widthScale(24),
+      backgroundColor: theme.lightGreen07,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    payIconSelected: {
+      backgroundColor: theme.upcomingCard,
+    },
+    radio: {
+      width: widthScale(26),
+      height: widthScale(26),
+      borderRadius: widthScale(13),
+      borderWidth: 2,
+      borderColor: theme.darkGreen,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    radioSelected: {
+      borderColor: theme.selectCard,
+    },
+    radioInner: {
+      width: widthScale(12),
+      height: widthScale(12),
+      borderRadius: widthScale(6),
+      backgroundColor: theme.selectCard,
+    },
+    // ── Staff
     staffSearchInput: {
       backgroundColor: theme.white,
       borderRadius: moderateWidthScale(12),
     },
-    staffTitle: {
-      fontSize: fontSize.size18,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-      marginBottom: moderateHeightScale(12),
-      paddingHorizontal: moderateWidthScale(20),
-    },
-    staffList: {
+    staffGrid: {
       flexDirection: "row",
-      gap: STAFF_CARD_GAP,
-      paddingHorizontal: STAFF_LIST_PADDING,
-      paddingBottom: moderateHeightScale(10),
-      paddingTop: moderateHeightScale(4),
-    },
-    staffCardWrap: {
-      width: STAFF_CARD_WIDTH,
+      flexWrap: "wrap",
+      gap: GRID_GAP,
     },
     staffCardShell: {
-      width: STAFF_CARD_WIDTH,
-      borderRadius: moderateWidthScale(14),
+      borderRadius: moderateWidthScale(16),
       backgroundColor:
         Platform.OS === "android" ? theme.lightGreen05 : theme.lightGreen1,
       paddingBottom:
@@ -546,12 +655,10 @@ const createStyles = (theme: Theme) => {
           : moderateHeightScale(3),
     },
     staffCard: {
-      width: STAFF_CARD_WIDTH,
-      height: STAFF_CARD_HEIGHT,
       backgroundColor: theme.emptyProfileImage,
-      borderRadius: moderateWidthScale(14),
+      borderRadius: moderateWidthScale(16),
       overflow: "hidden",
-      borderWidth: 1.5,
+      borderWidth: 2,
       borderColor: theme.borderLight,
       position: "relative",
     },
@@ -559,10 +666,7 @@ const createStyles = (theme: Theme) => {
       ...Platform.select({
         ios: {
           shadowColor: theme.shadow,
-          shadowOffset: {
-            width: 0,
-            height: moderateHeightScale(2),
-          },
+          shadowOffset: { width: 0, height: moderateHeightScale(2) },
           shadowOpacity: 0.1,
           shadowRadius: moderateWidthScale(3),
         },
@@ -570,39 +674,17 @@ const createStyles = (theme: Theme) => {
           elevation: 1,
           shadowColor: theme.lightGreen2,
         },
-        default: {
-          shadowColor: theme.shadow,
-          shadowOffset: {
-            width: 0,
-            height: moderateHeightScale(2),
-          },
-          shadowOpacity: 0.1,
-          shadowRadius: moderateWidthScale(3),
-        },
+        default: {},
       }),
     },
-    shadow: {
-      shadowColor: theme.shadow,
-      shadowOffset: {
-        width: 0,
-        height: 3,
-      },
-      shadowOpacity: 0.1,
-      shadowRadius: 6,
-      elevation: 3,
-    },
     staffCardSelected: {
-      borderColor: theme.orangeBrown,
-      borderWidth: 2,
+      borderColor: theme.selectCard,
     },
     staffCardSelectedShadow: {
       ...Platform.select({
         ios: {
           shadowColor: theme.orangeBrown,
-          shadowOffset: {
-            width: 0,
-            height: moderateHeightScale(4),
-          },
+          shadowOffset: { width: 0, height: moderateHeightScale(4) },
           shadowOpacity: 0.28,
           shadowRadius: moderateWidthScale(8),
         },
@@ -610,15 +692,7 @@ const createStyles = (theme: Theme) => {
           elevation: 4,
           shadowColor: theme.orangeBrown,
         },
-        default: {
-          shadowColor: theme.orangeBrown,
-          shadowOffset: {
-            width: 0,
-            height: moderateHeightScale(4),
-          },
-          shadowOpacity: 0.28,
-          shadowRadius: moderateWidthScale(8),
-        },
+        default: {},
       }),
     },
     staffImage: {
@@ -629,11 +703,11 @@ const createStyles = (theme: Theme) => {
     },
     staffRadio: {
       position: "absolute",
-      top: moderateHeightScale(8),
-      right: moderateWidthScale(8),
-      width: moderateWidthScale(20),
-      height: moderateWidthScale(20),
-      borderRadius: moderateWidthScale(10),
+      top: moderateHeightScale(10),
+      right: moderateWidthScale(10),
+      width: widthScale(26),
+      height: widthScale(26),
+      borderRadius: widthScale(13),
       borderWidth: 2,
       borderColor: theme.white,
       backgroundColor: theme.lightGreen22,
@@ -642,74 +716,58 @@ const createStyles = (theme: Theme) => {
       zIndex: 2,
     },
     staffRadioSelected: {
-      borderColor: theme.orangeBrown,
+      borderColor: theme.selectCard,
       backgroundColor: theme.white,
     },
     staffRadioInner: {
-      width: moderateWidthScale(10),
-      height: moderateWidthScale(10),
-      borderRadius: moderateWidthScale(5),
-      backgroundColor: theme.orangeBrown,
+      width: widthScale(12),
+      height: widthScale(12),
+      borderRadius: widthScale(6),
+      backgroundColor: theme.selectCard,
     },
     staffInfoStrip: {
       position: "absolute",
       left: 0,
       right: 0,
       bottom: 0,
-      paddingHorizontal: moderateWidthScale(10),
-      paddingTop: moderateHeightScale(52),
-      paddingBottom: moderateHeightScale(10),
+      paddingHorizontal: moderateWidthScale(12),
+      paddingTop: moderateHeightScale(56),
+      paddingBottom: moderateHeightScale(12),
       justifyContent: "flex-end",
       gap: moderateHeightScale(2),
     },
     staffNameRow: {
       flexDirection: "row",
       alignItems: "center",
-      gap: moderateWidthScale(4),
+      gap: moderateWidthScale(6),
       width: "100%",
     },
     staffName: {
       flexShrink: 1,
-      fontSize: fontSize.size13,
+      fontSize: fontSize.size16,
       fontFamily: fonts.fontBold,
       color: theme.white,
-      textTransform: "capitalize",
       textShadowColor: theme.black,
       textShadowOffset: { width: 0, height: 1 },
       textShadowRadius: 6,
     },
-    staffNameAnyone: {
-      flexShrink: 1,
-      fontSize: fontSize.size13,
-      fontFamily: fonts.fontBold,
-      color: theme.white,
-      textTransform: "none",
-      textShadowColor: theme.black,
-      textShadowOffset: { width: 0, height: 1 },
-      textShadowRadius: 6,
+    staffNameCap: {
+      textTransform: "capitalize",
     },
     staffAnyoneInfoButton: {
-      width: moderateWidthScale(16),
-      height: moderateWidthScale(16),
-      borderRadius: moderateWidthScale(8),
+      width: widthScale(28),
+      height: widthScale(28),
       alignItems: "center",
       justifyContent: "center",
     },
     staffExperience: {
-      fontSize: fontSize.size11,
+      fontSize: fontSize.size13,
       fontFamily: fonts.fontRegular,
       color: theme.white,
       width: "100%",
       textShadowColor: theme.black,
       textShadowOffset: { width: 0, height: 1 },
       textShadowRadius: 6,
-    },
-    staffEmptyText: {
-      fontSize: fontSize.size14,
-      fontFamily: fonts.fontRegular,
-      color: theme.lightGreen,
-      paddingHorizontal: moderateWidthScale(20),
-      paddingVertical: moderateHeightScale(8),
     },
     anyoneHintOverlay: {
       flex: 1,
@@ -720,10 +778,10 @@ const createStyles = (theme: Theme) => {
     },
     anyoneHintBubble: {
       backgroundColor: theme.white,
-      borderRadius: moderateWidthScale(14),
-      paddingVertical: moderateHeightScale(16),
-      paddingHorizontal: moderateWidthScale(16),
-      paddingRight: moderateWidthScale(36),
+      borderRadius: moderateWidthScale(16),
+      paddingVertical: moderateHeightScale(18),
+      paddingHorizontal: moderateWidthScale(18),
+      paddingRight: moderateWidthScale(48),
       borderWidth: 1,
       borderColor: theme.borderLight,
       maxWidth: widthScale(320),
@@ -734,461 +792,364 @@ const createStyles = (theme: Theme) => {
       elevation: 8,
     },
     anyoneHintText: {
-      fontSize: fontSize.size13,
+      fontSize: fontSize.size16,
       fontFamily: fonts.fontRegular,
       color: theme.darkGreen,
-      lineHeight: moderateHeightScale(20),
+      lineHeight: fontSize.size22,
     },
     anyoneHintClose: {
       position: "absolute",
-      top: moderateHeightScale(8),
-      right: moderateWidthScale(8),
-      padding: moderateWidthScale(4),
+      top: moderateHeightScale(4),
+      right: moderateWidthScale(4),
+      width: widthScale(44),
+      height: widthScale(44),
+      alignItems: "center",
+      justifyContent: "center",
     },
-    section: {
-      marginTop: moderateHeightScale(16),
-    },
-    sectionHeaderRow: {
+    // ── Date & time
+    weekNav: {
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
-      marginBottom: moderateHeightScale(20),
-      paddingHorizontal: moderateWidthScale(20),
-      gap: moderateWidthScale(12),
+      gap: moderateWidthScale(8),
     },
-    sectionTitle: {
-      fontSize: fontSize.size16,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-      marginBottom: moderateHeightScale(20),
-      paddingHorizontal: moderateWidthScale(20),
-    },
-    availabilityTitle: {
-      fontSize: fontSize.size16,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-      flexShrink: 1,
-    },
-    slotMinutesSelector: {
-      flexDirection: "row",
-      alignItems: "center",
-      backgroundColor: theme.background,
-      borderRadius: moderateWidthScale(20),
-      padding: moderateWidthScale(3),
-      gap: moderateWidthScale(2),
-      shadowColor: theme.shadow,
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.12,
-      shadowRadius: 4,
-      elevation: 3,
-    },
-    slotMinutesOption: {
-      minWidth: widthScale(32),
-      paddingHorizontal: moderateWidthScale(8),
-      paddingVertical: moderateHeightScale(5),
-      borderRadius: moderateWidthScale(16),
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    slotMinutesOptionSelected: {
-      backgroundColor: theme.orangeBrown30,
-    },
-    slotMinutesOptionText: {
-      fontSize: fontSize.size11,
-      fontFamily: fonts.fontMedium,
-      color: theme.lightGreen,
-    },
-    slotMinutesOptionTextSelected: {
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-    },
-    slotMinutesUnit: {
-      fontSize: fontSize.size10,
-      fontFamily: fonts.fontRegular,
-      color: theme.lightGreen,
-      marginLeft: moderateWidthScale(4),
-      marginRight: moderateWidthScale(4),
-    },
-    sectionTitleTryon: {
-      fontSize: fontSize.size16,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-    },
-    sectionSubTitleTryon: {
-      fontFamily: fonts.fontRegular,
-      color: theme.lightGreen,
-    },
-    tryOnImagesRow: {
-      flexDirection: "row",
-      flexWrap: "wrap",
-      alignItems: "center",
-      gap: moderateWidthScale(12),
-      marginTop: moderateHeightScale(12),
-      paddingHorizontal: moderateWidthScale(20),
-      paddingBottom: moderateHeightScale(8),
-    },
-    tryOnImageBox: {
-      width: tryOnBoxSize,
-      height: tryOnBoxSize,
-      borderRadius: moderateWidthScale(8),
-      overflow: "hidden",
-      backgroundColor: theme.borderLight,
-      borderWidth: 1,
-      borderColor: theme.borderLine,
-      position: "relative",
-    },
-    tryOnImageThumb: {
-      width: "100%",
-      height: "100%",
-    },
-    tryOnImageRemoveBtn: {
-      position: "absolute",
-      top: moderateWidthScale(2),
-      right: moderateWidthScale(2),
-      width: moderateWidthScale(22),
-      height: moderateWidthScale(22),
-      borderRadius: moderateWidthScale(11),
-      backgroundColor: "rgba(0,0,0,0.6)",
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    tryOnPlusBox: {
-      width: tryOnBoxSize,
-      height: tryOnBoxSize,
-      borderRadius: moderateWidthScale(8),
-      borderWidth: 2,
-      borderStyle: "dashed",
-      borderColor: theme.lightGreen2,
-      backgroundColor: theme.lightGreen015,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    paymentCard: {
-      backgroundColor: theme.white,
-      borderRadius: moderateWidthScale(8),
-      marginHorizontal: moderateWidthScale(20),
-      overflow: "hidden",
-      marginBottom: moderateHeightScale(12),
-    },
-    paymentOption: {
-      flexDirection: "row",
-      alignItems: "center",
-      padding: moderateWidthScale(12),
-    },
-    paymentDivider: {
-      height: 1,
-      backgroundColor: theme.borderLight,
-    },
-    paymentRadioButton: {
-      width: moderateWidthScale(20),
-      height: moderateWidthScale(20),
-      borderRadius: moderateWidthScale(10),
-      borderWidth: 2,
-      borderColor: theme.darkGreen,
-      alignItems: "center",
-      justifyContent: "center",
-      marginRight: moderateWidthScale(12),
-      marginTop: moderateHeightScale(2),
-    },
-    paymentRadioButtonSelected: {},
-    paymentRadioButtonInner: {
-      width: moderateWidthScale(10),
-      height: moderateWidthScale(10),
-      borderRadius: moderateWidthScale(5),
-      backgroundColor: theme.orangeBrown,
-    },
-    paymentOptionContent: {
-      flex: 1,
-    },
-    paymentOptionTitle: {
-      fontSize: fontSize.size14,
-      fontFamily: fonts.fontMedium,
-      color: theme.darkGreen,
-      marginBottom: moderateHeightScale(3),
-    },
-    paymentOptionDescription: {
-      fontSize: fontSize.size11,
-      fontFamily: fonts.fontRegular,
-      color: theme.lightGreen,
-    },
-    privacyText: {
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontRegular,
-      color: theme.lightGreen,
-      lineHeight: moderateHeightScale(16),
-      marginHorizontal: moderateWidthScale(20),
-    },
-    privacyLink: {
-      color: theme.primary,
-      fontFamily: fonts.fontMedium,
-    },
-    noteInputContainer: {
-      marginTop: moderateHeightScale(16),
-      marginBottom: moderateHeightScale(20),
-      marginHorizontal: moderateWidthScale(20),
-      position: "relative",
-    },
-    noteInput: {
+    weekNavBtn: {
+      width: widthScale(44),
+      height: widthScale(44),
       borderRadius: moderateWidthScale(12),
       borderWidth: 1,
-      borderColor: theme.lightGreen2,
+      borderColor: theme.borderNormal,
       backgroundColor: theme.white,
-      paddingHorizontal: moderateWidthScale(16),
-      paddingVertical: moderateHeightScale(12),
-      paddingRight: moderateWidthScale(40),
-      fontSize: fontSize.size15,
-      fontFamily: fonts.fontRegular,
-      color: theme.darkGreen,
-      minHeight: heightScale(100),
-      textAlignVertical: "top",
-    },
-    noteInputIcon: {
-      position: "absolute",
-      left: moderateWidthScale(16),
-      top: moderateHeightScale(12),
-      zIndex: 1,
-    },
-    noteInputWithIcon: {
-      paddingLeft: moderateWidthScale(48),
-    },
-    noteClearButton: {
-      position: "absolute",
-      top: moderateHeightScale(12),
-      right: moderateWidthScale(12),
-      zIndex: 1,
-    },
-    weekNavigation: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-      marginBottom: moderateHeightScale(16),
-      paddingHorizontal: moderateWidthScale(20),
-    },
-    weekNavigationButton: {
-      width: moderateWidthScale(32),
-      height: moderateWidthScale(40),
-      borderRadius: moderateWidthScale(6),
       alignItems: "center",
       justifyContent: "center",
-      borderWidth: 1,
-      borderColor: theme.borderLight,
     },
-    weekRangeText: {
-      fontSize: fontSize.size14,
-      fontFamily: fonts.fontMedium,
-      color: theme.darkGreen,
-    },
-    calendarGrid: {
-      marginBottom: moderateHeightScale(16),
-      paddingHorizontal: moderateWidthScale(20),
-    },
-    daysHeader: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      marginBottom: moderateHeightScale(12),
-    },
-    dayHeader: {
+    weekRange: {
       flex: 1,
-      alignItems: "center",
-    },
-    dayHeaderText: {
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontMedium,
+      textAlign: "center",
+      fontSize: fontSize.size16,
+      fontFamily: fonts.fontBold,
       color: theme.darkGreen,
     },
     daysRow: {
       flexDirection: "row",
       justifyContent: "space-between",
     },
-    dayContainer: {
+    dayCell: {
       flex: 1,
       alignItems: "center",
     },
-    dayNumberContainer: {
-      width: widthScale(35),
-      height: widthScale(35),
-      borderRadius: widthScale(35 / 2),
+    dayPill: {
+      width: widthScale(44),
+      paddingVertical: moderateHeightScale(8),
+      borderRadius: widthScale(22),
       alignItems: "center",
-      justifyContent: "center",
-      borderWidth: 1,
+      gap: moderateHeightScale(2),
+      borderWidth: 1.5,
       borderColor: "transparent",
     },
-    dayNumberSelected: {
+    dayPillSelected: {
       backgroundColor: theme.orangeBrown30,
       borderColor: theme.selectCard,
     },
-    dayNumber: {
-      fontSize: fontSize.size14,
+    dayPillDisabled: {
+      opacity: 0.35,
+    },
+    dayName: {
+      fontSize: fontSize.size12,
       fontFamily: fonts.fontMedium,
-      color: theme.darkGreen,
-    },
-    dayNumberSelectedText: {
-      color: theme.darkGreen,
-    },
-    dayNumberDisabled: {
-      opacity: 0.3,
-    },
-    dayNumberDisabledText: {
       color: theme.lightGreen,
     },
-    timezoneText: {
-      fontSize: fontSize.size11,
-      fontFamily: fonts.fontRegular,
-      color: theme.lightGreen,
-      marginBottom: moderateHeightScale(5),
-      paddingHorizontal: moderateWidthScale(20),
-    },
-    timeSlotSection: {
-      marginTop: moderateHeightScale(16),
-    },
-    timeSlotCategoryRow: {
-      flexDirection: "row",
-      paddingHorizontal: moderateWidthScale(20),
-      marginBottom: moderateHeightScale(16),
-      borderBottomWidth: 1,
-      borderBottomColor: theme.lightGreen2,
-    },
-    timeSlotCategoryButton: {
-      flex: 1,
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "center",
-      paddingVertical: moderateHeightScale(12),
-      position: "relative",
-    },
-    timeSlotCategoryButtonDisabled: {
-      opacity: 0.4,
-    },
-    timeSlotCategoryUnderline: {
-      position: "absolute",
-      bottom: -1,
-      left: 0,
-      right: 0,
-      height: 2,
-      backgroundColor: theme.orangeBrown,
-    },
-    timeSlotCategoryIcon: {
-      marginRight: moderateWidthScale(6),
-    },
-    timeSlotCategoryText: {
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontBold,
-      color: theme.lightGreen,
-    },
-    timeSlotCategoryTextSelected: {
+    dayNameSelected: {
       color: theme.darkGreen,
     },
-    timeSlotsContainer: {
-      marginBottom: moderateHeightScale(5),
-    },
-    timeSlotsContentContainer: {
-      marginBottom: moderateHeightScale(16),
-      paddingHorizontal: moderateWidthScale(20),
-      gap: moderateWidthScale(12),
-    },
-    timeSlotButton: {
-      width: widthScale(90),
-      paddingVertical: moderateHeightScale(10),
-      borderRadius: moderateWidthScale(6),
-      borderWidth: 1,
-      borderColor: theme.lightGreen2,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    timeSlotButtonSelected: {
-      backgroundColor: theme.darkGreenLight,
-      borderColor: theme.darkGreen,
-    },
-    timeSlotButtonDisabled: {
-      opacity: 0.4,
-      backgroundColor: theme.background,
-    },
-    timeSlotSkeleton: {
-      width: widthScale(90),
-      paddingVertical: moderateHeightScale(10),
-      borderRadius: moderateWidthScale(6),
-      borderWidth: 1,
-      borderColor: theme.borderLight,
-      backgroundColor: theme.orangeBrown015,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    timeSlotText: {
-      fontSize: fontSize.size12,
+    dayNum: {
+      fontSize: fontSize.size17,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
+      fontVariant: ["tabular-nums"],
     },
-    timeSlotTextSelected: {
-      color: theme.white,
-    },
-    timeSlotTextDisabled: {
-      color: theme.lightGreen,
-    },
-    noSlotsContainer: {
-      paddingVertical: moderateHeightScale(20),
-      paddingHorizontal: moderateWidthScale(20),
-      alignItems: "center",
-    },
-    noSlotsText: {
-      fontSize: fontSize.size14,
-      fontFamily: fonts.fontRegular,
-      color: theme.lightGreen,
-      textAlign: "center",
-    },
-    slotsErrorTitle: {
-      fontSize: fontSize.size14,
-      fontFamily: fonts.fontBold,
-      color: theme.red,
-      textAlign: "center",
-      marginBottom: moderateHeightScale(8),
-      maxWidth: widthScale(260),
-    },
-    slotsErrorReason: {
+    timezone: {
       fontSize: fontSize.size13,
       fontFamily: fonts.fontRegular,
-      color: theme.darkGreen,
-      textAlign: "center",
-      maxWidth: widthScale(300),
+      color: theme.lightGreen,
     },
-    slotsErrorButton: {
-      marginTop: moderateHeightScale(14),
-      width: widthScale(116),
-      height: heightScale(42),
-    },
-    priceBreakdown: {
-      padding: moderateWidthScale(20),
-    },
-    priceRow: {
+    timeHeaderRow: {
       flexDirection: "row",
-      justifyContent: "space-between",
       alignItems: "center",
-      marginBottom: moderateHeightScale(12),
+      justifyContent: "space-between",
+      gap: moderateWidthScale(12),
     },
-    priceRowLast: {
-      marginBottom: 0,
+    slotMinutes: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: theme.white,
+      borderRadius: moderateWidthScale(22),
+      padding: moderateWidthScale(3),
+      borderWidth: 1,
+      borderColor: theme.borderLight,
     },
-    priceLabel: {
-      fontSize: fontSize.size14,
-      fontFamily: fonts.fontRegular,
-      color: theme.darkGreen,
+    slotMinutesOption: {
+      minWidth: widthScale(40),
+      height: heightScale(36),
+      paddingHorizontal: moderateWidthScale(8),
+      borderRadius: heightScale(18),
+      alignItems: "center",
+      justifyContent: "center",
     },
-    priceValue: {
+    slotMinutesOptionSelected: {
+      backgroundColor: theme.orangeBrown30,
+    },
+    slotMinutesText: {
       fontSize: fontSize.size14,
       fontFamily: fonts.fontMedium,
+      color: theme.lightGreen,
+      fontVariant: ["tabular-nums"],
+    },
+    slotMinutesTextSelected: {
+      fontFamily: fonts.fontBold,
       color: theme.darkGreen,
     },
-    bottom: {
-      backgroundColor: theme.white,
-      paddingHorizontal: moderateWidthScale(20),
-      gap: moderateHeightScale(16),
-      paddingVertical: moderateHeightScale(12),
-      borderColor: theme.borderLight,
-      borderTopWidth: 1,
+    slotMinutesUnit: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+      marginHorizontal: moderateWidthScale(6),
     },
-    totalSection: {
+    periodRow: {
       flexDirection: "row",
-      justifyContent: "space-between",
+      gap: moderateWidthScale(4),
+      padding: moderateWidthScale(4),
+      borderRadius: moderateWidthScale(16),
+      backgroundColor: theme.lightGreen07,
+    },
+    periodTab: {
+      flex: 1,
+      minHeight: heightScale(56),
+      borderRadius: moderateWidthScale(12),
       alignItems: "center",
+      justifyContent: "center",
+      gap: moderateHeightScale(4),
+    },
+    periodTabSelected: {
+      backgroundColor: theme.white,
+      shadowColor: theme.shadow,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+      elevation: 2,
+    },
+    periodTabDisabled: {
+      opacity: 0.35,
+    },
+    periodIcon: {
+      height: moderateHeightScale(18),
+      justifyContent: "center",
+    },
+    periodText: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontBold,
+      color: theme.lightGreen,
+    },
+    periodTextSelected: {
+      color: theme.darkGreen,
+    },
+    slotsGrid: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: SLOT_GAP,
+    },
+    slotBtn: {
+      height: heightScale(52),
+      borderRadius: moderateWidthScale(14),
+      borderWidth: 1.5,
+      borderColor: theme.borderNormal,
+      backgroundColor: theme.white,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    slotBtnSelected: {
+      backgroundColor: theme.darkGreen,
+      borderColor: theme.darkGreen,
+    },
+    slotBtnDisabled: {
+      opacity: 0.4,
+      backgroundColor: "transparent",
+    },
+    slotText: {
+      fontSize: fontSize.size16,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+      fontVariant: ["tabular-nums"],
+    },
+    slotTextSelected: {
+      color: theme.white,
+    },
+    slotSkeleton: {
+      height: heightScale(52),
+      borderRadius: moderateWidthScale(14),
+      backgroundColor: theme.lightGreen07,
+    },
+    retryBtn: {
+      alignSelf: "flex-start",
+    },
+    pickedTime: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(10),
+      padding: moderateWidthScale(14),
+      borderRadius: moderateWidthScale(16),
+      backgroundColor: theme.upcomingCard,
+      borderWidth: 1,
+      borderColor: theme.upcomingBorder,
+    },
+    pickedTimeText: {
+      flex: 1,
+      fontSize: fontSize.size16,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    // ── Photos & note
+    photoGrid: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: PHOTO_GAP,
+    },
+    photoBox: {
+      borderRadius: moderateWidthScale(14),
+      overflow: "hidden",
+      backgroundColor: theme.lightGreen07,
+    },
+    photoThumb: {
+      width: "100%",
+      height: "100%",
+    },
+    photoRemove: {
+      position: "absolute",
+      top: moderateWidthScale(6),
+      right: moderateWidthScale(6),
+      width: widthScale(32),
+      height: widthScale(32),
+      borderRadius: widthScale(16),
+      backgroundColor: "rgba(0,0,0,0.6)",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    photoAdd: {
+      borderRadius: moderateWidthScale(14),
+      borderWidth: 2,
+      borderStyle: "dashed",
+      borderColor: theme.lightGreen2,
+      backgroundColor: theme.lightGreen07,
+      alignItems: "center",
+      justifyContent: "center",
+      gap: moderateHeightScale(4),
+    },
+    photoAddText: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    noteWrap: {
+      position: "relative",
+    },
+    noteInput: {
+      borderRadius: moderateWidthScale(16),
+      borderWidth: 1.5,
+      borderColor: theme.borderNormal,
+      backgroundColor: theme.white,
+      paddingHorizontal: moderateWidthScale(16),
+      paddingTop: moderateHeightScale(14),
+      paddingBottom: moderateHeightScale(14),
+      paddingRight: moderateWidthScale(52),
+      fontSize: fontSize.size16,
+      fontFamily: fonts.fontRegular,
+      color: theme.darkGreen,
+      minHeight: heightScale(120),
+      textAlignVertical: "top",
+    },
+    noteClear: {
+      position: "absolute",
+      top: moderateHeightScale(4),
+      right: moderateWidthScale(4),
+      width: widthScale(44),
+      height: widthScale(44),
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    privacy: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+      lineHeight: fontSize.size19,
+    },
+    privacyLink: {
+      color: theme.primary,
+      fontFamily: fonts.fontMedium,
+    },
+    // ── Confirm (reschedule)
+    reviewCard: {
+      overflow: "hidden",
+    },
+    reviewRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(12),
+      paddingHorizontal: moderateWidthScale(16),
+      paddingVertical: moderateHeightScale(14),
+    },
+    reviewRowBorder: {
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: theme.borderNormal,
+    },
+    reviewIcon: {
+      width: widthScale(40),
+      height: widthScale(40),
+      borderRadius: widthScale(20),
+      backgroundColor: theme.lightGreen07,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    reviewText: {
+      flex: 1,
+      minWidth: 0,
+      gap: moderateHeightScale(2),
+    },
+    reviewLabel: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontMedium,
+      color: theme.lightGreen,
+      textTransform: "uppercase",
+      letterSpacing: 0.6,
+    },
+    reviewValue: {
+      fontSize: fontSize.size17,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    reviewEdit: {
+      minHeight: heightScale(36),
+      minWidth: widthScale(56),
+      paddingHorizontal: moderateWidthScale(12),
+      borderRadius: heightScale(18),
+      backgroundColor: theme.lightGreen07,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    reviewEditText: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    // ── Footer total
+    totalBar: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingHorizontal: PAGE_PAD,
+      paddingTop: moderateHeightScale(12),
+      backgroundColor: theme.background,
+      borderTopWidth: 1,
+      borderTopColor: theme.borderLight,
     },
     totalLabel: {
       fontSize: fontSize.size16,
@@ -1196,333 +1157,23 @@ const createStyles = (theme: Theme) => {
       color: theme.darkGreen,
     },
     totalValue: {
-      fontSize: fontSize.size16,
-      fontFamily: fonts.fontMedium,
-      color: theme.darkGreen,
-    },
-    // Subscription Card (when isSubscriptionBooking)
-    subscriptionCard: {
-      marginHorizontal: moderateWidthScale(20),
-      marginTop: moderateHeightScale(16),
-      marginBottom: moderateHeightScale(12),
-      borderRadius: moderateWidthScale(16),
-      backgroundColor: theme.background,
-      padding: moderateWidthScale(16),
-      borderWidth: 1,
-      borderColor: theme.borderLight,
-      shadowColor: theme.shadow,
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.1,
-      shadowRadius: 4,
-      elevation: 3,
-    },
-    cardHeader: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      alignItems: "flex-start",
-      marginBottom: moderateHeightScale(10),
-    },
-    planTitleRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      flex: 1,
-      marginRight: moderateWidthScale(8),
-    },
-    starIcon: {
-      marginRight: moderateWidthScale(6),
-    },
-    planTitle: {
-      fontSize: fontSize.size20,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-      textTransform: "capitalize",
-      flex: 1,
-    },
-    statusBadge: {
-      paddingHorizontal: moderateWidthScale(12),
-      paddingVertical: moderateHeightScale(4),
-      borderRadius: moderateWidthScale(20),
-      backgroundColor: theme.orangeBrown015,
-      borderWidth: 1,
-      borderColor: theme.orangeBrown,
-    },
-    statusText: {
-      fontSize: fontSize.size11,
-      fontFamily: fonts.fontBold,
-      color: theme.orangeBrown,
-      letterSpacing: 0.5,
-    },
-    topSection: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      alignItems: "center",
-      marginBottom: moderateHeightScale(8),
-    },
-    userInfoRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      flex: 1,
-    },
-    userIcon: {
-      marginRight: moderateWidthScale(6),
-    },
-    userText: {
-      fontSize: fontSize.size13,
-      fontFamily: fonts.fontMedium,
-      color: theme.darkGreen,
-      opacity: 0.75,
-    },
-    priceBadge: {
-      backgroundColor: theme.buttonBack,
-      paddingHorizontal: moderateWidthScale(14),
-      paddingVertical: moderateHeightScale(8),
-      borderRadius: moderateWidthScale(12),
-      alignItems: "center",
-      minWidth: moderateWidthScale(90),
-    },
-    priceText: {
-      fontSize: fontSize.size20,
-      fontFamily: fonts.fontBold,
-      color: theme.white,
-    },
-    planPriceLabel: {
-      fontSize: fontSize.size10,
-      fontFamily: fonts.fontRegular,
-      color: theme.white,
-      marginTop: moderateHeightScale(1),
-      opacity: 0.9,
-    },
-    subscriptionDescriptionText: {
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontRegular,
-      color: theme.darkGreen,
-      marginBottom: moderateHeightScale(10),
-      opacity: 0.65,
-      lineHeight: fontSize.size18,
-    },
-    usageSection: {
-      marginTop: moderateHeightScale(8),
-      marginBottom: moderateHeightScale(8),
-      paddingTop: moderateHeightScale(10),
-      borderTopWidth: 1,
-      borderTopColor: theme.borderLight,
-    },
-    usageHeader: {
-      flexDirection: "row",
-      alignItems: "center",
-      marginBottom: moderateHeightScale(8),
-    },
-    usageTitle: {
-      fontSize: fontSize.size13,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-      marginLeft: moderateWidthScale(6),
-      flex: 1,
-    },
-    usageStats: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      gap: moderateWidthScale(6),
-    },
-    usageItem: {
-      alignItems: "center",
-      flex: 1,
-      paddingVertical: moderateHeightScale(8),
-      backgroundColor: theme.lightGreen015,
-      borderRadius: moderateWidthScale(10),
-      borderWidth: 1,
-      borderColor: theme.borderLight,
-    },
-    usageLabel: {
-      fontSize: fontSize.size10,
-      fontFamily: fonts.fontMedium,
-      color: theme.darkGreen,
-      marginBottom: moderateHeightScale(3),
-      opacity: 0.65,
-    },
-    usageValue: {
-      fontSize: fontSize.size16,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-    },
-    paymentRenewalRow: {
-      flexDirection: "row",
-      marginTop: moderateHeightScale(6),
-      marginBottom: moderateHeightScale(6),
-      paddingTop: moderateHeightScale(8),
-      borderTopWidth: 1,
-      borderTopColor: theme.borderLight,
-    },
-    paymentDateContainer: {
-      flex: 1,
-      flexDirection: "row",
-      alignItems: "center",
-      marginRight: moderateWidthScale(8),
-    },
-    renewalContainer: {
-      flex: 1,
-      flexDirection: "row",
-      alignItems: "center",
-      marginLeft: moderateWidthScale(8),
-    },
-    dateInfoContainer: {
-      marginLeft: moderateWidthScale(4),
-    },
-    dateLabel: {
-      fontSize: fontSize.size10,
-      fontFamily: fonts.fontMedium,
-      color: theme.darkGreen,
-      opacity: 0.7,
-    },
-    dateValue: {
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-    },
-    subSeeDetailRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "center",
-      paddingVertical: moderateHeightScale(8),
-      marginTop: moderateHeightScale(4),
-      marginBottom: moderateHeightScale(4),
-      borderTopWidth: 1,
-      borderTopColor: theme.borderLight,
-    },
-    subSeeDetailText: {
-      fontSize: fontSize.size13,
-      fontFamily: fonts.fontMedium,
-      color: theme.orangeBrown,
-      marginRight: moderateWidthScale(6),
-    },
-    subExpandedDetailSection: {
-      marginTop: moderateHeightScale(4),
-      paddingTop: moderateHeightScale(10),
-      borderTopWidth: 1,
-      borderTopColor: theme.borderLight,
-    },
-    subServicesSectionTitle: {
-      fontSize: fontSize.size13,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-      marginBottom: moderateHeightScale(8),
-    },
-    subServiceRow: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      alignItems: "center",
-      paddingVertical: moderateHeightScale(6),
-      paddingHorizontal: moderateWidthScale(10),
-      backgroundColor: theme.lightGreen015,
-      borderRadius: moderateWidthScale(8),
-      marginBottom: moderateHeightScale(6),
-      borderWidth: 1,
-      borderColor: theme.borderLight,
-    },
-    subServiceNameContainer: {
-      flex: 1,
-      marginRight: moderateWidthScale(8),
-    },
-    subServiceNameText: {
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontMedium,
-      color: theme.darkGreen,
-    },
-    subServicePriceText: {
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-    },
-    subServiceDurationText: {
-      fontSize: fontSize.size10,
-      fontFamily: fonts.fontRegular,
-      color: theme.darkGreen,
-      opacity: 0.7,
-      marginTop: moderateHeightScale(2),
-    },
-    subServiceDescriptionText: {
-      fontSize: fontSize.size10,
-      fontFamily: fonts.fontRegular,
-      color: theme.darkGreen,
-      opacity: 0.65,
-      marginTop: moderateHeightScale(2),
-      lineHeight: fontSize.size14,
-    },
-    subServiceRowSelectable: {
-      paddingVertical: moderateHeightScale(8),
-      paddingHorizontal: moderateWidthScale(12),
-    },
-    subServiceRowDisabled: {
-      opacity: 0.5,
-      backgroundColor: theme.borderLight,
-    },
-    subServiceSelectableContent: {
-      flexDirection: "row",
-      alignItems: "flex-start",
-      justifyContent: "space-between",
-      width: "100%",
-      gap: moderateWidthScale(10),
-    },
-    subServiceLeftSection: {
-      flexDirection: "row",
-      alignItems: "flex-start",
-      flex: 1,
-      marginRight: moderateWidthScale(8),
-    },
-    subServiceCheckWrap: {
-      marginTop: moderateHeightScale(1),
-      marginRight: moderateWidthScale(10),
-    },
-    subServiceCheckOuter: {
-      width: moderateWidthScale(18),
-      height: moderateWidthScale(18),
-      borderRadius: moderateWidthScale(9),
-      borderWidth: 1,
-      borderColor: theme.lightGreen2,
-      alignItems: "center",
-      justifyContent: "center",
-      backgroundColor: theme.background,
-    },
-    subServiceCheckOuterSelected: {
-      borderColor: theme.darkGreen,
-      backgroundColor: theme.lightGreen015,
-    },
-    subServiceCheckInner: {
-      width: moderateWidthScale(8),
-      height: moderateWidthScale(8),
-      borderRadius: moderateWidthScale(4),
-      backgroundColor: theme.lightGreen,
-    },
-    rescheduleHeaderRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      paddingHorizontal: moderateWidthScale(20),
-      paddingTop: moderateHeightScale(16),
-      paddingBottom: moderateHeightScale(12),
-    },
-    rescheduleIconWrap: {
-      marginRight: moderateWidthScale(12),
-    },
-    rescheduleTitle: {
       fontSize: fontSize.size18,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
-      marginBottom: moderateHeightScale(4),
-    },
-    rescheduleSubtitle: {
-      fontSize: fontSize.size13,
-      fontFamily: fonts.fontRegular,
-      color: theme.lightGreen,
+      fontVariant: ["tabular-nums"],
     },
   });
-};
 
 type StaffCardProps = {
   staff: StaffCarouselItem;
   isSelected: boolean;
+  width: number;
   styles: ReturnType<typeof createStyles>;
   theme: Theme;
   ownerLabel: string;
+  anyoneLabel: string;
+  anyoneSubLabel: string;
+  anyoneInfoLabel: string;
   onSelect: (id: string) => void;
   onAnyoneInfoPress: () => void;
 };
@@ -1530,9 +1181,13 @@ type StaffCardProps = {
 function StaffCard({
   staff,
   isSelected,
+  width,
   styles,
   theme,
   ownerLabel,
+  anyoneLabel,
+  anyoneSubLabel,
+  anyoneInfoLabel,
   onSelect,
   onAnyoneInfoPress,
 }: StaffCardProps) {
@@ -1540,6 +1195,7 @@ function StaffCard({
   const imageUri = staff.image || getDefaultAvatarImage();
   const selectProgress = useSharedValue(isSelected ? 1 : 0);
   const pressScale = useSharedValue(1);
+  const height = Math.round(width * STAFF_CARD_RATIO);
 
   useEffect(() => {
     selectProgress.value = withSpring(isSelected ? 1 : 0, {
@@ -1576,8 +1232,19 @@ function StaffCard({
     });
   };
 
+  const name = isAnyone
+    ? anyoneLabel
+    : staff.is_owner
+      ? `${staff.name} · ${ownerLabel}`
+      : staff.name;
+  const subLine = isAnyone
+    ? anyoneSubLabel
+    : staff.experience
+      ? String(staff.experience)
+      : null;
+
   return (
-    <Animated.View style={[styles.staffCardWrap, pressStyle]}>
+    <Animated.View style={[{ width }, pressStyle]}>
       <View
         style={[
           styles.staffCardShell,
@@ -1585,10 +1252,17 @@ function StaffCard({
         ]}
       >
         <Pressable
-          style={[styles.staffCard, isSelected && styles.staffCardSelected]}
+          style={[
+            styles.staffCard,
+            { width, height },
+            isSelected && styles.staffCardSelected,
+          ]}
           onPress={() => onSelect(staff.id)}
           onPressIn={handlePressIn}
           onPressOut={handlePressOut}
+          accessibilityRole="radio"
+          accessibilityLabel={subLine ? `${name}, ${subLine}` : name}
+          accessibilityState={{ selected: isSelected, checked: isSelected }}
         >
           <Image
             source={isAnyone ? IMAGES.anyoneStaff : { uri: imageUri }}
@@ -1616,42 +1290,34 @@ function StaffCard({
             style={styles.staffInfoStrip}
             pointerEvents="box-none"
           >
-            {isAnyone ? (
-              <>
-                <View style={styles.staffNameRow}>
-                  <Text style={styles.staffNameAnyone} numberOfLines={1}>
-                    Anyone
-                  </Text>
-                  <TouchableOpacity
-                    style={styles.staffAnyoneInfoButton}
-                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                    onPress={onAnyoneInfoPress}
-                  >
-                    <MaterialIcons
-                      name="info-outline"
-                      size={moderateWidthScale(14)}
-                      color={theme.white}
-                    />
-                  </TouchableOpacity>
-                </View>
-                <Text style={styles.staffExperience} numberOfLines={1}>
-                  Any available staff
-                </Text>
-              </>
-            ) : (
-              <>
-                <Text style={styles.staffName} numberOfLines={1}>
-                  {staff.is_owner
-                    ? `${staff.name} · ${ownerLabel}`
-                    : staff.name}
-                </Text>
-                {staff.experience ? (
-                  <Text style={styles.staffExperience} numberOfLines={1}>
-                    {staff.experience}
-                  </Text>
-                ) : null}
-              </>
-            )}
+            <View style={styles.staffNameRow}>
+              <Text
+                style={[styles.staffName, !isAnyone && styles.staffNameCap]}
+                numberOfLines={1}
+              >
+                {name}
+              </Text>
+              {isAnyone ? (
+                <TouchableOpacity
+                  style={styles.staffAnyoneInfoButton}
+                  hitSlop={8}
+                  onPress={onAnyoneInfoPress}
+                  accessibilityRole="button"
+                  accessibilityLabel={anyoneInfoLabel}
+                >
+                  <MaterialIcons
+                    name="info-outline"
+                    size={moderateWidthScale(18)}
+                    color={theme.white}
+                  />
+                </TouchableOpacity>
+              ) : null}
+            </View>
+            {subLine ? (
+              <Text style={styles.staffExperience} numberOfLines={1}>
+                {subLine}
+              </Text>
+            ) : null}
           </LinearGradient>
         </Pressable>
       </View>
@@ -1666,7 +1332,10 @@ export default function BookingNow() {
   const styles = useMemo(() => createStyles(theme), [colors]);
   const { showBanner } = useNotificationContext();
   const router = useRouter();
+  const navigation = useNavigation();
   const dispatch = useAppDispatch();
+  const insets = useSafeAreaInsets();
+  const { width: windowWidth } = useWindowDimensions();
   const params = useLocalSearchParams<{
     business_id?: string;
     service_id?: string;
@@ -1799,7 +1468,6 @@ export default function BookingNow() {
     useState<TimeSlotCategory>("morning");
   const [slotMinutes, setSlotMinutes] =
     useState<SlotMinutes>(DEFAULT_SLOT_MINUTES);
-  const scrollViewRef = useRef<ScrollView>(null);
   const [slotsLoading, setSlotsLoading] = useState(false);
   const [apiSlots, setApiSlots] = useState<AvailableSlot[]>([]);
   const [slotsError, setSlotsError] = useState<string | null>(null);
@@ -1814,7 +1482,6 @@ export default function BookingNow() {
   >(null);
   const [continueLoading, setContinueLoading] = useState(false);
   const hasInitializedReschedulePreset = useRef(false);
-  const hasScrolledToRescheduleSlot = useRef(false);
 
   // Pre-fill note when in reschedule mode and notes param is passed
   useEffect(() => {
@@ -2375,61 +2042,6 @@ export default function BookingNow() {
     [availableTimeSlots],
   );
 
-  const scrollToCategory = (category: TimeSlotCategory) => {
-    const startIndex = getCategoryStartIndex(sortedTimeSlots, category);
-    if (startIndex < 0) return;
-    const slotWidth = widthScale(90);
-    const gap = moderateWidthScale(12);
-    const scrollPosition = startIndex * (slotWidth + gap);
-    scrollViewRef.current?.scrollTo({ x: scrollPosition, animated: true });
-  };
-
-  // In reschedule mode, scroll time slot list to the selected slot once slots are loaded
-  useEffect(() => {
-    if (
-      !isReschedule ||
-      !selectedTimeSlot ||
-      hasScrolledToRescheduleSlot.current ||
-      apiSlots.length === 0
-    ) {
-      return;
-    }
-    const allSlots = sortedTimeSlots;
-    const index = allSlots.indexOf(selectedTimeSlot);
-    if (index < 0) return;
-    hasScrolledToRescheduleSlot.current = true;
-    const slotWidth = widthScale(90);
-    const gap = moderateWidthScale(12);
-    const scrollPosition = index * (slotWidth + gap);
-    const timer = setTimeout(() => {
-      scrollViewRef.current?.scrollTo({
-        x: scrollPosition,
-        animated: true,
-      });
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [isReschedule, selectedTimeSlot, apiSlots.length, sortedTimeSlots]);
-
-  const handleScroll = (event: any) => {
-    const allSlots = sortedTimeSlots;
-    if (allSlots.length === 0) return;
-    const scrollX = event.nativeEvent.contentOffset.x;
-    const slotWidth = widthScale(90);
-    const gap = moderateWidthScale(12);
-    const paddingHorizontal = moderateWidthScale(20);
-    const visibleIndex = Math.round(
-      (scrollX - paddingHorizontal + slotWidth / 2) / (slotWidth + gap),
-    );
-    const clampedIndex = Math.max(
-      0,
-      Math.min(visibleIndex, allSlots.length - 1),
-    );
-    const visibleSlot = allSlots[clampedIndex];
-    if (!isValidTimeSlot(visibleSlot)) return;
-    const category = getSlotCategory(visibleSlot);
-    if (category !== selectedCategory) setSelectedCategory(category);
-  };
-
   const isSlotDisabled = (slot: string): boolean => {
     if (!isValidTimeSlot(slot)) return true;
     const today = dayjs().startOf("day");
@@ -2528,7 +2140,7 @@ export default function BookingNow() {
       const gmtOffset = `GMT${sign}${offsetHours}${
         offsetMinutes > 0 ? `:${offsetMinutes.toString().padStart(2, "0")}` : ""
       }`;
-      return `In your time zone, ${timezone} (${gmtOffset})`;
+      return t("bkFlowTimezone", { zone: `${timezone} (${gmtOffset})` });
     } catch {
       return "In your time zone, South Africa (GMT +1:00)";
     }
@@ -2603,47 +2215,134 @@ export default function BookingNow() {
     [selectedServices],
   );
 
+  // ── Step flow ───────────────────────────────────────────────────────
+
+  const steps = useMemo<StepKey[]>(() => {
+    const staffStep: StepKey[] = isSoloPlan ? [] : ["staff"];
+    if (isReschedule) return [...staffStep, "time", "confirm"];
+    if (isSubscriptionBooking) {
+      return ["planServices", ...staffStep, "time", "extras"];
+    }
+    return ["services", ...staffStep, "time", "payment", "extras"];
+  }, [isReschedule, isSubscriptionBooking, isSoloPlan]);
+
+  const [stepIndex, setStepIndex] = useState(0);
+  const [direction, setDirection] = useState<1 | -1>(1);
+  const safeIndex = Math.min(stepIndex, steps.length - 1);
+  const stepKey = steps[safeIndex];
+  const isLastStep = safeIndex === steps.length - 1;
+  const busy = continueLoading || rescheduleLoading;
+
+  const goTo = useCallback((index: number, dir: 1 | -1) => {
+    Keyboard.dismiss();
+    setDirection(dir);
+    setStepIndex(index);
+  }, []);
+
+  const goToStep = useCallback(
+    (key: StepKey) => {
+      const index = steps.indexOf(key);
+      if (index >= 0) goTo(index, index > safeIndex ? 1 : -1);
+    },
+    [goTo, safeIndex, steps],
+  );
+
+  const allowLeaveRef = useRef(false);
+
+  const leave = useCallback(() => {
+    allowLeaveRef.current = true;
+    router.back();
+  }, [router]);
+
+  /** One step back; false when the first step is showing. */
+  const stepBack = useCallback((): boolean => {
+    if (busy) return true;
+    if (safeIndex === 0) return false;
+    goTo(safeIndex - 1, -1);
+    return true;
+  }, [busy, goTo, safeIndex]);
+
+  const onHeaderBack = useCallback(() => {
+    if (!stepBack()) leave();
+  }, [leave, stepBack]);
+
+  // Swipe-back / Android back go one step back before leaving the screen.
+  const stepBackRef = useRef(stepBack);
+  stepBackRef.current = stepBack;
+  useEffect(() => {
+    const unsubscribe = navigation.addListener("beforeRemove", (event: any) => {
+      if (allowLeaveRef.current) return;
+      const type = event?.data?.action?.type;
+      if (type !== "GO_BACK" && type !== "POP") return;
+      event.preventDefault();
+      if (stepBackRef.current()) return;
+      allowLeaveRef.current = true;
+      navigation.dispatch(event.data.action);
+    });
+    return unsubscribe;
+  }, [navigation]);
+
+  useFocusEffect(
+    useCallback(() => {
+      const sub = BackHandler.addEventListener("hardwareBackPress", () => {
+        onHeaderBack();
+        return true;
+      });
+      return () => sub.remove();
+    }, [onHeaderBack]),
+  );
+
+  // Time slots grouped by part of the day; the open tab follows the data.
+  const slotsByCategory = useMemo(() => {
+    const groups: Record<TimeSlotCategory, string[]> = {
+      morning: [],
+      afternoon: [],
+      evening: [],
+      night: [],
+    };
+    sortedTimeSlots.forEach((slot) => groups[getSlotCategory(slot)].push(slot));
+    return groups;
+  }, [sortedTimeSlots]);
+
+  useEffect(() => {
+    if (sortedTimeSlots.length === 0) return;
+    if (selectedTimeSlot && sortedTimeSlots.includes(selectedTimeSlot)) {
+      setSelectedCategory(getSlotCategory(selectedTimeSlot));
+      return;
+    }
+    if (slotsByCategory[selectedCategory].some((s) => !isSlotDisabled(s))) {
+      return;
+    }
+    const firstOpen =
+      TIME_SLOT_CATEGORIES.find((c) =>
+        slotsByCategory[c].some((s) => !isSlotDisabled(s)),
+      ) ?? TIME_SLOT_CATEGORIES.find((c) => slotsByCategory[c].length > 0);
+    if (firstOpen) setSelectedCategory(firstOpen);
+    // Only when a new list of slots arrives
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sortedTimeSlots]);
+
+  const contentWidth = windowWidth - PAGE_PAD * 2;
+  const staffCardWidth = Math.floor((contentWidth - GRID_GAP) / 2);
+  const slotWidth = Math.floor((contentWidth - SLOT_GAP * 2) / 3);
+  const photoSize = Math.floor((contentWidth - PHOTO_GAP * 2) / 3);
+
+  const showTotalBar = !isSubscriptionBooking && !isReschedule;
+
   // Show loading indicator while fetching data
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
-        <StatusBar barStyle="dark-content" />
-        <View style={styles.header}>
-          <View style={styles.headerLeft}>
-            <TouchableOpacity
-              style={styles.backButton}
-              onPress={() => {
-                router.back();
-              }}
-            >
-              <BackArrowIcon
-                width={widthScale(25)}
-                height={heightScale(25)}
-                color={theme.darkGreen}
-              />
-            </TouchableOpacity>
-            <View style={styles.logoContainer}>
-              <LeafLogo
-                width={widthScale(22)}
-                height={heightScale(22)}
-                color1={theme.darkGreen}
-                color2={theme.darkGreen}
-              />
-              <Text style={styles.logoText}>FRESHPASS</Text>
-            </View>
-          </View>
-        </View>
-        <View style={styles.line} />
-        <View
-          style={{
-            flex: 1,
-            justifyContent: "center",
-            alignItems: "center",
-          }}
-        >
+      <View style={styles.root}>
+        <StatusBar barStyle="light-content" />
+        <FlowHeader
+          title={isReschedule ? t("bkFlowRescheduleTitle") : t("bkFlowTitle")}
+          onBack={leave}
+          backIcon="close"
+        />
+        <View style={styles.center}>
           <ActivityIndicator size="large" color={theme.darkGreen} />
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
@@ -2769,7 +2468,7 @@ export default function BookingNow() {
           "success",
           3000,
         );
-        router.back();
+        leave();
       } else {
         showBanner(
           t("error"),
@@ -2803,1141 +2502,1156 @@ export default function BookingNow() {
     submitReschedule(true);
   };
 
-  return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" />
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => {
-              router.back();
-            }}
-          >
-            <BackArrowIcon
-              width={widthScale(25)}
-              height={heightScale(25)}
-              color={theme.darkGreen}
-            />
-          </TouchableOpacity>
-          <View style={styles.logoContainer}>
-            <LeafLogo
-              width={widthScale(22)}
-              height={heightScale(22)}
-              color1={theme.darkGreen}
-              color2={theme.darkGreen}
-            />
-            <Text style={styles.logoText}>FRESHPASS</Text>
-          </View>
-        </View>
-      </View>
+  const handleContinue = async () => {
+    const businessIdForCheckout = resolveBusinessIdParam(
+      resolveRouteParam(params.business_id),
+      reduxBusinessId,
+    );
+    if (!businessIdForCheckout) {
+      showBanner(
+        t("error"),
+        "Business ID is missing. Please go back and try again.",
+        "error",
+        4000,
+      );
+      return;
+    }
+    if (isSubscriptionBooking) {
+      if (selectedSubscriptionServiceIds.length === 0) {
+        showBanner(
+          "No Service Selected",
+          "Please select at least one plan service before checkout.",
+          "warning",
+          4000,
+        );
+        goToStep("planServices");
+        return;
+      }
+      if (!selectedTimeSlot) {
+        showBanner(
+          "Select time",
+          "Please select a date and time slot before checkout.",
+          "warning",
+          4000,
+        );
+        goToStep("time");
+        return;
+      }
 
-      <View style={styles.line} />
+      if (selectedStaff === "anyone" && !isSoloPlan) {
+        setContinueLoading(true);
+        try {
+          const assigned = await assignAnyoneStaff({
+            business_id: parseInt(businessIdForCheckout, 10),
+            service_ids: selectedSubscriptionServiceIds,
+            date: selectedDate.format("YYYY-MM-DD"),
+            start_time: selectedTimeSlot,
+          });
+          dispatch(setAssignedStaffId(assigned.staff_id));
+        } catch (err: any) {
+          showBanner(
+            t("error"),
+            err?.message ||
+              err?.data?.message ||
+              "No staff available for this time slot.",
+            "error",
+            4000,
+          );
+          return;
+        } finally {
+          setContinueLoading(false);
+        }
+      } else {
+        dispatch(setAssignedStaffId(null));
+      }
 
-      {isReschedule && (
-        <View style={styles.rescheduleHeaderRow}>
-          <View style={styles.rescheduleIconWrap}>
+      dispatch(setSelectedDate(selectedDate.format("YYYY-MM-DD")));
+      dispatch(setSelectedTimeSlot(selectedTimeSlot));
+      dispatch(setSelectedNote(note));
+      dispatch(setBookingTryOnImageUrls(tryOnImageUrls));
+      router.push({
+        pathname: "/(main)/bookingNow/checkout",
+        params: {
+          subscription_id: params.subscription_id || "",
+          business_id: businessIdForCheckout,
+          item: params.item || "",
+          try_on_image_urls:
+            tryOnImageUrls.length > 0
+              ? JSON.stringify(tryOnImageUrls)
+              : "",
+          gallery_image_uris:
+            galleryImageUris.length > 0
+              ? JSON.stringify(galleryImageUris)
+              : "",
+          selected_subscription_service_ids: JSON.stringify(
+            selectedSubscriptionServiceIds,
+          ),
+          subscription_plan_type: subscriptionPlanType ?? "",
+          ...(attributionReelId
+            ? { reel_id: String(attributionReelId) }
+            : {}),
+          ...(attributionSavedLookId
+            ? { saved_look_id: String(attributionSavedLookId) }
+            : {}),
+        },
+      });
+      return;
+    }
+    if (selectedServices.length === 0) {
+      showBanner(
+        t("noServiceSelected"),
+        t("pleaseSelectAtLeastOneService"),
+        "warning",
+        4000,
+      );
+      goToStep("services");
+      return;
+    }
+    if (!selectedTimeSlot) {
+      showBanner(
+        "Select time",
+        "Please select a date and time slot before checkout.",
+        "warning",
+        4000,
+      );
+      goToStep("time");
+      return;
+    }
+
+    if (selectedStaff === "anyone" && !isSoloPlan) {
+      setContinueLoading(true);
+      try {
+        const assigned = await assignAnyoneStaff({
+          business_id: parseInt(businessIdForCheckout, 10),
+          service_ids: selectedServices.map((s) => s.id),
+          date: selectedDate.format("YYYY-MM-DD"),
+          start_time: selectedTimeSlot,
+        });
+        dispatch(setAssignedStaffId(assigned.staff_id));
+      } catch (err: any) {
+        showBanner(
+          t("error"),
+          err?.message ||
+            err?.data?.message ||
+            "No staff available for this time slot.",
+          "error",
+          4000,
+        );
+        return;
+      } finally {
+        setContinueLoading(false);
+      }
+    } else {
+      dispatch(setAssignedStaffId(null));
+    }
+
+    dispatch(setSelectedDate(selectedDate.format("YYYY-MM-DD")));
+    dispatch(setSelectedTimeSlot(selectedTimeSlot));
+    dispatch(setSelectedNote(note));
+    dispatch(setBookingTryOnImageUrls(tryOnImageUrls));
+    router.push({
+      pathname: "/(main)/bookingNow/checkout",
+      params: {
+        try_on_image_urls:
+          tryOnImageUrls.length > 0
+            ? JSON.stringify(tryOnImageUrls)
+            : "",
+        gallery_image_uris:
+          galleryImageUris.length > 0
+            ? JSON.stringify(galleryImageUris)
+            : "",
+        subscription_plan_type: subscriptionPlanType ?? "",
+        ...(attributionReelId
+          ? { reel_id: String(attributionReelId) }
+          : {}),
+        ...(attributionSavedLookId
+          ? { saved_look_id: String(attributionSavedLookId) }
+          : {}),
+      },
+    });
+  };
+
+  // ── Step screens ────────────────────────────────────────────────────
+
+  const formatMoney = (value: number) => `$${value.toFixed(2)} USD`;
+
+  const openPrivacy = () => {
+    const url = process.env.EXPO_PUBLIC_PRIVACY_URL;
+    if (url) Linking.openURL(url);
+  };
+
+  const renderServices = () => (
+    <>
+      <FlowTitle
+        title={t("bkFlowServicesTitle")}
+        subtitle={t("bkFlowServicesSubtitle")}
+      />
+      <View style={styles.list}>
+        {selectedServices.length === 0 ? (
+          <InfoNote text={t("bkFlowServicesEmpty")} />
+        ) : (
+          selectedServices.map((service) => (
+            <FlowCard key={service.id} style={styles.serviceCard}>
+              <View style={styles.serviceInfo}>
+                <Text style={styles.serviceName}>{service.name}</Text>
+                {service.duration && service.duration !== "N/A" ? (
+                  <View style={styles.metaRow}>
+                    <Feather
+                      name="clock"
+                      size={moderateWidthScale(14)}
+                      color={theme.lightGreen}
+                    />
+                    <Text style={styles.metaText}>{service.duration}</Text>
+                  </View>
+                ) : null}
+                {service.description ? (
+                  <Text style={styles.serviceDesc} numberOfLines={3}>
+                    {service.description}
+                  </Text>
+                ) : null}
+                <View style={styles.priceRow}>
+                  <Text style={styles.price}>{formatMoney(service.price)}</Text>
+                  {service.originalPrice > service.price ? (
+                    <Text style={styles.priceOriginal}>
+                      ${service.originalPrice.toFixed(2)}
+                    </Text>
+                  ) : null}
+                </View>
+              </View>
+              <TouchableOpacity
+                style={styles.roundAction}
+                onPress={() => handleDeleteService(service.id)}
+                activeOpacity={0.7}
+                hitSlop={4}
+                accessibilityRole="button"
+                accessibilityLabel={t("bkFlowRemoveService", {
+                  name: service.name,
+                })}
+              >
+                <MaterialIcons
+                  name="delete-outline"
+                  size={moderateWidthScale(22)}
+                  color={theme.red}
+                />
+              </TouchableOpacity>
+            </FlowCard>
+          ))
+        )}
+
+        <TouchableOpacity
+          activeOpacity={0.75}
+          onPress={handleAddService}
+          style={styles.addServiceBtn}
+          accessibilityRole="button"
+        >
+          <Text style={styles.addServiceText}>{t("addAnotherService")}</Text>
+          <View style={styles.addServiceIcon}>
             <Feather
-              name="calendar"
-              size={moderateWidthScale(22)}
-              color={theme.darkGreen}
+              name="plus"
+              size={moderateWidthScale(18)}
+              color={theme.selectCard}
             />
           </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.rescheduleTitle}>Reschedule Appointment</Text>
-            <Text style={styles.rescheduleSubtitle}>
-              Select a new date and time for your appointment.
+        </TouchableOpacity>
+      </View>
+    </>
+  );
+
+  const renderPlanCard = () => {
+    if (!subscriptionData) return null;
+    const pill = getCustomerSubscriptionPill(subscriptionData);
+    const dateDisplay = getCustomerSubscriptionDateDisplay(subscriptionData);
+    const scheduleDate = formatCustomerScheduleDate(
+      dateDisplay.kind,
+      dateDisplay.date,
+    );
+    const displayPrice = getCustomerSubscriptionDisplayPrice(subscriptionData);
+    return (
+      <FlowCard style={styles.planCard}>
+        <View style={styles.planHeaderRow}>
+          <View style={styles.planTitleRow}>
+            <Feather
+              name="star"
+              size={moderateWidthScale(18)}
+              color={theme.selectCard}
+            />
+            <Text style={styles.planTitle} numberOfLines={2}>
+              {subscriptionData.subscriptionPlan}
             </Text>
           </View>
+          <View style={styles.statusPill}>
+            <Text style={styles.statusText}>{pill.label.toUpperCase()}</Text>
+          </View>
         </View>
-      )}
-
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-      >
-        <View
-          style={[
-            styles.line,
-            {
-              marginTop: moderateHeightScale(10),
-              backgroundColor: "transparent",
-            },
-          ]}
-        />
-
-        {/* Staff Selection — hidden for Solo subscription plan */}
-        {!isSoloPlan && (
-          <View style={styles.staffSection}>
-            <Text style={styles.staffTitle}>Choose staff members</Text>
-
-            <View style={styles.staffSearchContainer}>
-              <FloatingInput
-                label="Search staff"
-                value={staffSearchQuery}
-                onChangeText={setStaffSearchQuery}
-                placeholder="Search staff by name"
-                placeholderTextColor={theme.lightGreen2}
-                containerStyle={styles.staffSearchInput}
-                returnKeyType="search"
-                showClearButton
-                onClear={() => setStaffSearchQuery("")}
-                renderLeftAccessory={() => (
-                  <SearchIcon
-                    width={widthScale(18)}
-                    height={heightScale(18)}
-                    color={theme.darkGreen}
-                  />
-                )}
-              />
-            </View>
-
-            {staffList.length === 0 ? (
-              <Text style={styles.staffEmptyText}>No staff members found</Text>
-            ) : (
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.staffList}
-                nestedScrollEnabled
-                decelerationRate="fast"
-              >
-                {staffList.map((staff) => (
-                  <StaffCard
-                    key={staff.id}
-                    staff={staff}
-                    isSelected={selectedStaff === staff.id}
-                    styles={styles}
-                    theme={theme}
-                    ownerLabel={t("owner")}
-                    onSelect={(id) => dispatch(setSelectedStaff(id))}
-                    onAnyoneInfoPress={() => setShowAnyoneHint(true)}
-                  />
-                ))}
-              </ScrollView>
-            )}
-
-            <Modal
-              visible={showAnyoneHint}
-              transparent
-              animationType="fade"
-              onRequestClose={() => setShowAnyoneHint(false)}
-            >
-              <View style={styles.anyoneHintOverlay}>
-                <Pressable
-                  style={StyleSheet.absoluteFillObject}
-                  onPress={() => setShowAnyoneHint(false)}
+        <View style={styles.planMetaRow}>
+          <View style={styles.planBusiness}>
+            <Feather
+              name="user"
+              size={moderateWidthScale(15)}
+              color={theme.lightGreen}
+            />
+            <Text style={styles.metaText} numberOfLines={1}>
+              {subscriptionData.business}
+            </Text>
+          </View>
+          <Text style={styles.planPrice}>
+            ${displayPrice}
+            <Text style={styles.planPriceUnit}>{t("bkFlowPerMonth")}</Text>
+          </Text>
+        </View>
+        {subscriptionData.subscriptionPlanDescription ? (
+          <Text style={styles.serviceDesc}>
+            {subscriptionData.subscriptionPlanDescription}
+          </Text>
+        ) : null}
+        {subscriptionData.paymentDate || scheduleDate ? (
+          <View style={styles.planDates}>
+            {subscriptionData.paymentDate ? (
+              <View style={styles.planDate}>
+                <Feather
+                  name="credit-card"
+                  size={moderateWidthScale(16)}
+                  color={theme.darkGreen}
                 />
-                <View style={styles.anyoneHintBubble}>
-                  <TouchableOpacity
-                    style={styles.anyoneHintClose}
-                    onPress={() => setShowAnyoneHint(false)}
-                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                  >
-                    <Feather
-                      name="x"
-                      size={moderateWidthScale(16)}
-                      color={theme.darkGreen}
-                    />
-                  </TouchableOpacity>
-                  <Text style={styles.anyoneHintText}>
-                    Any staff available in your time slot will be assigned to
-                    you
+                <View>
+                  <Text style={styles.planDateLabel}>
+                    {t("bkFlowPlanPayment")}
+                  </Text>
+                  <Text style={styles.planDateValue}>
+                    {subscriptionData.paymentDate}
                   </Text>
                 </View>
               </View>
-            </Modal>
-          </View>
-        )}
-
-        {!isSoloPlan && (
-          <View
-            style={[styles.line, { marginTop: moderateHeightScale(20) }]}
-          />
-        )}
-
-        {/* Availability Section */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeaderRow}>
-            <Text style={styles.availabilityTitle}>Availability</Text>
-            <View style={styles.slotMinutesSelector}>
-              {SLOT_MINUTE_OPTIONS.map((minutes) => {
-                const isSelected = slotMinutes === minutes;
-                return (
-                  <TouchableOpacity
-                    key={minutes}
-                    style={[
-                      styles.slotMinutesOption,
-                      isSelected && styles.slotMinutesOptionSelected,
-                    ]}
-                    onPress={() => {
-                      if (minutes === slotMinutes) return;
-                      setSlotMinutes(minutes);
-                      setSelectedTimeSlotState(null);
-                      dispatch(setSelectedTimeSlot(null));
-                      dispatch(setAssignedStaffId(null));
-                    }}
-                    activeOpacity={0.7}
-                    accessibilityRole="button"
-                    accessibilityState={{ selected: isSelected }}
-                    accessibilityLabel={`${minutes} minute slots`}
-                  >
-                    <Text
-                      style={[
-                        styles.slotMinutesOptionText,
-                        isSelected && styles.slotMinutesOptionTextSelected,
-                      ]}
-                    >
-                      {minutes}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-              <Text style={styles.slotMinutesUnit}>min</Text>
-            </View>
-          </View>
-
-          <View style={styles.weekNavigation}>
-            <TouchableOpacity
-              onPress={prevWeek}
-              style={styles.weekNavigationButton}
-              activeOpacity={0.7}
-            >
-              <Feather
-                name="chevron-left"
-                size={moderateWidthScale(17)}
-                color={theme.darkGreen}
-              />
-            </TouchableOpacity>
-            <Text style={styles.weekRangeText}>{formatWeekRange(week)}</Text>
-            <TouchableOpacity
-              onPress={nextWeek}
-              style={styles.weekNavigationButton}
-              activeOpacity={0.7}
-            >
-              <Feather
-                name="chevron-right"
-                size={moderateWidthScale(17)}
-                color={theme.darkGreen}
-              />
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.calendarGrid}>
-            <View style={styles.daysHeader}>
-              {dayNames.map((dayName) => (
-                <View key={dayName} style={styles.dayHeader}>
-                  <Text style={styles.dayHeaderText}>{dayName}</Text>
+            ) : null}
+            {scheduleDate ? (
+              <View style={styles.planDate}>
+                <Feather
+                  name="calendar"
+                  size={moderateWidthScale(16)}
+                  color={theme.darkGreen}
+                />
+                <View>
+                  <Text style={styles.planDateLabel}>
+                    {getCustomerScheduleDateLabel(dateDisplay.kind)}
+                  </Text>
+                  <Text style={styles.planDateValue}>{scheduleDate}</Text>
                 </View>
-              ))}
-            </View>
+              </View>
+            ) : null}
+          </View>
+        ) : null}
+      </FlowCard>
+    );
+  };
 
-            <View style={styles.daysRow}>
-              {week.map((day) => {
-                const isSelected = day.isSame(selectedDate, "day");
-                const isDisabled = isDateDisabled(day);
-                return (
-                  <TouchableOpacity
-                    key={day.format("YYYY-MM-DD")}
-                    style={styles.dayContainer}
-                    onPress={() => handleDateSelect(day)}
-                    disabled={isDisabled}
-                    activeOpacity={isDisabled ? 1 : 0.7}
+  const renderPlanServices = () => {
+    const planServices = subscriptionData?.subscriptionPlanServices ?? [];
+    return (
+      <>
+        <FlowTitle
+          title={t("bkFlowPlanTitle")}
+          subtitle={t("bkFlowPlanSubtitle")}
+        />
+        {renderPlanCard()}
+        <View style={styles.section}>
+          <SectionLabel label={t("bkFlowPlanServicesLabel")} />
+          {planServices.length === 0 ? (
+            <InfoNote text={t("bkFlowPlanNoServices")} />
+          ) : (
+            planServices.map((svc) => {
+              const remaining = svc.quantity ?? 1;
+              const isServiceDisabled = remaining <= 0;
+              const isSelected = selectedSubscriptionServiceIds.includes(
+                svc.id,
+              );
+              const duration = formatServiceDuration(
+                svc.durationHours,
+                svc.durationMinutes,
+              );
+              return (
+                <TouchableOpacity
+                  key={svc.id}
+                  activeOpacity={0.8}
+                  disabled={isServiceDisabled}
+                  onPress={() => toggleSubscriptionServiceSelection(svc.id)}
+                  accessibilityRole="checkbox"
+                  accessibilityState={{
+                    checked: isSelected,
+                    disabled: isServiceDisabled,
+                  }}
+                >
+                  <FlowCard
+                    style={[
+                      styles.choiceCard,
+                      isSelected && styles.choiceCardSelected,
+                      isServiceDisabled && styles.choiceCardDisabled,
+                    ]}
                   >
                     <View
                       style={[
-                        styles.dayNumberContainer,
-                        isSelected && styles.dayNumberSelected,
-                        isDisabled && styles.dayNumberDisabled,
+                        styles.checkBox,
+                        isSelected && styles.checkBoxSelected,
                       ]}
                     >
-                      <Text
-                        style={[
-                          styles.dayNumber,
-                          isSelected && styles.dayNumberSelectedText,
-                          isDisabled && styles.dayNumberDisabledText,
-                        ]}
-                      >
-                        {day.format("D")}
-                      </Text>
-                    </View>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          </View>
-
-          <Text style={styles.timezoneText}>{getTimezoneText()}</Text>
-
-          <View style={styles.timeSlotSection}>
-            <View style={styles.timeSlotCategoryRow}>
-              {TIME_SLOT_CATEGORIES.map((category) => {
-                const hasSlots = categoryHasSlots(sortedTimeSlots, category);
-                const isSelected = selectedCategory === category;
-
-                const renderIcon = () => {
-                  switch (category) {
-                    case "morning":
-                      return (
-                        <MorningIcon
-                          width={moderateWidthScale(18)}
-                          height={moderateHeightScale(13)}
-                        />
-                      );
-                    case "afternoon":
-                      return (
+                      {isSelected ? (
                         <MaterialIcons
-                          name="wb-sunny"
-                          size={moderateWidthScale(16)}
-                          color={colors.darkGreen}
+                          name="check"
+                          size={moderateWidthScale(20)}
+                          color={theme.white}
                         />
-                      );
-                    case "evening":
-                      return (
-                        <EveningIcon
-                          width={moderateWidthScale(18)}
-                          height={moderateHeightScale(10)}
-                        />
-                      );
-                    case "night":
-                      return (
-                        <NightIcon
-                          width={moderateWidthScale(15)}
-                          height={moderateHeightScale(15)}
-                        />
-                      );
-                  }
-                };
-
-                const label =
-                  category.charAt(0).toUpperCase() + category.slice(1);
-
-                return (
-                  <TouchableOpacity
-                    key={category}
-                    activeOpacity={hasSlots ? 0.7 : 1}
-                    style={[
-                      styles.timeSlotCategoryButton,
-                      !hasSlots && styles.timeSlotCategoryButtonDisabled,
-                    ]}
-                    disabled={!hasSlots}
-                    onPress={() => {
-                      setSelectedCategory(category);
-                      scrollToCategory(category);
-                    }}
-                  >
-                    <View style={styles.timeSlotCategoryIcon}>
-                      {renderIcon()}
+                      ) : null}
                     </View>
-                    <Text
-                      style={[
-                        styles.timeSlotCategoryText,
-                        isSelected && styles.timeSlotCategoryTextSelected,
-                      ]}
-                    >
-                      {label}
-                    </Text>
-                    {isSelected && (
-                      <View style={styles.timeSlotCategoryUnderline} />
-                    )}
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
+                    <View style={styles.choiceText}>
+                      <Text style={styles.choiceTitle}>{svc.name}</Text>
+                      {duration ? (
+                        <Text style={styles.choiceSub}>{duration}</Text>
+                      ) : null}
+                      {svc.description ? (
+                        <Text style={styles.choiceSub} numberOfLines={2}>
+                          {svc.description}
+                        </Text>
+                      ) : null}
+                      <View style={styles.leftChip}>
+                        <Text style={styles.leftChipText}>
+                          {isServiceDisabled
+                            ? t("bkFlowPlanNoneLeft")
+                            : t("bkFlowPlanLeft", { count: remaining })}
+                        </Text>
+                      </View>
+                    </View>
+                    <Text style={styles.choicePrice}>${svc.price}</Text>
+                  </FlowCard>
+                </TouchableOpacity>
+              );
+            })
+          )}
+        </View>
+      </>
+    );
+  };
 
-            <ScrollView
-              ref={scrollViewRef}
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              onScroll={handleScroll}
-              scrollEventThrottle={16}
-              style={styles.timeSlotsContainer}
-              contentContainerStyle={styles.timeSlotsContentContainer}
+  const renderStaff = () => (
+    <>
+      <FlowTitle
+        title={t("bkFlowStaffTitle")}
+        subtitle={t("bkFlowStaffSubtitle")}
+      />
+      {staffMembers.length > 3 ? (
+        <FloatingInput
+          label={t("bkFlowStaffSearch")}
+          value={staffSearchQuery}
+          onChangeText={setStaffSearchQuery}
+          placeholder={t("bkFlowStaffSearchPlaceholder")}
+          placeholderTextColor={theme.lightGreen2}
+          containerStyle={styles.staffSearchInput}
+          returnKeyType="search"
+          showClearButton
+          onClear={() => setStaffSearchQuery("")}
+          renderLeftAccessory={() => (
+            <SearchIcon
+              width={widthScale(18)}
+              height={heightScale(18)}
+              color={theme.darkGreen}
+            />
+          )}
+        />
+      ) : null}
+      {staffList.length === 0 ? (
+        <InfoNote text={t("bkFlowStaffEmpty")} />
+      ) : (
+        <View style={styles.staffGrid} accessibilityRole="radiogroup">
+          {staffList.map((staff) => (
+            <StaffCard
+              key={staff.id}
+              staff={staff}
+              width={staffCardWidth}
+              isSelected={selectedStaff === staff.id}
+              styles={styles}
+              theme={theme}
+              ownerLabel={t("owner")}
+              anyoneLabel={t("bkFlowAnyone")}
+              anyoneSubLabel={t("bkFlowAnyoneSub")}
+              anyoneInfoLabel={t("bkFlowAnyoneInfo")}
+              onSelect={(id) => dispatch(setSelectedStaff(id))}
+              onAnyoneInfoPress={() => setShowAnyoneHint(true)}
+            />
+          ))}
+        </View>
+      )}
+    </>
+  );
+
+  const renderPeriodIcon = (category: TimeSlotCategory) => {
+    switch (category) {
+      case "morning":
+        return (
+          <MorningIcon
+            width={moderateWidthScale(20)}
+            height={moderateHeightScale(14)}
+          />
+        );
+      case "afternoon":
+        return (
+          <MaterialIcons
+            name="wb-sunny"
+            size={moderateWidthScale(18)}
+            color={theme.darkGreen}
+          />
+        );
+      case "evening":
+        return (
+          <EveningIcon
+            width={moderateWidthScale(20)}
+            height={moderateHeightScale(11)}
+          />
+        );
+      case "night":
+        return (
+          <NightIcon
+            width={moderateWidthScale(16)}
+            height={moderateHeightScale(16)}
+          />
+        );
+    }
+  };
+
+  const renderSlots = () => {
+    if (slotsLoading) {
+      return (
+        <View style={styles.slotsGrid}>
+          {Array.from({ length: 9 }, (_, i) => (
+            <View
+              key={`skeleton-${i}`}
+              style={[styles.slotSkeleton, { width: slotWidth }]}
+            />
+          ))}
+        </View>
+      );
+    }
+    if (slotsError) {
+      return (
+        <View style={styles.section}>
+          <InfoNote
+            tone="error"
+            icon="error-outline"
+            title={t("bkFlowSlotsError")}
+            text={slotsError}
+          />
+          <FlowButton
+            variant="outline"
+            compact
+            icon="refresh"
+            label={t("retry")}
+            onPress={fetchAvailableSlots}
+            style={styles.retryBtn}
+          />
+        </View>
+      );
+    }
+    if (sortedTimeSlots.length === 0) {
+      return <InfoNote icon="event-busy" text={t("bkFlowNoSlots")} />;
+    }
+    const slots = slotsByCategory[selectedCategory];
+    return (
+      <View style={styles.slotsGrid}>
+        {slots.map((slot) => {
+          const isDisabled = isSlotDisabled(slot);
+          const isSelected = selectedTimeSlot === slot;
+          return (
+            <TouchableOpacity
+              key={slot}
+              activeOpacity={0.75}
+              style={[
+                styles.slotBtn,
+                { width: slotWidth },
+                isSelected && styles.slotBtnSelected,
+                isDisabled && styles.slotBtnDisabled,
+              ]}
+              onPress={() => handleSlotSelect(slot)}
+              disabled={isDisabled}
+              accessibilityRole="radio"
+              accessibilityState={{
+                selected: isSelected,
+                checked: isSelected,
+                disabled: isDisabled,
+              }}
             >
-              {slotsLoading ? (
-                <>
-                  {[1, 2, 3, 4, 5, 6, 7].map((i) => (
-                    <View key={`skeleton-${i}`} style={styles.timeSlotSkeleton}>
-                      <Text
-                        style={[styles.timeSlotText, { opacity: 0 }]}
-                        numberOfLines={1}
-                      >
-                        9:00 AM
-                      </Text>
-                    </View>
-                  ))}
-                </>
-              ) : slotsError ? (
-                <View style={styles.noSlotsContainer}>
-                  <Text style={styles.slotsErrorTitle}>
-                    Available slot API failed
+              <Text
+                style={[styles.slotText, isSelected && styles.slotTextSelected]}
+              >
+                {convertTo12Hour(slot)}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    );
+  };
+
+  const renderTime = () => (
+    <>
+      <FlowTitle
+        title={t("bkFlowTimeTitle")}
+        subtitle={
+          isReschedule ? t("bkFlowRescheduleSubtitle") : t("bkFlowTimeSubtitle")
+        }
+      />
+
+      <View style={styles.section}>
+        <SectionLabel label={t("date")} />
+        <View style={styles.weekNav}>
+          <TouchableOpacity
+            onPress={prevWeek}
+            style={styles.weekNavBtn}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel={t("bkFlowPrevWeek")}
+          >
+            <Feather
+              name="chevron-left"
+              size={moderateWidthScale(22)}
+              color={theme.darkGreen}
+            />
+          </TouchableOpacity>
+          <Text style={styles.weekRange}>{formatWeekRange(week)}</Text>
+          <TouchableOpacity
+            onPress={nextWeek}
+            style={styles.weekNavBtn}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel={t("bkFlowNextWeek")}
+          >
+            <Feather
+              name="chevron-right"
+              size={moderateWidthScale(22)}
+              color={theme.darkGreen}
+            />
+          </TouchableOpacity>
+        </View>
+        <View style={styles.daysRow}>
+          {week.map((day) => {
+            const isSelected = day.isSame(selectedDate, "day");
+            const isDisabled = isDateDisabled(day);
+            return (
+              <TouchableOpacity
+                key={day.format("YYYY-MM-DD")}
+                style={styles.dayCell}
+                onPress={() => handleDateSelect(day)}
+                disabled={isDisabled}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel={day.format("dddd, MMMM D")}
+                accessibilityState={{
+                  selected: isSelected,
+                  disabled: isDisabled,
+                }}
+              >
+                <View
+                  style={[
+                    styles.dayPill,
+                    isSelected && styles.dayPillSelected,
+                    isDisabled && styles.dayPillDisabled,
+                  ]}
+                >
+                  <Text
+                    style={[styles.dayName, isSelected && styles.dayNameSelected]}
+                  >
+                    {day.format("ddd")}
                   </Text>
-                  <Text style={styles.slotsErrorReason}>{slotsError}</Text>
-                  <Button
-                    title="Retry"
-                    onPress={fetchAvailableSlots}
-                    containerStyle={styles.slotsErrorButton}
-                  />
+                  <Text style={styles.dayNum}>{day.format("D")}</Text>
                 </View>
-              ) : sortedTimeSlots.length > 0 ? (
-                sortedTimeSlots.map((slot) => {
-                  const isDisabled = isSlotDisabled(slot);
-                  return (
-                    <TouchableOpacity
-                      activeOpacity={isDisabled ? 1 : 0.7}
-                      key={slot}
-                      style={[
-                        styles.timeSlotButton,
-                        selectedTimeSlot === slot &&
-                          styles.timeSlotButtonSelected,
-                        isDisabled && styles.timeSlotButtonDisabled,
-                      ]}
-                      onPress={() => handleSlotSelect(slot)}
-                      disabled={isDisabled}
-                    >
-                      <Text
-                        style={[
-                          styles.timeSlotText,
-                          selectedTimeSlot === slot &&
-                            styles.timeSlotTextSelected,
-                          isDisabled && styles.timeSlotTextDisabled,
-                        ]}
-                      >
-                        {convertTo12Hour(slot)}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })
-              ) : (
-                <View style={styles.noSlotsContainer}>
-                  <Text style={styles.noSlotsText}>
-                    No available time slots for this day
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+        <Text style={styles.timezone}>{getTimezoneText()}</Text>
+      </View>
+
+      <View style={styles.section}>
+        <View style={styles.timeHeaderRow}>
+          <SectionLabel label={t("time")} />
+          <View style={styles.slotMinutes}>
+            {SLOT_MINUTE_OPTIONS.map((minutes) => {
+              const isSelected = slotMinutes === minutes;
+              return (
+                <TouchableOpacity
+                  key={minutes}
+                  style={[
+                    styles.slotMinutesOption,
+                    isSelected && styles.slotMinutesOptionSelected,
+                  ]}
+                  onPress={() => {
+                    if (minutes === slotMinutes) return;
+                    setSlotMinutes(minutes);
+                    setSelectedTimeSlotState(null);
+                    dispatch(setSelectedTimeSlot(null));
+                    dispatch(setAssignedStaffId(null));
+                  }}
+                  activeOpacity={0.7}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: isSelected }}
+                  accessibilityLabel={t("bkFlowSlotMinutes", {
+                    count: minutes,
+                  })}
+                >
+                  <Text
+                    style={[
+                      styles.slotMinutesText,
+                      isSelected && styles.slotMinutesTextSelected,
+                    ]}
+                  >
+                    {minutes}
                   </Text>
-                </View>
-              )}
-            </ScrollView>
+                </TouchableOpacity>
+              );
+            })}
+            <Text style={styles.slotMinutesUnit}>{t("bkFlowMin")}</Text>
           </View>
         </View>
 
-        <View style={[styles.line, { marginTop: moderateHeightScale(20) }]} />
-
-        {isReschedule ? (
-          <>
-            {/* Privacy Policy Section - reschedule mode */}
-            <View style={styles.section}>
-              <Text style={styles.privacyText}>
-                By placing this order, you agree to our{" "}
-                <Text
-                  style={styles.privacyLink}
-                  onPress={() => {
-                    const url = process.env.EXPO_PUBLIC_PRIVACY_URL;
-                    if (url) Linking.openURL(url);
-                  }}
-                >
-                  Privacy Policy
-                </Text>
-                . Your personal data will be processed by the partner with whom
-                you're booking an appointment.
-              </Text>
-            </View>
-
-            {/* Leave a Note Section - reschedule mode */}
-            <View style={styles.noteInputContainer}>
-              <View style={styles.noteInputIcon}>
-                <Feather
-                  name="file-text"
-                  size={moderateWidthScale(18)}
-                  color={theme.lightGreen}
-                />
-              </View>
-              <TextInput
-                style={[styles.noteInput, styles.noteInputWithIcon]}
-                value={note}
-                onChangeText={setNote}
-                placeholder="Leave a note (optional)"
-                placeholderTextColor={theme.lightGreen2}
-                multiline
-                numberOfLines={4}
-              />
-              {note.length > 0 && (
-                <Pressable
-                  onPress={() => setNote("")}
-                  style={styles.noteClearButton}
-                  hitSlop={moderateWidthScale(8)}
-                >
-                  <CloseIcon color={theme.darkGreen} />
-                </Pressable>
-              )}
-            </View>
-          </>
-        ) : (
-          <>
-            {/* Service Details - hide for subscription booking */}
-            {!isSubscriptionBooking &&
-              selectedServices.map((service) => (
-                <View key={service.id} style={styles.serviceCard}>
-                  <View style={styles.serviceHeader}>
-                    <Text style={styles.serviceName}>{service.name}</Text>
-                    <TouchableOpacity
-                      style={styles.deleteButton}
-                      onPress={() => handleDeleteService(service.id)}
-                    >
-                      <MaterialIcons
-                        name="delete-outline"
-                        size={moderateWidthScale(20)}
-                        color={theme.red}
-                      />
-                    </TouchableOpacity>
-                  </View>
-
-                  <View style={{ gap: moderateHeightScale(4) }}>
-                    <View style={styles.priceContainer}>
-                      <Text style={styles.currentPrice}>
-                        - ${service.price.toFixed(2)} USD
-                      </Text>
-                      <Text style={styles.originalPrice}>
-                        ${service.originalPrice.toFixed(2)} USD
-                      </Text>
-                    </View>
-
-                    <Text style={styles.descriptionText}>
-                      - {service.description}
-                    </Text>
-                  </View>
-                </View>
-              ))}
-
-            {/* Add Another Service - hide for subscription booking */}
-            {!isSubscriptionBooking && (
+        <View style={styles.periodRow} accessibilityRole="tablist">
+          {TIME_SLOT_CATEGORIES.map((category) => {
+            const hasSlots = slotsByCategory[category].length > 0;
+            const isSelected = selectedCategory === category && hasSlots;
+            return (
               <TouchableOpacity
+                key={category}
                 activeOpacity={0.7}
-                onPress={handleAddService}
-                style={styles.addServiceSection}
+                style={[
+                  styles.periodTab,
+                  isSelected && styles.periodTabSelected,
+                  !hasSlots && styles.periodTabDisabled,
+                ]}
+                disabled={!hasSlots}
+                onPress={() => setSelectedCategory(category)}
+                accessibilityRole="tab"
+                accessibilityState={{
+                  selected: isSelected,
+                  disabled: !hasSlots,
+                }}
               >
-                <Text style={styles.addServiceText}>Add another service</Text>
-                <View style={styles.addServiceButton}>
-                  <Octicons
-                    name="plus"
-                    size={moderateWidthScale(16)}
-                    color={theme.selectCard}
-                  />
+                <View style={styles.periodIcon}>
+                  {renderPeriodIcon(category)}
                 </View>
-              </TouchableOpacity>
-            )}
-
-            {/* Payment Method Section - hide for subscription booking */}
-            {!isSubscriptionBooking && (
-              <>
-                <View
-                  style={[styles.line, { marginTop: moderateHeightScale(20) }]}
-                />
-
-                <View style={styles.section}>
-                  <Text style={styles.sectionTitle}>Choose payment method</Text>
-                  <View style={[styles.paymentCard, styles.shadow]}>
-                    <TouchableOpacity
-                      style={styles.paymentOption}
-                      onPress={() =>
-                        dispatch(setSelectedPaymentMethod("payNow"))
-                      }
-                    >
-                      <View
-                        style={[
-                          styles.paymentRadioButton,
-                          reduxPaymentMethod === "payNow" &&
-                            styles.paymentRadioButtonSelected,
-                        ]}
-                      >
-                        {reduxPaymentMethod === "payNow" && (
-                          <View style={styles.paymentRadioButtonInner} />
-                        )}
-                      </View>
-                      <View style={styles.paymentOptionContent}>
-                        <Text style={styles.paymentOptionTitle}>Pay now</Text>
-                        <Text style={styles.paymentOptionDescription}>
-                          Securely pay online to confirm your booking instantly.
-                        </Text>
-                      </View>
-                    </TouchableOpacity>
-
-                    <View style={styles.paymentDivider} />
-
-                    <TouchableOpacity
-                      style={styles.paymentOption}
-                      onPress={() =>
-                        dispatch(setSelectedPaymentMethod("payLater"))
-                      }
-                    >
-                      <View
-                        style={[
-                          styles.paymentRadioButton,
-                          reduxPaymentMethod === "payLater" &&
-                            styles.paymentRadioButtonSelected,
-                        ]}
-                      >
-                        {reduxPaymentMethod === "payLater" && (
-                          <View style={styles.paymentRadioButtonInner} />
-                        )}
-                      </View>
-                      <View style={styles.paymentOptionContent}>
-                        <Text style={styles.paymentOptionTitle}>Pay later</Text>
-                        <Text style={styles.paymentOptionDescription}>
-                          Pay in person at the salon.
-                        </Text>
-                      </View>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              </>
-            )}
-
-            <View
-              style={[styles.line, { marginTop: moderateHeightScale(20) }]}
-            />
-
-            <View style={styles.attachmentRow}>
-              <View style={styles.hairIconsRow}>
-                <Feather
-                  name="scissors"
-                  size={moderateWidthScale(14)}
-                  color={theme.darkGreen}
-                />
-                <Text style={styles.sectionTitleTryon}>Attach image</Text>
-              </View>
-            </View>
-
-            <View style={styles.tryOnImagesRow}>
-              {tryOnImageUrls.map((uri, index) => (
-                <View key={`tryon-${uri}-${index}`} style={styles.tryOnImageBox}>
-                  <Image
-                    source={{ uri }}
-                    style={styles.tryOnImageThumb}
-                    resizeMode="cover"
-                  />
-                  <TouchableOpacity
-                    style={styles.tryOnImageRemoveBtn}
-                    onPress={() =>
-                      setTryOnImageUrls((prev) =>
-                        prev.filter((_, i) => i !== index),
-                      )
-                    }
-                    activeOpacity={0.7}
-                  >
-                    <Feather
-                      name="x"
-                      size={moderateWidthScale(14)}
-                      color={theme.white}
-                    />
-                  </TouchableOpacity>
-                </View>
-              ))}
-              {galleryImageUris.map((uri, index) => (
-                <View
-                  key={`gallery-${uri}-${index}`}
-                  style={styles.tryOnImageBox}
-                >
-                  <Image
-                    source={{ uri }}
-                    style={styles.tryOnImageThumb}
-                    resizeMode="cover"
-                  />
-                  <TouchableOpacity
-                    style={styles.tryOnImageRemoveBtn}
-                    onPress={() =>
-                      setGalleryImageUris((prev) =>
-                        prev.filter((_, i) => i !== index),
-                      )
-                    }
-                    activeOpacity={0.7}
-                  >
-                    <Feather
-                      name="x"
-                      size={moderateWidthScale(14)}
-                      color={theme.white}
-                    />
-                  </TouchableOpacity>
-                </View>
-              ))}
-              <TouchableOpacity
-                style={styles.tryOnPlusBox}
-                onPress={() => setImagePickerVisible(true)}
-                activeOpacity={0.7}
-              >
-                <Feather
-                  name="plus"
-                  size={moderateWidthScale(28)}
-                  color={theme.darkGreen}
-                />
-              </TouchableOpacity>
-            </View>
-
-            <View
-              style={[styles.line, { marginTop: moderateHeightScale(20) }]}
-            />
-
-            {/* Privacy Policy Section */}
-            <View style={styles.section}>
-              <Text style={styles.privacyText}>
-                By placing this order, you agree to our{" "}
                 <Text
-                  style={styles.privacyLink}
-                  onPress={() => {
-                    const url = process.env.EXPO_PUBLIC_PRIVACY_URL;
-                    if (url) Linking.openURL(url);
-                  }}
+                  style={[
+                    styles.periodText,
+                    isSelected && styles.periodTextSelected,
+                  ]}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.85}
                 >
-                  Privacy Policy
+                  {t(PERIOD_LABEL_KEYS[category])}
                 </Text>
-                . Your personal data will be processed by the partner with whom
-                you're booking an appointment.
-              </Text>
-            </View>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
 
-            {/* Leave a Note Section */}
-            <View style={styles.noteInputContainer}>
-              <View style={styles.noteInputIcon}>
-                <Feather
-                  name="file-text"
-                  size={moderateWidthScale(18)}
-                  color={theme.lightGreen}
-                />
-              </View>
-              <TextInput
-                style={[styles.noteInput, styles.noteInputWithIcon]}
-                value={note}
-                onChangeText={setNote}
-                placeholder="Leave a note (optional)"
-                placeholderTextColor={theme.lightGreen2}
-                multiline
-                numberOfLines={4}
-              />
-              {note.length > 0 && (
-                <Pressable
-                  onPress={() => setNote("")}
-                  style={styles.noteClearButton}
-                  hitSlop={moderateWidthScale(8)}
-                >
-                  <CloseIcon color={theme.darkGreen} />
-                </Pressable>
-              )}
-            </View>
+        {renderSlots()}
 
-            {/* Subscription Card - below Leave a note when isSubscriptionBooking */}
-              {isSubscriptionBooking && subscriptionData && (
-                <View style={styles.subscriptionCard}>
-                  {(() => {
-                    const pill = getCustomerSubscriptionPill(subscriptionData);
-                    const dateDisplay =
-                      getCustomerSubscriptionDateDisplay(subscriptionData);
-                    const scheduleDate = formatCustomerScheduleDate(
-                      dateDisplay.kind,
-                      dateDisplay.date,
-                    );
-                    const displayPrice =
-                      getCustomerSubscriptionDisplayPrice(subscriptionData);
-                    return (
-                      <>
-                <View style={styles.cardHeader}>
-                  <View style={styles.planTitleRow}>
-                    <Feather
-                      name="star"
-                      size={moderateWidthScale(16)}
-                      color={theme.orangeBrown}
-                      style={styles.starIcon}
-                    />
-                    <Text style={styles.planTitle}>
-                      {subscriptionData.subscriptionPlan}
-                    </Text>
-                  </View>
-                  <View style={styles.statusBadge}>
-                    <Text style={styles.statusText}>
-                      {pill.label.toUpperCase()}
-                    </Text>
-                  </View>
-                </View>
-                <View style={styles.topSection}>
-                  <View style={styles.userInfoRow}>
-                    <Feather
-                      name="user"
-                      size={moderateWidthScale(14)}
-                      color={theme.darkGreen}
-                      style={styles.userIcon}
-                    />
-                    <Text style={styles.userText} numberOfLines={1}>
-                      {subscriptionData.business}
-                    </Text>
-                  </View>
-                  <View style={styles.priceBadge}>
-                    <Text style={styles.priceText}>
-                      ${displayPrice}
-                    </Text>
-                    <Text style={styles.planPriceLabel}>/month</Text>
-                  </View>
-                </View>
-                <View style={styles.subExpandedDetailSection}>
-                  {subscriptionData.subscriptionPlanDescription && (
-                    <Text style={styles.subscriptionDescriptionText}>
-                      {subscriptionData.subscriptionPlanDescription}
-                    </Text>
-                  )}
-
-                  {(subscriptionData.paymentDate || scheduleDate) && (
-                    <View style={styles.paymentRenewalRow}>
-                      {subscriptionData.paymentDate && (
-                        <View style={styles.paymentDateContainer}>
-                          <Feather
-                            name="credit-card"
-                            size={moderateWidthScale(12)}
-                            color={theme.darkGreen}
-                          />
-                          <View style={styles.dateInfoContainer}>
-                            <Text style={styles.dateLabel}>Payment</Text>
-                            <Text style={styles.dateValue}>
-                              {subscriptionData.paymentDate}
-                            </Text>
-                          </View>
-                        </View>
-                      )}
-                      {scheduleDate && (
-                        <View
-                          style={[
-                            styles.renewalContainer,
-                            !subscriptionData.paymentDate && {
-                              marginLeft: 0,
-                            },
-                          ]}
-                        >
-                          <Feather
-                            name="calendar"
-                            size={moderateWidthScale(12)}
-                            color={theme.darkGreen}
-                          />
-                          <View style={styles.dateInfoContainer}>
-                            <Text style={styles.dateLabel}>
-                              {getCustomerScheduleDateLabel(dateDisplay.kind)}
-                            </Text>
-                            <Text style={styles.dateValue}>{scheduleDate}</Text>
-                          </View>
-                        </View>
-                      )}
-                    </View>
-                  )}
-
-                  {subscriptionData.subscriptionPlanServices &&
-                    subscriptionData.subscriptionPlanServices.length > 0 && (
-                      <>
-                        <Text style={styles.subServicesSectionTitle}>
-                          Plan services
-                        </Text>
-                        {subscriptionData.subscriptionPlanServices.map(
-                          (svc) => {
-                            const serviceQuantity = svc.quantity ?? 1;
-                            const isServiceDisabled = serviceQuantity <= 0;
-
-                            return (
-                              <TouchableOpacity
-                                key={svc.id}
-                                style={[
-                                  styles.subServiceRow,
-                                  styles.subServiceRowSelectable,
-                                  isServiceDisabled &&
-                                    styles.subServiceRowDisabled,
-                                ]}
-                                activeOpacity={isServiceDisabled ? 1 : 0.7}
-                                onPress={() => {
-                                  if (isServiceDisabled) return;
-                                  toggleSubscriptionServiceSelection(svc.id);
-                                }}
-                              >
-                                <View
-                                  style={styles.subServiceSelectableContent}
-                                >
-                                  <View style={styles.subServiceLeftSection}>
-                                    <View style={styles.subServiceCheckWrap}>
-                                      <View
-                                        style={[
-                                          styles.subServiceCheckOuter,
-                                          isServiceDisabled && {
-                                            borderColor: theme.borderLine,
-                                            backgroundColor: theme.borderLight,
-                                          },
-                                          selectedSubscriptionServiceIds.includes(
-                                            svc.id,
-                                          ) &&
-                                            styles.subServiceCheckOuterSelected,
-                                        ]}
-                                      >
-                                        {selectedSubscriptionServiceIds.includes(
-                                          svc.id,
-                                        ) && (
-                                          <View
-                                            style={styles.subServiceCheckInner}
-                                          />
-                                        )}
-                                      </View>
-                                    </View>
-
-                                    <View
-                                      style={styles.subServiceNameContainer}
-                                    >
-                                      <Text style={styles.subServiceNameText}>
-                                        {svc.name} x {serviceQuantity}
-                                      </Text>
-                                      {(svc.durationHours > 0 ||
-                                        svc.durationMinutes > 0) && (
-                                        <Text
-                                          style={styles.subServiceDurationText}
-                                        >
-                                          {formatServiceDuration(
-                                            svc.durationHours,
-                                            svc.durationMinutes,
-                                          )}
-                                        </Text>
-                                      )}
-                                      {!!svc.description && (
-                                        <Text
-                                          style={
-                                            styles.subServiceDescriptionText
-                                          }
-                                        >
-                                          {svc.description}
-                                        </Text>
-                                      )}
-                                    </View>
-                                  </View>
-                                  <Text style={styles.subServicePriceText}>
-                                    ${svc.price}
-                                  </Text>
-                                </View>
-                              </TouchableOpacity>
-                            );
-                          },
-                        )}
-                      </>
-                    )}
-                </View>
-                      </>
-                    );
-                  })()}
-              </View>
-            )}
-
-            <View
-              style={[styles.line, { marginTop: moderateHeightScale(10) }]}
+        {selectedTimeSlot ? (
+          <View style={styles.pickedTime} accessibilityLiveRegion="polite">
+            <MaterialIcons
+              name="event-available"
+              size={moderateWidthScale(22)}
+              color={theme.selectCard}
             />
-            {/* Price Breakdown - hide for subscription booking */}
-            {!isSubscriptionBooking && (
-              <View style={styles.priceBreakdown}>
-                <View style={styles.priceRow}>
-                  <Text style={styles.priceLabel}>Subtotal:</Text>
-                  <Text style={styles.priceValue}>
-                    ${totalPrice.toFixed(2)} USD
-                  </Text>
-                </View>
-                <View style={styles.priceRow}>
-                  <Text style={styles.priceLabel}>Tax:</Text>
-                  <Text style={styles.priceValue}>${tax.toFixed(2)} USD</Text>
-                </View>
-              </View>
-            )}
-          </>
-        )}
-      </ScrollView>
-
-      <View style={styles.bottom}>
-        {/* Final Total - hide for subscription booking and reschedule */}
-        {!isSubscriptionBooking && !isReschedule && (
-          <View style={styles.totalSection}>
-            <Text style={styles.totalLabel}>Estimated total:</Text>
-            <Text style={styles.totalValue}>
-              ${estimatedTotal.toFixed(2)} USD
+            <Text style={styles.pickedTimeText}>
+              {t("bkFlowPickedTime", {
+                date: selectedDate.format("ddd, MMM D"),
+                time: convertTo12Hour(selectedTimeSlot),
+              })}
             </Text>
           </View>
-        )}
-
-        {/* Reschedule Appointment Button */}
-        {isReschedule ? (
-          <Button
-            title="Reschedule Appointment"
-            onPress={() => submitReschedule(params.late_fee_accepted === "1")}
-            disabled={rescheduleLoading}
-            loading={rescheduleLoading}
-          />
-        ) : (
-          <Button
-            title={t("continue")}
-            loading={continueLoading}
-            disabled={continueLoading}
-            onPress={async () => {
-              const businessIdForCheckout = resolveBusinessIdParam(
-                resolveRouteParam(params.business_id),
-                reduxBusinessId,
-              );
-              if (!businessIdForCheckout) {
-                showBanner(
-                  t("error"),
-                  "Business ID is missing. Please go back and try again.",
-                  "error",
-                  4000,
-                );
-                return;
-              }
-              if (isSubscriptionBooking) {
-                if (selectedSubscriptionServiceIds.length === 0) {
-                  showBanner(
-                    "No Service Selected",
-                    "Please select at least one plan service before checkout.",
-                    "warning",
-                    4000,
-                  );
-                  return;
-                }
-                if (!selectedTimeSlot) {
-                  showBanner(
-                    "Select time",
-                    "Please select a date and time slot before checkout.",
-                    "warning",
-                    4000,
-                  );
-                  return;
-                }
-
-                if (selectedStaff === "anyone" && !isSoloPlan) {
-                  setContinueLoading(true);
-                  try {
-                    const assigned = await assignAnyoneStaff({
-                      business_id: parseInt(businessIdForCheckout, 10),
-                      service_ids: selectedSubscriptionServiceIds,
-                      date: selectedDate.format("YYYY-MM-DD"),
-                      start_time: selectedTimeSlot,
-                    });
-                    dispatch(setAssignedStaffId(assigned.staff_id));
-                  } catch (err: any) {
-                    showBanner(
-                      t("error"),
-                      err?.message ||
-                        err?.data?.message ||
-                        "No staff available for this time slot.",
-                      "error",
-                      4000,
-                    );
-                    return;
-                  } finally {
-                    setContinueLoading(false);
-                  }
-                } else {
-                  dispatch(setAssignedStaffId(null));
-                }
-
-                dispatch(setSelectedDate(selectedDate.format("YYYY-MM-DD")));
-                dispatch(setSelectedTimeSlot(selectedTimeSlot));
-                dispatch(setSelectedNote(note));
-                dispatch(setBookingTryOnImageUrls(tryOnImageUrls));
-                router.push({
-                  pathname: "/(main)/bookingNow/checkout",
-                  params: {
-                    subscription_id: params.subscription_id || "",
-                    business_id: businessIdForCheckout,
-                    item: params.item || "",
-                    try_on_image_urls:
-                      tryOnImageUrls.length > 0
-                        ? JSON.stringify(tryOnImageUrls)
-                        : "",
-                    gallery_image_uris:
-                      galleryImageUris.length > 0
-                        ? JSON.stringify(galleryImageUris)
-                        : "",
-                    selected_subscription_service_ids: JSON.stringify(
-                      selectedSubscriptionServiceIds,
-                    ),
-                    subscription_plan_type: subscriptionPlanType ?? "",
-                    ...(attributionReelId
-                      ? { reel_id: String(attributionReelId) }
-                      : {}),
-                    ...(attributionSavedLookId
-                      ? { saved_look_id: String(attributionSavedLookId) }
-                      : {}),
-                  },
-                });
-                return;
-              }
-              if (selectedServices.length === 0) {
-                showBanner(
-                  t("noServiceSelected"),
-                  t("pleaseSelectAtLeastOneService"),
-                  "warning",
-                  4000,
-                );
-                return;
-              }
-              if (!selectedTimeSlot) {
-                showBanner(
-                  "Select time",
-                  "Please select a date and time slot before checkout.",
-                  "warning",
-                  4000,
-                );
-                return;
-              }
-
-              if (selectedStaff === "anyone" && !isSoloPlan) {
-                setContinueLoading(true);
-                try {
-                  const assigned = await assignAnyoneStaff({
-                    business_id: parseInt(businessIdForCheckout, 10),
-                    service_ids: selectedServices.map((s) => s.id),
-                    date: selectedDate.format("YYYY-MM-DD"),
-                    start_time: selectedTimeSlot,
-                  });
-                  dispatch(setAssignedStaffId(assigned.staff_id));
-                } catch (err: any) {
-                  showBanner(
-                    t("error"),
-                    err?.message ||
-                      err?.data?.message ||
-                      "No staff available for this time slot.",
-                    "error",
-                    4000,
-                  );
-                  return;
-                } finally {
-                  setContinueLoading(false);
-                }
-              } else {
-                dispatch(setAssignedStaffId(null));
-              }
-
-              dispatch(setSelectedDate(selectedDate.format("YYYY-MM-DD")));
-              dispatch(setSelectedTimeSlot(selectedTimeSlot));
-              dispatch(setSelectedNote(note));
-              dispatch(setBookingTryOnImageUrls(tryOnImageUrls));
-              router.push({
-                pathname: "/(main)/bookingNow/checkout",
-                params: {
-                  try_on_image_urls:
-                    tryOnImageUrls.length > 0
-                      ? JSON.stringify(tryOnImageUrls)
-                      : "",
-                  gallery_image_uris:
-                    galleryImageUris.length > 0
-                      ? JSON.stringify(galleryImageUris)
-                      : "",
-                  subscription_plan_type: subscriptionPlanType ?? "",
-                  ...(attributionReelId
-                    ? { reel_id: String(attributionReelId) }
-                    : {}),
-                  ...(attributionSavedLookId
-                    ? { saved_look_id: String(attributionSavedLookId) }
-                    : {}),
-                },
-              });
-            }}
-          />
-        )}
+        ) : null}
       </View>
+    </>
+  );
 
-      {/* Add Service Bottom Sheet */}
+  const renderPayment = () => {
+    const options = [
+      {
+        key: "payNow" as const,
+        icon: "credit-card" as const,
+        title: t("bkFlowPayNow"),
+        sub: t("bkFlowPayNowSub"),
+      },
+      {
+        key: "payLater" as const,
+        icon: "storefront" as const,
+        title: t("bkFlowPayLater"),
+        sub: t("bkFlowPayLaterSub"),
+      },
+    ];
+    return (
+      <>
+        <FlowTitle title={t("bkFlowPaymentTitle")} />
+        <View style={styles.list} accessibilityRole="radiogroup">
+          {options.map((option) => {
+            const isSelected = reduxPaymentMethod === option.key;
+            return (
+              <TouchableOpacity
+                key={option.key}
+                activeOpacity={0.8}
+                onPress={() => dispatch(setSelectedPaymentMethod(option.key))}
+                accessibilityRole="radio"
+                accessibilityLabel={`${option.title}, ${option.sub}`}
+                accessibilityState={{ selected: isSelected, checked: isSelected }}
+              >
+                <FlowCard
+                  style={[
+                    styles.choiceCard,
+                    isSelected && styles.choiceCardSelected,
+                  ]}
+                >
+                  <View
+                    style={[styles.payIcon, isSelected && styles.payIconSelected]}
+                  >
+                    <MaterialIcons
+                      name={option.icon}
+                      size={moderateWidthScale(24)}
+                      color={isSelected ? theme.selectCard : theme.darkGreen}
+                    />
+                  </View>
+                  <View style={styles.choiceText}>
+                    <Text style={styles.choiceTitle}>{option.title}</Text>
+                    <Text style={styles.choiceSub}>{option.sub}</Text>
+                  </View>
+                  <View style={[styles.radio, isSelected && styles.radioSelected]}>
+                    {isSelected ? <View style={styles.radioInner} /> : null}
+                  </View>
+                </FlowCard>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </>
+    );
+  };
+
+  const renderPhotoTile = (
+    uri: string,
+    key: string,
+    onRemove: () => void,
+  ) => (
+    <View
+      key={key}
+      style={[styles.photoBox, { width: photoSize, height: photoSize }]}
+    >
+      <Image source={{ uri }} style={styles.photoThumb} resizeMode="cover" />
+      <TouchableOpacity
+        style={styles.photoRemove}
+        onPress={onRemove}
+        activeOpacity={0.7}
+        hitSlop={8}
+        accessibilityRole="button"
+        accessibilityLabel={t("remove")}
+      >
+        <Feather name="x" size={moderateWidthScale(16)} color={theme.white} />
+      </TouchableOpacity>
+    </View>
+  );
+
+  const renderNoteField = () => (
+    <View style={styles.section}>
+      <SectionLabel label={t("bkFlowNote")} meta={t("optional")} />
+      <View style={styles.noteWrap}>
+        <TextInput
+          style={styles.noteInput}
+          value={note}
+          onChangeText={setNote}
+          placeholder={t("bkFlowNotePlaceholder")}
+          placeholderTextColor={theme.lightGreen2}
+          multiline
+          numberOfLines={4}
+          accessibilityLabel={t("bkFlowNote")}
+        />
+        {note.length > 0 ? (
+          <TouchableOpacity
+            onPress={() => setNote("")}
+            style={styles.noteClear}
+            accessibilityRole="button"
+            accessibilityLabel={t("bkFlowClearNote")}
+          >
+            <Feather
+              name="x"
+              size={moderateWidthScale(18)}
+              color={theme.darkGreen}
+            />
+          </TouchableOpacity>
+        ) : null}
+      </View>
+    </View>
+  );
+
+  const renderPrivacy = () => (
+    <Text style={styles.privacy}>
+      {t("bkFlowPrivacyBefore")}
+      <Text style={styles.privacyLink} onPress={openPrivacy}>
+        {t("privacyPolicy")}
+      </Text>
+      {t("bkFlowPrivacyAfter")}
+    </Text>
+  );
+
+  const renderExtras = () => (
+    <>
+      <FlowTitle
+        title={t("bkFlowExtrasTitle")}
+        subtitle={t("bkFlowExtrasSubtitle")}
+      />
+      <View style={styles.section}>
+        <SectionLabel label={t("bkFlowPhotos")} meta={t("optional")} />
+        <View style={styles.photoGrid}>
+          {tryOnImageUrls.map((uri, index) =>
+            renderPhotoTile(uri, `tryon-${uri}-${index}`, () =>
+              setTryOnImageUrls((prev) => prev.filter((_, i) => i !== index)),
+            ),
+          )}
+          {galleryImageUris.map((uri, index) =>
+            renderPhotoTile(uri, `gallery-${uri}-${index}`, () =>
+              setGalleryImageUris((prev) =>
+                prev.filter((_, i) => i !== index),
+              ),
+            ),
+          )}
+          <TouchableOpacity
+            style={[styles.photoAdd, { width: photoSize, height: photoSize }]}
+            onPress={() => setImagePickerVisible(true)}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel={t("bkFlowAddPhoto")}
+          >
+            <Feather
+              name="plus"
+              size={moderateWidthScale(28)}
+              color={theme.darkGreen}
+            />
+            <Text style={styles.photoAddText}>{t("bkFlowAddPhoto")}</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+      {renderNoteField()}
+      {renderPrivacy()}
+    </>
+  );
+
+  const reviewRow = (
+    icon: React.ComponentProps<typeof MaterialIcons>["name"],
+    label: string,
+    value: string,
+    target: StepKey,
+    first: boolean,
+  ) => (
+    <View key={label} style={[styles.reviewRow, !first && styles.reviewRowBorder]}>
+      <View style={styles.reviewIcon}>
+        <MaterialIcons
+          name={icon}
+          size={moderateWidthScale(20)}
+          color={theme.darkGreen}
+        />
+      </View>
+      <View style={styles.reviewText}>
+        <Text style={styles.reviewLabel}>{label}</Text>
+        <Text style={styles.reviewValue} numberOfLines={2}>
+          {value}
+        </Text>
+      </View>
+      <TouchableOpacity
+        style={styles.reviewEdit}
+        onPress={() => goToStep(target)}
+        hitSlop={6}
+        disabled={busy}
+        accessibilityRole="button"
+        accessibilityLabel={`${t("edit")} ${label}`}
+      >
+        <Text style={styles.reviewEditText}>{t("edit")}</Text>
+      </TouchableOpacity>
+    </View>
+  );
+
+  const renderConfirm = () => {
+    const staffName =
+      selectedStaff === "anyone"
+        ? t("bkFlowAnyone")
+        : (selectedStaffMember?.name ?? t("bkFlowAnyone"));
+    const rows = [
+      ...(isSoloPlan
+        ? []
+        : [
+            {
+              icon: "person-outline" as const,
+              label: t("staff"),
+              value: staffName,
+              target: "staff" as StepKey,
+            },
+          ]),
+      {
+        icon: "event" as const,
+        label: t("date"),
+        value: selectedDate.format("dddd, MMM D, YYYY"),
+        target: "time" as StepKey,
+      },
+      {
+        icon: "schedule" as const,
+        label: t("time"),
+        value: selectedTimeSlot
+          ? convertTo12Hour(selectedTimeSlot)
+          : t("bkFlowNoTimePicked"),
+        target: "time" as StepKey,
+      },
+    ];
+    return (
+      <>
+        <FlowTitle
+          title={t("bkFlowConfirmTitle")}
+          subtitle={t("bkFlowConfirmSubtitle")}
+        />
+        <FlowCard style={styles.reviewCard}>
+          {rows.map((row, i) =>
+            reviewRow(row.icon, row.label, row.value, row.target, i === 0),
+          )}
+        </FlowCard>
+        {renderNoteField()}
+        {renderPrivacy()}
+      </>
+    );
+  };
+
+  const renderStep = () => {
+    switch (stepKey) {
+      case "services":
+        return renderServices();
+      case "planServices":
+        return renderPlanServices();
+      case "staff":
+        return renderStaff();
+      case "time":
+        return renderTime();
+      case "payment":
+        return renderPayment();
+      case "extras":
+        return renderExtras();
+      case "confirm":
+        return renderConfirm();
+    }
+  };
+
+  // ── Footer ──────────────────────────────────────────────────────────
+
+  const blockedHint =
+    stepKey === "services" && selectedServices.length === 0
+      ? t("bkFlowServicesHint")
+      : stepKey === "planServices" && selectedSubscriptionServiceIds.length === 0
+        ? t("bkFlowPlanHint")
+        : stepKey === "time" && !selectedTimeSlot
+          ? t("bkFlowTimeHint")
+          : null;
+
+  type FooterAction = React.ComponentProps<typeof FlowFooter>["primary"];
+  const footerPrimary: FooterAction = !isLastStep
+    ? {
+        label: t("bkFlowNext", {
+          step: t(STEP_LABEL_KEYS[steps[safeIndex + 1]]),
+        }),
+        trailingIcon: "chevron-right",
+        disabled: !!blockedHint,
+        onPress: () => goTo(safeIndex + 1, 1),
+      }
+    : isReschedule
+      ? {
+          label: t("bkFlowRescheduleButton"),
+          icon: "event-available",
+          loading: rescheduleLoading,
+          disabled: rescheduleLoading || !!blockedHint,
+          onPress: () => submitReschedule(params.late_fee_accepted === "1"),
+        }
+      : {
+          label: t("bkFlowToCheckout"),
+          trailingIcon: "chevron-right",
+          loading: continueLoading,
+          disabled: continueLoading,
+          onPress: handleContinue,
+        };
+
+  // FlowFooter pads for the home indicator; under an open keyboard that
+  // padding would be a gap, so the sticky view tucks it behind the keyboard.
+  const stickyOpened =
+    flowFooterBottomPad(insets.bottom) - moderateHeightScale(10);
+
+  const Entering = direction === 1 ? FadeInRight : FadeInLeft;
+
+  return (
+    <View style={styles.root}>
+      <StatusBar barStyle="light-content" />
+      <FlowHeader
+        title={isReschedule ? t("bkFlowRescheduleTitle") : t("bkFlowTitle")}
+        step={{ current: safeIndex + 1, total: steps.length }}
+        onBack={onHeaderBack}
+        backDisabled={busy}
+        backIcon={safeIndex === 0 ? "close" : "back"}
+      />
+
+      <KeyboardAwareScrollView
+        key={stepKey}
+        style={styles.flex}
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="interactive"
+        showsVerticalScrollIndicator={false}
+        bottomOffset={moderateHeightScale(110)}
+        extraKeyboardSpace={moderateHeightScale(8)}
+      >
+        <Animated.View
+          style={styles.stepBody}
+          entering={Entering.duration(240).reduceMotion(ReduceMotion.System)}
+        >
+          {renderStep()}
+        </Animated.View>
+      </KeyboardAwareScrollView>
+
+      <KeyboardStickyView offset={{ closed: 0, opened: stickyOpened }}>
+        {showTotalBar ? (
+          <View style={styles.totalBar}>
+            <Text style={styles.totalLabel}>{t("bkFlowEstimatedTotal")}</Text>
+            <Text style={styles.totalValue}>{formatMoney(estimatedTotal)}</Text>
+          </View>
+        ) : null}
+        <FlowFooter primary={footerPrimary} hint={blockedHint} />
+      </KeyboardStickyView>
+
+      <Modal
+        visible={showAnyoneHint}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowAnyoneHint(false)}
+      >
+        <View style={styles.anyoneHintOverlay}>
+          <Pressable
+            style={StyleSheet.absoluteFillObject}
+            onPress={() => setShowAnyoneHint(false)}
+            accessibilityLabel={t("close")}
+          />
+          <View style={styles.anyoneHintBubble}>
+            <TouchableOpacity
+              style={styles.anyoneHintClose}
+              onPress={() => setShowAnyoneHint(false)}
+              accessibilityRole="button"
+              accessibilityLabel={t("close")}
+            >
+              <Feather
+                name="x"
+                size={moderateWidthScale(20)}
+                color={theme.darkGreen}
+              />
+            </TouchableOpacity>
+            <Text style={styles.anyoneHintText}>{t("bkFlowAnyoneHint")}</Text>
+          </View>
+        </View>
+      </Modal>
+
       <OutcomeConfirmSheet
         visible={rescheduleFeeMessage != null}
         onClose={() => setRescheduleFeeMessage(null)}
@@ -3976,6 +3690,6 @@ export default function BookingNow() {
           setGalleryImageUris((prev) => [...prev, ...uris]);
         }}
       />
-    </SafeAreaView>
+    </View>
   );
 }
