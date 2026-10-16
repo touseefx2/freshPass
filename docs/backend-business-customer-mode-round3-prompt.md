@@ -75,8 +75,10 @@ Please test this yourself on dev, on a real phone or with API calls.
 | 18 | Profile | Edit profile, notification settings, language | Works (shared profile) |
 | 19 | Own business | Book, pay now, pay later, membership, product, tip, review, follow, favourite, chat at their **own** business | All blocked: `own_business` (403), or 422 `errors.business_id` for bookings |
 | 20 | Back in business mode | Switch back after all of the above | Business data unchanged. Customer bookings, orders, memberships and chats don't appear on the business side. |
+| 21 | Second device | The same account is signed in on two phones. Switch modes on phone A. | Phone B receives `.mode.changed` on `private-users.{id}` within a few seconds, with `active_mode`, `ai_quota`, `can_switch` and `changed_at`. |
+| 22 | Push from the other side | While in customer mode, trigger a business event for their own business (a new booking or order) | The push arrives with `data.mode: "business"`. It isn't listed under `?mode=customer`. |
 
-For each row, reply **pass** or **fail**. For a fail, include the request, the response and what you fixed.
+For each row (1–22), reply **pass** or **fail**. For a fail, include the request, the response and what you fixed.
 
 ---
 
@@ -94,6 +96,9 @@ Your v2 guide didn't cover these. Please build or answer each:
 8. **Deployment status:** is PR #171 live on **dev**? On **production**? Please give the dates.
 9. **Test accounts on dev:** one onboarded business owner, one business owner still onboarding, one staff member and one plain customer, with emails and passwords.
 10. **Estimates** for anything not done yet.
+11. **`.mode.changed` event:** we haven't seen it arrive yet. Please confirm it is live on dev and the event name the app should bind is exactly `.mode.changed`, with the leading dot. Row 21 above tests it.
+12. **New-customer perks:** do plain customers get anything when they start, such as free AI credits, a welcome offer or a first-booking discount? If yes, does a business account's **customer side** get the same on its first switch to customer mode? If not, should it? Please tell us what happens today.
+13. **Notification settings:** are notification preferences (push and email toggles, `GET`/`PUT /api/notification-preferences`) shared by both modes, or separate per mode? For example, can an owner turn off customer marketing pushes and keep business booking pushes on?
 
 ---
 
@@ -102,8 +107,8 @@ Your v2 guide didn't cover these. Please build or answer each:
 Reply once, in three parts:
 
 - **Section 2:** yes or no for items 1 and 2.
-- **Section 3:** the table with **pass / fail** for every row (1–20), plus details for each fail and what you changed.
-- **Section 4:** items 1–10, each **Done** (with a sample JSON for anything new or changed), **Will do** (with an estimate) or **Won't do** (with the reason).
+- **Section 3:** the table with **pass / fail** for every row (1–22), plus details for each fail and what you changed.
+- **Section 4:** items 1–13, each **Done** (with a sample JSON for anything new or changed), **Will do** (with an estimate) or **Won't do** (with the reason).
 
 ---
 
