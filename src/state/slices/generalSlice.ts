@@ -52,6 +52,13 @@ function isSameLocation(a: Location, b: Location): boolean {
   );
 }
 
+export interface ModeSwitchAnchor {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 export interface GeneralState {
   theme: "light" | "dark" | "blue";
   themeType: "default" | "system";
@@ -96,6 +103,8 @@ export interface GeneralState {
   stripeConnectModalVisible: boolean;
   /** Business ↔ customer mode switch (opened from the header logo) */
   modeSwitchModalVisible: boolean;
+  /** Window rect of the logo chevron the mode menu hangs from */
+  modeSwitchAnchor: ModeSwitchAnchor | null;
   /** After Create from Stripe congrats — don't auto-open business plans this session */
   suppressBusinessPlansAutoOpen: boolean;
   /** After Solo/Business plan purchase success; not persisted */
@@ -178,6 +187,7 @@ const initialState: GeneralState = {
   businessPlansModalBusinessOnly: false,
   stripeConnectModalVisible: false,
   modeSwitchModalVisible: false,
+  modeSwitchAnchor: null,
   suppressBusinessPlansAutoOpen: false,
   businessPlanPurchasedCongratsVisible: false,
   tryOnPurchaseSuccessModalVisible: false,
@@ -322,6 +332,9 @@ const generalSlice = createSlice({
     },
     setModeSwitchModalVisible(state, action: PayloadAction<boolean>) {
       state.modeSwitchModalVisible = action.payload;
+    },
+    setModeSwitchAnchor(state, action: PayloadAction<ModeSwitchAnchor | null>) {
+      state.modeSwitchAnchor = action.payload;
     },
     setSuppressBusinessPlansAutoOpen(state, action: PayloadAction<boolean>) {
       state.suppressBusinessPlansAutoOpen = action.payload;
@@ -535,6 +548,7 @@ const generalSlice = createSlice({
       state.businessPlansModalBusinessOnly = false;
       state.stripeConnectModalVisible = false;
       state.modeSwitchModalVisible = false;
+      state.modeSwitchAnchor = null;
       state.suppressBusinessPlansAutoOpen = false;
       state.tryOnPurchaseSuccessModalVisible = false;
       state.tryOnPurchaseSuccessSource = null;
@@ -576,6 +590,7 @@ export const {
   setBusinessPlansModalBusinessOnly,
   setStripeConnectModalVisible,
   setModeSwitchModalVisible,
+  setModeSwitchAnchor,
   setSuppressBusinessPlansAutoOpen,
   setBusinessPlanPurchasedCongratsVisible,
   setTryOnPurchaseSuccessModalVisible,

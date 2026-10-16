@@ -13,8 +13,8 @@ import ModeSwitchModal, {
 } from "@/src/components/ModeSwitchModal";
 
 /**
- * Business ↔ customer mode switch, opened from the FreshPass logo in the
- * dashboard headers. Mounted at the root so it stays up while the dashboard
+ * Business ↔ customer mode switch: dropdown menu hanging from the FreshPass
+ * logo chevron in the dashboard headers. Mounted at the root so it stays up while the dashboard
  * swaps to the other mode underneath and can show the success state.
  */
 export default function ModeSwitchModalHandler() {
@@ -23,15 +23,16 @@ export default function ModeSwitchModalHandler() {
   const segments = useSegments() as string[];
   const visible = useAppSelector((state) => state.general.modeSwitchModalVisible);
   const activeMode = useAppSelector((state) => state.user.active_mode);
+  const anchor = useAppSelector((state) => state.general.modeSwitchAnchor);
 
-  const [phase, setPhase] = useState<ModeSwitchPhase>("confirm");
+  const [phase, setPhase] = useState<ModeSwitchPhase>("menu");
   // Frozen when the modal opens — active_mode flips mid-switch
   const [fromMode, setFromMode] = useState<UserMode>("business");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
     if (!visible) return;
-    setPhase("confirm");
+    setPhase("menu");
     setErrorMessage(null);
     setFromMode(activeMode ?? "business");
     // Only on open — active_mode changes mid-switch
@@ -42,9 +43,8 @@ export default function ModeSwitchModalHandler() {
     dispatch(setModeSwitchModalVisible(false));
   }, [dispatch]);
 
-  const handleConfirm = useCallback(async () => {
-    if (phase === "switching") return;
-    const toMode: UserMode = fromMode === "business" ? "customer" : "business";
+  const handleSelect = useCallback(async (toMode: UserMode) => {
+    if (phase === "switching" || toMode === fromMode) return;
 
     setPhase("switching");
     setErrorMessage(null);
@@ -65,7 +65,7 @@ export default function ModeSwitchModalHandler() {
           : t("modeSwitchedBusinessTitle"),
       );
     } catch (error: any) {
-      setPhase("confirm");
+      setPhase("menu");
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       // No-internet toast is already shown by ApiService
       if (!error?.isNoInternet) {
@@ -79,8 +79,9 @@ export default function ModeSwitchModalHandler() {
       visible={visible}
       phase={phase}
       fromMode={fromMode}
+      anchor={anchor}
       errorMessage={errorMessage}
-      onConfirm={handleConfirm}
+      onSelect={handleSelect}
       onCancel={close}
       onDone={close}
     />

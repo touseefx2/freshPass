@@ -71,6 +71,10 @@ export const themes = {
     bookNowButton: "#DDBD5E",
     // Calendar appointment pastels (soft fills + matching accents)
     apptMintBg: "rgba(96, 108, 56, 0.18)",
+    // Selected row / icon tile in light menus (mode switch dropdown)
+    mintTint: "#EDF7EC",
+    mintTintStrong: "#DAECD6",
+    menuTileNeutral: "#F5F5F5",
     apptMintAccent: "#606C38",
     apptPeachBg: "rgba(221, 161, 94, 0.22)",
     apptPeachAccent: "#BC6C25",

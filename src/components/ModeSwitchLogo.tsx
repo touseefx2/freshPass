@@ -1,15 +1,18 @@
-import React, { useCallback, useMemo } from "react";
+import React, { useCallback, useMemo, useRef } from "react";
 import { StyleSheet, TouchableOpacity, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
-import { setModeSwitchModalVisible } from "@/src/state/slices/generalSlice";
+import {
+  setModeSwitchAnchor,
+  setModeSwitchModalVisible,
+} from "@/src/state/slices/generalSlice";
 import { canUseModeSwitch } from "@/src/state/slices/userSlice";
 import { Theme } from "@/src/theme/colors";
 import { moderateWidthScale } from "@/src/theme/dimensions";
 
-const CHEVRON_SIZE = 20;
+const CHEVRON_SIZE = 24;
 const CHEVRON_GAP = 8;
 
 const createStyles = (theme: Theme) =>
@@ -57,10 +60,29 @@ export default function ModeSwitchLogo({
   const isCustomerMode = useAppSelector(
     (state) => state.user.active_mode === "customer",
   );
+  const menuOpen = useAppSelector(
+    (state) => state.general.modeSwitchModalVisible,
+  );
+
+  const chevronRef = useRef<View>(null);
 
   const handlePress = useCallback(() => {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    dispatch(setModeSwitchModalVisible(true));
+    const open = () => dispatch(setModeSwitchModalVisible(true));
+    const chevron = chevronRef.current;
+    if (!chevron) {
+      dispatch(setModeSwitchAnchor(null));
+      open();
+      return;
+    }
+    // The menu hangs from the chevron, so open it once we know where that is
+    // Page coords — measureInWindow leaves out the status bar on Android
+    chevron.measure((_x, _y, width, height, x, y) => {
+      dispatch(
+        setModeSwitchAnchor(width > 0 ? { x, y, width, height } : null),
+      );
+      open();
+    });
   }, [dispatch]);
 
   if (!canSwitch) {
@@ -80,14 +102,15 @@ export default function ModeSwitchLogo({
           : t("modeSwitchLogoA11yBusiness")
       }
       accessibilityHint={t("modeSwitchLogoA11yHint")}
+      accessibilityState={{ expanded: menuOpen }}
     >
       <View style={styles.row}>
         {centered && <View style={styles.spacer} />}
         {children}
-        <View style={styles.chevron}>
+        <View ref={chevronRef} collapsable={false} style={styles.chevron}>
           <Feather
-            name="chevron-down"
-            size={moderateWidthScale(14)}
+            name={menuOpen ? "chevron-up" : "chevron-down"}
+            size={moderateWidthScale(16)}
             color={theme.white85}
           />
         </View>

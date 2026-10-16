@@ -3,16 +3,17 @@ import {
   AccessibilityInfo,
   ActivityIndicator,
   Animated,
-  I18nManager,
   Modal,
   Pressable,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
+  useWindowDimensions,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
-import { Feather } from "@expo/vector-icons";
+import { Feather, Ionicons } from "@expo/vector-icons";
 import { useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
@@ -23,13 +24,21 @@ import {
   widthScale,
 } from "@/src/theme/dimensions";
 import type { UserMode } from "@/src/state/slices/userSlice";
+import type { ModeSwitchAnchor } from "@/src/state/slices/generalSlice";
 
-export type ModeSwitchPhase = "confirm" | "switching" | "success";
+export type ModeSwitchPhase = "menu" | "switching" | "success";
 
-const MODE_ICON: Record<UserMode, keyof typeof Feather.glyphMap> = {
-  business: "briefcase",
-  customer: "user",
+const MODE_ICON: Record<UserMode, keyof typeof Ionicons.glyphMap> = {
+  business: "cut",
+  customer: "people",
 };
+
+const MENU_ORDER: UserMode[] = ["business", "customer"];
+const MENU_CARET = 14;
+const MENU_GUTTER = 16;
+const MENU_MAX_WIDTH = 420;
+/** Gap between the logo chevron and the menu card */
+const MENU_OFFSET = 12;
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -81,19 +90,6 @@ const createStyles = (theme: Theme) =>
       alignItems: "center",
       zIndex: 1,
     },
-    swapBadge: {
-      position: "absolute",
-      right: moderateWidthScale(-4),
-      bottom: moderateWidthScale(-4),
-      width: moderateWidthScale(28),
-      height: moderateWidthScale(28),
-      borderRadius: moderateWidthScale(14),
-      backgroundColor: theme.orangeBrown,
-      borderWidth: 3,
-      borderColor: theme.white,
-      alignItems: "center",
-      justifyContent: "center",
-    },
     confettiDot: {
       position: "absolute",
       borderRadius: moderateWidthScale(50),
@@ -128,70 +124,6 @@ const createStyles = (theme: Theme) =>
       textAlign: "center",
       marginBottom: moderateHeightScale(18),
     },
-    modeRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      width: "100%",
-      gap: moderateWidthScale(8),
-      marginTop: moderateHeightScale(6),
-      marginBottom: moderateHeightScale(16),
-    },
-    modeTile: {
-      flex: 1,
-      alignItems: "center",
-      borderRadius: moderateWidthScale(18),
-      borderWidth: 1.5,
-      borderColor: theme.borderLight,
-      backgroundColor: theme.white,
-      paddingTop: moderateHeightScale(18),
-      paddingBottom: moderateHeightScale(14),
-      paddingHorizontal: moderateWidthScale(6),
-    },
-    modeTileTarget: {
-      borderColor: theme.buttonBack,
-      backgroundColor: theme.lightGreen05,
-    },
-    modeTileIcon: {
-      width: moderateWidthScale(40),
-      height: moderateWidthScale(40),
-      borderRadius: moderateWidthScale(20),
-      backgroundColor: theme.lightGreen07,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    modeTileIconTarget: {
-      backgroundColor: theme.buttonBack,
-    },
-    modeTileLabel: {
-      fontSize: fontSize.size14,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-      marginTop: moderateHeightScale(8),
-      textAlign: "center",
-    },
-    currentPill: {
-      position: "absolute",
-      top: moderateHeightScale(-10),
-      alignSelf: "center",
-      backgroundColor: theme.darkGreen,
-      borderRadius: moderateWidthScale(10),
-      paddingHorizontal: moderateWidthScale(8),
-      paddingVertical: moderateHeightScale(2),
-    },
-    currentPillText: {
-      fontSize: fontSize.size10,
-      fontFamily: fonts.fontBold,
-      color: theme.white,
-      letterSpacing: 0.3,
-    },
-    modeArrow: {
-      width: moderateWidthScale(28),
-      height: moderateWidthScale(28),
-      borderRadius: moderateWidthScale(14),
-      backgroundColor: theme.lightGreen07,
-      alignItems: "center",
-      justifyContent: "center",
-    },
     message: {
       fontSize: fontSize.size14,
       fontFamily: fonts.fontRegular,
@@ -201,13 +133,84 @@ const createStyles = (theme: Theme) =>
       marginBottom: moderateHeightScale(20),
       paddingHorizontal: moderateWidthScale(4),
     },
+    menuOverlay: {
+      flex: 1,
+      backgroundColor: "rgba(0, 0, 0, 0.4)",
+    },
+    menuCard: {
+      position: "absolute",
+      backgroundColor: theme.white,
+      borderRadius: moderateWidthScale(22),
+      padding: moderateWidthScale(8),
+      gap: moderateHeightScale(4),
+      shadowColor: theme.shadow,
+      shadowOffset: { width: 0, height: moderateHeightScale(10) },
+      shadowOpacity: 0.18,
+      shadowRadius: moderateWidthScale(24),
+      elevation: 12,
+    },
+    menuCaret: {
+      position: "absolute",
+      top: -MENU_CARET / 2 + 1,
+      width: MENU_CARET,
+      height: MENU_CARET,
+      borderTopLeftRadius: 3,
+      backgroundColor: theme.white,
+      transform: [{ rotate: "45deg" }],
+    },
+    menuRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      minHeight: moderateHeightScale(72),
+      paddingHorizontal: moderateWidthScale(12),
+      paddingVertical: moderateHeightScale(10),
+      borderRadius: moderateWidthScale(16),
+      gap: moderateWidthScale(14),
+    },
+    menuRowCurrent: {
+      backgroundColor: theme.mintTint,
+    },
+    menuIconTile: {
+      width: moderateWidthScale(48),
+      height: moderateWidthScale(48),
+      borderRadius: moderateWidthScale(14),
+      backgroundColor: theme.menuTileNeutral,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    menuIconTileCurrent: {
+      backgroundColor: theme.mintTintStrong,
+    },
+    menuTextWrap: {
+      flex: 1,
+      gap: moderateHeightScale(2),
+    },
+    menuTitle: {
+      fontSize: fontSize.size16,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    menuSubtitle: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+    },
+    menuTrailing: {
+      width: moderateWidthScale(24),
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    menuDimmed: {
+      opacity: 0.5,
+    },
     errorText: {
       fontSize: fontSize.size13,
       fontFamily: fonts.fontMedium,
       color: theme.red,
       textAlign: "center",
-      marginTop: moderateHeightScale(-8),
-      marginBottom: moderateHeightScale(14),
+      paddingHorizontal: moderateWidthScale(12),
+      paddingTop: moderateHeightScale(4),
+      paddingBottom: moderateHeightScale(8),
     },
     buttonContainer: {
       width: "100%",
@@ -228,28 +231,17 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontBold,
       color: theme.buttonText,
     },
-    secondaryButton: {
-      height: moderateHeightScale(46),
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    secondaryButtonText: {
-      fontSize: fontSize.size15,
-      fontFamily: fonts.fontMedium,
-      color: theme.lightGreen,
-    },
-    disabled: {
-      opacity: 0.5,
-    },
   });
 
 interface ModeSwitchModalProps {
   visible: boolean;
   phase: ModeSwitchPhase;
-  /** Mode the account was in when the modal opened */
+  /** Mode the account was in when the menu opened */
   fromMode: UserMode;
+  /** Window rect of the logo chevron; null → menu sits under the header */
+  anchor: ModeSwitchAnchor | null;
   errorMessage: string | null;
-  onConfirm: () => void;
+  onSelect: (mode: UserMode) => void;
   onCancel: () => void;
   onDone: () => void;
 }
@@ -258,8 +250,9 @@ export default function ModeSwitchModal({
   visible,
   phase,
   fromMode,
+  anchor,
   errorMessage,
-  onConfirm,
+  onSelect,
   onCancel,
   onDone,
 }: ModeSwitchModalProps) {
@@ -273,6 +266,9 @@ export default function ModeSwitchModal({
   const isSwitching = phase === "switching";
   const isSuccess = phase === "success";
 
+  const { width: windowWidth } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+
   const reduceMotionRef = useRef(false);
   const appear = useRef(new Animated.Value(0)).current;
   const pop = useRef(new Animated.Value(1)).current;
@@ -283,7 +279,8 @@ export default function ModeSwitchModal({
     });
   }, []);
 
-  // Card scales in on open; on close the Modal's fade takes it out as-is
+  // Menu drops in on open, success card scales in after the switch; on close
+  // the Modal's fade takes it out as-is
   useEffect(() => {
     if (!visible) return;
     if (reduceMotionRef.current) {
@@ -297,7 +294,7 @@ export default function ModeSwitchModal({
       tension: 90,
       useNativeDriver: true,
     }).start();
-  }, [visible, appear]);
+  }, [visible, isSuccess, appear]);
 
   // Success icon pops in once the switch lands
   useEffect(() => {
@@ -320,8 +317,26 @@ export default function ModeSwitchModal({
     else onCancel();
   };
 
-  const modeLabel = (mode: UserMode) =>
-    mode === "business" ? t("modeBusiness") : t("modeCustomer");
+  // Card spans the screen (capped on tablets); caret points at the chevron
+  const menuWidth = Math.min(
+    windowWidth - moderateWidthScale(MENU_GUTTER) * 2,
+    MENU_MAX_WIDTH,
+  );
+  const anchorCenterX = anchor
+    ? anchor.x + anchor.width / 2
+    : windowWidth / 2;
+  const menuLeft = Math.min(
+    Math.max(anchorCenterX - menuWidth / 2, moderateWidthScale(MENU_GUTTER)),
+    windowWidth - moderateWidthScale(MENU_GUTTER) - menuWidth,
+  );
+  const menuTop = anchor
+    ? anchor.y + anchor.height + moderateHeightScale(MENU_OFFSET)
+    : insets.top + moderateHeightScale(64);
+  const caretInset = moderateWidthScale(22);
+  const caretLeft = Math.min(
+    Math.max(anchorCenterX - menuLeft - MENU_CARET / 2, caretInset),
+    menuWidth - caretInset - MENU_CARET,
+  );
 
   const renderConfetti = (full: boolean) => (
     <>
@@ -416,134 +431,109 @@ export default function ModeSwitchModal({
     </>
   );
 
-  const renderModeTile = (mode: UserMode) => {
-    const isTarget = mode === toMode;
+  const renderMenuRow = (mode: UserMode) => {
+    const isCurrent = mode === fromMode;
+    const isPending = isSwitching && !isCurrent;
+    const title =
+      mode === "business" ? t("modeMenuBusinessTitle") : t("modeMenuCustomerTitle");
+    const subtitle =
+      mode === "business"
+        ? t("modeMenuBusinessSubtitle")
+        : t("modeMenuCustomerSubtitle");
     return (
-      <View
-        style={[styles.modeTile, isTarget && styles.modeTileTarget]}
-        accessible
-        accessibilityLabel={`${modeLabel(mode)}, ${
-          isTarget ? t("modeSwitchTarget") : t("current")
-        }`}
+      <TouchableOpacity
+        key={mode}
+        style={[
+          styles.menuRow,
+          isCurrent && styles.menuRowCurrent,
+          isSwitching && isCurrent && styles.menuDimmed,
+        ]}
+        onPress={() => (isCurrent ? onCancel() : onSelect(mode))}
+        disabled={isSwitching}
+        activeOpacity={0.6}
+        accessibilityRole="menuitem"
+        accessibilityLabel={`${title}, ${subtitle}`}
+        accessibilityState={{
+          selected: isCurrent,
+          disabled: isSwitching,
+          busy: isPending,
+        }}
       >
-        {!isTarget && (
-          <View style={styles.currentPill}>
-            <Text style={styles.currentPillText}>{t("current")}</Text>
-          </View>
-        )}
         <View
-          style={[styles.modeTileIcon, isTarget && styles.modeTileIconTarget]}
+          style={[styles.menuIconTile, isCurrent && styles.menuIconTileCurrent]}
         >
-          <Feather
+          <Ionicons
             name={MODE_ICON[mode]}
-            size={iconScale(18)}
-            color={isTarget ? theme.white : theme.darkGreen}
+            size={iconScale(26)}
+            color={theme.darkGreen}
+            // Ionicons' scissors lie on their side; the design has blades up
+            style={mode === "business" && { transform: [{ rotate: "-90deg" }] }}
           />
         </View>
-        <Text style={styles.modeTileLabel} numberOfLines={1}>
-          {modeLabel(mode)}
-        </Text>
-      </View>
+        <View style={styles.menuTextWrap}>
+          <Text style={styles.menuTitle} numberOfLines={1}>
+            {title}
+          </Text>
+          <Text style={styles.menuSubtitle} numberOfLines={2}>
+            {subtitle}
+          </Text>
+        </View>
+        <View style={styles.menuTrailing}>
+          {isPending ? (
+            <ActivityIndicator size="small" color={theme.darkGreen} />
+          ) : isCurrent ? (
+            <Feather name="check" size={iconScale(22)} color={theme.darkGreen} />
+          ) : null}
+        </View>
+      </TouchableOpacity>
     );
   };
 
-  const renderConfirm = () => (
-    <>
-      <View style={styles.iconWrap}>
-        <View style={styles.iconHalo} />
-        {renderConfetti(false)}
-        <View style={styles.iconCircle}>
-          <Feather
-            name={MODE_ICON[toMode]}
-            size={iconScale(28)}
-            color={theme.white}
-          />
-          <View style={styles.swapBadge}>
-            <Feather
-              name="repeat"
-              size={iconScale(12)}
-              color={theme.white}
-            />
-          </View>
-        </View>
-      </View>
-
-      <Text style={styles.title} accessibilityRole="header">
-        {toCustomer ? t("switchToCustomerTitle") : t("switchToBusinessTitle")}
-      </Text>
-      <Text style={styles.subtitle}>
-        {toCustomer
-          ? t("switchToCustomerSubtitle")
-          : t("switchToBusinessSubtitle")}
-      </Text>
-
-      <View style={styles.modeRow}>
-        {renderModeTile(fromMode)}
-        <View
-          style={styles.modeArrow}
-          importantForAccessibility="no-hide-descendants"
-          accessibilityElementsHidden
-        >
-          <Feather
-            name={I18nManager.isRTL ? "arrow-left" : "arrow-right"}
-            size={iconScale(16)}
-            color={theme.buttonBack}
-          />
-        </View>
-        {renderModeTile(toMode)}
-      </View>
-
-      <Text style={styles.message}>
-        {toCustomer
-          ? t("switchToCustomerMessage")
-          : t("switchToBusinessMessage")}
-      </Text>
-
-      {!!errorMessage && (
-        <Text style={styles.errorText} accessibilityLiveRegion="polite">
-          {errorMessage}
-        </Text>
-      )}
-
-      <View style={styles.buttonContainer}>
-        <TouchableOpacity
-          style={[styles.primaryButton, isSwitching && styles.disabled]}
-          onPress={onConfirm}
-          disabled={isSwitching}
-          activeOpacity={0.7}
-          accessibilityRole="button"
-          accessibilityState={{ disabled: isSwitching, busy: isSwitching }}
-        >
-          {isSwitching ? (
-            <ActivityIndicator size="small" color={theme.buttonText} />
-          ) : (
-            <Feather
-              name="repeat"
-              size={iconScale(17)}
-              color={theme.buttonText}
-            />
-          )}
-          <Text style={styles.primaryButtonText}>
-            {isSwitching
-              ? t("switchingMode")
-              : toCustomer
-                ? t("switchToCustomerCta")
-                : t("switchToBusinessCta")}
+  const renderMenu = () => (
+    <View style={styles.menuOverlay}>
+      <Pressable
+        style={StyleSheet.absoluteFill}
+        onPress={handleRequestClose}
+        accessible={false}
+        importantForAccessibility="no"
+      />
+      <Animated.View
+        accessibilityViewIsModal
+        accessibilityRole="menu"
+        accessibilityLabel={t("modeMenuA11yLabel")}
+        style={[
+          styles.menuCard,
+          {
+            top: menuTop,
+            left: menuLeft,
+            width: menuWidth,
+            opacity: appear,
+            transform: [
+              {
+                translateY: appear.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [-8, 0],
+                }),
+              },
+              {
+                scale: appear.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0.97, 1],
+                }),
+              },
+            ],
+          },
+        ]}
+      >
+        <View style={[styles.menuCaret, { left: caretLeft }]} />
+        {MENU_ORDER.map(renderMenuRow)}
+        {!!errorMessage && (
+          <Text style={styles.errorText} accessibilityLiveRegion="polite">
+            {errorMessage}
           </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.secondaryButton, isSwitching && styles.disabled]}
-          onPress={onCancel}
-          disabled={isSwitching}
-          activeOpacity={0.6}
-          accessibilityRole="button"
-          accessibilityState={{ disabled: isSwitching }}
-        >
-          <Text style={styles.secondaryButtonText}>{t("notNow")}</Text>
-        </TouchableOpacity>
-      </View>
-    </>
+        )}
+      </Animated.View>
+    </View>
   );
 
   const renderSuccess = () => (
@@ -597,33 +587,37 @@ export default function ModeSwitchModal({
       statusBarTranslucent
       onRequestClose={handleRequestClose}
     >
-      <View style={styles.modalOverlay}>
-        <Pressable
-          style={StyleSheet.absoluteFill}
-          onPress={handleRequestClose}
-          accessible={false}
-          importantForAccessibility="no"
-        />
-        <Animated.View
-          accessibilityViewIsModal
-          style={[
-            styles.modalContainer,
-            {
-              opacity: appear,
-              transform: [
-                {
-                  scale: appear.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [0.94, 1],
-                  }),
-                },
-              ],
-            },
-          ]}
-        >
-          {isSuccess ? renderSuccess() : renderConfirm()}
-        </Animated.View>
-      </View>
+      {isSuccess ? (
+        <View style={styles.modalOverlay}>
+          <Pressable
+            style={StyleSheet.absoluteFill}
+            onPress={handleRequestClose}
+            accessible={false}
+            importantForAccessibility="no"
+          />
+          <Animated.View
+            accessibilityViewIsModal
+            style={[
+              styles.modalContainer,
+              {
+                opacity: appear,
+                transform: [
+                  {
+                    scale: appear.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [0.94, 1],
+                    }),
+                  },
+                ],
+              },
+            ]}
+          >
+            {renderSuccess()}
+          </Animated.View>
+        </View>
+      ) : (
+        renderMenu()
+      )}
     </Modal>
   );
 }
