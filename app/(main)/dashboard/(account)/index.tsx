@@ -33,8 +33,8 @@ import {
 } from "@/src/state/slices/generalSlice";
 import {
   isBusinessSubscriptionActive,
-  isSoloSubscription,
   isStripeOnboardingCompleted,
+  usesSoloProfileLayout,
 } from "@/src/state/slices/userSlice";
 import SoloProfileView from "@/src/components/SoloProfileView";
 import { Image } from "expo-image";
@@ -1093,9 +1093,9 @@ export default function AccountScreen() {
   };
 
   /* ════════════════════════════════════════════════
-     Solo plan owner layout — one flat Profile page
+     Solo plan (or no active plan) owner layout — one flat Profile page
      ════════════════════════════════════════════════ */
-  if (isBusiness && isSoloSubscription(businessStatus)) {
+  if (isBusiness && usesSoloProfileLayout(businessStatus)) {
     return (
       <View style={styles.container}>
         <DashboardHeader />

@@ -20,6 +20,7 @@ import {
 import AppImage from "@/src/components/AppImage";
 import Logger from "@/src/services/logger";
 import { resolveApiImageUrl } from "@/src/utils/media";
+import { isSoloSubscription } from "@/src/state/slices/userSlice";
 import {
   fetchBusinessSummary,
   type StaffBusinessSummary,
@@ -160,7 +161,10 @@ function Section({
   );
 }
 
-/** Business owner on a Solo plan: one flat Profile page — the owner is the business. */
+/**
+ * Business owner on a Solo plan, or with no active plan: one flat Profile
+ * page — the owner is the business.
+ */
 export default function SoloProfileView({
   onRowPress,
   deleteLoading,
@@ -198,6 +202,8 @@ export default function SoloProfileView({
     };
   }, [businessId]);
 
+  const hasSoloPlan = isSoloSubscription(user.businessStatus);
+  const planBadge = hasSoloPlan ? t("soloProfessional") : t("noActivePlan");
   const avatarUri = resolveApiImageUrl(user.profile_image_url);
   const displayName = user.name || summary?.name || user.business_name || "";
   const hasReviews = (summary?.ratingsCount ?? 0) > 0;
@@ -386,7 +392,7 @@ export default function SoloProfileView({
         onPress={() => onRowPress("personal")}
         activeOpacity={0.8}
         accessibilityRole="button"
-        accessibilityLabel={[displayName, t("soloProfessional"), ratingText]
+        accessibilityLabel={[displayName, planBadge, ratingText]
           .filter(Boolean)
           .join(", ")}
         accessibilityHint={t("soloProfileCardHint")}
@@ -417,8 +423,15 @@ export default function SoloProfileView({
           <Text style={styles.profileName} numberOfLines={1}>
             {displayName}
           </Text>
-          <View style={styles.soloBadge}>
-            <Text style={styles.soloBadgeText}>{t("soloProfessional")}</Text>
+          <View style={[styles.soloBadge, !hasSoloPlan && styles.noPlanBadge]}>
+            <Text
+              style={[
+                styles.soloBadgeText,
+                !hasSoloPlan && styles.noPlanBadgeText,
+              ]}
+            >
+              {planBadge}
+            </Text>
           </View>
           {summaryLoading && !summary ? (
             <View style={styles.ratingPlaceholder} />
@@ -590,6 +603,12 @@ const createStyles = (theme: Theme) => {
       fontSize: fontSize.size12,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
+    },
+    noPlanBadge: {
+      backgroundColor: theme.lightRed,
+    },
+    noPlanBadgeText: {
+      color: theme.red,
     },
     ratingRow: {
       flexDirection: "row",

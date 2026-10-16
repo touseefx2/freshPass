@@ -5,7 +5,7 @@ import BusinessSettingsHub, {
   BusinessSettingsHubItem,
 } from "@/src/components/BusinessSettingsHub";
 import { useAppSelector } from "@/src/hooks/hooks";
-import { isSoloSubscription } from "@/src/state/slices/userSlice";
+import { usesSoloProfileLayout } from "@/src/state/slices/userSlice";
 
 /** Business Profile section: info, location, hours, description, portfolio and subscription. */
 export default function BusinessProfileMenuScreen() {
@@ -19,7 +19,7 @@ export default function BusinessProfileMenuScreen() {
     businessStatus?.onboarding_completed === true &&
     businessStatus?.stripe_onboarding_status === "pending";
   // Solo profile already shows these as My Schedule / My Portfolio
-  const isSoloPlan = isSoloSubscription(businessStatus);
+  const isSoloLayout = usesSoloProfileLayout(businessStatus);
 
   const items = useMemo((): BusinessSettingsHubItem[] => {
     const allItems: BusinessSettingsHubItem[] = [
@@ -56,7 +56,7 @@ export default function BusinessProfileMenuScreen() {
         onPress: () => router.push("./portfolio"),
       },
     ];
-    const baseItems = isSoloPlan
+    const baseItems = isSoloLayout
       ? allItems.filter(
           (item) =>
             item.key !== "businessHours" && item.key !== "businessPortfolio",
@@ -75,7 +75,7 @@ export default function BusinessProfileMenuScreen() {
     }
 
     return baseItems;
-  }, [t, router, showStripeBanner, isSoloPlan]);
+  }, [t, router, showStripeBanner, isSoloLayout]);
 
   return (
     <BusinessSettingsHub

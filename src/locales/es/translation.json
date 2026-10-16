@@ -2757,10 +2757,11 @@
   "soloOrdersSub": "Pedidos de productos y seguimiento",
   "soloSocialMediaSub": "Vincula tus redes sociales",
   "soloCancellationSub": "Tus reglas de cancelación",
-  "soloTeamSub": "Mejora tu plan para añadir miembros",
+  "soloTeamSub": "Añade miembros con el plan Business",
   "soloPublicProfileSub": "Ve tu página como tus clientes",
   "notificationSettingsSub": "Gestiona tus alertas y preferencias",
   "rulesAndTermsSub": "Políticas, privacidad y aspectos legales",
   "logOutSub": "Cierra sesión en tu cuenta",
-  "deleteAccountSub": "Elimina tu cuenta de forma permanente"
+  "deleteAccountSub": "Elimina tu cuenta de forma permanente",
+  "noActivePlan": "Sin plan activo"
 }

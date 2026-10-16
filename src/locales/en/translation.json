@@ -2813,10 +2813,11 @@
   "soloOrdersSub": "Product orders and tracking",
   "soloSocialMediaSub": "Link your social accounts",
   "soloCancellationSub": "Your cancellation rules",
-  "soloTeamSub": "Upgrade to add team members",
+  "soloTeamSub": "Add team members with the Business plan",
   "soloPublicProfileSub": "See your page as customers do",
   "notificationSettingsSub": "Manage your alerts and preferences",
   "rulesAndTermsSub": "Policies, privacy and legal",
   "logOutSub": "Sign out of your account",
-  "deleteAccountSub": "Permanently remove your account"
+  "deleteAccountSub": "Permanently remove your account",
+  "noActivePlan": "No active plan"
 }

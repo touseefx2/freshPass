@@ -2757,10 +2757,11 @@
   "soloOrdersSub": "Commandes de produits et suivi",
   "soloSocialMediaSub": "Liez vos comptes sociaux",
   "soloCancellationSub": "Vos règles d'annulation",
-  "soloTeamSub": "Passez au forfait supérieur pour ajouter une équipe",
+  "soloTeamSub": "Ajoutez une équipe avec le forfait Business",
   "soloPublicProfileSub": "Voyez votre page comme vos clients",
   "notificationSettingsSub": "Gérez vos alertes et préférences",
   "rulesAndTermsSub": "Règles, confidentialité et mentions légales",
   "logOutSub": "Déconnectez-vous de votre compte",
-  "deleteAccountSub": "Supprimez définitivement votre compte"
+  "deleteAccountSub": "Supprimez définitivement votre compte",
+  "noActivePlan": "Aucun plan actif"
 }

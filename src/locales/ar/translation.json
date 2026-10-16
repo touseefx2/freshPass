@@ -2757,10 +2757,11 @@
   "soloOrdersSub": "طلبات المنتجات وتتبعها",
   "soloSocialMediaSub": "اربط حساباتك على وسائل التواصل",
   "soloCancellationSub": "قواعد الإلغاء الخاصة بك",
-  "soloTeamSub": "قم بالترقية لإضافة أعضاء الفريق",
+  "soloTeamSub": "أضف أعضاء الفريق مع خطة Business",
   "soloPublicProfileSub": "شاهد صفحتك كما يراها العملاء",
   "notificationSettingsSub": "أدر تنبيهاتك وتفضيلاتك",
   "rulesAndTermsSub": "السياسات والخصوصية والشؤون القانونية",
   "logOutSub": "سجّل الخروج من حسابك",
-  "deleteAccountSub": "احذف حسابك نهائيًا"
+  "deleteAccountSub": "احذف حسابك نهائيًا",
+  "noActivePlan": "لا توجد خطة نشطة"
 }

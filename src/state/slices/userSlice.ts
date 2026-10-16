@@ -109,6 +109,16 @@ export const isSoloSubscription = (
   isBusinessSubscriptionActive(status) &&
   status?.subscription_is_single === true;
 
+/**
+ * Profile tab layout only: Solo owners and owners with no active plan (never
+ * bought, or it ended) get the flat solo Profile page and its de-duplicated hubs.
+ */
+export const usesSoloProfileLayout = (
+  status?: BusinessStatus | null,
+): boolean =>
+  !!status &&
+  (isSoloSubscription(status) || !isBusinessSubscriptionActive(status));
+
 export const canAddStaffMembers = (
   status?: BusinessStatus | null,
 ): boolean =>

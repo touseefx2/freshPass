@@ -2757,10 +2757,11 @@
   "soloOrdersSub": "Produktbestellungen und Sendungsverfolgung",
   "soloSocialMediaSub": "Verknüpfe deine sozialen Konten",
   "soloCancellationSub": "Deine Stornoregeln",
-  "soloTeamSub": "Upgrade, um Teammitglieder hinzuzufügen",
+  "soloTeamSub": "Teammitglieder mit dem Business-Plan hinzufügen",
   "soloPublicProfileSub": "Sieh deine Seite wie deine Kunden",
   "notificationSettingsSub": "Verwalte Benachrichtigungen und Einstellungen",
   "rulesAndTermsSub": "Richtlinien, Datenschutz und Rechtliches",
   "logOutSub": "Von deinem Konto abmelden",
-  "deleteAccountSub": "Konto dauerhaft löschen"
+  "deleteAccountSub": "Konto dauerhaft löschen",
+  "noActivePlan": "Kein aktiver Plan"
 }

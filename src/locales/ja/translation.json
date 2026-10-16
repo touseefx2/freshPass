@@ -2757,10 +2757,11 @@
   "soloOrdersSub": "商品の注文と配送状況",
   "soloSocialMediaSub": "SNSアカウントを連携",
   "soloCancellationSub": "キャンセルのルール",
-  "soloTeamSub": "アップグレードしてメンバーを追加",
+  "soloTeamSub": "Businessプランでメンバーを追加",
   "soloPublicProfileSub": "お客様から見たページを確認",
   "notificationSettingsSub": "通知と設定を管理",
   "rulesAndTermsSub": "ポリシー、プライバシー、法的事項",
   "logOutSub": "アカウントからサインアウト",
-  "deleteAccountSub": "アカウントを完全に削除"
+  "deleteAccountSub": "アカウントを完全に削除",
+  "noActivePlan": "有効なプランなし"
 }

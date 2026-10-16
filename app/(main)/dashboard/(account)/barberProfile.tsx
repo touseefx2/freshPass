@@ -18,7 +18,7 @@ import {
 import StackHeader from "@/src/components/StackHeader";
 import { MaterialIcons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { isSoloSubscription } from "@/src/state/slices/userSlice";
+import { usesSoloProfileLayout } from "@/src/state/slices/userSlice";
 
 const CARD_WIDTH_PERCENT = "48%";
 
@@ -348,10 +348,10 @@ export default function BarberProfileScreen() {
     }
   };
 
-  // Solo owner is the business: hours, portfolio, appointments and public
-  // profile are managed from the business side, so hide them here. Contact
-  // info opens from the solo Profile card.
-  const isSoloPlan = isSoloSubscription(user.businessStatus);
+  // Solo (or no active plan) owner is the business: hours, portfolio,
+  // appointments and public profile are managed from the business side, so
+  // hide them here. Contact info opens from the solo Profile card.
+  const isSoloLayout = usesSoloProfileLayout(user.businessStatus);
   const soloHiddenKeys: BarberSettingKey[] = [
     "contact",
     "workingHours",
@@ -370,7 +370,7 @@ export default function BarberProfileScreen() {
     { key: "viewPublicProfile", title: t("viewPublicProfile") },
     { key: "timeOff", title: t("timeOff") },
   ];
-  const settings = isSoloPlan
+  const settings = isSoloLayout
     ? allSettings.filter((item) => !soloHiddenKeys.includes(item.key))
     : allSettings;
 
