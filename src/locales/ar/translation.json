@@ -3019,5 +3019,13 @@
   "oaTimeWithEnd": "الوقت (البداية – النهاية)",
   "oaViewAppointment": "عرض الموعد",
   "oaWhen": "الموعد",
-  "oaWithBarber": "مع {{name}}"
+  "oaWithBarber": "مع {{name}}",
+  "reviewsCountShort": "{{count}} تقييمات",
+  "viewAllServicesCount": "عرض جميع الخدمات ({{count}})",
+  "viewAllPlansCount": "عرض جميع الخطط ({{count}})",
+  "showLess": "عرض أقل",
+  "moreCount": "+{{count}} المزيد",
+  "socialLinks": "روابط التواصل",
+  "call": "اتصال",
+  "chat": "دردشة"
 }

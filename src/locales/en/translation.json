@@ -3075,5 +3075,11 @@
   "oaTimeWithEnd": "Time (start – end)",
   "oaViewAppointment": "View appointment",
   "oaWhen": "When",
-  "oaWithBarber": "With {{name}}"
+  "oaWithBarber": "With {{name}}",
+  "reviewsCountShort": "{{count}} reviews",
+  "viewAllServicesCount": "View all {{count}} services",
+  "viewAllPlansCount": "View all {{count}} plans",
+  "showLess": "Show less",
+  "moreCount": "+{{count}} more",
+  "socialLinks": "Social links"
 }

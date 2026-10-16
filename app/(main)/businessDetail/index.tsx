@@ -47,18 +47,14 @@ import {
 } from "@/src/theme/dimensions";
 import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
 import {
-  PlatformVerifiedStarIcon,
-  LeafLogo,
   OpenFullIcon,
   MapPinIcon,
   PhoneIconContact,
   ShareIcon,
   GlobeIcon,
   StarIconBusinessDetail,
-  LocationPinIconBusinessDetail,
   PhoneIconBusinessDetail,
   PhoneIconWhite,
-  PeopleIcon,
   CloseIconBusinessDetail,
   BackArrowIcon,
   ChevronRightIconBusinessDetail,
@@ -95,6 +91,11 @@ import {
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 const VIEWER_BANNER_CONTENT_HEIGHT = moderateHeightScale(28);
+const HERO_HEIGHT = heightScale(340);
+// How far the cream info sheet rides up over the hero photo
+const SHEET_OVERLAP = moderateHeightScale(28);
+const HEADER_BUTTON_SIZE = moderateWidthScale(40);
+const ACTION_BUTTON_SIZE = moderateHeightScale(48);
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -141,8 +142,8 @@ const createStyles = (theme: Theme) =>
       flexDirection: "row",
       justifyContent: "space-between",
       alignItems: "center",
-      paddingTop: moderateHeightScale(Platform.OS === "ios" ? 45 : 35),
-      paddingHorizontal: moderateWidthScale(20),
+      paddingTop: moderateHeightScale(Platform.OS === "ios" ? 50 : 38),
+      paddingHorizontal: moderateWidthScale(16),
       paddingBottom: moderateHeightScale(12),
       position: "absolute",
       top: 0,
@@ -155,247 +156,329 @@ const createStyles = (theme: Theme) =>
       alignItems: "center",
       gap: moderateWidthScale(8),
     },
-    backButton: {
-      width: widthScale(32),
-      height: heightScale(32),
-      borderRadius: moderateWidthScale(8),
-      backgroundColor: "rgba(255, 255, 255, 0.2)",
-      alignItems: "center",
-      justifyContent: "center",
-      marginRight: moderateWidthScale(8),
-    },
-    logoContainer: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: moderateWidthScale(4),
-    },
-    logoText: {
-      fontSize: fontSize.size18,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-    },
     headerRight: {
       flexDirection: "row",
       alignItems: "center",
-      gap: moderateWidthScale(12),
+      gap: moderateWidthScale(10),
     },
     iconButton: {
-      width: widthScale(32),
-      height: heightScale(32),
-      borderRadius: moderateWidthScale(8),
-      backgroundColor: theme.background,
+      width: HEADER_BUTTON_SIZE,
+      height: HEADER_BUTTON_SIZE,
+      borderRadius: HEADER_BUTTON_SIZE / 2,
+      backgroundColor: "rgba(254, 250, 224, 0.94)",
       alignItems: "center",
       justifyContent: "center",
+      shadowColor: theme.shadow,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.16,
+      shadowRadius: 6,
+      elevation: 3,
+    },
+    heroWrapper: {
+      width: SCREEN_WIDTH,
+      height: HERO_HEIGHT,
+      backgroundColor: theme.darkGreen,
     },
     heroImageContainer: {
       width: SCREEN_WIDTH,
-      height: heightScale(270),
-      position: "relative",
-      backgroundColor: theme.darkGreen,
+      height: HERO_HEIGHT,
     },
     heroImageSlide: {
       width: SCREEN_WIDTH,
-      height: heightScale(270),
+      height: HERO_HEIGHT,
     },
     heroImage: {
       width: "100%",
       height: "100%",
     },
-    openFullButton: {
+    heroTopScrim: {
       position: "absolute",
-      bottom: moderateHeightScale(16),
-      right: moderateWidthScale(16),
-      backgroundColor: theme.selectCard,
-      paddingHorizontal: moderateWidthScale(12),
-      paddingVertical: moderateHeightScale(8),
-      borderRadius: moderateWidthScale(12),
+      top: 0,
+      left: 0,
+      right: 0,
+      height: heightScale(150),
+    },
+    heroBottomScrim: {
+      position: "absolute",
+      left: 0,
+      right: 0,
+      bottom: 0,
+      height: heightScale(110),
+    },
+    heroDots: {
+      position: "absolute",
+      left: 0,
+      right: 0,
+      bottom: SHEET_OVERLAP + moderateHeightScale(18),
       flexDirection: "row",
-      alignItems: "center",
-      gap: moderateWidthScale(8),
-    },
-    openFullButtonText: {
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontMedium,
-      color: theme.white,
-    },
-    thumbnailContainer: {
-      paddingVertical: moderateHeightScale(4),
-      backgroundColor: theme.darkGreen,
-    },
-    thumbnailScroll: {
-      flexDirection: "row",
-      gap: moderateWidthScale(7),
-    },
-    thumbnail: {
-      width: widthScale(52),
-      height: heightScale(52),
-      backgroundColor: theme.lightGreen2,
-      borderWidth: moderateWidthScale(1),
-    },
-    infoSection: {
-      backgroundColor: theme.darkGreen,
-      paddingHorizontal: moderateWidthScale(20),
-      paddingTop: moderateHeightScale(16),
-      paddingBottom: moderateHeightScale(20),
-    },
-    badgeRow: {
-      flexDirection: "row",
-      gap: moderateWidthScale(12),
-      marginBottom: moderateHeightScale(12),
-    },
-    platformVerifiedBadge: {
-      backgroundColor: theme.darkGreenLight,
-      paddingHorizontal: moderateWidthScale(12),
-      paddingVertical: moderateHeightScale(6),
-      borderRadius: moderateWidthScale(999),
-      flexDirection: "row",
-      alignItems: "center",
-      gap: moderateWidthScale(6),
-    },
-    platformVerifiedText: {
-      fontSize: fontSize.size11,
-      fontFamily: fonts.fontMedium,
-      color: theme.white,
-    },
-    discountBadge: {
-      backgroundColor: theme.orangeBrown,
-      paddingHorizontal: moderateWidthScale(12),
-      paddingVertical: moderateHeightScale(6),
-      borderRadius: moderateWidthScale(999),
-    },
-    discountBadgeText: {
-      fontSize: fontSize.size11,
-      fontFamily: fonts.fontMedium,
-      color: theme.darkGreen,
-    },
-    ratingBadge: {
-      paddingHorizontal: moderateWidthScale(12),
-      paddingVertical: moderateHeightScale(6),
-      borderRadius: moderateWidthScale(999),
-      flexDirection: "row",
-      alignItems: "center",
-      gap: moderateWidthScale(6),
-      alignSelf: "flex-start",
-      marginBottom: moderateHeightScale(12),
-      borderWidth: 1,
-      borderColor: theme.white70,
-    },
-    ratingText: {
-      fontSize: fontSize.size11,
-      fontFamily: fonts.fontMedium,
-      color: theme.white,
-    },
-    businessLogo: {
-      width: 40,
-      height: 40,
-      borderRadius: 40 / 2,
-      backgroundColor: theme.lightGreen2,
-      borderWidth: 1,
-      borderColor: theme.borderLight,
-      overflow: "hidden",
-    },
-    businessName: {
-      fontSize: fontSize.size22,
-      fontFamily: fonts.fontBold,
-      color: theme.white,
-      textTransform: "capitalize",
-    },
-    followRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: moderateWidthScale(10),
-      marginBottom: moderateHeightScale(10),
-    },
-    followButton: {
-      minWidth: widthScale(90),
-      paddingHorizontal: moderateWidthScale(16),
-      paddingVertical: moderateHeightScale(7),
-      borderRadius: moderateWidthScale(16),
-      backgroundColor: theme.buttonBack,
-      alignItems: "center",
       justifyContent: "center",
+      alignItems: "center",
+      gap: moderateWidthScale(6),
     },
-    followButtonActive: {
+    heroDot: {
+      width: moderateWidthScale(6),
+      height: moderateWidthScale(6),
+      borderRadius: moderateWidthScale(3),
+      backgroundColor: theme.white50,
+    },
+    heroDotActive: {
+      width: moderateWidthScale(18),
       backgroundColor: theme.white,
     },
-    followButtonText: {
-      fontSize: fontSize.size13,
-      fontFamily: fonts.fontBold,
-      color: theme.buttonText,
-    },
-    followButtonTextActive: {
-      color: theme.darkGreen,
-    },
-    followersText: {
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontRegular,
-      color: theme.white70,
-    },
-    addressRow: {
+    heroCounter: {
+      position: "absolute",
+      right: moderateWidthScale(16),
+      bottom: SHEET_OVERLAP + moderateHeightScale(10),
       flexDirection: "row",
       alignItems: "center",
-      marginBottom: moderateHeightScale(8),
-      gap: moderateWidthScale(6),
+      gap: moderateWidthScale(5),
+      minHeight: moderateHeightScale(30),
+      paddingHorizontal: moderateWidthScale(10),
+      borderRadius: moderateWidthScale(999),
+      backgroundColor: "rgba(24, 33, 14, 0.72)",
     },
-    addressText: {
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontRegular,
-      color: theme.white80,
-      flex: 1,
-    },
-    affiliationRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      marginBottom: moderateHeightScale(8),
-      gap: moderateWidthScale(6),
-    },
-    affiliationText: {
-      flex: 1,
+    heroCounterText: {
       fontSize: fontSize.size12,
       fontFamily: fonts.fontMedium,
-      color: theme.white80,
-    },
-    affiliationName: {
-      fontFamily: fonts.fontBold,
       color: theme.white,
     },
-    staffRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-      gap: moderateWidthScale(6),
+    infoSheet: {
+      marginTop: -SHEET_OVERLAP,
+      backgroundColor: theme.background,
+      borderTopLeftRadius: moderateWidthScale(28),
+      borderTopRightRadius: moderateWidthScale(28),
+      paddingHorizontal: moderateWidthScale(20),
+      paddingTop: moderateHeightScale(22),
+      paddingBottom: moderateHeightScale(8),
     },
-    staffText: {
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontRegular,
-      color: theme.white80,
-    },
-    staffRowLeft: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: moderateWidthScale(6),
-    },
-    staffRowSocialIcons: {
+    identityRow: {
       flexDirection: "row",
       alignItems: "center",
       gap: moderateWidthScale(14),
     },
-    tabsContainer: {
-      backgroundColor: "rgba(221, 161, 94, 0.3)",
+    businessLogo: {
+      width: moderateWidthScale(64),
+      height: moderateWidthScale(64),
+      borderRadius: moderateWidthScale(18),
+      backgroundColor: theme.lightGreen07,
+      borderWidth: 1,
+      borderColor: theme.borderNormal,
+      overflow: "hidden",
+    },
+    identityText: {
+      flex: 1,
+    },
+    nameRow: {
       flexDirection: "row",
-      borderBottomWidth: moderateWidthScale(1),
-      borderBottomColor: theme.borderLight,
+      alignItems: "center",
+      gap: moderateWidthScale(6),
+    },
+    businessName: {
+      flexShrink: 1,
+      fontSize: fontSize.size22,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+      textTransform: "capitalize",
+    },
+    businessCategory: {
+      marginTop: moderateHeightScale(2),
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+    },
+    metaRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      flexWrap: "wrap",
+      marginTop: moderateHeightScale(6),
+      gap: moderateWidthScale(4),
+    },
+    metaRatingButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(4),
+    },
+    metaRatingValue: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    metaText: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+    },
+    metaDot: {
+      fontSize: fontSize.size13,
+      color: theme.lightGreen4,
+      marginHorizontal: moderateWidthScale(2),
+    },
+    badgeRow: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: moderateWidthScale(8),
+      marginTop: moderateHeightScale(16),
+    },
+    verifiedChip: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(5),
+      paddingHorizontal: moderateWidthScale(10),
+      paddingVertical: moderateHeightScale(6),
+      borderRadius: moderateWidthScale(999),
+      backgroundColor: theme.mintTintStrong,
+    },
+    verifiedChipText: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
+    },
+    offerChip: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(5),
+      paddingHorizontal: moderateWidthScale(10),
+      paddingVertical: moderateHeightScale(6),
+      borderRadius: moderateWidthScale(999),
+      backgroundColor: theme.orangeBrown30,
+    },
+    offerChipText: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontMedium,
+      color: theme.orangeBrownText,
+    },
+    actionRow: {
+      flexDirection: "row",
+      gap: moderateWidthScale(10),
+      marginTop: moderateHeightScale(18),
+    },
+    followCta: {
+      flex: 1,
+      height: ACTION_BUTTON_SIZE,
+      borderRadius: moderateWidthScale(14),
+      backgroundColor: theme.darkGreen,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: moderateWidthScale(6),
+    },
+    followCtaActive: {
+      backgroundColor: theme.white,
+      borderWidth: 1,
+      borderColor: theme.borderMedium,
+    },
+    followCtaText: {
+      fontSize: fontSize.size15,
+      fontFamily: fonts.fontBold,
+      color: theme.background,
+    },
+    followCtaTextActive: {
+      color: theme.darkGreen,
+    },
+    actionIconButton: {
+      width: ACTION_BUTTON_SIZE,
+      height: ACTION_BUTTON_SIZE,
+      borderRadius: moderateWidthScale(14),
+      backgroundColor: theme.white,
+      borderWidth: 1,
+      borderColor: theme.borderNormal,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    actionIconButtonWide: {
+      flex: 1,
+      width: undefined,
+    },
+    infoCard: {
+      marginTop: moderateHeightScale(16),
+      backgroundColor: theme.white,
+      borderRadius: moderateWidthScale(18),
+      borderWidth: 1,
+      borderColor: theme.borderLight,
+    },
+    infoRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(12),
+      paddingHorizontal: moderateWidthScale(14),
+      paddingVertical: moderateHeightScale(12),
+      minHeight: moderateHeightScale(56),
+    },
+    infoRowDivider: {
+      height: 1,
+      backgroundColor: theme.borderLight,
+      marginLeft: moderateWidthScale(14 + 34 + 12),
+    },
+    infoRowIcon: {
+      width: moderateWidthScale(34),
+      height: moderateWidthScale(34),
+      borderRadius: moderateWidthScale(10),
+      backgroundColor: theme.orangeBrown01,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    infoRowBody: {
+      flex: 1,
+    },
+    infoRowText: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
+      lineHeight: moderateHeightScale(18),
+    },
+    infoRowSubText: {
+      marginTop: moderateHeightScale(2),
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+    },
+    infoRowStrong: {
+      fontFamily: fonts.fontBold,
+    },
+    avatarStack: {
+      flexDirection: "row",
+      alignItems: "center",
+    },
+    avatarStackItem: {
+      width: moderateWidthScale(28),
+      height: moderateWidthScale(28),
+      borderRadius: moderateWidthScale(14),
+      borderWidth: 2,
+      borderColor: theme.white,
+      backgroundColor: theme.emptyProfileImage,
+      overflow: "hidden",
+    },
+    socialIcons: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(8),
+    },
+    socialIconButton: {
+      width: moderateWidthScale(36),
+      height: moderateWidthScale(36),
+      borderRadius: moderateWidthScale(18),
+      backgroundColor: theme.lightGreen07,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    tabsContainer: {
+      flexDirection: "row",
+      backgroundColor: theme.background,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.borderNormal,
+      marginTop: moderateHeightScale(12),
+      paddingHorizontal: moderateWidthScale(8),
     },
     tab: {
       flex: 1,
-      paddingVertical: moderateHeightScale(12),
+      paddingVertical: moderateHeightScale(14),
       alignItems: "center",
       justifyContent: "center",
       position: "relative",
     },
     tabText: {
       fontSize: fontSize.size14,
-      fontFamily: fonts.fontRegular,
+      fontFamily: fonts.fontMedium,
       color: theme.lightGreen,
     },
     tabTextActive: {
@@ -405,10 +488,12 @@ const createStyles = (theme: Theme) =>
     },
     tabUnderline: {
       position: "absolute",
-      bottom: 0,
-      left: 0,
-      right: 0,
-      height: moderateHeightScale(2.5),
+      bottom: -1,
+      left: "18%",
+      right: "18%",
+      height: moderateHeightScale(3),
+      borderTopLeftRadius: moderateWidthScale(3),
+      borderTopRightRadius: moderateWidthScale(3),
       backgroundColor: theme.selectCard,
     },
     contentContainer: {
@@ -589,133 +674,73 @@ const createStyles = (theme: Theme) =>
       marginBottom: moderateHeightScale(20),
       paddingHorizontal: moderateWidthScale(20),
     },
+    serviceSegment: {
+      marginTop: moderateHeightScale(20),
+      marginBottom: moderateHeightScale(14),
+    },
     serviceSection: {
       backgroundColor: theme.white,
-      borderRadius: moderateWidthScale(12),
+      borderRadius: moderateWidthScale(18),
+      borderWidth: 1,
+      borderColor: theme.borderLight,
       marginBottom: moderateHeightScale(16),
-      // paddingVertical: moderateWidthScale(16),
     },
-    serviceSectionHeader: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      alignItems: "center",
-      paddingHorizontal: moderateWidthScale(12),
+    cardShadow: {
+      shadowColor: theme.shadow,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.06,
+      shadowRadius: 12,
+      elevation: 2,
     },
-    serviceSectionTitle: {
-      fontSize: fontSize.size15,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
+    filterStripWrapper: {
+      marginHorizontal: moderateWidthScale(-20),
+      marginBottom: moderateHeightScale(14),
     },
     filterContainer: {
       flexDirection: "row",
       gap: moderateWidthScale(8),
-    },
-    filterStripWrapper: {
-      width: "100%",
-      alignSelf: "stretch",
-      backgroundColor: theme.lightGreen05,
-      paddingHorizontal: moderateWidthScale(12),
-      paddingVertical: moderateHeightScale(12),
-      borderTopRightRadius: moderateWidthScale(12),
-      borderTopLeftRadius: moderateWidthScale(12),
-      marginBottom: moderateHeightScale(16),
+      paddingHorizontal: moderateWidthScale(20),
     },
     filterButton: {
+      minHeight: moderateHeightScale(36),
+      justifyContent: "center",
       paddingHorizontal: moderateWidthScale(16),
-      paddingVertical: moderateHeightScale(8),
       borderRadius: moderateWidthScale(999),
-      borderWidth: moderateWidthScale(1),
-      borderColor: theme.borderLight,
+      borderWidth: 1,
+      borderColor: theme.borderNormal,
+      backgroundColor: theme.white,
     },
     filterButtonActive: {
-      backgroundColor: theme.lightGreen015,
+      backgroundColor: theme.darkGreen,
       borderColor: theme.darkGreen,
     },
     filterButtonText: {
       fontSize: fontSize.size13,
-      fontFamily: fonts.fontRegular,
-      color: theme.text,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
     },
     filterButtonTextActive: {
-      fontFamily: fonts.fontMedium,
-      color: theme.darkGreen,
-    },
-    membershipCard: {
-      backgroundColor: theme.white,
-      marginBottom: moderateHeightScale(12),
-      borderBottomWidth: moderateWidthScale(1),
-      borderBottomColor: theme.borderLight,
-    },
-    membershipCardContent: {
-      padding: moderateWidthScale(16),
-      flexDirection: "row",
-      justifyContent: "space-between",
-    },
-    membershipCardLeft: {
-      flex: 1,
-    },
-    membershipCardRight: {
-      alignItems: "flex-end",
-      justifyContent: "space-between",
-    },
-    membershipTitle: {
-      fontSize: fontSize.size15,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-      marginBottom: moderateHeightScale(8),
-      textTransform: "capitalize",
-    },
-    membershipVisits: {
-      fontSize: fontSize.size13,
-      fontFamily: fonts.fontMedium,
-      color: theme.lightGreen,
-      marginBottom: moderateHeightScale(8),
-    },
-    membershipInclusions: {
-      marginBottom: moderateHeightScale(12),
-    },
-    inclusionItem: {
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontRegular,
-      color: theme.lightGreen,
-      marginBottom: moderateHeightScale(4),
-    },
-    moreText: {
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontRegular,
-      color: theme.primary,
-      textDecorationLine: "underline",
-    },
-    membershipPriceLeft: {
-      flexDirection: "column",
-      alignItems: "flex-end",
-      marginBottom: moderateHeightScale(12),
-    },
-    membershipPrice: {
-      fontSize: fontSize.size15,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-      marginBottom: moderateHeightScale(4),
-    },
-    membershipOriginalPrice: {
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontRegular,
-      color: theme.lightGreen,
-      textDecorationLine: "line-through",
+      color: theme.background,
     },
     serviceCard: {
-      backgroundColor: theme.white,
-      marginBottom: moderateHeightScale(12),
-      borderBottomWidth: moderateWidthScale(1),
-      borderBottomColor: theme.borderLight,
+      paddingHorizontal: moderateWidthScale(16),
+      paddingVertical: moderateHeightScale(16),
+    },
+    serviceRowDivider: {
+      height: 1,
+      backgroundColor: theme.borderLight,
+      marginHorizontal: moderateWidthScale(16),
     },
     serviceCardContent: {
-      padding: moderateWidthScale(16),
       flexDirection: "row",
-      justifyContent: "space-between",
+      alignItems: "flex-start",
+      gap: moderateWidthScale(12),
     },
     serviceCardLeft: {
       flex: 1,
+    },
+    serviceCardRight: {
+      alignItems: "flex-end",
     },
     serviceLabel: {
       alignSelf: "flex-start",
@@ -731,29 +756,38 @@ const createStyles = (theme: Theme) =>
       color: theme.white,
     },
     serviceName: {
-      fontSize: fontSize.size15,
+      fontSize: fontSize.size16,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
-      marginBottom: moderateHeightScale(4),
       textTransform: "capitalize",
     },
-    serviceDescription: {
-      fontSize: fontSize.size12,
+    serviceMetaRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(4),
+      marginTop: moderateHeightScale(6),
+    },
+    serviceDuration: {
+      fontSize: fontSize.size13,
       fontFamily: fonts.fontRegular,
       color: theme.lightGreen,
-      marginBottom: moderateHeightScale(8),
-      textTransform: "capitalize",
     },
-    servicePriceContainer: {
-      flexDirection: "row",
-      alignItems: "flex-end",
-      gap: moderateWidthScale(8),
-      marginBottom: moderateHeightScale(4),
+    serviceDescription: {
+      marginTop: moderateHeightScale(6),
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+      lineHeight: moderateHeightScale(18),
     },
     servicePrice: {
-      fontSize: fontSize.size15,
+      fontSize: fontSize.size16,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
+    },
+    serviceCurrency: {
+      fontSize: fontSize.size11,
+      fontFamily: fonts.fontMedium,
+      color: theme.lightGreen,
     },
     serviceOriginalPrice: {
       fontSize: fontSize.size12,
@@ -761,26 +795,44 @@ const createStyles = (theme: Theme) =>
       color: theme.lightGreen,
       textDecorationLine: "line-through",
     },
-    serviceDuration: {
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontRegular,
-      color: theme.lightGreen,
-      marginBottom: moderateHeightScale(8),
-    },
-    serviceCardRight: {
-      alignItems: "flex-end",
-      justifyContent: "flex-start",
+    serviceOriginalPriceSpaced: {
+      marginTop: moderateHeightScale(2),
     },
     bookNowButton: {
-      backgroundColor: theme.orangeBrown,
-      paddingHorizontal: moderateWidthScale(20),
-      paddingVertical: moderateHeightScale(10),
+      marginTop: moderateHeightScale(12),
+      minHeight: moderateHeightScale(36),
+      paddingHorizontal: moderateWidthScale(18),
       borderRadius: moderateWidthScale(999),
+      backgroundColor: theme.orangeBrown,
+      alignItems: "center",
+      justifyContent: "center",
     },
     bookNowButtonText: {
       fontSize: fontSize.size13,
-      fontFamily: fonts.fontRegular,
+      fontFamily: fonts.fontBold,
       color: theme.darkGreen,
+    },
+    membershipInclusions: {
+      marginTop: moderateHeightScale(8),
+      gap: moderateHeightScale(4),
+    },
+    inclusionRow: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: moderateWidthScale(6),
+    },
+    inclusionItem: {
+      flex: 1,
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+      lineHeight: moderateHeightScale(18),
+    },
+    moreText: {
+      marginTop: moderateHeightScale(2),
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontMedium,
+      color: theme.orangeBrownText,
     },
     disabledAction: {
       opacity: 0.4,
@@ -919,71 +971,38 @@ const createStyles = (theme: Theme) =>
     },
     noServiceContainer: {
       paddingHorizontal: moderateWidthScale(16),
-      paddingVertical: moderateHeightScale(24),
+      paddingVertical: moderateHeightScale(32),
+      alignItems: "center",
+      justifyContent: "center",
+      gap: moderateHeightScale(10),
+    },
+    noServiceIcon: {
+      width: moderateWidthScale(48),
+      height: moderateWidthScale(48),
+      borderRadius: moderateWidthScale(24),
+      backgroundColor: theme.lightGreen07,
       alignItems: "center",
       justifyContent: "center",
     },
     noServiceText: {
       fontSize: fontSize.size14,
-      fontFamily: fonts.fontRegular,
+      fontFamily: fonts.fontMedium,
       color: theme.lightGreen,
       textAlign: "center",
     },
-    seeMoreCard: {
-      marginHorizontal: moderateWidthScale(12),
-      marginBottom: moderateHeightScale(16),
-      borderRadius: moderateWidthScale(16),
-      overflow: "hidden",
-      backgroundColor: theme.white,
-    },
-    seeMorePreviewContainer: {
-      opacity: 0.3,
-    },
-    seeMoreTopRow: {
+    viewAllRow: {
       flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-      gap: moderateWidthScale(8),
-    },
-    seeMoreBottomRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      marginTop: moderateHeightScale(4),
-      gap: moderateWidthScale(8),
-    },
-    seeMoreOverlayCard: {
-      position: "absolute",
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
       alignItems: "center",
       justifyContent: "center",
-      paddingHorizontal: moderateWidthScale(16),
-      paddingVertical: moderateHeightScale(12),
+      gap: moderateWidthScale(4),
+      minHeight: moderateHeightScale(50),
+      borderTopWidth: 1,
+      borderTopColor: theme.borderLight,
     },
-    seeMoreTitle: {
+    viewAllRowText: {
       fontSize: fontSize.size14,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
-      textAlign: "right",
-    },
-    seeMoreSubtitle: {
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontRegular,
-      color: theme.lightGreen,
-      textAlign: "right",
-    },
-    seeMorePreviewTitle: {
-      fontSize: fontSize.size13,
-      fontFamily: fonts.fontMedium,
-      color: theme.lightGreen,
-      flex: 1,
-    },
-    seeMorePreviewSubtitle: {
-      fontSize: fontSize.size11,
-      fontFamily: fonts.fontRegular,
-      color: theme.lightGreen,
     },
     ratingsSectionContent: {
       // No padding here - let scroll be full width
@@ -2256,6 +2275,29 @@ export default function BusinessDetailScreen() {
   }, [portfolioPhotos]);
 
   const thumbnails = portfolioPhotos;
+  const heroIndex = Math.max(0, thumbnails.indexOf(currentHeroImage));
+
+  const rawCategoryName: string =
+    typeof businessData?.category?.name === "string"
+      ? businessData.category.name
+      : typeof businessData?.category === "string"
+        ? businessData.category
+        : "";
+  // API sends names like "MAKEUP"; show them as "Makeup"
+  const businessCategoryName = rawCategoryName
+    .trim()
+    .toLowerCase()
+    .replace(/(^|\s)\S/g, (c) => c.toUpperCase());
+
+  const socialLinks = (
+    [
+      ["facebook", businessData?.social_media_links?.facebook],
+      ["instagram", businessData?.social_media_links?.instagram],
+      ["tiktok", businessData?.social_media_links?.tiktok],
+    ] as const
+  )
+    .filter(([, url]) => typeof url === "string" && url.length > 0)
+    .map(([icon, url]) => ({ icon, url: url as string }));
 
   const extendedHeroImages =
     thumbnails.length > 1
@@ -2466,7 +2508,7 @@ export default function BusinessDetailScreen() {
       return {
         id: service.id,
         name: service.name,
-        description: service.description || "No description",
+        description: (service.description ?? "").toString().trim(),
         price: parseFloat(service.price),
         originalPrice: parseFloat(service.price) * 1.1, // Estimate original price
         duration: duration,
@@ -3327,32 +3369,91 @@ export default function BusinessDetailScreen() {
     const hasAnyIndividualServices = individualServices.length > 0;
     const hasFilteredIndividualServices = filteredIndividualServices.length > 0;
 
-    const shouldShowMembershipMoreCard =
-      !showAllMembershipSubscriptions && membershipSubscriptions.length > 3;
-    const shouldShowIndividualMoreCard =
-      !showAllIndividualServices && filteredIndividualServices.length > 3;
+    const canCollapseMemberships = membershipSubscriptions.length > 3;
+    const canCollapseIndividual = filteredIndividualServices.length > 3;
 
-    const displayedMembershipSubscriptions = showAllMembershipSubscriptions
-      ? membershipSubscriptions
-      : shouldShowMembershipMoreCard
+    const displayedMembershipSubscriptions =
+      canCollapseMemberships && !showAllMembershipSubscriptions
         ? membershipSubscriptions.slice(0, 3)
         : membershipSubscriptions;
 
-    const displayedIndividualServices = showAllIndividualServices
-      ? filteredIndividualServices
-      : shouldShowIndividualMoreCard
+    const displayedIndividualServices =
+      canCollapseIndividual && !showAllIndividualServices
         ? filteredIndividualServices.slice(0, 3)
         : filteredIndividualServices;
 
-    const membershipPreview =
-      !showAllMembershipSubscriptions && membershipSubscriptions.length > 3
-        ? membershipSubscriptions[3]
-        : null;
+    const renderFilterChips = (
+      filters: string[],
+      selected: string,
+      onSelect: (filter: string) => void,
+    ) => (
+      <View style={styles.filterStripWrapper}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filterContainer}
+        >
+          {filters.map((filter) => {
+            const active = selected === filter;
+            return (
+              <TouchableOpacity
+                key={filter}
+                activeOpacity={0.8}
+                style={[styles.filterButton, active && styles.filterButtonActive]}
+                onPress={() => onSelect(filter)}
+                accessibilityRole="button"
+                accessibilityState={{ selected: active }}
+              >
+                <Text
+                  style={[
+                    styles.filterButtonText,
+                    active && styles.filterButtonTextActive,
+                  ]}
+                >
+                  {filter}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      </View>
+    );
 
-    const individualPreview =
-      !showAllIndividualServices && filteredIndividualServices.length > 3
-        ? filteredIndividualServices[3]
-        : null;
+    const renderViewAllRow = (
+      expanded: boolean,
+      label: string,
+      onPress: () => void,
+    ) => (
+      <TouchableOpacity
+        style={styles.viewAllRow}
+        activeOpacity={0.7}
+        onPress={onPress}
+        accessibilityRole="button"
+        accessibilityState={{ expanded }}
+      >
+        <Text style={styles.viewAllRowText}>
+          {expanded ? t("showLess") : label}
+        </Text>
+        <MaterialIcons
+          name={expanded ? "keyboard-arrow-up" : "keyboard-arrow-down"}
+          size={moderateWidthScale(20)}
+          color={theme.darkGreen}
+        />
+      </TouchableOpacity>
+    );
+
+    const renderEmpty = (message: string) => (
+      <View style={styles.noServiceContainer}>
+        <View style={styles.noServiceIcon}>
+          <MaterialIcons
+            name="content-cut"
+            size={moderateWidthScale(22)}
+            color={theme.lightGreen}
+          />
+        </View>
+        <Text style={styles.noServiceText}>{message}</Text>
+      </View>
+    );
 
     return (
       <View
@@ -3368,314 +3469,121 @@ export default function BusinessDetailScreen() {
         <ExploreSegmentToggle
           value={serviceSegment}
           onSelect={setServiceSegment}
+          variant="light"
+          style={styles.serviceSegment}
         />
 
         {/* Membership Subscriptions Section */}
-        <View
-          style={[
-            styles.serviceSection,
-            styles.shadow,
-            serviceSegment !== "subscriptions" && { display: "none" },
-          ]}
-        >
-          <>
+        <View style={serviceSegment !== "subscriptions" && { display: "none" }}>
+          {hasMemberships &&
+            renderFilterChips(
+              membershipFilters,
+              selectedMembershipFilter,
+              setSelectedMembershipFilter,
+            )}
+          <View style={[styles.serviceSection, styles.cardShadow]}>
             {hasMemberships ? (
               <>
-                <View style={styles.filterStripWrapper}>
-                  <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={styles.filterContainer}
-                  >
-                    {membershipFilters.map((filter) => (
-                      <TouchableOpacity
-                        key={filter}
-                        style={[
-                          styles.filterButton,
-                          selectedMembershipFilter === filter &&
-                            styles.filterButtonActive,
-                        ]}
-                        onPress={() => setSelectedMembershipFilter(filter)}
-                      >
-                        <Text
-                          style={[
-                            styles.filterButtonText,
-                            selectedMembershipFilter === filter &&
-                              styles.filterButtonTextActive,
-                          ]}
-                        >
-                          {filter}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </ScrollView>
-                </View>
-
                 {displayedMembershipSubscriptions.map(
-                  (subscription: any, index: number) => (
-                    <View
-                      key={subscription.id}
-                      style={[
-                        styles.membershipCard,
-                        index ===
-                          displayedMembershipSubscriptions.length - 1 && {
-                          borderBottomWidth: 0,
-                        },
-                      ]}
-                    >
-                      <View style={styles.membershipCardContent}>
-                        <View style={styles.membershipCardLeft}>
-                          <Text style={styles.membershipTitle}>
-                            {subscription.title}
-                          </Text>
-                          <Text style={styles.membershipVisits}></Text>
-                          <View style={styles.membershipInclusions}>
-                            {subscription.inclusions.length > 2 ? (
-                              <>
-                                {subscription.inclusions
-                                  .slice(0, 2)
-                                  .map(
-                                    (
-                                      inclusion: string,
-                                      inclusionIndex: number,
-                                    ) => (
-                                      <Text
-                                        key={inclusionIndex}
-                                        style={styles.inclusionItem}
-                                      >
-                                        {inclusion}
-                                      </Text>
-                                    ),
-                                  )}
-                                <TouchableOpacity
-                                  onPress={() => {
-                                    setSelectedInclusions(
-                                      subscription.inclusions,
-                                    );
-                                    setInclusionsModalVisible(true);
-                                  }}
-                                >
-                                  <Text style={styles.moreText}>
-                                    and +{subscription.inclusions.length - 2}{" "}
-                                    more
-                                  </Text>
-                                </TouchableOpacity>
-                              </>
-                            ) : (
-                              subscription.inclusions.map(
-                                (inclusion: string, inclusionIndex: number) => (
-                                  <Text
-                                    key={inclusionIndex}
-                                    style={styles.inclusionItem}
-                                  >
-                                    {inclusion}
-                                  </Text>
-                                ),
-                              )
-                            )}
-                          </View>
-                        </View>
-                        <View style={styles.membershipCardRight}>
-                          <View style={styles.membershipPriceLeft}>
-                            <Text style={styles.membershipPrice}>
-                              ${subscription.price.toFixed(2)} USD
-                            </Text>
-                            <Text style={styles.membershipOriginalPrice}>
-                              ${subscription.originalPrice.toFixed(2)}
-                            </Text>
-                          </View>
-                          <TouchableOpacity
-                            style={[
-                              styles.bookNowButton,
-                              isBusinessOwnerView && styles.disabledAction,
-                            ]}
-                            disabled={isBusinessOwnerView}
-                            onPress={() => {
-                              if (isBusinessOwnerView) return;
-                              router.push({
-                                pathname:
-                                  "/(main)/bookingNow/checkoutSubscription",
-                                params: {
-                                  subscriptionId: subscription.id.toString(),
-                                  subscriptionName: subscription.title,
-                                  subscriptionPrice:
-                                    subscription.price.toString(),
-                                  subscriptionOriginalPrice:
-                                    subscription.originalPrice.toString(),
-                                  subscriptionInclusions: JSON.stringify(
-                                    subscription.inclusions,
-                                  ),
-                                  businessId:
-                                    businessData?.id?.toString() ||
-                                    params.business_id ||
-                                    "",
-                                  businessName: businessData?.title || "",
-                                  businessLogo: businessData?.logo_url || "",
-                                  screenName: "businessDetail",
-                                  ...(attributionReelId
-                                    ? { reel_id: String(attributionReelId) }
-                                    : {}),
-                                },
-                              });
-                            }}
-                          >
-                            <Text style={styles.bookNowButtonText}>
-                              {t("bookNow")}
-                            </Text>
-                          </TouchableOpacity>
-                        </View>
-                      </View>
-                    </View>
-                  ),
-                )}
-
-                {shouldShowMembershipMoreCard && membershipPreview && (
-                  <TouchableOpacity
-                    style={[styles.seeMoreCard, styles.shadow]}
-                    onPress={() => setShowAllMembershipSubscriptions(true)}
-                  >
-                    <View
-                      style={[
-                        styles.membershipCardContent,
-                        styles.seeMorePreviewContainer,
-                      ]}
-                    >
-                      <View style={styles.membershipCardLeft}>
-                        <Text style={styles.membershipTitle}>
-                          {membershipPreview.title}
-                        </Text>
-                        <Text style={styles.membershipVisits}>
-                          {membershipPreview.visits}
-                        </Text>
-                      </View>
-                      <View style={styles.membershipCardRight}>
-                        <View style={styles.membershipPriceLeft}>
-                          <Text style={styles.membershipPrice}>
-                            ${membershipPreview.price.toFixed(2)} USD
-                          </Text>
-                          <Text style={styles.membershipOriginalPrice}>
-                            ${membershipPreview.originalPrice.toFixed(2)}
-                          </Text>
-                        </View>
-                      </View>
-                    </View>
-                    <View style={styles.seeMoreOverlayCard}>
-                      <Text style={styles.seeMoreTitle}>
-                        {t("exploreMore")}
-                      </Text>
-                      <Text style={styles.seeMoreSubtitle}>
-                        {t("resultsCount_other", {
-                          count: membershipSubscriptions.length,
-                        })}
-                      </Text>
-                    </View>
-                  </TouchableOpacity>
-                )}
-              </>
-            ) : (
-              <View style={styles.noServiceContainer}>
-                <Text style={styles.noServiceText}>
-                  {t("noSubscriptionListFound")}
-                </Text>
-              </View>
-            )}
-          </>
-        </View>
-
-        {/* Individual Services Section */}
-        <View
-          style={[
-            styles.serviceSection,
-            styles.shadow,
-            serviceSegment !== "individual" && { display: "none" },
-          ]}
-        >
-          <>
-            {hasAnyIndividualServices ? (
-              <>
-                <View style={styles.filterStripWrapper}>
-                  <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={styles.filterContainer}
-                  >
-                    {serviceFilters.map((filter) => (
-                      <TouchableOpacity
-                        key={filter}
-                        style={[
-                          styles.filterButton,
-                          selectedServiceFilter === filter &&
-                            styles.filterButtonActive,
-                        ]}
-                        onPress={() => setSelectedServiceFilter(filter)}
-                      >
-                        <Text
-                          style={[
-                            styles.filterButtonText,
-                            selectedServiceFilter === filter &&
-                              styles.filterButtonTextActive,
-                          ]}
-                        >
-                          {filter}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </ScrollView>
-                </View>
-
-                {hasFilteredIndividualServices ? (
-                  <>
-                    {displayedIndividualServices.map(
-                      (service: any, index: number) => (
-                        <TouchableOpacity
-                          key={service.id}
-                          activeOpacity={0.7}
-                          accessibilityRole="button"
-                          accessibilityLabel={service.name}
-                          onPress={() => openServiceDetails(service)}
-                          style={[
-                            styles.serviceCard,
-                            index ===
-                              displayedIndividualServices.length - 1 && {
-                              borderBottomWidth: 0,
-                            },
-                          ]}
-                        >
+                  (subscription: any, index: number) => {
+                    const inclusions: string[] = subscription.inclusions;
+                    const visibleInclusions = inclusions.slice(0, 2);
+                    const hiddenCount = inclusions.length - 2;
+                    return (
+                      <View key={subscription.id}>
+                        {index > 0 && <View style={styles.serviceRowDivider} />}
+                        <View style={styles.serviceCard}>
                           <View style={styles.serviceCardContent}>
                             <View style={styles.serviceCardLeft}>
-                              {service.label && (
-                                <View style={styles.serviceLabel}>
-                                  <Text style={styles.serviceLabelText}>
-                                    {service.label}
-                                  </Text>
+                              <Text style={styles.serviceName}>
+                                {subscription.title}
+                              </Text>
+                              {inclusions.length > 0 && (
+                                <View style={styles.membershipInclusions}>
+                                  {visibleInclusions.map(
+                                    (inclusion: string, inclusionIndex: number) => (
+                                      <View
+                                        key={inclusionIndex}
+                                        style={styles.inclusionRow}
+                                      >
+                                        <MaterialIcons
+                                          name="check"
+                                          size={moderateWidthScale(15)}
+                                          color={theme.buttonBack}
+                                          style={{
+                                            marginTop: moderateHeightScale(2),
+                                          }}
+                                        />
+                                        <Text style={styles.inclusionItem}>
+                                          {inclusion.replace(/^\d+\.\s*/, "")}
+                                        </Text>
+                                      </View>
+                                    ),
+                                  )}
+                                  {hiddenCount > 0 && (
+                                    <TouchableOpacity
+                                      onPress={() => {
+                                        setSelectedInclusions(inclusions);
+                                        setInclusionsModalVisible(true);
+                                      }}
+                                      hitSlop={{ top: 8, bottom: 8 }}
+                                    >
+                                      <Text style={styles.moreText}>
+                                        {t("moreCount", { count: hiddenCount })}
+                                      </Text>
+                                    </TouchableOpacity>
+                                  )}
                                 </View>
                               )}
-                              <Text style={styles.serviceName}>
-                                {service.name}
-                              </Text>
-                              <Text style={styles.serviceDescription}>
-                                {service.description}
-                              </Text>
                             </View>
                             <View style={styles.serviceCardRight}>
-                              <View style={styles.servicePriceContainer}>
-                                <Text style={styles.serviceOriginalPrice}>
-                                  ${service.originalPrice.toFixed(2)}
-                                </Text>
-                                <Text style={styles.servicePrice}>
-                                  ${service.price.toFixed(2)} USD
-                                </Text>
-                              </View>
-                              <Text style={styles.serviceDuration}>
-                                {service.duration}
+                              <Text style={styles.servicePrice}>
+                                ${subscription.price.toFixed(2)}
+                                <Text style={styles.serviceCurrency}> USD</Text>
+                              </Text>
+                              <Text
+                                style={[
+                                  styles.serviceOriginalPrice,
+                                  styles.serviceOriginalPriceSpaced,
+                                ]}
+                              >
+                                ${subscription.originalPrice.toFixed(2)}
                               </Text>
                               <TouchableOpacity
                                 style={[
                                   styles.bookNowButton,
                                   isBusinessOwnerView && styles.disabledAction,
                                 ]}
+                                activeOpacity={0.8}
                                 disabled={isBusinessOwnerView}
-                                onPress={() => handleBookService(service)}
+                                onPress={() => {
+                                  if (isBusinessOwnerView) return;
+                                  router.push({
+                                    pathname:
+                                      "/(main)/bookingNow/checkoutSubscription",
+                                    params: {
+                                      subscriptionId: subscription.id.toString(),
+                                      subscriptionName: subscription.title,
+                                      subscriptionPrice:
+                                        subscription.price.toString(),
+                                      subscriptionOriginalPrice:
+                                        subscription.originalPrice.toString(),
+                                      subscriptionInclusions: JSON.stringify(
+                                        subscription.inclusions,
+                                      ),
+                                      businessId:
+                                        businessData?.id?.toString() ||
+                                        params.business_id ||
+                                        "",
+                                      businessName: businessData?.title || "",
+                                      businessLogo: businessData?.logo_url || "",
+                                      screenName: "businessDetail",
+                                      ...(attributionReelId
+                                        ? { reel_id: String(attributionReelId) }
+                                        : {}),
+                                    },
+                                  });
+                                }}
                               >
                                 <Text style={styles.bookNowButtonText}>
                                   {t("bookNow")}
@@ -3683,77 +3591,130 @@ export default function BusinessDetailScreen() {
                               </TouchableOpacity>
                             </View>
                           </View>
-                        </TouchableOpacity>
-                      ),
-                    )}
+                        </View>
+                      </View>
+                    );
+                  },
+                )}
 
-                    {shouldShowIndividualMoreCard && individualPreview && (
+                {canCollapseMemberships &&
+                  renderViewAllRow(
+                    showAllMembershipSubscriptions,
+                    t("viewAllPlansCount", {
+                      count: membershipSubscriptions.length,
+                    }),
+                    () =>
+                      setShowAllMembershipSubscriptions(
+                        !showAllMembershipSubscriptions,
+                      ),
+                  )}
+              </>
+            ) : (
+              renderEmpty(t("noSubscriptionListFound"))
+            )}
+          </View>
+        </View>
+
+        {/* Individual Services Section */}
+        <View style={serviceSegment !== "individual" && { display: "none" }}>
+          {hasAnyIndividualServices &&
+            renderFilterChips(
+              serviceFilters,
+              selectedServiceFilter,
+              setSelectedServiceFilter,
+            )}
+          <View style={[styles.serviceSection, styles.cardShadow]}>
+            {hasFilteredIndividualServices ? (
+              <>
+                {displayedIndividualServices.map(
+                  (service: any, index: number) => (
+                    <View key={service.id}>
+                      {index > 0 && <View style={styles.serviceRowDivider} />}
                       <TouchableOpacity
-                        style={[styles.seeMoreCard, styles.shadow]}
-                        onPress={() => setShowAllIndividualServices(true)}
+                        activeOpacity={0.7}
+                        accessibilityRole="button"
+                        accessibilityLabel={service.name}
+                        onPress={() => openServiceDetails(service)}
+                        style={styles.serviceCard}
                       >
-                        <View
-                          style={[
-                            styles.serviceCardContent,
-                            styles.seeMorePreviewContainer,
-                          ]}
-                        >
+                        <View style={styles.serviceCardContent}>
                           <View style={styles.serviceCardLeft}>
-                            {individualPreview.label && (
+                            {service.label && (
                               <View style={styles.serviceLabel}>
                                 <Text style={styles.serviceLabelText}>
-                                  {individualPreview.label}
+                                  {service.label}
                                 </Text>
                               </View>
                             )}
-                            <Text style={styles.serviceName}>
-                              {individualPreview.name}
+                            <Text style={styles.serviceName} numberOfLines={2}>
+                              {service.name}
                             </Text>
-                            <Text style={styles.serviceDescription}>
-                              {individualPreview.description}
-                            </Text>
-                          </View>
-                          <View style={styles.serviceCardRight}>
-                            <View style={styles.servicePriceContainer}>
-                              <Text style={styles.serviceOriginalPrice}>
-                                ${individualPreview.originalPrice.toFixed(2)}
-                              </Text>
-                              <Text style={styles.servicePrice}>
-                                ${individualPreview.price.toFixed(2)} USD
+                            <View style={styles.serviceMetaRow}>
+                              <MaterialIcons
+                                name="schedule"
+                                size={moderateWidthScale(14)}
+                                color={theme.lightGreen}
+                              />
+                              <Text style={styles.serviceDuration}>
+                                {service.duration}
                               </Text>
                             </View>
-                            <Text style={styles.serviceDuration}>
-                              {individualPreview.duration}
+                            {!!service.description && (
+                              <Text
+                                style={styles.serviceDescription}
+                                numberOfLines={2}
+                              >
+                                {service.description.charAt(0).toUpperCase() +
+                                  service.description.slice(1)}
+                              </Text>
+                            )}
+                          </View>
+                          <View style={styles.serviceCardRight}>
+                            <Text style={styles.servicePrice}>
+                              ${service.price.toFixed(2)}
+                              <Text style={styles.serviceCurrency}> USD</Text>
                             </Text>
+                            <Text
+                              style={[
+                                styles.serviceOriginalPrice,
+                                styles.serviceOriginalPriceSpaced,
+                              ]}
+                            >
+                              ${service.originalPrice.toFixed(2)}
+                            </Text>
+                            <TouchableOpacity
+                              style={[
+                                styles.bookNowButton,
+                                isBusinessOwnerView && styles.disabledAction,
+                              ]}
+                              activeOpacity={0.8}
+                              disabled={isBusinessOwnerView}
+                              onPress={() => handleBookService(service)}
+                            >
+                              <Text style={styles.bookNowButtonText}>
+                                {t("bookNow")}
+                              </Text>
+                            </TouchableOpacity>
                           </View>
                         </View>
-                        <View style={styles.seeMoreOverlayCard}>
-                          <Text style={styles.seeMoreTitle}>
-                            {t("exploreMore")}
-                          </Text>
-                          <Text style={styles.seeMoreSubtitle}>
-                            {t("resultsCount_other", {
-                              count: individualServices.length,
-                            })}
-                          </Text>
-                        </View>
                       </TouchableOpacity>
-                    )}
-                  </>
-                ) : (
-                  <View style={styles.noServiceContainer}>
-                    <Text style={styles.noServiceText}>
-                      {t("noServicesFound")}
-                    </Text>
-                  </View>
+                    </View>
+                  ),
                 )}
+
+                {canCollapseIndividual &&
+                  renderViewAllRow(
+                    showAllIndividualServices,
+                    t("viewAllServicesCount", {
+                      count: filteredIndividualServices.length,
+                    }),
+                    () => setShowAllIndividualServices(!showAllIndividualServices),
+                  )}
               </>
             ) : (
-              <View style={styles.noServiceContainer}>
-                <Text style={styles.noServiceText}>{t("noServicesFound")}</Text>
-              </View>
+              renderEmpty(t("noServicesFound"))
             )}
-          </>
+          </View>
         </View>
       </View>
     );
@@ -4121,23 +4082,17 @@ export default function BusinessDetailScreen() {
       <View style={styles.headerLeft}>
         <TouchableOpacity
           style={styles.iconButton}
+          activeOpacity={0.8}
           onPress={() => router.back()}
+          accessibilityRole="button"
+          accessibilityLabel={t("back")}
         >
           <BackArrowIcon
-            width={widthScale(16)}
-            height={heightScale(16)}
+            width={widthScale(18)}
+            height={heightScale(18)}
             color={theme.darkGreen}
           />
         </TouchableOpacity>
-        <View style={styles.logoContainer}>
-          <LeafLogo
-            width={widthScale(22)}
-            height={heightScale(22)}
-            color1={theme.darkGreen}
-            color2={theme.darkGreen}
-          />
-          <Text style={styles.logoText}>{t("freshPass")}</Text>
-        </View>
       </View>
       <View style={styles.headerRight}>
         <TouchableOpacity
@@ -4148,10 +4103,12 @@ export default function BusinessDetailScreen() {
           ]}
           onPress={actionsEnabled ? handleShareBusiness : undefined}
           disabled={!actionsEnabled}
+          accessibilityRole="button"
+          accessibilityLabel={t("share")}
         >
           <ShareIcon
-            width={widthScale(16)}
-            height={heightScale(16)}
+            width={widthScale(17)}
+            height={heightScale(17)}
             color={theme.darkGreen}
           />
         </TouchableOpacity>
@@ -4169,11 +4126,14 @@ export default function BusinessDetailScreen() {
                 : handleToggleFollow
           }
           disabled={!actionsEnabled || isBusinessOwnerView}
+          accessibilityRole="button"
+          accessibilityState={{ selected: !!isFollowing }}
+          accessibilityLabel={isFollowing ? t("following") : t("follow")}
         >
           <MaterialIcons
             name={isFollowing ? "favorite" : "favorite-border"}
-            size={widthScale(16)}
-            color={theme.lightGreen}
+            size={moderateWidthScale(20)}
+            color={isFollowing ? theme.selectCard : theme.darkGreen}
           />
         </TouchableOpacity>
       </View>
@@ -4237,279 +4197,426 @@ export default function BusinessDetailScreen() {
           {renderTopHeader(true)}
 
           {/* Hero Image - horizontally scrollable with wrap-around */}
-          <ScrollView
-            ref={heroScrollRef}
-            horizontal
-            pagingEnabled
-            showsHorizontalScrollIndicator={false}
-            onMomentumScrollEnd={handleHeroScrollEnd}
-            onScrollBeginDrag={handleHeroScrollBeginDrag}
-            onScrollEndDrag={handleHeroScrollEndDrag}
-            style={styles.heroImageContainer}
-            contentContainerStyle={
-              extendedHeroImages.length
-                ? { width: SCREEN_WIDTH * extendedHeroImages.length }
-                : undefined
-            }
-            scrollEventThrottle={16}
-          >
-            {extendedHeroImages.map((uri: string, index: number) => (
-              <TouchableOpacity
-                key={`${uri}-${index}`}
-                style={styles.heroImageSlide}
-                activeOpacity={1}
-                onPress={handleOpenFullImage}
-              >
-                <AppImage
-                  uri={uri}
-                  style={styles.heroImage}
-                  resizeMode="cover"
-                  iconSize={widthScale(48)}
-                  iconColor={theme.white50}
-                />
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-
-          {/* Thumbnail Carousel */}
-          <View style={styles.thumbnailContainer}>
+          <View style={styles.heroWrapper}>
             <ScrollView
+              ref={heroScrollRef}
               horizontal
+              pagingEnabled
               showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.thumbnailScroll}
+              onMomentumScrollEnd={handleHeroScrollEnd}
+              onScrollBeginDrag={handleHeroScrollBeginDrag}
+              onScrollEndDrag={handleHeroScrollEndDrag}
+              style={styles.heroImageContainer}
+              contentContainerStyle={
+                extendedHeroImages.length
+                  ? { width: SCREEN_WIDTH * extendedHeroImages.length }
+                  : undefined
+              }
+              scrollEventThrottle={16}
             >
-              {thumbnails.map((thumbnail: string, index: number) => (
+              {extendedHeroImages.map((uri: string, index: number) => (
                 <TouchableOpacity
-                  key={index}
-                  onPress={() => handleThumbnailSelect(thumbnail)}
+                  key={`${uri}-${index}`}
+                  style={styles.heroImageSlide}
+                  activeOpacity={1}
+                  onPress={handleOpenFullImage}
                 >
                   <AppImage
-                    uri={thumbnail}
-                    style={[
-                      styles.thumbnail,
-                      currentHeroImage !== thumbnail && {
-                        borderColor: theme.borderLight,
-                      },
-                      currentHeroImage === thumbnail && {
-                        borderColor: theme.selectCard,
-                      },
-                    ]}
+                    uri={uri}
+                    style={styles.heroImage}
                     resizeMode="cover"
+                    iconSize={widthScale(48)}
                     iconColor={theme.white50}
                   />
                 </TouchableOpacity>
               ))}
             </ScrollView>
+            <LinearGradient
+              pointerEvents="none"
+              colors={["rgba(0,0,0,0.45)", "rgba(0,0,0,0)"]}
+              style={styles.heroTopScrim}
+            />
+            <LinearGradient
+              pointerEvents="none"
+              colors={["rgba(0,0,0,0)", "rgba(0,0,0,0.35)"]}
+              style={styles.heroBottomScrim}
+            />
+            {thumbnails.length > 1 && thumbnails.length <= 8 && (
+              <View style={styles.heroDots}>
+                {thumbnails.map((thumbnail: string, index: number) => (
+                  <TouchableOpacity
+                    key={`dot-${index}`}
+                    onPress={() => handleThumbnailSelect(thumbnail)}
+                    hitSlop={{ top: 10, bottom: 10, left: 4, right: 4 }}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${index + 1} / ${thumbnails.length}`}
+                  >
+                    <View
+                      style={[
+                        styles.heroDot,
+                        index === heroIndex && styles.heroDotActive,
+                      ]}
+                    />
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+            {thumbnails.length > 0 && (
+              <TouchableOpacity
+                style={styles.heroCounter}
+                activeOpacity={0.8}
+                onPress={handleOpenFullImage}
+                accessibilityRole="button"
+              >
+                <MaterialIcons
+                  name="photo-library"
+                  size={moderateWidthScale(14)}
+                  color={theme.white}
+                />
+                <Text style={styles.heroCounterText}>
+                  {heroIndex + 1}/{thumbnails.length}
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
 
-          {/* Business Info Section */}
-          <View style={styles.infoSection}>
-            <View style={styles.badgeRow}>
-              <View style={styles.platformVerifiedBadge}>
-                <PlatformVerifiedStarIcon
-                  width={widthScale(12)}
-                  height={heightScale(12)}
-                />
-                <Text style={styles.platformVerifiedText}>
-                  Platform verified
-                </Text>
-              </View>
-              <View style={styles.discountBadge}>
-                <Text style={styles.discountBadgeText}>
-                  {t("discountBadgeText")}
-                </Text>
-              </View>
-            </View>
-            <View style={styles.ratingBadge}>
-              <StarIconBusinessDetail
-                width={widthScale(12)}
-                height={heightScale(12)}
-                color={theme.selectCard}
-              />
-              <Text style={styles.ratingText}>
-                {t("reviewsCount", {
-                  rating: `${averageRating.toFixed(1)}/5`,
-                  count: totalReviews,
-                })}
-              </Text>
-            </View>
-            <View
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                gap: moderateWidthScale(8),
-                marginBottom: moderateHeightScale(8),
-              }}
-            >
+          {/* Business Info Sheet */}
+          <View style={styles.infoSheet}>
+            <View style={styles.identityRow}>
               <AppImage
                 uri={getBusinessLogoUrl()}
                 style={styles.businessLogo}
                 resizeMode="cover"
               />
-              <Text style={styles.businessName}>{businessName}</Text>
-              {businessData?.is_official ? (
-                <MaterialIcons
-                  name="verified"
-                  size={moderateWidthScale(18)}
-                  color={theme.green}
-                />
-              ) : null}
+              <View style={styles.identityText}>
+                <View style={styles.nameRow}>
+                  <Text style={styles.businessName} numberOfLines={2}>
+                    {businessName}
+                  </Text>
+                  {businessData?.is_official ? (
+                    <MaterialIcons
+                      name="verified"
+                      size={moderateWidthScale(18)}
+                      color={theme.buttonBack}
+                    />
+                  ) : null}
+                </View>
+                {!!businessCategoryName && (
+                  <Text style={styles.businessCategory} numberOfLines={1}>
+                    {businessCategoryName}
+                  </Text>
+                )}
+                <View style={styles.metaRow}>
+                  <TouchableOpacity
+                    style={styles.metaRatingButton}
+                    activeOpacity={0.7}
+                    onPress={() => handleTabPress("Ratings")}
+                    hitSlop={{ top: 8, bottom: 8 }}
+                  >
+                    <MaterialIcons
+                      name="star"
+                      size={moderateWidthScale(16)}
+                      color={theme.selectCard}
+                    />
+                    <Text style={styles.metaRatingValue}>
+                      {averageRating.toFixed(1)}
+                    </Text>
+                    <Text style={styles.metaText}>
+                      ({t("reviewsCountShort", { count: totalReviews })})
+                    </Text>
+                  </TouchableOpacity>
+                  {followersCount != null && (
+                    <>
+                      <Text style={styles.metaDot}>·</Text>
+                      <Text style={styles.metaText}>
+                        {t("followersCount", { count: followersCount })}
+                      </Text>
+                    </>
+                  )}
+                </View>
+              </View>
             </View>
-            {!isBusinessOwnerView && (
-              <View style={styles.followRow}>
+
+            <View style={styles.badgeRow}>
+              <View style={styles.verifiedChip}>
+                <MaterialIcons
+                  name="verified-user"
+                  size={moderateWidthScale(14)}
+                  color={theme.buttonBack}
+                />
+                <Text style={styles.verifiedChipText}>
+                  {t("platformVerified")}
+                </Text>
+              </View>
+              <View style={styles.offerChip}>
+                <MaterialIcons
+                  name="local-offer"
+                  size={moderateWidthScale(14)}
+                  color={theme.orangeBrownText}
+                />
+                <Text style={styles.offerChipText}>
+                  {t("discountBadgeText")}
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.actionRow}>
+              {!isBusinessOwnerView && (
                 <TouchableOpacity
-                  style={[
-                    styles.followButton,
-                    isFollowing && styles.followButtonActive,
-                  ]}
-                  activeOpacity={0.8}
+                  style={[styles.followCta, isFollowing && styles.followCtaActive]}
+                  activeOpacity={0.85}
                   disabled={followLoading || (!isGuest && isFollowing === null)}
                   onPress={
                     isGuest
                       ? () => dispatch(setGuestModeModalVisible(true))
                       : handleToggleFollow
                   }
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: !!isFollowing }}
                 >
                   {followLoading ? (
                     <ActivityIndicator
                       size="small"
-                      color={isFollowing ? theme.darkGreen : theme.buttonText}
+                      color={isFollowing ? theme.darkGreen : theme.background}
                     />
                   ) : (
-                    <Text
-                      style={[
-                        styles.followButtonText,
-                        isFollowing && styles.followButtonTextActive,
-                      ]}
-                    >
-                      {isFollowing ? t("following") : t("follow")}
-                    </Text>
+                    <>
+                      <MaterialIcons
+                        name={isFollowing ? "check" : "add"}
+                        size={moderateWidthScale(18)}
+                        color={isFollowing ? theme.darkGreen : theme.background}
+                      />
+                      <Text
+                        style={[
+                          styles.followCtaText,
+                          isFollowing && styles.followCtaTextActive,
+                        ]}
+                      >
+                        {isFollowing ? t("following") : t("follow")}
+                      </Text>
+                    </>
                   )}
                 </TouchableOpacity>
-                {followersCount != null && (
-                  <Text style={styles.followersText}>
-                    {t("followersCount", { count: followersCount })}
-                  </Text>
-                )}
-              </View>
-            )}
-            <View style={styles.addressRow}>
-              <LocationPinIconBusinessDetail
-                width={widthScale(12)}
-                height={heightScale(12)}
-                color={theme.selectCard}
-              />
-              <Text style={styles.addressText}>
-                {businessAddress}
-                {calculateTravelTime !== null && (
-                  <Text style={{ fontFamily: fonts.fontBold }}>
-                    {" "}
-                    • {formatTravelTime(calculateTravelTime)}
-                  </Text>
-                )}
-              </Text>
+              )}
+              {businessData?.owner?.id != null && (
+                <TouchableOpacity
+                  style={[
+                    styles.actionIconButton,
+                    isBusinessOwnerView && styles.actionIconButtonWide,
+                    isChatBlocked && styles.disabledAction,
+                  ]}
+                  activeOpacity={0.7}
+                  onPress={isChatBlocked ? undefined : handleChatPress}
+                  disabled={isChatBlocked}
+                  accessibilityRole="button"
+                  accessibilityLabel={t("chat")}
+                >
+                  <ChatIcon
+                    width={widthScale(20)}
+                    height={heightScale(20)}
+                    color={theme.darkGreen}
+                  />
+                </TouchableOpacity>
+              )}
+              {!!businessPhone && (
+                <TouchableOpacity
+                  style={[
+                    styles.actionIconButton,
+                    isBusinessOwnerView && styles.actionIconButtonWide,
+                    isOwnerPreviewMode && styles.disabledAction,
+                  ]}
+                  activeOpacity={0.7}
+                  onPress={isOwnerPreviewMode ? undefined : handleCallNow}
+                  disabled={isOwnerPreviewMode}
+                  accessibilityRole="button"
+                  accessibilityLabel={t("call")}
+                >
+                  <Ionicons
+                    name="call-outline"
+                    size={moderateWidthScale(20)}
+                    color={theme.darkGreen}
+                  />
+                </TouchableOpacity>
+              )}
+              {businessLatitude != null && businessLongitude != null && (
+                <TouchableOpacity
+                  style={[
+                    styles.actionIconButton,
+                    isBusinessOwnerView && styles.actionIconButtonWide,
+                  ]}
+                  activeOpacity={0.7}
+                  onPress={handleLocationPress}
+                  accessibilityRole="button"
+                  accessibilityLabel={t("getDirections")}
+                >
+                  <Ionicons
+                    name="navigate-outline"
+                    size={moderateWidthScale(20)}
+                    color={theme.darkGreen}
+                  />
+                </TouchableOpacity>
+              )}
             </View>
-            {!!workingWithBusiness?.id && !!workingWithBusiness.title && (
+
+            <View style={[styles.infoCard, styles.cardShadow]}>
               <TouchableOpacity
-                style={styles.affiliationRow}
+                style={styles.infoRow}
                 activeOpacity={0.7}
-                onPress={() =>
-                  router.push({
-                    pathname: "/(main)/businessDetail",
-                    params: {
-                      business_id: workingWithBusiness.id.toString(),
-                    },
-                  })
-                }
+                onPress={handleLocationPress}
+                accessibilityRole="button"
               >
-                <MaterialIcons
-                  name="storefront"
-                  size={moderateWidthScale(14)}
-                  color={theme.selectCard}
-                />
-                <Text style={styles.affiliationText} numberOfLines={1}>
-                  {t("affiliatedWith")}{" "}
-                  <Text style={styles.affiliationName}>
-                    {workingWithBusiness.title}
+                <View style={styles.infoRowIcon}>
+                  <Ionicons
+                    name="location-outline"
+                    size={moderateWidthScale(18)}
+                    color={theme.selectCard}
+                  />
+                </View>
+                <View style={styles.infoRowBody}>
+                  <Text style={styles.infoRowText} numberOfLines={2}>
+                    {businessAddress}
                   </Text>
-                </Text>
+                  {calculateTravelTime !== null && (
+                    <Text style={styles.infoRowSubText}>
+                      {formatTravelTime(calculateTravelTime)}
+                    </Text>
+                  )}
+                </View>
+                <MaterialIcons
+                  name="chevron-right"
+                  size={moderateWidthScale(20)}
+                  color={theme.lightGreen5}
+                />
               </TouchableOpacity>
-            )}
-            {(!!businessData?.social_media_links?.facebook ||
-              !!businessData?.social_media_links?.instagram ||
-              !!businessData?.social_media_links?.tiktok ||
-              !isSoloPlan) && (
-              <View style={styles.staffRow}>
-                {!isSoloPlan && (
-                  <View style={styles.staffRowLeft}>
-                    <PeopleIcon
-                      width={widthScale(12)}
-                      height={heightScale(12)}
-                      color={theme.selectCard}
-                    />
-                    <Text style={styles.staffText}>
+
+              {!isSoloPlan && (
+                <>
+                  <View style={styles.infoRowDivider} />
+                  <TouchableOpacity
+                    style={styles.infoRow}
+                    activeOpacity={0.7}
+                    onPress={() => handleTabPress("Staff")}
+                    accessibilityRole="button"
+                  >
+                    <View style={styles.infoRowIcon}>
+                      <Ionicons
+                        name="people-outline"
+                        size={moderateWidthScale(18)}
+                        color={theme.selectCard}
+                      />
+                    </View>
+                    <Text style={[styles.infoRowText, styles.infoRowBody]}>
                       {t("staffMembersCount", {
                         count: businessData?.staffCount || staffMembers.length,
                       })}
                     </Text>
+                    {staffMembers.length > 0 && (
+                      <View style={styles.avatarStack}>
+                        {staffMembers
+                          .slice(0, 3)
+                          .map((member: any, index: number) => (
+                            <AppImage
+                              key={`${member.id}-${index}`}
+                              uri={member.image}
+                              style={[
+                                styles.avatarStackItem,
+                                index > 0 && {
+                                  marginLeft: moderateWidthScale(-10),
+                                },
+                              ]}
+                              resizeMode="cover"
+                            />
+                          ))}
+                      </View>
+                    )}
+                    <MaterialIcons
+                      name="chevron-right"
+                      size={moderateWidthScale(20)}
+                      color={theme.lightGreen5}
+                    />
+                  </TouchableOpacity>
+                </>
+              )}
+
+              {!!workingWithBusiness?.id && !!workingWithBusiness.title && (
+                <>
+                  <View style={styles.infoRowDivider} />
+                  <TouchableOpacity
+                    style={styles.infoRow}
+                    activeOpacity={0.7}
+                    onPress={() =>
+                      router.push({
+                        pathname: "/(main)/businessDetail",
+                        params: {
+                          business_id: workingWithBusiness.id.toString(),
+                        },
+                      })
+                    }
+                    accessibilityRole="button"
+                  >
+                    <View style={styles.infoRowIcon}>
+                      <Ionicons
+                        name="storefront-outline"
+                        size={moderateWidthScale(18)}
+                        color={theme.selectCard}
+                      />
+                    </View>
+                    <Text
+                      style={[styles.infoRowText, styles.infoRowBody]}
+                      numberOfLines={1}
+                    >
+                      {t("affiliatedWith")}{" "}
+                      <Text style={styles.infoRowStrong}>
+                        {workingWithBusiness.title}
+                      </Text>
+                    </Text>
+                    <MaterialIcons
+                      name="chevron-right"
+                      size={moderateWidthScale(20)}
+                      color={theme.lightGreen5}
+                    />
+                  </TouchableOpacity>
+                </>
+              )}
+
+              {socialLinks.length > 0 && (
+                <>
+                  <View style={styles.infoRowDivider} />
+                  <View style={styles.infoRow}>
+                    <View style={styles.infoRowIcon}>
+                      <Ionicons
+                        name="globe-outline"
+                        size={moderateWidthScale(18)}
+                        color={theme.selectCard}
+                      />
+                    </View>
+                    <Text style={[styles.infoRowText, styles.infoRowBody]}>
+                      {t("socialLinks")}
+                    </Text>
+                    <View style={styles.socialIcons}>
+                      {socialLinks.map((link) => (
+                        <TouchableOpacity
+                          key={link.icon}
+                          style={styles.socialIconButton}
+                          activeOpacity={0.7}
+                          onPress={() =>
+                            Linking.openURL(link.url).catch(() => {})
+                          }
+                          accessibilityRole="link"
+                          accessibilityLabel={link.icon}
+                        >
+                          <FontAwesome5
+                            name={link.icon}
+                            size={moderateWidthScale(16)}
+                            color={theme.darkGreen}
+                          />
+                        </TouchableOpacity>
+                      ))}
+                    </View>
                   </View>
-                )}
-                {(businessData?.social_media_links?.facebook ||
-                  businessData?.social_media_links?.instagram ||
-                  businessData?.social_media_links?.tiktok) && (
-                  <View style={styles.staffRowSocialIcons}>
-                    {businessData?.social_media_links?.facebook ? (
-                      <TouchableOpacity
-                        onPress={() =>
-                          Linking.openURL(
-                            businessData.social_media_links!.facebook!,
-                          ).catch(() => {})
-                        }
-                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                      >
-                        <FontAwesome5
-                          name="facebook"
-                          size={widthScale(16)}
-                          color={theme.orangeBrown}
-                        />
-                      </TouchableOpacity>
-                    ) : null}
-                    {businessData?.social_media_links?.instagram ? (
-                      <TouchableOpacity
-                        onPress={() =>
-                          Linking.openURL(
-                            businessData.social_media_links!.instagram!,
-                          ).catch(() => {})
-                        }
-                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                      >
-                        <FontAwesome5
-                          name="instagram"
-                          size={widthScale(16)}
-                          color={theme.orangeBrown}
-                        />
-                      </TouchableOpacity>
-                    ) : null}
-                    {businessData?.social_media_links?.tiktok ? (
-                      <TouchableOpacity
-                        onPress={() =>
-                          Linking.openURL(
-                            businessData.social_media_links!.tiktok!,
-                          ).catch(() => {})
-                        }
-                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                      >
-                        <FontAwesome5
-                          name="tiktok"
-                          size={widthScale(16)}
-                          color={theme.orangeBrown}
-                        />
-                      </TouchableOpacity>
-                    ) : null}
-                  </View>
-                )}
-              </View>
-            )}
+                </>
+              )}
+            </View>
           </View>
 
           {/* Tabs */}

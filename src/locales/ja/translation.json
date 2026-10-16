@@ -3019,5 +3019,13 @@
   "oaTimeWithEnd": "時間（開始〜終了）",
   "oaViewAppointment": "予約を見る",
   "oaWhen": "日時",
-  "oaWithBarber": "担当：{{name}}"
+  "oaWithBarber": "担当：{{name}}",
+  "reviewsCountShort": "{{count}}件のレビュー",
+  "viewAllServicesCount": "全{{count}}件のサービスを表示",
+  "viewAllPlansCount": "全{{count}}件のプランを表示",
+  "showLess": "閉じる",
+  "moreCount": "他{{count}}件",
+  "socialLinks": "SNSリンク",
+  "call": "電話",
+  "chat": "チャット"
 }

@@ -3019,5 +3019,13 @@
   "oaTimeWithEnd": "Heure (début – fin)",
   "oaViewAppointment": "Voir le rendez-vous",
   "oaWhen": "Quand",
-  "oaWithBarber": "Avec {{name}}"
+  "oaWithBarber": "Avec {{name}}",
+  "reviewsCountShort": "{{count}} avis",
+  "viewAllServicesCount": "Voir les {{count}} services",
+  "viewAllPlansCount": "Voir les {{count}} formules",
+  "showLess": "Voir moins",
+  "moreCount": "+{{count}} de plus",
+  "socialLinks": "Réseaux sociaux",
+  "call": "Appeler",
+  "chat": "Discuter"
 }
