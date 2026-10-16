@@ -2789,5 +2789,6 @@
   "bkCheckoutAnyone": "Anyone available",
   "bkCheckoutAutoAssigned": "Auto-assigned for this time",
   "bkCheckoutTimeMissing": "Time not selected",
-  "bkCheckoutYearsExp": "{{count}} years experience"
+  "bkCheckoutYearsExp": "{{count}} years experience",
+  "homeApptInDays": "In {{count}} days"
 }

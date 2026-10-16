@@ -2733,5 +2733,6 @@
   "bkCheckoutAnyone": "أي موظف متاح",
   "bkCheckoutAutoAssigned": "تم التعيين تلقائيًا لهذا الوقت",
   "bkCheckoutTimeMissing": "لم يتم اختيار وقت",
-  "bkCheckoutYearsExp": "خبرة {{count}} سنوات"
+  "bkCheckoutYearsExp": "خبرة {{count}} سنوات",
+  "homeApptInDays": "بعد {{count}} أيام"
 }

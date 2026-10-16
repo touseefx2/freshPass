@@ -2733,5 +2733,6 @@
   "bkCheckoutAnyone": "N’importe qui de disponible",
   "bkCheckoutAutoAssigned": "Attribué automatiquement pour cet horaire",
   "bkCheckoutTimeMissing": "Aucune heure choisie",
-  "bkCheckoutYearsExp": "{{count}} ans d’expérience"
+  "bkCheckoutYearsExp": "{{count}} ans d’expérience",
+  "homeApptInDays": "Dans {{count}} jours"
 }

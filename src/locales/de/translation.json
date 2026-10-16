@@ -2733,5 +2733,6 @@
   "bkCheckoutAnyone": "Beliebiger Mitarbeiter",
   "bkCheckoutAutoAssigned": "Für diese Zeit automatisch zugewiesen",
   "bkCheckoutTimeMissing": "Keine Uhrzeit gewählt",
-  "bkCheckoutYearsExp": "{{count}} Jahre Erfahrung"
+  "bkCheckoutYearsExp": "{{count}} Jahre Erfahrung",
+  "homeApptInDays": "In {{count}} Tagen"
 }

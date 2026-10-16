@@ -1,113 +1,153 @@
-import { StyleSheet } from "react-native";
+import { Dimensions, StyleSheet } from "react-native";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import {
-  heightScale,
   moderateHeightScale,
   moderateWidthScale,
   widthScale,
 } from "@/src/theme/dimensions";
 
+const PAGE_PAD = moderateWidthScale(20);
+
+/** One appointment fills the row; several scroll with the next one peeking. */
+export const SINGLE_CARD_WIDTH = Dimensions.get("window").width - PAGE_PAD * 2;
+const CARD_WIDTH = Math.min(widthScale(310), SINGLE_CARD_WIDTH);
+
 export const createStyles = (theme: Theme) =>
   StyleSheet.create({
-    appCard: {
-      height: heightScale(165),
-    },
     appointmentsScroll: {
-      paddingHorizontal: moderateWidthScale(20),
+      paddingHorizontal: PAGE_PAD,
+      paddingTop: moderateHeightScale(6),
+      paddingBottom: moderateHeightScale(16),
       gap: moderateWidthScale(12),
     },
-    verifiedSalonCard: {
+    // Clear edge + soft lift so the white card reads on the cream page
+    // (the shadow lives on this view, which must not clip, for iOS).
+    card: {
+      width: CARD_WIDTH,
       backgroundColor: theme.white,
-      borderRadius: moderateWidthScale(12),
-      padding: moderateWidthScale(16),
-      height: heightScale(160),
-      width: widthScale(310),
-      justifyContent: "center",
-      gap: moderateHeightScale(10),
+      borderRadius: moderateWidthScale(20),
       borderWidth: 1,
-      borderColor: theme.borderLight,
-      shadowColor: theme.shadow,
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.08,
-      shadowRadius: 4,
-      elevation: 2,
+      borderColor: theme.borderNormal,
+      shadowColor: theme.darkGreen,
+      shadowOffset: { width: 0, height: moderateHeightScale(6) },
+      shadowOpacity: 0.14,
+      shadowRadius: moderateWidthScale(14),
+      elevation: 5,
     },
-    verifiedCardTopRow: {
+    topRow: {
+      flexDirection: "row",
+      gap: moderateWidthScale(14),
+      padding: moderateWidthScale(14),
+      paddingBottom: moderateHeightScale(12),
+    },
+    dateTile: {
+      width: widthScale(62),
+      paddingVertical: moderateHeightScale(10),
+      borderRadius: moderateWidthScale(14),
+      backgroundColor: theme.darkGreen,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    dateMonth: {
+      fontSize: fontSize.size11,
+      fontFamily: fonts.fontBold,
+      color: theme.orangeBrown,
+      letterSpacing: 1,
+    },
+    dateDay: {
+      fontSize: fontSize.size24,
+      fontFamily: fonts.fontBold,
+      color: theme.white,
+      fontVariant: ["tabular-nums"],
+      lineHeight: fontSize.size28,
+    },
+    dateWeekday: {
+      fontSize: fontSize.size11,
+      fontFamily: fonts.fontMedium,
+      color: theme.white70,
+    },
+    mainText: {
+      flex: 1,
+      minWidth: 0,
+      gap: moderateHeightScale(4),
+    },
+    pillRow: {
+      flexDirection: "row",
+    },
+    pill: {
       flexDirection: "row",
       alignItems: "center",
-      justifyContent: "space-between",
-      width: "100%",
+      gap: moderateWidthScale(5),
+      paddingHorizontal: moderateWidthScale(8),
+      paddingVertical: moderateHeightScale(2),
+      borderRadius: moderateWidthScale(10),
+      backgroundColor: theme.lightGreen07,
     },
-    verifiedBadge: {
-      backgroundColor: theme.orangeBrown30,
-      paddingHorizontal: moderateWidthScale(10),
-      paddingVertical: moderateHeightScale(4),
-      borderRadius: moderateWidthScale(999),
+    pillSoon: {
+      backgroundColor: theme.upcomingCard,
     },
-    verifiedBadgeText: {
-      fontSize: fontSize.size10,
-      fontFamily: fonts.fontMedium,
-      color: theme.selectCard,
+    pillDot: {
+      width: widthScale(6),
+      height: widthScale(6),
+      borderRadius: widthScale(3),
+      backgroundColor: theme.buttonBack,
     },
-    dateTimeBadgeText: {
+    pillDotSoon: {
+      backgroundColor: theme.selectCard,
+    },
+    pillText: {
       fontSize: fontSize.size11,
-      fontFamily: fonts.fontRegular,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    pillTextSoon: {
+      color: theme.orangeBrownText,
+    },
+    serviceName: {
+      fontSize: fontSize.size16,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+      textTransform: "capitalize",
+    },
+    metaRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(5),
+    },
+    metaText: {
+      flex: 1,
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontMedium,
       color: theme.lightGreen,
     },
-    verifiedCardImage: {
+    footer: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(8),
+      paddingTop: moderateHeightScale(10),
+      paddingBottom: moderateHeightScale(12),
+      marginHorizontal: moderateWidthScale(14),
+      borderTopWidth: 1,
+      borderTopColor: theme.borderLight,
+    },
+    staffImage: {
       width: widthScale(28),
       height: widthScale(28),
       borderRadius: widthScale(14),
       backgroundColor: theme.emptyProfileImage,
-      borderWidth: 1,
-      borderColor: theme.borderLight,
     },
-    salonName: {
-      fontSize: fontSize.size14,
+    staffName: {
+      flex: 1,
+      fontSize: fontSize.size13,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
-      textTransform: "uppercase",
-      flex: 1,
-      marginRight: moderateWidthScale(8),
+      textTransform: "capitalize",
     },
-    verifiedCardInfoRow: {
-      flexDirection: "row",
-      alignItems: "center",
-    },
-    verifiedCardInfoText: {
+    footerMeta: {
       fontSize: fontSize.size12,
       fontFamily: fonts.fontMedium,
       color: theme.lightGreen,
-      marginLeft: moderateWidthScale(6),
-      flex: 1,
-    },
-    loadingContainer: {
-      paddingVertical: moderateHeightScale(20),
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    errorContainer: {
-      paddingVertical: moderateHeightScale(20),
-      alignItems: "center",
-      justifyContent: "center",
-      gap: moderateHeightScale(12),
-    },
-    errorText: {
-      fontSize: fontSize.size14,
-      fontFamily: fonts.fontRegular,
-      color: theme.lightGreen,
-      textAlign: "center",
-    },
-    emptyContainer: {
-      paddingVertical: moderateHeightScale(20),
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    emptyText: {
-      fontSize: fontSize.size14,
-      fontFamily: fonts.fontMedium,
-      color: theme.lightGreen,
-      textAlign: "center",
+      maxWidth: "45%",
     },
   });
