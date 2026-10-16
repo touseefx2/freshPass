@@ -2707,7 +2707,7 @@
   "modeSwitchBackHint": "Tap the FreshPass logo anytime to switch back.",
   "ownBusinessCustomerModeBanner": "This is your business — booking is off in customer mode",
   "ownBusinessBlockedTitle": "This is your business",
-  "ownBusinessBlockedMessage": "You can't book, buy or follow your own business in customer mode.",
+  "ownBusinessBlockedMessage": "You can't book, buy from, follow or review your own business.",
   "modeChangedOnAnotherDevice": "Your account switched modes on another device.",
   "bkFlowTitle": "Book appointment",
   "bkFlowRescheduleTitle": "Reschedule",
@@ -2778,5 +2778,16 @@
   "bkFlowSlotLength": "{{count}} min slots",
   "bkFlowNextDay": "Next available day",
   "bkFlowPrevMonth": "Previous month",
-  "bkFlowNextMonth": "Next month"
+  "bkFlowNextMonth": "Next month",
+  "bkCheckoutTitle": "Checkout",
+  "bkCheckoutReviewTitle": "Review & confirm",
+  "bkCheckoutReviewSub": "Check everything before you book.",
+  "bkCheckoutServices": "Services",
+  "bkCheckoutSubtotal": "Subtotal",
+  "bkCheckoutTax": "Tax",
+  "bkCheckoutTotal": "Total",
+  "bkCheckoutAnyone": "Anyone available",
+  "bkCheckoutAutoAssigned": "Auto-assigned for this time",
+  "bkCheckoutTimeMissing": "Time not selected",
+  "bkCheckoutYearsExp": "{{count}} years experience"
 }

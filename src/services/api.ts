@@ -24,6 +24,7 @@ import { Platform } from "react-native";
 import { router } from "expo-router";
 import { MAIN_ROUTES } from "../constant/routes";
 import Logger from "./logger";
+import i18n from "i18next";
 import { businessEndpoints } from "./endpoints";
 import { resetCategories } from "../state/slices/categoriesSlice";
 import { resetBusiness } from "../state/slices/bsnsSlice";
@@ -542,8 +543,13 @@ apiClient.interceptors.response.use(
       );
     }
 
-    // For other errors, return readable error message
-    const errorMessage = getErrorMessage(error);
+    // For other errors, return readable error message. Own-business refusals
+    // (403, and the booking 422) get one translated message on every screen.
+    const errorCode = (error.response?.data as any)?.data?.error_code;
+    const errorMessage =
+      errorCode === "own_business" && i18n.isInitialized
+        ? i18n.t("ownBusinessBlockedMessage")
+        : getErrorMessage(error);
     const customError = new Error(errorMessage);
     (customError as any).status = error.response?.status;
     (customError as any).data = error.response?.data;

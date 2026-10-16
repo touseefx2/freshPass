@@ -2651,7 +2651,7 @@
   "modeSwitchBackHint": "اضغط على شعار FreshPass في أي وقت للعودة.",
   "ownBusinessCustomerModeBanner": "هذا نشاطك التجاري — الحجز غير متاح في وضع العميل",
   "ownBusinessBlockedTitle": "هذا نشاطك التجاري",
-  "ownBusinessBlockedMessage": "في وضع العميل لا يمكنك الحجز أو الشراء من نشاطك التجاري أو متابعته.",
+  "ownBusinessBlockedMessage": "لا يمكنك الحجز أو الشراء من نشاطك التجاري أو متابعته أو تقييمه.",
   "modeChangedOnAnotherDevice": "تم تبديل وضع حسابك على جهاز آخر.",
   "bkFlowTitle": "حجز موعد",
   "bkFlowRescheduleTitle": "إعادة جدولة",
@@ -2722,5 +2722,16 @@
   "bkFlowSlotLength": "فترات {{count}} د",
   "bkFlowNextDay": "اليوم المتاح التالي",
   "bkFlowPrevMonth": "الشهر السابق",
-  "bkFlowNextMonth": "الشهر التالي"
+  "bkFlowNextMonth": "الشهر التالي",
+  "bkCheckoutTitle": "الدفع",
+  "bkCheckoutReviewTitle": "المراجعة والتأكيد",
+  "bkCheckoutReviewSub": "راجع كل شيء قبل الحجز.",
+  "bkCheckoutServices": "الخدمات",
+  "bkCheckoutSubtotal": "المجموع الفرعي",
+  "bkCheckoutTax": "الضريبة",
+  "bkCheckoutTotal": "الإجمالي",
+  "bkCheckoutAnyone": "أي موظف متاح",
+  "bkCheckoutAutoAssigned": "تم التعيين تلقائيًا لهذا الوقت",
+  "bkCheckoutTimeMissing": "لم يتم اختيار وقت",
+  "bkCheckoutYearsExp": "خبرة {{count}} سنوات"
 }

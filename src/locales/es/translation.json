@@ -2651,7 +2651,7 @@
   "modeSwitchBackHint": "Toca el logo de FreshPass cuando quieras para volver.",
   "ownBusinessCustomerModeBanner": "Este es tu negocio: las reservas están desactivadas en modo cliente",
   "ownBusinessBlockedTitle": "Este es tu negocio",
-  "ownBusinessBlockedMessage": "En modo cliente no puedes reservar, comprar ni seguir tu propio negocio.",
+  "ownBusinessBlockedMessage": "No puedes reservar, comprar, seguir ni reseñar tu propio negocio.",
   "modeChangedOnAnotherDevice": "Tu cuenta cambió de modo en otro dispositivo.",
   "bkFlowTitle": "Reservar cita",
   "bkFlowRescheduleTitle": "Reprogramar",
@@ -2722,5 +2722,16 @@
   "bkFlowSlotLength": "Cada {{count}} min",
   "bkFlowNextDay": "Siguiente día disponible",
   "bkFlowPrevMonth": "Mes anterior",
-  "bkFlowNextMonth": "Mes siguiente"
+  "bkFlowNextMonth": "Mes siguiente",
+  "bkCheckoutTitle": "Pago",
+  "bkCheckoutReviewTitle": "Revisar y confirmar",
+  "bkCheckoutReviewSub": "Revisa todo antes de reservar.",
+  "bkCheckoutServices": "Servicios",
+  "bkCheckoutSubtotal": "Subtotal",
+  "bkCheckoutTax": "Impuesto",
+  "bkCheckoutTotal": "Total",
+  "bkCheckoutAnyone": "Cualquiera disponible",
+  "bkCheckoutAutoAssigned": "Asignado automáticamente para esta hora",
+  "bkCheckoutTimeMissing": "Hora no seleccionada",
+  "bkCheckoutYearsExp": "{{count}} años de experiencia"
 }

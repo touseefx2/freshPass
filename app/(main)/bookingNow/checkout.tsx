@@ -4,7 +4,6 @@ import {
   View,
   Text,
   ScrollView,
-  TouchableOpacity,
   StatusBar,
   BackHandler,
   ActivityIndicator,
@@ -39,10 +38,7 @@ import {
   moderateHeightScale,
   widthScale,
 } from "@/src/theme/dimensions";
-import { SvgXml } from "react-native-svg";
-import Button from "@/src/components/button";
 import CancellationPolicySheet from "@/src/components/CancellationPolicySheet";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import {
   formatCustomerScheduleDate,
@@ -51,7 +47,14 @@ import {
   getCustomerSubscriptionDisplayPrice,
   getCustomerSubscriptionPill,
 } from "@/src/utils/customerSubscriptionLifecycle";
-import { Feather } from "@expo/vector-icons";
+import { Feather, MaterialIcons } from "@expo/vector-icons";
+import FlowHeader from "@/src/components/reelFlow/flowHeader";
+import FlowFooter from "@/src/components/reelFlow/flowFooter";
+import {
+  FlowCard,
+  FlowTitle,
+  SectionLabel,
+} from "@/src/components/reelFlow/flowParts";
 import {
   prepareImagesForUpload,
   type PreparedImageFile,
@@ -89,6 +92,10 @@ const buildAppointmentFormData = (
 const getAppointmentImageErrorMessage = (error: any): string => {
   if (error?.status === 413) {
     return "Photos are too large. Please remove some and try again.";
+  }
+  // Booking your own business: ApiService already set the translated message
+  if (error?.data?.data?.error_code === "own_business" && error?.message) {
+    return error.message;
   }
   const errors = error?.data?.errors;
   if (errors && typeof errors === "object") {
@@ -135,43 +142,6 @@ const resolveBusinessIdParam = (
     return String(Math.trunc(numeric));
   }
   return "";
-};
-
-const backArrowIconSvg = `
-<svg width="{{WIDTH}}" height="{{HEIGHT}}" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-<path d="M20 11H7.83L13.42 5.41L12 4L4 12L12 20L13.41 18.59L7.83 13H20V11Z" fill="{{COLOR}}"/>
-</svg>
-`;
-
-const BackArrowIcon = ({ width = 24, height = 24, color = "#FFFFFF" }) => {
-  const svgXml = backArrowIconSvg
-    .replace(/{{WIDTH}}/g, width.toString())
-    .replace(/{{HEIGHT}}/g, height.toString())
-    .replace(/{{COLOR}}/g, color);
-  return <SvgXml xml={svgXml} />;
-};
-
-const calendarIconSvg = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M19 4H18V2H16V4H8V2H6V4H5C3.89 4 3.01 4.9 3.01 6L3 20C3 21.1 3.89 22 5 22H19C20.1 22 21 21.1 21 20V6C21 4.9 20.1 4 19 4ZM19 20H5V9H19V20Z" fill="{{COLOR}}"/></svg>`;
-const personIconSvg = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 12C14.21 12 16 10.21 16 8C16 5.79 14.21 4 12 4C9.79 4 8 5.79 8 8C8 10.21 9.79 12 12 12ZM12 14C9.33 14 4 15.34 4 18V20H20V18C20 15.34 14.67 14 12 14Z" fill="{{COLOR}}"/></svg>`;
-const listIconSvg = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 18H21V20H3V18ZM3 13H21V15H3V13ZM3 8H21V10H3V8ZM3 3H21V5H3V3Z" fill="{{COLOR}}"/></svg>`;
-const paymentIconSvg = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M20 4H4C2.89 4 2.01 4.89 2.01 6L2 18C2 19.11 2.89 20 4 20H20C21.11 20 22 19.11 22 18V6C22 4.89 21.11 4 20 4ZM20 18H4V12H20V18ZM20 8H4V6H20V8Z" fill="{{COLOR}}"/></svg>`;
-
-const SummaryIcon = ({
-  type,
-  color,
-}: {
-  type: "calendar" | "person" | "list" | "payment";
-  color: string;
-}) => {
-  const xml =
-    type === "calendar"
-      ? calendarIconSvg.replace(/{{COLOR}}/g, color)
-      : type === "person"
-        ? personIconSvg.replace(/{{COLOR}}/g, color)
-        : type === "list"
-          ? listIconSvg.replace(/{{COLOR}}/g, color)
-          : paymentIconSvg.replace(/{{COLOR}}/g, color);
-  return <SvgXml xml={xml} width={widthScale(20)} height={heightScale(20)} />;
 };
 
 interface Service {
@@ -272,505 +242,223 @@ const resolveStaffImageUri = (
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
-    container: {
+    // ── Checkout (step-flow look)
+    ckRoot: {
       flex: 1,
       backgroundColor: theme.background,
     },
-    header: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      alignItems: "center",
+    ckFlex: { flex: 1 },
+    ckContent: {
       paddingHorizontal: moderateWidthScale(20),
+      paddingTop: moderateHeightScale(16),
+      paddingBottom: moderateHeightScale(28),
+      gap: moderateHeightScale(16),
     },
-    headerLeft: {
+    ckSummary: {
+      overflow: "hidden",
+    },
+    ckRow: {
       flexDirection: "row",
       alignItems: "center",
-      gap: moderateWidthScale(8),
+      gap: moderateWidthScale(14),
+      paddingHorizontal: moderateWidthScale(16),
+      paddingVertical: moderateHeightScale(14),
     },
-    backButton: {
-      width: widthScale(36),
-      height: heightScale(36),
-      borderRadius: moderateWidthScale(10),
-      backgroundColor: theme.white,
+    ckRowBorder: {
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: theme.borderNormal,
+    },
+    ckIcon: {
+      width: widthScale(44),
+      height: widthScale(44),
+      borderRadius: widthScale(22),
+      backgroundColor: theme.lightGreen07,
       alignItems: "center",
       justifyContent: "center",
-      marginRight: moderateWidthScale(8),
-      borderWidth: 1,
-      borderColor: theme.borderLight,
-      shadowColor: theme.shadow,
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.08,
-      shadowRadius: 4,
-      elevation: 2,
     },
-    logoContainer: {},
-    logoText: {
-      fontSize: fontSize.size20,
+    ckAvatarWrap: {
+      width: widthScale(44),
+      height: widthScale(44),
+      borderRadius: widthScale(22),
+      overflow: "hidden",
+      backgroundColor: theme.emptyProfileImage,
+    },
+    ckAvatar: {
+      width: "100%",
+      height: "100%",
+    },
+    ckRowText: {
+      flex: 1,
+      minWidth: 0,
+      gap: moderateHeightScale(2),
+    },
+    ckRowTitle: {
+      fontSize: fontSize.size17,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
     },
-    line: {
-      width: "100%",
-      height: 1.1,
-      backgroundColor: theme.borderLight,
-      marginTop: moderateHeightScale(12),
+    ckRowSub: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+      lineHeight: fontSize.size20,
     },
-    scrollContent: {
-      paddingHorizontal: moderateWidthScale(20),
-      paddingTop: moderateHeightScale(4),
-      paddingBottom: moderateHeightScale(24),
+    ckCard: {
+      padding: moderateWidthScale(16),
+      gap: moderateHeightScale(12),
     },
-    section: {
-      marginTop: moderateHeightScale(16),
+    ckLines: {
+      gap: moderateHeightScale(12),
     },
-    sectionTitle: {
+    ckLine: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: moderateWidthScale(12),
+    },
+    ckLineName: {
+      fontSize: fontSize.size16,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
+    },
+    ckLinePrice: {
       fontSize: fontSize.size16,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
-      marginBottom: moderateHeightScale(20),
-      paddingHorizontal: moderateWidthScale(20),
+      fontVariant: ["tabular-nums"],
     },
-    // Availability Section
-    weekNavigation: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-      marginBottom: moderateHeightScale(16),
-      paddingHorizontal: moderateWidthScale(20),
-    },
-    weekNavigationButton: {
-      width: moderateWidthScale(32),
-      height: moderateWidthScale(40),
-      borderRadius: moderateWidthScale(6),
-      alignItems: "center",
-      justifyContent: "center",
-      borderWidth: 1,
-      borderColor: theme.borderLight,
-    },
-    weekRangeText: {
-      fontSize: fontSize.size14,
-      fontFamily: fonts.fontMedium,
-      color: theme.darkGreen,
-    },
-    calendarGrid: {
-      marginBottom: moderateHeightScale(16),
-      paddingHorizontal: moderateWidthScale(20),
-    },
-    daysHeader: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      marginBottom: moderateHeightScale(12),
-    },
-    dayHeader: {
-      flex: 1,
-      alignItems: "center",
-    },
-    dayHeaderText: {
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontMedium,
-      color: theme.darkGreen,
-    },
-    daysRow: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-    },
-    dayContainer: {
-      flex: 1,
-      alignItems: "center",
-    },
-    dayNumberContainer: {
-      width: widthScale(35),
-      height: widthScale(35),
-      borderRadius: widthScale(35 / 2),
-      alignItems: "center",
-      justifyContent: "center",
-      borderWidth: 1,
-      borderColor: "transparent",
-    },
-    dayNumberSelected: {
-      backgroundColor: theme.orangeBrown30,
-      borderColor: theme.selectCard,
-    },
-    dayNumber: {
-      fontSize: fontSize.size14,
-      fontFamily: fonts.fontMedium,
-      color: theme.darkGreen,
-    },
-    dayNumberSelectedText: {
-      color: theme.darkGreen,
-    },
-    dayNumberDisabled: {
-      opacity: 0.3,
-    },
-    dayNumberDisabledText: {
-      color: theme.lightGreen,
-    },
-    timezoneText: {
-      fontSize: fontSize.size11,
-      fontFamily: fonts.fontRegular,
-      color: theme.lightGreen,
-      marginBottom: moderateHeightScale(5),
-      paddingHorizontal: moderateWidthScale(20),
-    },
-    timeSlotSection: {
-      marginTop: moderateHeightScale(16),
-    },
-    timeSlotCategoryRow: {
-      flexDirection: "row",
-      paddingHorizontal: moderateWidthScale(20),
-      marginBottom: moderateHeightScale(16),
-      borderBottomWidth: 1,
-      borderBottomColor: theme.lightGreen2,
-    },
-    timeSlotCategoryButton: {
-      flex: 1,
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "center",
-      paddingVertical: moderateHeightScale(12),
-      position: "relative",
-    },
-    timeSlotCategoryButtonSelected: {
-      // Selected state handled by underline
-    },
-    timeSlotCategoryUnderline: {
-      position: "absolute",
-      bottom: -1,
-      left: 0,
-      right: 0,
-      height: 2,
-      backgroundColor: theme.orangeBrown,
-    },
-    timeSlotCategoryIcon: {
-      marginRight: moderateWidthScale(6),
-    },
-    timeSlotCategoryText: {
-      fontSize: fontSize.size14,
-      fontFamily: fonts.fontBold,
-      color: theme.lightGreen,
-    },
-    timeSlotCategoryTextSelected: {
-      color: theme.darkGreen,
-    },
-    timeSlotsContainer: {
-      marginBottom: moderateHeightScale(5),
-    },
-    timeSlotsContentContainer: {
-      marginBottom: moderateHeightScale(16),
-      paddingHorizontal: moderateWidthScale(20),
-      gap: moderateWidthScale(12),
-    },
-    timeSlotButton: {
-      width: widthScale(90),
-      paddingVertical: moderateHeightScale(10),
-      borderRadius: moderateWidthScale(6),
-      borderWidth: 1,
-      borderColor: theme.lightGreen2,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    timeSlotButtonSelected: {
-      backgroundColor: theme.darkGreenLight,
-      borderColor: theme.darkGreen,
-    },
-    timeSlotButtonDisabled: {
-      opacity: 0.4,
-      backgroundColor: theme.background,
-    },
-    timeSlotText: {
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-    },
-    timeSlotTextSelected: {
-      color: theme.white,
-    },
-    timeSlotTextDisabled: {
-      color: theme.lightGreen,
-    },
-    noSlotsContainer: {
-      paddingVertical: moderateHeightScale(20),
-      paddingHorizontal: moderateWidthScale(20),
-      alignItems: "center",
-    },
-    noSlotsText: {
-      fontSize: fontSize.size14,
-      fontFamily: fonts.fontRegular,
-      color: theme.lightGreen,
-      textAlign: "center",
-    },
-    // Payment Method Section
-    paymentCard: {
-      backgroundColor: theme.white,
-      borderRadius: moderateWidthScale(8),
-      marginHorizontal: moderateWidthScale(20),
-      overflow: "hidden",
-      marginBottom: moderateHeightScale(12),
-    },
-    shadow: {
-      shadowColor: theme.shadow,
-      shadowOffset: {
-        width: 0,
-        height: 1,
-      },
-      shadowOpacity: 0.18,
-      shadowRadius: 1.0,
-      elevation: 1,
-    },
-    paymentOption: {
-      flexDirection: "row",
-      alignItems: "center",
-      padding: moderateWidthScale(12),
-    },
-    paymentOptionSelected: {
-      // Selected state handled by radio button
-    },
-    paymentDivider: {
+    ckDivider: {
       height: 1,
-      backgroundColor: theme.borderLight,
+      borderTopWidth: 1,
+      borderStyle: "dashed",
+      borderColor: theme.borderNormal,
     },
-    paymentRadioButton: {
-      width: moderateWidthScale(20),
-      height: moderateWidthScale(20),
-      borderRadius: moderateWidthScale(10),
-      borderWidth: 2,
-      borderColor: theme.darkGreen,
-      alignItems: "center",
-      justifyContent: "center",
-      marginRight: moderateWidthScale(12),
-      marginTop: moderateHeightScale(2),
-    },
-    paymentRadioButtonSelected: {},
-    paymentRadioButtonInner: {
-      width: moderateWidthScale(10),
-      height: moderateWidthScale(10),
-      borderRadius: moderateWidthScale(5),
-      backgroundColor: theme.orangeBrown,
-    },
-    paymentOptionContent: {
-      flex: 1,
-    },
-    paymentOptionTitle: {
+    ckLineLabel: {
       fontSize: fontSize.size14,
-      fontFamily: fonts.fontMedium,
-      color: theme.darkGreen,
-      marginBottom: moderateHeightScale(3),
-    },
-    paymentOptionDescription: {
-      fontSize: fontSize.size11,
       fontFamily: fonts.fontRegular,
       color: theme.lightGreen,
     },
-    // Service Details Section
-    serviceDetailsCard: {
-      backgroundColor: theme.lightGreen015,
-      borderRadius: moderateWidthScale(8),
-      marginHorizontal: moderateWidthScale(20),
-      overflow: "hidden",
+    ckLineValue: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
+      fontVariant: ["tabular-nums"],
     },
-    serviceItem: {
+    ckSection: {
+      gap: moderateHeightScale(10),
+    },
+    ckPhotos: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: moderateWidthScale(10),
+    },
+    ckPhoto: {
+      width: widthScale(76),
+      height: widthScale(76),
+      borderRadius: moderateWidthScale(14),
+      backgroundColor: theme.lightGreen07,
+    },
+    ckNote: {
+      flexDirection: "row",
+      gap: moderateWidthScale(10),
       padding: moderateWidthScale(16),
     },
-    serviceDetailsHeader: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      alignItems: "flex-start",
-      marginBottom: moderateHeightScale(4),
-    },
-    addServiceButton: {
-      width: widthScale(22),
-      height: heightScale(22),
-      borderRadius: 4,
-      alignItems: "center",
-      justifyContent: "center",
-      borderWidth: 1.5,
-      borderColor: theme.selectCard,
-    },
-    serviceDetailsName: {
+    ckNoteText: {
       flex: 1,
-      fontSize: fontSize.size14,
-      fontFamily: fonts.fontMedium,
+      fontSize: fontSize.size15,
+      fontFamily: fonts.fontRegular,
       color: theme.darkGreen,
-      marginRight: moderateWidthScale(12),
+      lineHeight: fontSize.size22,
     },
-    serviceDetailsPrice: {
-      fontSize: fontSize.size14,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-      marginRight: moderateWidthScale(8),
+    ckPlanHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: moderateWidthScale(10),
     },
-    serviceDetailsOriginalPrice: {
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontMedium,
-      color: theme.lightGreen4,
-      textDecorationLine: "line-through",
-    },
-    serviceDetailsPriceContainer: {
+    ckPlanTitleRow: {
+      flex: 1,
       flexDirection: "row",
       alignItems: "center",
       gap: moderateWidthScale(8),
     },
-    serviceDetailsPriceColumn: {
-      alignItems: "flex-end",
+    ckPlanTitle: {
+      flexShrink: 1,
+      fontSize: fontSize.size20,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+      textTransform: "capitalize",
     },
-    serviceDivider: {
-      height: 1,
-      backgroundColor: theme.borderLight,
-      marginHorizontal: moderateWidthScale(16),
+    ckPill: {
+      paddingHorizontal: moderateWidthScale(12),
+      paddingVertical: moderateHeightScale(4),
+      borderRadius: moderateWidthScale(20),
+      backgroundColor: theme.upcomingCard,
+      borderWidth: 1,
+      borderColor: theme.upcomingBorder,
     },
-    serviceDetailsStaff: {
+    ckPillText: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontBold,
+      color: theme.orangeBrownText,
+      letterSpacing: 0.5,
+    },
+    ckPlanMeta: {
       flexDirection: "row",
       alignItems: "center",
-      padding: moderateWidthScale(16),
+      justifyContent: "space-between",
+      gap: moderateWidthScale(10),
     },
-    serviceDetailsStaffImageWrapper: {
-      position: "relative",
-      width: widthScale(32),
-      height: widthScale(32),
-      marginRight: moderateWidthScale(8),
-      justifyContent: "center",
-      alignItems: "center",
-    },
-    serviceDetailsStaffImage: {
-      width: widthScale(32),
-      height: widthScale(32),
-      borderRadius: widthScale(32 / 2),
-      backgroundColor: theme.emptyProfileImage,
-      borderWidth: 1,
-      borderColor: theme.borderLight,
-      overflow: "hidden",
-    },
-    serviceDetailsStaffStatusDot: {
-      position: "absolute",
-      bottom: 2,
-      right: 0,
-      width: moderateWidthScale(7),
-      height: moderateWidthScale(7),
-      borderRadius: moderateWidthScale(7) / 2,
-    },
-    serviceDetailsStaffStatusDotActive: {
-      backgroundColor: theme.toggleActive,
-    },
-    serviceDetailsStaffStatusDotInactive: {
-      backgroundColor: theme.lightGreen5,
-    },
-    serviceDetailsStaffName: {
-      flex: 1,
-      fontSize: fontSize.size13,
-      fontFamily: fonts.fontRegular,
+    ckPlanPrice: {
+      fontSize: fontSize.size20,
+      fontFamily: fonts.fontBold,
       color: theme.darkGreen,
+      fontVariant: ["tabular-nums"],
     },
-    serviceDetailsChangeButton: {
-      paddingHorizontal: moderateWidthScale(8),
-      paddingVertical: moderateHeightScale(6),
-      borderRadius: moderateWidthScale(6),
-      backgroundColor: theme.white,
-      borderWidth: 1,
-      borderColor: theme.borderLight,
+    ckPlanDates: {
+      flexDirection: "row",
+      gap: moderateWidthScale(12),
+      paddingTop: moderateHeightScale(10),
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: theme.borderNormal,
     },
-    serviceDetailsChangeButtonText: {
-      fontSize: fontSize.size12,
+    ckPlanDate: {
+      flex: 1,
+      gap: moderateHeightScale(2),
+    },
+    ckPlanDateValue: {
+      fontSize: fontSize.size14,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
     },
+    ckTotalBar: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingHorizontal: moderateWidthScale(20),
+      paddingTop: moderateHeightScale(12),
+      backgroundColor: theme.background,
+      borderTopWidth: 1,
+      borderTopColor: theme.borderLight,
+    },
+    ckTotalLabel: {
+      fontSize: fontSize.size16,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    ckTotalValue: {
+      fontSize: fontSize.size20,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+      fontVariant: ["tabular-nums"],
+    },
+    // Availability Section
+    // Payment Method Section
+    // Service Details Section
     // Price Breakdown Section
-    priceBreakdown: {
-      padding: moderateWidthScale(20),
-    },
-    priceRow: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      alignItems: "center",
-      marginBottom: moderateHeightScale(12),
-    },
-    priceRowLast: {
-      marginBottom: 0,
-    },
-    priceLabel: {
-      fontSize: fontSize.size14,
-      fontFamily: fonts.fontRegular,
-      color: theme.darkGreen,
-    },
-    priceValue: {
-      fontSize: fontSize.size14,
-      fontFamily: fonts.fontMedium,
-      color: theme.darkGreen,
-    },
     // Privacy Policy Section
-    privacyText: {
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontRegular,
-      color: theme.lightGreen,
-      lineHeight: moderateHeightScale(16),
-      marginHorizontal: moderateWidthScale(20),
-    },
-    privacyLink: {
-      color: theme.primary,
-      fontFamily: fonts.fontMedium,
-    },
     // Subscription Section
-    subscriptionSection: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      alignItems: "center",
-      backgroundColor: theme.lightBeige,
-      borderRadius: moderateWidthScale(12),
-      padding: moderateWidthScale(16),
-    },
-    subscriptionText: {
-      flex: 1,
-      fontSize: fontSize.size14,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-      marginRight: moderateWidthScale(12),
-    },
-    subscriptionButton: {
-      backgroundColor: theme.orangeBrown,
-      borderRadius: moderateWidthScale(8),
-      paddingHorizontal: moderateWidthScale(16),
-      paddingVertical: moderateHeightScale(8),
-    },
-    subscriptionButtonText: {
-      fontSize: fontSize.size13,
-      fontFamily: fonts.fontMedium,
-      color: theme.darkGreen,
-    },
     // Note Input Section
-    noteInputContainer: {
-      marginTop: moderateHeightScale(16),
-      marginBottom: moderateHeightScale(20),
-      marginHorizontal: moderateWidthScale(20),
-      position: "relative",
-    },
-    noteInput: {
-      borderRadius: moderateWidthScale(12),
-      borderWidth: 1,
-      borderColor: theme.lightGreen2,
-      backgroundColor: theme.white,
-      paddingHorizontal: moderateWidthScale(16),
-      paddingVertical: moderateHeightScale(12),
-      paddingRight: moderateWidthScale(40),
-      fontSize: fontSize.size15,
-      fontFamily: fonts.fontRegular,
-      color: theme.darkGreen,
-      minHeight: heightScale(100),
-      textAlignVertical: "top",
-    },
-    noteInputIcon: {
-      position: "absolute",
-      left: moderateWidthScale(16),
-      top: moderateHeightScale(12),
-      zIndex: 1,
-    },
-    noteInputWithIcon: {
-      paddingLeft: moderateWidthScale(48),
-    },
-    noteClearButton: {
-      position: "absolute",
-      top: moderateHeightScale(12),
-      right: moderateWidthScale(12),
-      zIndex: 1,
-    },
     processingOverlay: {
       position: "absolute",
       top: 0,
@@ -798,662 +486,7 @@ const createStyles = (theme: Theme) =>
       marginTop: moderateHeightScale(16),
       textAlign: "center",
     },
-    summaryCard: {
-      backgroundColor: theme.white,
-      borderRadius: moderateWidthScale(20),
-      marginTop: moderateHeightScale(24),
-      overflow: "hidden",
-      shadowColor: theme.shadow,
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.1,
-      shadowRadius: 16,
-      elevation: 6,
-    },
-    summaryCardBody: {
-      padding: moderateWidthScale(24),
-    },
-    footerCard: {
-      backgroundColor: theme.white,
-      borderRadius: moderateWidthScale(16),
-      marginTop: moderateHeightScale(24),
-      overflow: "hidden",
-      borderWidth: 1,
-      borderColor: theme.borderLight,
-      paddingVertical: moderateHeightScale(20),
-      paddingHorizontal: moderateWidthScale(24),
-    },
-    footerCardBody: {
-      padding: 0,
-    },
-    footerSubRow: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      alignItems: "center",
-      paddingVertical: moderateHeightScale(10),
-    },
-    footerSubLabel: {
-      fontSize: fontSize.size15,
-      fontFamily: fonts.fontRegular,
-      color: theme.text,
-    },
-    footerSubValue: {
-      fontSize: fontSize.size15,
-      fontFamily: fonts.fontMedium,
-      color: theme.text,
-    },
-    footerDivider: {
-      height: 1,
-      backgroundColor: theme.borderLight,
-      marginVertical: moderateHeightScale(12),
-    },
-    footerTotalRow: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      alignItems: "center",
-      paddingVertical: moderateHeightScale(12),
-      paddingTop: moderateHeightScale(4),
-    },
-    footerTotalLabel: {
-      fontSize: fontSize.size17,
-      fontFamily: fonts.fontBold,
-      color: theme.text,
-    },
-    footerTotalValue: {
-      fontSize: fontSize.size20,
-      fontFamily: fonts.fontExtraBold,
-      color: theme.darkGreen,
-    },
-    footerButtonWrap: {
-      marginTop: moderateHeightScale(20),
-    },
-    dateTimeBlock: {
-      flexDirection: "row",
-      alignItems: "flex-start",
-      marginBottom: moderateHeightScale(20),
-      paddingLeft: moderateWidthScale(16),
-      borderLeftWidth: 4,
-      borderLeftColor: theme.orangeBrown,
-      paddingVertical: moderateHeightScale(4),
-    },
-    dateTimeTextWrap: {
-      flex: 1,
-    },
-    dateTimeIconWrap: {
-      marginLeft: moderateWidthScale(12),
-      marginTop: moderateHeightScale(2),
-    },
-    dateTimeLabel: {
-      fontSize: fontSize.size11,
-      fontFamily: fonts.fontMedium,
-      color: theme.lightGreen,
-      marginBottom: moderateHeightScale(4),
-      textTransform: "uppercase",
-      letterSpacing: 0.8,
-    },
-    dateTimeValue: {
-      fontSize: fontSize.size17,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-      lineHeight: moderateHeightScale(22),
-    },
-    staffSection: {
-      backgroundColor: theme.lightGreen05,
-      borderRadius: moderateWidthScale(16),
-      padding: moderateWidthScale(16),
-      marginBottom: moderateHeightScale(20),
-      flexDirection: "row",
-      alignItems: "center",
-      borderWidth: 1,
-      borderColor: theme.lightGreen1,
-    },
-    staffAvatarWrap: {
-      position: "relative",
-      marginRight: moderateWidthScale(14),
-    },
-    staffAvatar: {
-      width: widthScale(52),
-      height: widthScale(52),
-      borderRadius: widthScale(26),
-      backgroundColor: theme.emptyProfileImage,
-      borderWidth: 2,
-      borderColor: theme.white,
-    },
-    staffStatusDot: {
-      position: "absolute",
-      bottom: 2,
-      right: 2,
-      width: moderateWidthScale(12),
-      height: moderateWidthScale(12),
-      borderRadius: moderateWidthScale(6),
-      borderWidth: 2,
-      borderColor: theme.white,
-    },
-    staffStatusDotActive: {
-      backgroundColor: theme.toggleActive,
-    },
-    staffStatusDotInactive: {
-      backgroundColor: theme.lightGreen5,
-    },
-    staffLabel: {
-      fontSize: fontSize.size11,
-      fontFamily: fonts.fontMedium,
-      color: theme.lightGreen,
-      marginBottom: moderateHeightScale(4),
-      textTransform: "uppercase",
-      letterSpacing: 0.8,
-    },
-    staffName: {
-      fontSize: fontSize.size17,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-    },
-    staffExperience: {
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontRegular,
-      color: theme.lightGreen,
-      marginTop: moderateHeightScale(2),
-    },
-    sectionLabel: {
-      fontSize: fontSize.size11,
-      fontFamily: fonts.fontBold,
-      color: theme.lightGreen,
-      marginBottom: moderateHeightScale(10),
-      textTransform: "uppercase",
-      letterSpacing: 0.8,
-    },
-    serviceRow: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      alignItems: "center",
-      marginBottom: moderateHeightScale(10),
-      backgroundColor: theme.white,
-      paddingVertical: moderateHeightScale(14),
-      paddingHorizontal: moderateWidthScale(16),
-      borderRadius: moderateWidthScale(12),
-      borderLeftWidth: 4,
-      borderLeftColor: theme.orangeBrown30,
-      borderWidth: 1,
-      borderRightWidth: 1,
-      borderTopWidth: 1,
-      borderBottomWidth: 1,
-      borderColor: theme.borderLight,
-    },
-    serviceName: {
-      fontSize: fontSize.size14,
-      fontFamily: fonts.fontMedium,
-      color: theme.darkGreen,
-      flex: 1,
-      marginRight: moderateWidthScale(12),
-    },
-    servicePrice: {
-      fontSize: fontSize.size15,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-    },
-    noteBlock: {
-      backgroundColor: theme.lightGreen05,
-      borderRadius: moderateWidthScale(12),
-      padding: moderateWidthScale(14),
-      marginTop: moderateHeightScale(16),
-      borderLeftWidth: 4,
-      borderLeftColor: theme.orangeBrown30,
-    },
-    noteLabel: {
-      fontSize: fontSize.size11,
-      fontFamily: fonts.fontBold,
-      color: theme.lightGreen,
-      marginBottom: moderateHeightScale(6),
-      textTransform: "uppercase",
-      letterSpacing: 0.8,
-    },
-    noteText: {
-      fontSize: fontSize.size13,
-      fontFamily: fonts.fontRegular,
-      color: theme.darkGreen,
-      fontStyle: "italic",
-      lineHeight: moderateHeightScale(18),
-    },
-    paymentRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-      marginTop: moderateHeightScale(20),
-      marginBottom: moderateHeightScale(4),
-    },
-    paymentLabel: {
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontBold,
-      color: theme.lightGreen,
-      textTransform: "uppercase",
-      letterSpacing: 0.8,
-    },
-    paymentBadge: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: moderateWidthScale(8),
-      backgroundColor: theme.background,
-      paddingVertical: moderateHeightScale(8),
-      paddingHorizontal: moderateWidthScale(12),
-      borderRadius: moderateWidthScale(8),
-      borderWidth: 1,
-      borderColor: theme.borderLight,
-    },
-    paymentBadgeText: {
-      fontSize: fontSize.size14,
-      fontFamily: fonts.fontMedium,
-      color: theme.text,
-    },
-    summaryRow: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      alignItems: "center",
-      marginBottom: moderateHeightScale(14),
-    },
-    summaryLabel: {
-      fontSize: fontSize.size13,
-      fontFamily: fonts.fontMedium,
-      color: theme.lightGreen,
-    },
-    summaryValue: {
-      fontSize: fontSize.size14,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-      flex: 1,
-      textAlign: "right",
-    },
-    summaryDivider: {
-      height: 1,
-      backgroundColor: theme.borderLight,
-      marginVertical: moderateHeightScale(12),
-    },
     // Subscription Card (when from subscription booking)
-    subscriptionCard: {
-      marginTop: 0,
-      marginBottom: 0,
-      borderRadius: 0,
-      backgroundColor: "transparent",
-      padding: 0,
-      borderWidth: 0,
-      borderColor: theme.borderLight,
-      shadowOpacity: 0,
-      elevation: 0,
-    },
-    cardHeader: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      alignItems: "flex-start",
-      marginBottom: moderateHeightScale(10),
-    },
-    planTitleRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      flex: 1,
-      marginRight: moderateWidthScale(8),
-    },
-    starIcon: {
-      marginRight: moderateWidthScale(6),
-    },
-    planTitle: {
-      fontSize: fontSize.size20,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-      textTransform: "capitalize",
-      flex: 1,
-    },
-    statusBadge: {
-      paddingHorizontal: moderateWidthScale(12),
-      paddingVertical: moderateHeightScale(4),
-      borderRadius: moderateWidthScale(20),
-      backgroundColor: theme.orangeBrown015,
-      borderWidth: 1,
-      borderColor: theme.orangeBrown,
-    },
-    statusText: {
-      fontSize: fontSize.size11,
-      fontFamily: fonts.fontBold,
-      color: theme.orangeBrown,
-      letterSpacing: 0.5,
-    },
-    topSection: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      alignItems: "center",
-      marginBottom: moderateHeightScale(8),
-    },
-    userInfoRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      flex: 1,
-    },
-    userIcon: {
-      marginRight: moderateWidthScale(6),
-    },
-    userText: {
-      fontSize: fontSize.size13,
-      fontFamily: fonts.fontMedium,
-      color: theme.darkGreen,
-      opacity: 0.75,
-    },
-    priceBadge: {
-      backgroundColor: theme.buttonBack,
-      paddingHorizontal: moderateWidthScale(14),
-      paddingVertical: moderateHeightScale(8),
-      borderRadius: moderateWidthScale(12),
-      alignItems: "center",
-      minWidth: moderateWidthScale(90),
-    },
-    priceText: {
-      fontSize: fontSize.size20,
-      fontFamily: fonts.fontBold,
-      color: theme.white,
-    },
-    planPriceLabel: {
-      fontSize: fontSize.size10,
-      fontFamily: fonts.fontRegular,
-      color: theme.white,
-      marginTop: moderateHeightScale(1),
-      opacity: 0.9,
-    },
-    descriptionText: {
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontRegular,
-      color: theme.darkGreen,
-      marginBottom: moderateHeightScale(10),
-      opacity: 0.65,
-      lineHeight: fontSize.size18,
-    },
-    paymentRenewalRow: {
-      flexDirection: "row",
-      marginTop: moderateHeightScale(6),
-      marginBottom: moderateHeightScale(6),
-      paddingTop: moderateHeightScale(8),
-      borderTopWidth: 1,
-      borderTopColor: theme.borderLight,
-    },
-    paymentDateContainer: {
-      flex: 1,
-      flexDirection: "row",
-      alignItems: "center",
-      marginRight: moderateWidthScale(8),
-    },
-    renewalContainer: {
-      flex: 1,
-      flexDirection: "row",
-      alignItems: "center",
-      marginLeft: moderateWidthScale(8),
-    },
-    dateInfoContainer: {
-      marginLeft: moderateWidthScale(4),
-    },
-    dateLabel: {
-      fontSize: fontSize.size10,
-      fontFamily: fonts.fontMedium,
-      color: theme.darkGreen,
-      opacity: 0.7,
-    },
-    dateValue: {
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-    },
-    subExpandedDetailSection: {
-      marginTop: moderateHeightScale(4),
-      paddingTop: moderateHeightScale(10),
-      borderTopWidth: 1,
-      borderTopColor: theme.borderLight,
-    },
-    subServicesSectionTitle: {
-      fontSize: fontSize.size13,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-      marginBottom: moderateHeightScale(8),
-    },
-    subServiceRow: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      alignItems: "center",
-      paddingVertical: moderateHeightScale(6),
-      paddingHorizontal: moderateWidthScale(10),
-      backgroundColor: theme.lightGreen015,
-      borderRadius: moderateWidthScale(8),
-      marginBottom: moderateHeightScale(6),
-      borderWidth: 1,
-      borderColor: theme.borderLight,
-    },
-    subServiceNameContainer: {
-      flex: 1,
-      marginRight: moderateWidthScale(8),
-    },
-    subServiceNameText: {
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontMedium,
-      color: theme.darkGreen,
-    },
-    subServicePriceText: {
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-    },
-    subServiceDurationText: {
-      fontSize: fontSize.size10,
-      fontFamily: fonts.fontRegular,
-      color: theme.darkGreen,
-      opacity: 0.7,
-      marginTop: moderateHeightScale(2),
-    },
-    subServiceDescriptionText: {
-      fontSize: fontSize.size10,
-      fontFamily: fonts.fontRegular,
-      color: theme.darkGreen,
-      opacity: 0.65,
-      marginTop: moderateHeightScale(2),
-      lineHeight: fontSize.size14,
-    },
-    tryOnSectionLabel: {
-      fontSize: fontSize.size11,
-      fontFamily: fonts.fontBold,
-      color: theme.lightGreen,
-      marginBottom: moderateHeightScale(10),
-      textTransform: "uppercase",
-      letterSpacing: 0.8,
-    },
-    tryOnImagesRow: {
-      flexDirection: "row",
-      flexWrap: "wrap",
-      alignItems: "center",
-      gap: moderateWidthScale(12),
-      marginBottom: moderateHeightScale(16),
-    },
-    tryOnImageBox: {
-      width: widthScale(72),
-      height: widthScale(72),
-      borderRadius: moderateWidthScale(8),
-      overflow: "hidden",
-      backgroundColor: theme.borderLight,
-      borderWidth: 1,
-      borderColor: theme.borderLine,
-    },
-    tryOnImageThumb: {
-      width: "100%",
-      height: "100%",
-    },
-    contentWrap: {
-      flex: 1,
-    },
-    stickyFooter: {
-      backgroundColor: theme.white,
-      borderTopWidth: 1,
-      borderTopColor: theme.borderLight,
-      paddingHorizontal: moderateWidthScale(20),
-      paddingTop: moderateHeightScale(14),
-      paddingBottom: moderateHeightScale(16),
-      shadowColor: theme.shadow,
-      shadowOffset: { width: 0, height: -4 },
-      shadowOpacity: 0.08,
-      shadowRadius: 12,
-      elevation: 10,
-    },
-    stickyMetaRow: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      alignItems: "center",
-      marginBottom: moderateHeightScale(4),
-    },
-    stickyMetaLabel: {
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontRegular,
-      color: theme.lightGreen,
-    },
-    stickyMetaValue: {
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontMedium,
-      color: theme.darkGreen,
-    },
-    stickyTotalRow: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      alignItems: "center",
-      marginTop: moderateHeightScale(4),
-      marginBottom: moderateHeightScale(12),
-    },
-    stickyTotalLabel: {
-      fontSize: fontSize.size13,
-      fontFamily: fonts.fontMedium,
-      color: theme.lightGreen,
-    },
-    stickyTotalValue: {
-      fontSize: fontSize.size22,
-      fontFamily: fonts.fontExtraBold,
-      color: theme.darkGreen,
-    },
-    sectionCard: {
-      backgroundColor: theme.white,
-      borderRadius: moderateWidthScale(18),
-      padding: moderateWidthScale(16),
-      marginTop: moderateHeightScale(14),
-      borderWidth: 1,
-      borderColor: theme.borderLight,
-      shadowColor: theme.shadow,
-      shadowOffset: { width: 0, height: 3 },
-      shadowOpacity: 0.07,
-      shadowRadius: 10,
-      elevation: 3,
-    },
-    sectionCardHeader: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-      marginBottom: moderateHeightScale(14),
-    },
-    sectionCardTitle: {
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontBold,
-      color: theme.lightGreen,
-      textTransform: "uppercase",
-      letterSpacing: 0.9,
-    },
-    iconChip: {
-      width: widthScale(40),
-      height: widthScale(40),
-      borderRadius: widthScale(12),
-      backgroundColor: theme.orangeBrown015,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    iconChipMuted: {
-      backgroundColor: theme.lightGreen1,
-    },
-    appointmentValue: {
-      fontSize: fontSize.size18,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-      lineHeight: moderateHeightScale(24),
-      marginBottom: moderateHeightScale(4),
-    },
-    appointmentSub: {
-      fontSize: fontSize.size13,
-      fontFamily: fonts.fontMedium,
-      color: theme.lightGreen,
-    },
-    staffRowModern: {
-      flexDirection: "row",
-      alignItems: "center",
-      backgroundColor: theme.lightGreen05,
-      borderRadius: moderateWidthScale(14),
-      padding: moderateWidthScale(12),
-      borderWidth: 1,
-      borderColor: theme.lightGreen1,
-    },
-    staffInfoModern: {
-      flex: 1,
-    },
-    staffNameModern: {
-      fontSize: fontSize.size16,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-      textTransform: "capitalize",
-    },
-    serviceRowModern: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      alignItems: "center",
-      paddingVertical: moderateHeightScale(12),
-      borderBottomWidth: 1,
-      borderBottomColor: theme.borderLight,
-    },
-    serviceRowModernFirst: {
-      paddingTop: 0,
-    },
-    serviceRowModernLast: {
-      borderBottomWidth: 0,
-      paddingBottom: 0,
-    },
-    serviceNameWrapModern: {
-      flex: 1,
-      flexDirection: "row",
-      alignItems: "center",
-      marginRight: moderateWidthScale(12),
-    },
-    serviceDot: {
-      width: moderateWidthScale(8),
-      height: moderateWidthScale(8),
-      borderRadius: moderateWidthScale(4),
-      backgroundColor: theme.orangeBrown,
-      marginRight: moderateWidthScale(10),
-    },
-    serviceNameModern: {
-      flex: 1,
-      fontSize: fontSize.size14,
-      fontFamily: fonts.fontMedium,
-      color: theme.darkGreen,
-    },
-    servicePriceModern: {
-      fontSize: fontSize.size15,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-    },
-    noteBlockModern: {
-      backgroundColor: theme.lightGreen05,
-      borderRadius: moderateWidthScale(12),
-      padding: moderateWidthScale(14),
-      borderWidth: 1,
-      borderColor: theme.lightGreen1,
-    },
-    paymentBadgeModern: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: moderateWidthScale(8),
-      backgroundColor: theme.orangeBrown015,
-      paddingVertical: moderateHeightScale(10),
-      paddingHorizontal: moderateWidthScale(14),
-      borderRadius: moderateWidthScale(12),
-      alignSelf: "flex-start",
-    },
-    paymentBadgeTextModern: {
-      fontSize: fontSize.size14,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-    },
   });
 
 function CheckoutContent() {
@@ -2552,352 +1585,289 @@ function CheckoutContent() {
     }
   };
 
-  return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" />
-      <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={handleBackNavigation}
-          >
-            <BackArrowIcon
-              width={widthScale(25)}
-              height={heightScale(25)}
-              color={theme.darkGreen}
+  // Typed as a number, but the API sends the staff's own text (e.g. "3 year exp").
+  const staffExperience = selectedStaffMember?.experience as unknown;
+  const staffName =
+    selectedStaffId === "anyone" && assignedStaffId == null
+      ? t("bkCheckoutAnyone")
+      : (selectedStaffMember?.name ?? "—");
+  const staffSub =
+    selectedStaffId === "anyone"
+      ? assignedStaffId != null
+        ? t("bkCheckoutAutoAssigned")
+        : t("bkFlowAnyoneSub")
+      : staffExperience == null || String(staffExperience).trim() === ""
+        ? null
+        : typeof staffExperience === "number"
+          ? t("bkCheckoutYearsExp", { count: staffExperience })
+          : String(staffExperience);
+  const isPayNow = paymentMethod === "payNow";
+
+  const summaryRow = (
+    key: string,
+    icon: React.ReactNode,
+    title: string,
+    sub: string | null,
+    first: boolean,
+  ) => (
+    <View key={key} style={[styles.ckRow, !first && styles.ckRowBorder]}>
+      {icon}
+      <View style={styles.ckRowText}>
+        <Text style={styles.ckRowTitle} numberOfLines={2}>
+          {title}
+        </Text>
+        {sub ? (
+          <Text style={styles.ckRowSub} numberOfLines={2}>
+            {sub}
+          </Text>
+        ) : null}
+      </View>
+    </View>
+  );
+
+  const roundIcon = (name: React.ComponentProps<typeof MaterialIcons>["name"]) => (
+    <View style={styles.ckIcon}>
+      <MaterialIcons
+        name={name}
+        size={moderateWidthScale(22)}
+        color={theme.darkGreen}
+      />
+    </View>
+  );
+
+  const summaryRows = [
+    summaryRow(
+      "when",
+      roundIcon("event"),
+      formatDateDisplay(reduxSelectedDate || ""),
+      reduxSelectedTimeSlot
+        ? formatSlotTo12h(reduxSelectedTimeSlot)
+        : t("bkCheckoutTimeMissing"),
+      true,
+    ),
+    ...(!isSoloPlan
+      ? [
+          summaryRow(
+            "staff",
+            <View style={styles.ckAvatarWrap}>
+              {staffImageUri ? (
+                <AppImage
+                  uri={staffImageUri}
+                  style={styles.ckAvatar}
+                  resizeMode="cover"
+                />
+              ) : (
+                <View style={styles.ckAvatar} />
+              )}
+            </View>,
+            staffName,
+            staffSub,
+            false,
+          ),
+        ]
+      : []),
+    ...(!isSubscriptionMode
+      ? [
+          summaryRow(
+            "payment",
+            roundIcon(isPayNow ? "credit-card" : "storefront"),
+            isPayNow ? t("bkFlowPayNow") : t("bkFlowPayLater"),
+            isPayNow ? t("bkFlowPayNowSub") : t("bkFlowPayLaterSub"),
+            false,
+          ),
+        ]
+      : []),
+  ];
+
+  const renderPlanCard = () => {
+    if (!subscriptionData) return null;
+    const pill = getCustomerSubscriptionPill(subscriptionData);
+    const dateDisplay = getCustomerSubscriptionDateDisplay(subscriptionData);
+    const scheduleDate = formatCustomerScheduleDate(
+      dateDisplay.kind,
+      dateDisplay.date,
+    );
+    const displayPrice = getCustomerSubscriptionDisplayPrice(subscriptionData);
+    return (
+      <FlowCard style={styles.ckCard}>
+        <View style={styles.ckPlanHeader}>
+          <View style={styles.ckPlanTitleRow}>
+            <Feather
+              name="star"
+              size={moderateWidthScale(18)}
+              color={theme.selectCard}
             />
-          </TouchableOpacity>
-          <View style={styles.logoContainer}>
-            <Text style={styles.logoText}>Checkout</Text>
+            <Text style={styles.ckPlanTitle} numberOfLines={2}>
+              {subscriptionData.subscriptionPlan}
+            </Text>
+          </View>
+          <View style={styles.ckPill}>
+            <Text style={styles.ckPillText}>{pill.label.toUpperCase()}</Text>
           </View>
         </View>
-      </View>
-
-      <View style={styles.line} />
-
-      <View style={styles.contentWrap}>
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.scrollContent}
-        >
-          <View style={styles.sectionCard}>
-            <View style={styles.sectionCardHeader}>
-              <Text style={styles.sectionCardTitle}>Appointment</Text>
-              <View style={styles.iconChip}>
-                <SummaryIcon type="calendar" color={theme.orangeBrown} />
+        <View style={styles.ckPlanMeta}>
+          <Text style={styles.ckRowSub} numberOfLines={1}>
+            {subscriptionData.business}
+          </Text>
+          <Text style={styles.ckPlanPrice}>
+            ${displayPrice}
+            <Text style={styles.ckRowSub}>{t("bkFlowPerMonth")}</Text>
+          </Text>
+        </View>
+        {subscriptionData.paymentDate || scheduleDate ? (
+          <View style={styles.ckPlanDates}>
+            {subscriptionData.paymentDate ? (
+              <View style={styles.ckPlanDate}>
+                <Text style={styles.ckLineLabel}>{t("bkFlowPlanPayment")}</Text>
+                <Text style={styles.ckPlanDateValue}>
+                  {subscriptionData.paymentDate}
+                </Text>
               </View>
-            </View>
-            <Text style={styles.appointmentValue}>
-              {formatDateDisplay(reduxSelectedDate || "")}
-            </Text>
-            <Text style={styles.appointmentSub}>
-              {reduxSelectedTimeSlot
-                ? formatSlotTo12h(reduxSelectedTimeSlot)
-                : "Time not selected"}
-            </Text>
+            ) : null}
+            {scheduleDate ? (
+              <View style={styles.ckPlanDate}>
+                <Text style={styles.ckLineLabel}>
+                  {getCustomerScheduleDateLabel(dateDisplay.kind)}
+                </Text>
+                <Text style={styles.ckPlanDateValue}>{scheduleDate}</Text>
+              </View>
+            ) : null}
           </View>
-
-          {!isSoloPlan && (
-            <View style={styles.sectionCard}>
-              <View style={styles.sectionCardHeader}>
-                <Text style={styles.sectionCardTitle}>Staff</Text>
-                <View style={[styles.iconChip, styles.iconChipMuted]}>
-                  <SummaryIcon type="person" color={theme.darkGreen} />
-                </View>
-              </View>
-              <View style={styles.staffRowModern}>
-                <View style={styles.staffAvatarWrap}>
-                  {staffImageUri ? (
-                    <AppImage
-                      uri={staffImageUri}
-                      style={styles.staffAvatar}
-                      resizeMode="cover"
-                    />
-                  ) : (
-                    <View style={styles.staffAvatar} />
-                  )}
-                  {selectedStaffId !== "anyone" && selectedStaffMember && (
-                    <View
-                      style={[
-                        styles.staffStatusDot,
-                        selectedStaffMember.active
-                          ? styles.staffStatusDotActive
-                          : styles.staffStatusDotInactive,
-                      ]}
-                    />
-                  )}
-                </View>
-                <View style={styles.staffInfoModern}>
-                  <Text style={styles.staffNameModern}>
-                    {selectedStaffId === "anyone" && assignedStaffId == null
-                      ? "Anyone available"
-                      : (selectedStaffMember?.name ?? "—")}
-                  </Text>
-                  {selectedStaffId !== "anyone" &&
-                    selectedStaffMember?.experience != null && (
-                      <Text style={styles.staffExperience} numberOfLines={1}>
-                        {selectedStaffMember.experience === 1
-                          ? "1 year experience"
-                          : `${selectedStaffMember.experience} years experience`}
-                      </Text>
-                    )}
-                  {selectedStaffId === "anyone" && assignedStaffId != null && (
-                    <Text style={styles.staffExperience} numberOfLines={1}>
-                      Auto-assigned for this slot
+        ) : null}
+        {selectedSubscriptionPlanServices &&
+        selectedSubscriptionPlanServices.length > 0 ? (
+          <View style={styles.ckLines}>
+            <SectionLabel label={t("bkFlowPlanServicesLabel")} />
+            {selectedSubscriptionPlanServices.map((svc) => {
+              const duration =
+                svc.durationHours > 0 || svc.durationMinutes > 0
+                  ? formatServiceDuration(svc.durationHours, svc.durationMinutes)
+                  : null;
+              return (
+                <View key={svc.id} style={styles.ckLine}>
+                  <View style={styles.ckRowText}>
+                    <Text style={styles.ckLineName}>
+                      {svc.name} × {svc.quantity ?? 1}
                     </Text>
-                  )}
+                    {duration ? (
+                      <Text style={styles.ckRowSub}>{duration}</Text>
+                    ) : null}
+                  </View>
+                  <Text style={styles.ckLinePrice}>${svc.price}</Text>
                 </View>
-              </View>
-            </View>
-          )}
+              );
+            })}
+          </View>
+        ) : null}
+      </FlowCard>
+    );
+  };
 
-          {!isSubscriptionMode && (
-            <View style={styles.sectionCard}>
-              <View style={styles.sectionCardHeader}>
-                <Text style={styles.sectionCardTitle}>Services</Text>
-              </View>
-              {selectedServices.map((service, index) => (
-                <View
-                  key={service.id}
-                  style={[
-                    styles.serviceRowModern,
-                    index === 0 && styles.serviceRowModernFirst,
-                    index === selectedServices.length - 1 &&
-                      styles.serviceRowModernLast,
-                  ]}
-                >
-                  <View style={styles.serviceNameWrapModern}>
-                    <View style={styles.serviceDot} />
-                    <Text style={styles.serviceNameModern} numberOfLines={2}>
+  return (
+    <View style={styles.ckRoot}>
+      <StatusBar barStyle="light-content" />
+      <FlowHeader title={t("bkCheckoutTitle")} onBack={handleBackNavigation} />
+
+      <ScrollView
+        style={styles.ckFlex}
+        contentContainerStyle={styles.ckContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <FlowTitle
+          title={t("bkCheckoutReviewTitle")}
+          subtitle={t("bkCheckoutReviewSub")}
+        />
+
+        <FlowCard style={styles.ckSummary}>{summaryRows}</FlowCard>
+
+        {!isSubscriptionMode ? (
+          <FlowCard style={styles.ckCard}>
+            <SectionLabel
+              label={t("bkCheckoutServices")}
+              meta={String(selectedServices.length)}
+            />
+            <View style={styles.ckLines}>
+              {selectedServices.map((service) => (
+                <View key={service.id} style={styles.ckLine}>
+                  <View style={styles.ckRowText}>
+                    <Text style={styles.ckLineName} numberOfLines={2}>
                       {service.name}
                     </Text>
+                    {service.duration && service.duration !== "N/A" ? (
+                      <Text style={styles.ckRowSub}>{service.duration}</Text>
+                    ) : null}
                   </View>
-                  <Text style={styles.servicePriceModern}>
+                  <Text style={styles.ckLinePrice}>
                     ${service.price.toFixed(2)}
                   </Text>
                 </View>
               ))}
             </View>
-          )}
-
-          {attachedImageUris.length > 0 && (
-            <View style={styles.sectionCard}>
-              <Text style={styles.tryOnSectionLabel}>Attached images</Text>
-              <View style={styles.tryOnImagesRow}>
-                {attachedImageUris.map((uri, index) => (
-                  <View key={`${uri}-${index}`} style={styles.tryOnImageBox}>
-                    <AppImage
-                      uri={uri}
-                      style={styles.tryOnImageThumb}
-                      resizeMode="cover"
-                    />
-                  </View>
-                ))}
-              </View>
+            <View style={styles.ckDivider} />
+            <View style={styles.ckLine}>
+              <Text style={styles.ckLineLabel}>{t("bkCheckoutSubtotal")}</Text>
+              <Text style={styles.ckLineValue}>
+                ${totalPrice.toFixed(2)} USD
+              </Text>
             </View>
-          )}
-
-          {note.trim() ? (
-            <View style={styles.sectionCard}>
-              <View style={styles.noteBlockModern}>
-                <Text style={styles.noteLabel}>Note</Text>
-                <Text style={styles.noteText} numberOfLines={8}>
-                  {note.trim()}
-                </Text>
-              </View>
+            <View style={styles.ckLine}>
+              <Text style={styles.ckLineLabel}>{t("bkCheckoutTax")}</Text>
+              <Text style={styles.ckLineValue}>${tax.toFixed(2)} USD</Text>
             </View>
-          ) : null}
+          </FlowCard>
+        ) : (
+          renderPlanCard()
+        )}
 
-          {!isSubscriptionMode && (
-            <View style={styles.sectionCard}>
-              <View style={styles.sectionCardHeader}>
-                <Text style={styles.sectionCardTitle}>Payment</Text>
-              </View>
-              <View style={styles.paymentBadgeModern}>
-                <SummaryIcon type="payment" color={theme.darkGreen} />
-                <Text style={styles.paymentBadgeTextModern}>
-                  {paymentMethod === "payNow" ? "Pay now" : "Pay later"}
-                </Text>
-              </View>
+        {attachedImageUris.length > 0 ? (
+          <View style={styles.ckSection}>
+            <SectionLabel label={t("bkFlowPhotos")} />
+            <View style={styles.ckPhotos}>
+              {attachedImageUris.map((uri, index) => (
+                <AppImage
+                  key={`${uri}-${index}`}
+                  uri={uri}
+                  style={styles.ckPhoto}
+                  resizeMode="cover"
+                />
+              ))}
             </View>
-          )}
+          </View>
+        ) : null}
 
-          {isSubscriptionMode && subscriptionData && (
-            <View style={styles.sectionCard}>
-              <View style={styles.subscriptionCard}>
-                {(() => {
-                  const pill = getCustomerSubscriptionPill(subscriptionData);
-                  const dateDisplay =
-                    getCustomerSubscriptionDateDisplay(subscriptionData);
-                  const scheduleDate = formatCustomerScheduleDate(
-                    dateDisplay.kind,
-                    dateDisplay.date,
-                  );
-                  const displayPrice =
-                    getCustomerSubscriptionDisplayPrice(subscriptionData);
-                  return (
-                    <>
-                      <View style={styles.cardHeader}>
-                        <View style={styles.planTitleRow}>
-                          <Feather
-                            name="star"
-                            size={moderateWidthScale(16)}
-                            color={theme.orangeBrown}
-                            style={styles.starIcon}
-                          />
-                          <Text style={styles.planTitle}>
-                            {subscriptionData.subscriptionPlan}
-                          </Text>
-                        </View>
-                        <View style={styles.statusBadge}>
-                          <Text style={styles.statusText}>
-                            {pill.label.toUpperCase()}
-                          </Text>
-                        </View>
-                      </View>
-                      <View style={styles.topSection}>
-                        <View style={styles.userInfoRow}>
-                          <Feather
-                            name="user"
-                            size={moderateWidthScale(14)}
-                            color={theme.darkGreen}
-                            style={styles.userIcon}
-                          />
-                          <Text style={styles.userText} numberOfLines={1}>
-                            {subscriptionData.business}
-                          </Text>
-                        </View>
-                        <View style={styles.priceBadge}>
-                          <Text style={styles.priceText}>${displayPrice}</Text>
-                          <Text style={styles.planPriceLabel}>/month</Text>
-                        </View>
-                      </View>
-                      <View style={styles.subExpandedDetailSection}>
-                        {subscriptionData.subscriptionPlanDescription && (
-                          <Text style={styles.descriptionText}>
-                            {subscriptionData.subscriptionPlanDescription}
-                          </Text>
-                        )}
+        {note.trim() ? (
+          <View style={styles.ckSection}>
+            <SectionLabel label={t("bkFlowNote")} />
+            <FlowCard style={styles.ckNote}>
+              <MaterialIcons
+                name="format-quote"
+                size={moderateWidthScale(22)}
+                color={theme.selectCard}
+              />
+              <Text style={styles.ckNoteText} numberOfLines={8}>
+                {note.trim()}
+              </Text>
+            </FlowCard>
+          </View>
+        ) : null}
+      </ScrollView>
 
-                        {(subscriptionData.paymentDate || scheduleDate) && (
-                          <View style={styles.paymentRenewalRow}>
-                            {subscriptionData.paymentDate && (
-                              <View style={styles.paymentDateContainer}>
-                                <Feather
-                                  name="credit-card"
-                                  size={moderateWidthScale(12)}
-                                  color={theme.darkGreen}
-                                />
-                                <View style={styles.dateInfoContainer}>
-                                  <Text style={styles.dateLabel}>Payment</Text>
-                                  <Text style={styles.dateValue}>
-                                    {subscriptionData.paymentDate}
-                                  </Text>
-                                </View>
-                              </View>
-                            )}
-                            {scheduleDate && (
-                              <View
-                                style={[
-                                  styles.renewalContainer,
-                                  !subscriptionData.paymentDate && {
-                                    marginLeft: 0,
-                                  },
-                                ]}
-                              >
-                                <Feather
-                                  name="calendar"
-                                  size={moderateWidthScale(12)}
-                                  color={theme.darkGreen}
-                                />
-                                <View style={styles.dateInfoContainer}>
-                                  <Text style={styles.dateLabel}>
-                                    {getCustomerScheduleDateLabel(
-                                      dateDisplay.kind,
-                                    )}
-                                  </Text>
-                                  <Text style={styles.dateValue}>
-                                    {scheduleDate}
-                                  </Text>
-                                </View>
-                              </View>
-                            )}
-                          </View>
-                        )}
-
-                        {selectedSubscriptionPlanServices &&
-                          selectedSubscriptionPlanServices.length > 0 && (
-                            <>
-                              <Text style={styles.subServicesSectionTitle}>
-                                Plan services
-                              </Text>
-                              {selectedSubscriptionPlanServices.map((svc) => (
-                                <View key={svc.id} style={styles.subServiceRow}>
-                                  <View style={styles.subServiceNameContainer}>
-                                    <Text style={styles.subServiceNameText}>
-                                      {svc.name} x {svc.quantity ?? 1}
-                                    </Text>
-                                    {(svc.durationHours > 0 ||
-                                      svc.durationMinutes > 0) && (
-                                      <Text
-                                        style={styles.subServiceDurationText}
-                                      >
-                                        {formatServiceDuration(
-                                          svc.durationHours,
-                                          svc.durationMinutes,
-                                        )}
-                                      </Text>
-                                    )}
-                                    {!!svc.description && (
-                                      <Text
-                                        style={styles.subServiceDescriptionText}
-                                      >
-                                        {svc.description}
-                                      </Text>
-                                    )}
-                                  </View>
-                                  <Text style={styles.subServicePriceText}>
-                                    ${svc.price}
-                                  </Text>
-                                </View>
-                              ))}
-                            </>
-                          )}
-                      </View>
-                    </>
-                  );
-                })()}
-              </View>
-            </View>
-          )}
-        </ScrollView>
-
-        <View style={styles.stickyFooter}>
-          {!isSubscriptionMode && (
-            <>
-              <View style={styles.stickyMetaRow}>
-                <Text style={styles.stickyMetaLabel}>Service</Text>
-                <Text style={styles.stickyMetaValue}>
-                  ${totalPrice.toFixed(2)} USD
-                </Text>
-              </View>
-              <View style={styles.stickyMetaRow}>
-                <Text style={styles.stickyMetaLabel}>Tax</Text>
-                <Text style={styles.stickyMetaValue}>
-                  ${tax.toFixed(2)} USD
-                </Text>
-              </View>
-              <View style={styles.stickyTotalRow}>
-                <Text style={styles.stickyTotalLabel}>Total</Text>
-                <Text style={styles.stickyTotalValue}>
-                  ${estimatedTotal.toFixed(2)} USD
-                </Text>
-              </View>
-            </>
-          )}
-          <Button title={t("confirmBooking")} onPress={handleBookNow} />
+      {!isSubscriptionMode ? (
+        <View style={styles.ckTotalBar}>
+          <Text style={styles.ckTotalLabel}>{t("bkCheckoutTotal")}</Text>
+          <Text style={styles.ckTotalValue}>
+            ${estimatedTotal.toFixed(2)} USD
+          </Text>
         </View>
-      </View>
+      ) : null}
+      <FlowFooter
+        primary={{
+          label: t("confirmBooking"),
+          icon: "event-available",
+          onPress: handleBookNow,
+          disabled: processingPayment,
+        }}
+      />
 
       {processingPayment && (
         <View style={styles.processingOverlay}>
@@ -2920,10 +1890,9 @@ function CheckoutContent() {
         isPayLater={!isSubscriptionMode && paymentMethod === "payLater"}
         confirming={policyConfirming}
       />
-    </SafeAreaView>
+    </View>
   );
 }
-
 
 export default function Checkout() {
   return <CheckoutContent />;

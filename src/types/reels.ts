@@ -26,6 +26,8 @@ export type ReelBusiness = {
   followers_count?: number;
   is_official?: boolean;
   is_verified?: boolean;
+  /** Server: the signed-in user owns or works at this business (either mode) */
+  is_own_business?: boolean;
 };
 
 export type ReelStats = {

@@ -3307,6 +3307,7 @@ export default function ReelsFeedScreen() {
                 }
                 isOwnReel={
                   isOwnerMode ||
+                  item.business?.is_own_business === true ||
                   (ownerBusinessId != null &&
                     item.business?.id != null &&
                     Number(item.business.id) === Number(ownerBusinessId))

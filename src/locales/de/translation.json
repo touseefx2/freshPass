@@ -2651,7 +2651,7 @@
   "modeSwitchBackHint": "Tippe jederzeit auf das FreshPass-Logo, um zurückzuwechseln.",
   "ownBusinessCustomerModeBanner": "Das ist dein Business — Buchen ist im Kundenmodus deaktiviert",
   "ownBusinessBlockedTitle": "Das ist dein Business",
-  "ownBusinessBlockedMessage": "Im Kundenmodus kannst du dein eigenes Business nicht buchen, bei ihm kaufen oder ihm folgen.",
+  "ownBusinessBlockedMessage": "Du kannst dein eigenes Business nicht buchen, bei ihm kaufen, ihm folgen oder es bewerten.",
   "modeChangedOnAnotherDevice": "Dein Konto hat auf einem anderen Gerät den Modus gewechselt.",
   "bkFlowTitle": "Termin buchen",
   "bkFlowRescheduleTitle": "Verschieben",
@@ -2722,5 +2722,16 @@
   "bkFlowSlotLength": "{{count}}-Min.-Takt",
   "bkFlowNextDay": "Nächster freier Tag",
   "bkFlowPrevMonth": "Vorheriger Monat",
-  "bkFlowNextMonth": "Nächster Monat"
+  "bkFlowNextMonth": "Nächster Monat",
+  "bkCheckoutTitle": "Kasse",
+  "bkCheckoutReviewTitle": "Prüfen & bestätigen",
+  "bkCheckoutReviewSub": "Prüfe alles, bevor du buchst.",
+  "bkCheckoutServices": "Leistungen",
+  "bkCheckoutSubtotal": "Zwischensumme",
+  "bkCheckoutTax": "Steuer",
+  "bkCheckoutTotal": "Gesamt",
+  "bkCheckoutAnyone": "Beliebiger Mitarbeiter",
+  "bkCheckoutAutoAssigned": "Für diese Zeit automatisch zugewiesen",
+  "bkCheckoutTimeMissing": "Keine Uhrzeit gewählt",
+  "bkCheckoutYearsExp": "{{count}} Jahre Erfahrung"
 }

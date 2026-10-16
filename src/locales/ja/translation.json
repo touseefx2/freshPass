@@ -2651,7 +2651,7 @@
   "modeSwitchBackHint": "FreshPassのロゴをタップすればいつでも戻れます。",
   "ownBusinessCustomerModeBanner": "あなたのビジネスです — カスタマーモードでは予約できません",
   "ownBusinessBlockedTitle": "あなたのビジネスです",
-  "ownBusinessBlockedMessage": "カスタマーモードでは自分のビジネスの予約、購入、フォローはできません。",
+  "ownBusinessBlockedMessage": "自分のビジネスの予約、購入、フォロー、レビューはできません。",
   "modeChangedOnAnotherDevice": "別のデバイスでアカウントのモードが切り替わりました。",
   "bkFlowTitle": "予約する",
   "bkFlowRescheduleTitle": "日時変更",
@@ -2722,5 +2722,16 @@
   "bkFlowSlotLength": "{{count}}分刻み",
   "bkFlowNextDay": "次の空いている日",
   "bkFlowPrevMonth": "前の月",
-  "bkFlowNextMonth": "次の月"
+  "bkFlowNextMonth": "次の月",
+  "bkCheckoutTitle": "お会計",
+  "bkCheckoutReviewTitle": "確認して予約",
+  "bkCheckoutReviewSub": "予約する前に内容をご確認ください。",
+  "bkCheckoutServices": "サービス",
+  "bkCheckoutSubtotal": "小計",
+  "bkCheckoutTax": "税",
+  "bkCheckoutTotal": "合計",
+  "bkCheckoutAnyone": "指名なし",
+  "bkCheckoutAutoAssigned": "この時間に自動で担当が決まりました",
+  "bkCheckoutTimeMissing": "時間が未選択です",
+  "bkCheckoutYearsExp": "経験{{count}}年"
 }

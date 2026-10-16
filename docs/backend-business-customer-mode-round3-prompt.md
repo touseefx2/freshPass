@@ -88,9 +88,9 @@ Your v2 guide didn't cover these. Please build or answer each:
 
 1. **Background jobs [P1-7]:** an AI job created in one mode, such as an auto reel queued in business mode that finishes after the user switched, must be charged to **the mode it was created in**. Is that done? If not, please build it.
 2. **Who an action is shown as [P2-3]:** reviews, follows, reel comments and likes made in customer mode must show the **person**, not their business, and must not count toward their own business's numbers. Please confirm, or fix.
-3. **Favourite guard [P1-1]:** your guide lists follow under `own_business`. Does **adding a favourite** of your own business in customer mode also return `own_business`?
+3. ~~**Favourite guard [P1-1]**~~ — **Done.** Follow, favourite and review of your own shop now return 403 `own_business` in **both** modes (`FollowService.php`, `StoreReviewRequest.php`, `OwnBusinessGuardService.php`). The app hides these buttons on your own shop in both modes and shows the translated own-business message for any `own_business` refusal.
 4. **Endpoints not listed in your v2 table 1.4:** in customer mode, do `GET /api/orders`, `GET /api/following` and `GET /api/favorites` return the person's own data, as for a plain customer?
-5. **Booking your own business returns 422** (`errors.business_id`), not 403 `own_business` like everything else. Please also add `data.error_code: "own_business"` to that 422, so the app can handle every own-business refusal the same way.
+5. ~~**Booking your own business returns 422**~~ — **Done.** The 422 from `POST /api/appointments` and `/api/appointments/checkout` now includes `data.error_code: "own_business"` (`StoreAppointmentRequest.php`). The app reads it and shows the same own-business message as the 403s.
 6. **Notification type → mode table:** do you agree with every row of the round-2 table? Send any corrections.
 7. **`hasRole` list:** list every place you changed from a role check to a mode check.
 8. **Deployment status:** is PR #171 live on **dev**? On **production**? Please give the dates.
@@ -99,6 +99,7 @@ Your v2 guide didn't cover these. Please build or answer each:
 11. **`.mode.changed` event:** we haven't seen it arrive yet. Please confirm it is live on dev and the event name the app should bind is exactly `.mode.changed`, with the leading dot. Row 21 above tests it.
 12. **New-customer perks:** do plain customers get anything when they start, such as free AI credits, a welcome offer or a first-booking discount? If yes, does a business account's **customer side** get the same on its first switch to customer mode? If not, should it? Please tell us what happens today.
 13. **Notification settings:** are notification preferences (push and email toggles, `GET`/`PUT /api/notification-preferences`) shared by both modes, or separate per mode? For example, can an owner turn off customer marketing pushes and keep business booking pushes on?
+14. **Removing an old favourite of your own shop:** favourite is a toggle (`toggleFavorite()`). If an owner or staff member favourited their own shop **before** this change, can they still **remove** it? Or does the new guard block the toggle in both directions? Only **adding** should be blocked; removing should always work, as with unfollow.
 
 ---
 
@@ -108,7 +109,7 @@ Reply once, in three parts:
 
 - **Section 2:** yes or no for items 1 and 2.
 - **Section 3:** the table with **pass / fail** for every row (1–22), plus details for each fail and what you changed.
-- **Section 4:** items 1–13, each **Done** (with a sample JSON for anything new or changed), **Will do** (with an estimate) or **Won't do** (with the reason).
+- **Section 4:** items 1, 2, 4 and 6–14 (3 and 5 are done), each **Done** (with a sample JSON for anything new or changed), **Will do** (with an estimate) or **Won't do** (with the reason).
 
 ---
 
