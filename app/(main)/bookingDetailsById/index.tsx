@@ -527,10 +527,15 @@ export default function BookingDetailsById() {
   const hasHandledNotificationAction = useRef(false);
   const userRole = useAppSelector((state) => state.user.userRole);
   let staffClientname = "";
+  // No staff on the appointment (Solo plans have no staff list) — the owner
+  // serves it, so show them instead of "Anyone".
+  const isServedByOwner =
+    booking?.staffId == null && !!booking?.owner?.name?.trim();
   if (userRole === "customer") {
     const base = booking?.staffName ?? "Anyone";
-    staffClientname =
-      booking?.staffIsOwner && base.toLowerCase() !== "anyone"
+    staffClientname = isServedByOwner
+      ? (booking?.owner?.name?.trim() ?? base)
+      : booking?.staffIsOwner && base.toLowerCase() !== "anyone"
         ? `${base} · ${t("owner")}`
         : base;
   } else {
@@ -2360,7 +2365,7 @@ export default function BookingDetailsById() {
               ) : null}
               <Text
                 style={[styles.infoListValue, styles.infoListValueName]}
-                numberOfLines={1}
+                numberOfLines={2}
               >
                 {staffClientname}
               </Text>
@@ -2384,7 +2389,7 @@ export default function BookingDetailsById() {
               >
                 <Text
                   style={[styles.infoListValue, styles.infoListValueName]}
-                  numberOfLines={1}
+                  numberOfLines={2}
                 >
                   {assignedStaffDisplayName || "---"}
                 </Text>
