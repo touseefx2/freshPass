@@ -225,11 +225,7 @@ export default function BookingProfileCard({
 
   return (
     <View>
-      <SectionHeader
-        title={t("myBookingProfile")}
-        actionLabel={t("edit")}
-        onAction={openProfile}
-      />
+      <SectionHeader title={t("myBookingProfile")} />
       <View style={styles.card}>
         <TouchableOpacity
           style={styles.profileRow}
