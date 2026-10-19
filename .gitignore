@@ -143,3 +143,4 @@ app-example
 # Claude Code skill files
 .claude/
  
+.claude/skills/ponytail/
