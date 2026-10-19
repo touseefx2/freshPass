@@ -1328,7 +1328,9 @@ export default function BookingDetailsById() {
       : t("paidLabel")
     : inPersonStatus === "claimed"
       ? t("avBadgeAwaiting")
-      : t("payLaterLabel");
+      : booking?.status === "complete" && booking.owesPayment
+        ? t("ckBadgeUnpaid")
+        : t("payLaterLabel");
 
   const savedCardLabel =
     !isSubscription && booking?.cardLastFour
@@ -1798,7 +1800,7 @@ export default function BookingDetailsById() {
     if (!bookingId) return;
     router.push({
       pathname: "/(main)/appointmentOutcome" as any,
-      params: { bookingId, outcome },
+      params: { bookingId, outcome, from: "details" },
     });
   };
 
@@ -1806,7 +1808,7 @@ export default function BookingDetailsById() {
     if (!bookingId) return;
     router.push({
       pathname: "/(main)/appointmentOutcome" as any,
-      params: { bookingId, step },
+      params: { bookingId, step, from: "details" },
     });
   };
 
@@ -3322,7 +3324,7 @@ export default function BookingDetailsById() {
                   onPress={() => openOutcomeFlow("completed")}
                 >
                   <Text style={styles.outcomeCompletedButtonText}>
-                    {t("markCompleted")}
+                    {t("ckCompleteCheckout")}
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity

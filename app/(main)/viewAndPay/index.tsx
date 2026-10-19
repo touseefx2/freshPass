@@ -901,20 +901,19 @@ export default function ViewAndPayScreen() {
             lines={[paidAt]}
           />
         );
-      case "paid_in_person":
+      case "paid_in_person": {
+        const cash = data.payment.inPersonPayment;
+        const total = cash?.totalAmount ?? data.payment.amountPaid;
         return (
           <SuccessHero
-            icon="storefront"
+            icon="payments"
             title={t("avPaidInPersonTitle")}
-            amount={
-              data.payment.amountPaid != null
-                ? money(data.payment.amountPaid)
-                : null
-            }
+            amount={total != null ? money(total) : null}
             subtitle={t("avPaidInPersonBody", { business: businessName })}
-            lines={[paidAt]}
+            lines={[paidAt ?? formatIsoDateTime(cash?.resolvedAt)]}
           />
         );
+      }
       case "awaiting_confirmation": {
         const cashTip = data.payment.inPersonPayment?.tipAmount;
         return (
@@ -956,7 +955,23 @@ export default function ViewAndPayScreen() {
 
   const renderDone = () => {
     if (!data) return null;
-    const paidTip = data.tip.tip;
+    // A cash visit's receipt: service + cash tip = total, method Cash.
+    const cashReceipt =
+      data.payment.status === "paid_in_person" &&
+      data.payment.inPersonPayment?.serviceAmount != null
+        ? data.payment.inPersonPayment
+        : null;
+    const cashTip = cashReceipt?.tipAmount ?? 0;
+    const paidTipRaw = data.tip.tip;
+    // The cash tip is already a receipt line; don't list it twice.
+    const paidTip =
+      cashReceipt &&
+      cashTip > 0 &&
+      paidTipRaw &&
+      (paidTipRaw.paymentChannel === "in_person" ||
+        paidTipRaw.source === "in_person")
+        ? null
+        : paidTipRaw;
     const review = data.review.review;
     const actions: Array<{
       key: string;
@@ -1015,6 +1030,31 @@ export default function ViewAndPayScreen() {
       >
         {renderDoneHero()}
 
+        {!confirmingPayment && cashReceipt ? (
+          <FlowCard style={styles.card}>
+            <SectionLabel label={t("ckReceiptTitle")} />
+            <MoneyRow
+              label={
+                data.services.map((s) => s.name).join(" + ") || t("ckService")
+              }
+              value={money(cashReceipt.serviceAmount)}
+            />
+            {cashTip > 0 ? (
+              <MoneyRow label={t("ckTip")} value={money(cashTip)} />
+            ) : null}
+            <MoneyRow label={t("ckPaymentMethod")} value={t("ckMethodCash")} />
+            <RowDivider />
+            <MoneyRow
+              label={t("ckTotalPaid")}
+              value={money(
+                cashReceipt.totalAmount ??
+                  (cashReceipt.serviceAmount ?? 0) + cashTip,
+              )}
+              total
+            />
+          </FlowCard>
+        ) : null}
+
         {!confirmingPayment && paidTip ? (
           <FlowCard style={styles.card}>
             <MoneyRow
@@ -1033,7 +1073,7 @@ export default function ViewAndPayScreen() {
         ) : null}
 
         {!confirmingPayment &&
-        !paidTip &&
+        !paidTipRaw &&
         data.tip.payWith === "none" &&
         data.tip.reason &&
         !data.tip.tipDeclined ? (

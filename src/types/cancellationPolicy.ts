@@ -85,6 +85,11 @@ export interface OutcomePreview {
   hasSavedCard?: boolean;
   policyApplies?: boolean;
   forfeitsVisit?: boolean;
+  /**
+   * outcome=completed: true when a one-time service is still owed, so the
+   * checkout asks how the customer paid. False for membership / paid online.
+   */
+  canPayCash?: boolean;
   currency?: string;
 }
 

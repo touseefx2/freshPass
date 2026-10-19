@@ -17,7 +17,8 @@ import { formatIsoDateTime, formatVisitMoney } from "./afterVisitParts";
 /**
  * Appointment Details (pro side): the "I paid at the salon" claim and its
  * answer, plus Confirm payment received / Not received. Also shown with no
- * claim when a completed visit is still unpaid (walk-in paid at the till).
+ * claim when a completed visit is still unpaid (Not Yet Paid at checkout):
+ * Record cash payment opens the same review → done screens.
  */
 type Props = {
   payment: InPersonPayment | null | undefined;
@@ -107,14 +108,14 @@ export default function InPersonPaymentCard({
   const tip = payment?.tipAmount ?? 0;
   const amountText = amount != null ? formatVisitMoney(amount) : null;
   let tone = styles.neutral;
-  let icon: keyof typeof MaterialIcons.glyphMap = "storefront";
-  let iconColor = theme.buttonBack;
+  let icon: keyof typeof MaterialIcons.glyphMap = "schedule";
+  let iconColor = theme.selectCard;
   let title = t("ipCardDueTitle");
   const lines: string[] = [];
 
   if (status === "claimed") {
     tone = styles.claimed;
-    iconColor = theme.selectCard;
+    icon = "storefront";
     title = t("ipCardClaimedTitle", { name: customerName });
     lines.push(
       tip > 0
@@ -128,9 +129,15 @@ export default function InPersonPaymentCard({
     if (at) lines.push(at);
   } else if (status === "confirmed") {
     tone = styles.confirmed;
-    icon = "check-circle";
+    icon = "payments";
+    iconColor = theme.buttonBack;
     title = t("ipCardConfirmedTitle");
     if (tip > 0) lines.push(t("ipCardCashTip", { amount: formatVisitMoney(tip) }));
+    if (payment?.totalAmount != null && tip > 0) {
+      lines.push(
+        t("ipCardCashTotal", { amount: formatVisitMoney(payment.totalAmount) }),
+      );
+    }
   } else if (status === "rejected") {
     tone = styles.rejected;
     icon = "money-off";
@@ -177,7 +184,7 @@ export default function InPersonPaymentCard({
             <FlowButton
               compact
               style={styles.action}
-              label={t("aoConfirmPayment")}
+              label={status === "claimed" ? t("aoConfirmPayment") : t("ckRecordCash")}
               onPress={onConfirm}
             />
           ) : null}

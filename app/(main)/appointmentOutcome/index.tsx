@@ -4,6 +4,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View,
 } from "react-native";
 import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
@@ -11,9 +12,7 @@ import { usePreventRemove } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
-import { MaterialIcons } from "@expo/vector-icons";
-import dayjs from "dayjs";
-import { useTheme } from "@/src/hooks/hooks";
+import { useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import {
@@ -34,36 +33,50 @@ import {
 import { FlowTextField } from "@/src/components/reelFlow/detailsFields";
 import {
   MoneyRow,
-  PersonRow,
   RadioCard,
   SuccessHero,
   formatIsoDateTime,
   formatVisitDateTime,
   formatVisitMoney,
-  parseAmount,
-  parseVisitDate,
-  sanitizeAmountInput,
 } from "@/src/components/afterVisit/afterVisitParts";
-import { useNotificationContext } from "@/src/contexts/NotificationContext";
+import {
+  CHECKOUT_TIP_PRESETS,
+  CheckoutTipPicker,
+  StatusBadges,
+  SummaryDivider,
+  VisitSummaryCard,
+  checkoutTipAmount,
+  type CheckoutTip,
+} from "@/src/components/afterVisit/checkoutParts";
 import { ApiService } from "@/src/services/api";
 import { appointmentsEndpoints } from "@/src/services/endpoints";
 import { getStripeModeHeaders } from "@/src/services/stripeService";
 import {
+  completeAppointment,
   confirmInPersonPayment,
   getApiErrorMessage,
+  getApiFieldError,
   rejectInPersonPayment,
 } from "@/src/services/afterVisitService";
 import type { OutcomePreview } from "@/src/types/cancellationPolicy";
 import type { InPersonPayment } from "@/src/types/afterVisit";
 
 /**
- * Pro side after a visit, one step at a time:
- * Update status (Completed / No-show + the policy preview) → All set,
- * and the salon payment: Confirm payment received (cash tip) or Not received.
- * Opened from Appointment Details, Needs Attention and the claim notification.
+ * Pro side after a visit:
+ * Complete & Checkout (how the customer paid: Cash / Not Yet Paid) →
+ * Review payment (tip, service + tip = total) → one POST /outcome → done.
+ * Membership and paid-online visits skip the payment question.
+ * Also: No-show (Update status), and recording a Not Yet Paid visit's cash
+ * later (step=payment, same review → done) or Not received for a claim.
  */
 type Outcome = "completed" | "no_show";
-type Step = "status" | "done" | "payment" | "reject" | "paid" | "rejected";
+type Step = "status" | "method" | "review" | "done" | "reject" | "rejected";
+type PayMethod = "cash" | "unpaid";
+type DoneResult =
+  | { kind: "paid"; payment: InPersonPayment | null; collected: boolean }
+  | { kind: "unpaid" }
+  | { kind: "covered" }
+  | { kind: "no_show" };
 
 type Appointment = {
   id: number;
@@ -77,6 +90,7 @@ type Appointment = {
   appointmentTime: string;
   totalPrice?: number | string | null;
   status: string;
+  owesPayment?: boolean;
   canMarkOutcome?: boolean;
   canConfirmInPersonPayment?: boolean;
   canRejectInPersonPayment?: boolean;
@@ -100,13 +114,9 @@ const createStyles = (theme: Theme) =>
       gap: moderateHeightScale(20),
     },
     card: {
-      padding: moderateWidthScale(18),
-      gap: moderateHeightScale(10),
-    },
-    metaRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: moderateWidthScale(8),
+      paddingHorizontal: moderateWidthScale(18),
+      paddingVertical: moderateHeightScale(14),
+      gap: moderateHeightScale(8),
     },
     metaText: {
       flex: 1,
@@ -120,12 +130,59 @@ const createStyles = (theme: Theme) =>
       gap: moderateWidthScale(10),
       paddingVertical: moderateHeightScale(6),
     },
+    group: { gap: moderateHeightScale(12) },
     actions: { gap: moderateHeightScale(12) },
     footer: {
       paddingHorizontal: moderateWidthScale(20),
       paddingTop: moderateHeightScale(12),
       backgroundColor: theme.background,
       gap: moderateHeightScale(6),
+    },
+    // "Payment method · Cash / Change"
+    methodRow: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      justifyContent: "space-between",
+      gap: moderateWidthScale(12),
+    },
+    methodLabel: {
+      flex: 1,
+      fontSize: fontSize.size16,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+      paddingTop: moderateHeightScale(2),
+    },
+    methodValueWrap: { alignItems: "flex-end" },
+    methodValue: {
+      fontSize: fontSize.size16,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    changeBtn: {
+      paddingTop: moderateHeightScale(2),
+    },
+    changeText: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontMedium,
+      color: theme.buttonBack,
+      textDecorationLine: "underline",
+    },
+    doneHeader: {
+      alignItems: "center",
+      gap: moderateHeightScale(10),
+    },
+    doneName: {
+      fontSize: fontSize.size17,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
+      textAlign: "center",
+      marginTop: moderateHeightScale(4),
+    },
+    doneWhen: {
+      fontSize: fontSize.size15,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+      textAlign: "center",
     },
   });
 
@@ -142,9 +199,22 @@ function serviceLabel(appt: Appointment | null): string {
   return (appt.services ?? []).map((s) => s.name).join(" + ");
 }
 
-function amountOwed(appt: Appointment | null): number | null {
-  const n = Number(appt?.totalPrice);
+function positiveAmount(value: unknown): number | null {
+  const n = Number(value);
   return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+const roundCents = (n: number) => Math.round(n * 100) / 100;
+
+function tipFromAmount(amount: number | null | undefined): {
+  tip: CheckoutTip;
+  text: string;
+} {
+  if (amount == null || amount <= 0) return { tip: { kind: "preset", amount: 0 }, text: "" };
+  if (CHECKOUT_TIP_PRESETS.includes(amount)) {
+    return { tip: { kind: "preset", amount }, text: "" };
+  }
+  return { tip: { kind: "custom" }, text: String(amount) };
 }
 
 export default function AppointmentOutcomeScreen() {
@@ -155,43 +225,55 @@ export default function AppointmentOutcomeScreen() {
   const { colors } = useTheme();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [theme]);
-  const { showBanner } = useNotificationContext();
+  const userRole = useAppSelector((state) => state.user.userRole);
   const params = useLocalSearchParams<{
     bookingId?: string;
-    /** Preselects the choice on the Update status step. */
+    /** completed → straight to Complete & Checkout; no_show → Update status. */
     outcome?: string;
-    /** "payment" | "reject" open the salon payment steps directly. */
+    /** "payment" records a Not Yet Paid visit's cash; "reject" = Not received. */
     step?: string;
+    /** "details" when opened from Appointment Details (View Appointment = back). */
+    from?: string;
   }>();
   const bookingId = params.bookingId ?? "";
   const entryStep: Step =
     params.step === "payment"
-      ? "payment"
+      ? "review"
       : params.step === "reject"
         ? "reject"
-        : "status";
+        : params.outcome === "completed"
+          ? "method"
+          : "status";
 
   const [appt, setAppt] = useState<Appointment | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [step, setStep] = useState<Step>(entryStep);
+  const [history, setHistory] = useState<Step[]>([]);
+  /** collect = recording the cash of a visit that is already completed */
+  const [mode, setMode] = useState<"checkout" | "collect">(
+    params.step === "payment" || params.step === "reject" ? "collect" : "checkout",
+  );
   const [outcome, setOutcome] = useState<Outcome | null>(
     params.outcome === "completed" || params.outcome === "no_show"
       ? params.outcome
       : null,
   );
-  const [markedOutcome, setMarkedOutcome] = useState<Outcome | null>(null);
   const [preview, setPreview] = useState<OutcomePreview | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
   const previewRequest = useRef(0);
+  const [payMethod, setPayMethod] = useState<PayMethod | null>(
+    params.step === "payment" ? "cash" : null,
+  );
+  const [tip, setTip] = useState<CheckoutTip>({ kind: "preset", amount: 0 });
+  const [customTip, setCustomTip] = useState("");
+  const [tipServerError, setTipServerError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const busyRef = useRef(false);
   const [actionError, setActionError] = useState<string | null>(null);
-  const [cashTipText, setCashTipText] = useState("");
-  const [recordedTip, setRecordedTip] = useState<number>(0);
+  const [result, setResult] = useState<DoneResult | null>(null);
   const [reason, setReason] = useState("");
-  const [nextLoading, setNextLoading] = useState(false);
 
   const setBusyState = (value: boolean) => {
     busyRef.current = value;
@@ -237,15 +319,29 @@ export default function AppointmentOutcomeScreen() {
 
   useEffect(() => {
     load().then((data) => {
-      const claimTip = data?.inPersonPayment?.tipAmount;
-      if (data?.inPersonPayment?.status === "claimed" && claimTip != null && claimTip > 0) {
-        setCashTipText(String(claimTip));
+      if (!data) return;
+      // Already completed but still owed (stale list / second tap): record the cash.
+      if (
+        entryStep !== "reject" &&
+        !data.canMarkOutcome &&
+        data.canConfirmInPersonPayment
+      ) {
+        setMode("collect");
+        setPayMethod("cash");
+        setStep("review");
+      }
+      const claim = data.inPersonPayment;
+      if (claim?.status === "claimed") {
+        const prefill = tipFromAmount(claim.tipAmount);
+        setTip(prefill.tip);
+        setCustomTip(prefill.text);
       }
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bookingId]);
 
-  // Policy preview for the picked outcome (fee / membership visit / walk-in note).
+  // Outcome preview: the policy note, and for completed the booked
+  // servicePrice + canPayCash that drive the checkout.
   const loadPreview = useCallback(
     async (next: Outcome) => {
       if (!bookingId) return;
@@ -273,66 +369,140 @@ export default function AppointmentOutcomeScreen() {
   );
 
   useEffect(() => {
-    if (step === "status" && outcome && appt?.canMarkOutcome) {
+    if (mode === "checkout" && outcome && appt?.canMarkOutcome) {
       void loadPreview(outcome);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [outcome, appt?.canMarkOutcome]);
+  }, [outcome, mode, appt?.canMarkOutcome]);
 
-  // ── Back ───────────────────────────────────────────────────────────────
-  const previousStep = (): Step | null => {
-    if (step === entryStep) return null;
-    if (step === "reject") return "payment";
-    if (step === "payment" && markedOutcome) return "done";
-    return null;
+  const completedPreview = preview?.outcome === "completed" ? preview : null;
+  // Older servers: no canPayCash → owed unless membership or already paid.
+  const canPayCash = completedPreview
+    ? (completedPreview.canPayCash ??
+      (completedPreview.appointmentType !== "subscription" && !completedPreview.paid))
+    : true;
+
+  // Membership / paid online: nothing to ask, go straight to the review.
+  useEffect(() => {
+    if (step === "method" && completedPreview && !canPayCash) {
+      setStep("review");
+    }
+  }, [step, completedPreview, canPayCash]);
+
+  // ── Steps / back ───────────────────────────────────────────────────────
+  const goTo = (next: Step) => {
+    setActionError(null);
+    setHistory((h) => [...h, step]);
+    setStep(next);
+  };
+  const isEndScreen = step === "done" || step === "rejected";
+  const canStepBack = !isEndScreen && history.length > 0;
+
+  const stepBack = () => {
+    const prev = history[history.length - 1];
+    if (!prev) return;
+    setActionError(null);
+    setHistory(history.slice(0, -1));
+    setStep(prev);
   };
 
-  usePreventRemove(busy || previousStep() !== null, ({ data: event }) => {
+  usePreventRemove(busy || canStepBack, ({ data: event }) => {
     const type = event.action.type;
     if (type !== "GO_BACK" && type !== "POP") {
       navigation.dispatch(event.action);
       return;
     }
     if (busyRef.current) return;
-    const prev = previousStep();
-    if (prev) {
-      setActionError(null);
-      setStep(prev);
-    }
+    stepBack();
   });
 
   const onHeaderBack = () => {
     if (busyRef.current) return;
-    const prev = previousStep();
-    if (prev) {
-      setActionError(null);
-      setStep(prev);
+    if (canStepBack) {
+      stepBack();
       return;
     }
     leave();
   };
 
+  // ── Money ──────────────────────────────────────────────────────────────
+  const currency = completedPreview?.currency || "usd";
+  const money = (n: number | null | undefined) => formatVisitMoney(n ?? 0, currency);
+  const servicePrice =
+    mode === "collect"
+      ? (positiveAmount(appt?.inPersonPayment?.serviceAmount) ??
+        positiveAmount(appt?.totalPrice))
+      : (completedPreview?.servicePrice ?? positiveAmount(appt?.totalPrice));
+  const isCashPayment = mode === "collect" || (canPayCash && payMethod === "cash");
+  const tipAmount = checkoutTipAmount(tip, customTip);
+  const tipRangeError =
+    tip.kind === "custom" && tipAmount == null ? t("ckTipRange") : null;
+  const tipError = tipRangeError ?? tipServerError;
+  const totalCollected = roundCents((servicePrice ?? 0) + (tipAmount ?? 0));
+
+  const onTipChange = (next: CheckoutTip) => {
+    setTipServerError(null);
+    setTip(next);
+  };
+  const onCustomTipChange = (text: string) => {
+    setTipServerError(null);
+    setCustomTip(text);
+  };
+
   // ── Actions ────────────────────────────────────────────────────────────
-  const saveOutcome = async () => {
-    if (!bookingId || !outcome || busyRef.current) return;
+  // The response is the updated appointment; merge so nothing shown goes blank.
+  const applyUpdated = (updated: unknown): Appointment | null => {
+    if (updated && typeof updated === "object" && "id" in updated) {
+      const next = updated as Partial<Appointment>;
+      setAppt((prev) => (prev ? { ...prev, ...next } : (next as Appointment)));
+      return next as Appointment;
+    }
+    return null;
+  };
+
+  const finish = (next: DoneResult) => {
+    setResult(next);
+    setHistory([]);
+    setActionError(null);
+    setStep("done");
+  };
+
+  const localPayment = (tipValue: number): InPersonPayment => ({
+    status: "confirmed",
+    method: "cash",
+    serviceAmount: servicePrice,
+    tipAmount: tipValue,
+    totalAmount: roundCents((servicePrice ?? 0) + tipValue),
+    claimedAt: null,
+    resolvedAt: null,
+    resolvedByName: null,
+  });
+
+  const showSubmitError = (error: unknown, fallback: string) => {
+    const tipField = getApiFieldError(error, "tip_amount");
+    if (tipField) setTipServerError(tipField);
+    const paidField = getApiFieldError(error, "paid_cash");
+    setActionError(
+      paidField ?? (tipField ? null : getApiErrorMessage(error, fallback)),
+    );
+  };
+
+  const saveNoShow = async () => {
+    if (!bookingId || busyRef.current) return;
     setActionError(null);
     setBusyState(true);
     try {
-      const response = await ApiService.post<{
-        success: boolean;
-        message?: string;
-      }>(
+      const response = await ApiService.post<{ success: boolean; message?: string; data?: unknown }>(
         appointmentsEndpoints.markOutcome(bookingId),
-        { outcome },
+        { outcome: "no_show" },
         { headers: await getStripeModeHeaders() },
       );
       if (!response.success) {
         setActionError(response.message || t("aoSaveError"));
         return;
       }
-      setMarkedOutcome(outcome);
-      await load(true);
-      setStep("done");
+      if (!applyUpdated(response.data)) await load(true);
+      finish({ kind: "no_show" });
     } catch (error) {
       setActionError(getApiErrorMessage(error, t("aoSaveError")));
     } finally {
@@ -340,24 +510,54 @@ export default function AppointmentOutcomeScreen() {
     }
   };
 
-  const confirmPayment = async () => {
+  const confirmCheckout = async () => {
     if (!bookingId || busyRef.current) return;
-    const tip = parseAmount(cashTipText) ?? 0;
-    if (tip < 0 || tip > 1000) {
-      setActionError(t("aoCashTipRange"));
-      return;
-    }
+    const paidCash = canPayCash && payMethod === "cash";
+    if (paidCash && tipAmount == null) return;
+    const tipValue = paidCash ? (tipAmount ?? 0) : 0;
     setActionError(null);
+    setTipServerError(null);
     setBusyState(true);
     try {
-      const updated = await confirmInPersonPayment<Appointment>(bookingId, tip);
-      if (updated && typeof updated === "object" && "id" in updated) {
-        setAppt(updated);
+      const updated = applyUpdated(
+        await completeAppointment<Appointment>(
+          bookingId,
+          { paidCash, tip: tipValue },
+          await getStripeModeHeaders(),
+        ),
+      );
+      if (paidCash) {
+        finish({
+          kind: "paid",
+          payment: updated?.inPersonPayment ?? localPayment(tipValue),
+          collected: false,
+        });
+      } else {
+        finish({ kind: canPayCash ? "unpaid" : "covered" });
       }
-      setRecordedTip(tip);
-      setStep("paid");
     } catch (error) {
-      setActionError(getApiErrorMessage(error, t("aoConfirmError")));
+      showSubmitError(error, t("aoSaveError"));
+    } finally {
+      setBusyState(false);
+    }
+  };
+
+  const confirmCollected = async () => {
+    if (!bookingId || busyRef.current || tipAmount == null) return;
+    setActionError(null);
+    setTipServerError(null);
+    setBusyState(true);
+    try {
+      const updated = applyUpdated(
+        await confirmInPersonPayment<Appointment>(bookingId, tipAmount),
+      );
+      finish({
+        kind: "paid",
+        payment: updated?.inPersonPayment ?? localPayment(tipAmount),
+        collected: true,
+      });
+    } catch (error) {
+      showSubmitError(error, t("aoConfirmError"));
     } finally {
       setBusyState(false);
     }
@@ -368,10 +568,8 @@ export default function AppointmentOutcomeScreen() {
     setActionError(null);
     setBusyState(true);
     try {
-      const updated = await rejectInPersonPayment<Appointment>(bookingId, reason);
-      if (updated && typeof updated === "object" && "id" in updated) {
-        setAppt(updated);
-      }
+      applyUpdated(await rejectInPersonPayment<Appointment>(bookingId, reason));
+      setHistory([]);
       setStep("rejected");
     } catch (error) {
       setActionError(getApiErrorMessage(error, t("aoRejectError")));
@@ -380,52 +578,25 @@ export default function AppointmentOutcomeScreen() {
     }
   };
 
-  const openCalendar = () =>
-    router.navigate("/(main)/dashboard/(calendar)" as any);
   const openDashboard = () =>
     router.navigate("/(main)/dashboard/(home)" as any);
-
-  const openNextAppointment = async () => {
-    if (nextLoading) return;
-    setNextLoading(true);
-    try {
-      const response = await ApiService.get<{
-        success: boolean;
-        data?: { data?: Array<{ id: number; appointmentDate: string; appointmentTime: string }> };
-      }>(
-        appointmentsEndpoints.list({
-          status: "scheduled",
-          sort: "appointment_date",
-          direction: "asc",
-          appointment_from_date: dayjs().format("YYYY-MM-DD"),
-          per_page: 20,
-        }),
-      );
-      const now = Date.now();
-      const next = (response?.data?.data ?? []).find((item) => {
-        if (String(item.id) === bookingId) return false;
-        const at = parseVisitDate(item.appointmentDate, item.appointmentTime);
-        return !at || at.getTime() >= now;
-      });
-      if (!next) {
-        showBanner(t("aoNextAppointment"), t("aoNoNextAppointment"), "info", 3000);
-        return;
-      }
-      router.replace({
-        pathname: "/(main)/bookingDetailsById",
-        params: { bookingId: String(next.id) },
-      });
-    } catch (error) {
-      showBanner(
-        t("error"),
-        getApiErrorMessage(error, t("aoNoNextAppointment")),
-        "error",
-        3000,
-      );
-    } finally {
-      setNextLoading(false);
+  const openAppointment = () => {
+    if (params.from === "details" && router.canGoBack()) {
+      router.back();
+      return;
     }
+    router.replace({
+      pathname: "/(main)/bookingDetailsById",
+      params: { bookingId },
+    });
   };
+  // Transactions are business-only; staff land on the appointment instead.
+  const canViewTransactions = userRole === "business";
+  const openTransactions = () =>
+    router.replace({
+      pathname: "/(main)/businessTransactions/list" as any,
+      params: { period: "today" },
+    });
 
   // ── Pieces ─────────────────────────────────────────────────────────────
   const customerName = appt?.user?.trim() || t("aoCustomer");
@@ -433,46 +604,40 @@ export default function AppointmentOutcomeScreen() {
   const when = appt
     ? formatVisitDateTime(appt.appointmentDate, appt.appointmentTime)
     : "";
-  const owed = amountOwed(appt);
   const claim =
     appt?.inPersonPayment?.status === "claimed" ? appt.inPersonPayment : null;
-
-  const customerCard = (
-    <FlowCard style={styles.card}>
-      <PersonRow
-        name={customerName}
-        subtitle={service || null}
-        image={appt?.userProfilePic}
-      />
-      {when ? (
-        <View style={styles.metaRow}>
-          <MaterialIcons
-            name="event"
-            size={moderateWidthScale(18)}
-            color={theme.lightGreen}
-          />
-          <Text style={styles.metaText}>{when}</Text>
-        </View>
-      ) : null}
-    </FlowCard>
-  );
+  const coveredLabel =
+    completedPreview?.appointmentType === "subscription" ||
+    appt?.appointmentType === "subscription"
+      ? t("ckMethodMembership")
+      : t("ckMethodPaidOnline");
+  const methodLabel = isCashPayment
+    ? t("ckMethodCash")
+    : !canPayCash
+      ? coveredLabel
+      : t("ckMethodUnpaid");
 
   const errorNote = actionError ? (
     <InfoNote tone="error" icon="error-outline" text={actionError} />
   ) : null;
 
+  const unavailable = (text: string) => (
+    <>
+      <ScrollView contentContainerStyle={styles.content}>
+        <VisitSummaryCard
+          name={customerName}
+          service={service}
+          when={when}
+          image={appt?.userProfilePic}
+        />
+        <InfoNote text={text} />
+      </ScrollView>
+      <FlowFooter primary={{ label: t("done"), onPress: leave }} />
+    </>
+  );
+
   const renderStatus = () => {
-    if (!appt?.canMarkOutcome) {
-      return (
-        <>
-          <ScrollView contentContainerStyle={styles.content}>
-            {customerCard}
-            <InfoNote text={t("aoAlreadyMarked")} />
-          </ScrollView>
-          <FlowFooter primary={{ label: t("done"), onPress: leave }} />
-        </>
-      );
-    }
+    if (!appt?.canMarkOutcome) return unavailable(t("aoAlreadyMarked"));
     const showNoCardWarning =
       outcome === "no_show" &&
       !!preview &&
@@ -485,8 +650,13 @@ export default function AppointmentOutcomeScreen() {
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}
         >
-          {customerCard}
-          <View style={{ gap: moderateHeightScale(12) }} accessibilityRole="radiogroup">
+          <VisitSummaryCard
+            name={customerName}
+            service={service}
+            when={when}
+            image={appt.userProfilePic}
+          />
+          <View style={styles.group} accessibilityRole="radiogroup">
             <SectionLabel label={t("aoMarkAs")} />
             <RadioCard
               icon="check-circle"
@@ -510,10 +680,10 @@ export default function AppointmentOutcomeScreen() {
               <Text style={styles.metaText}>{t("aoCheckingPolicy")}</Text>
             </View>
           ) : null}
-          {outcome && preview?.message ? (
+          {outcome === "no_show" && preview?.message ? (
             <InfoNote
-              tone={outcome === "no_show" ? "warm" : "info"}
-              icon={outcome === "no_show" ? "warning-amber" : "info-outline"}
+              tone="warm"
+              icon="warning-amber"
               title={preview.question || null}
               text={preview.message}
             />
@@ -532,8 +702,11 @@ export default function AppointmentOutcomeScreen() {
         </ScrollView>
         <FlowFooter
           primary={{
-            label: t("aoSave"),
-            onPress: saveOutcome,
+            label: outcome === "no_show" ? t("aoSave") : t("continue"),
+            onPress:
+              outcome === "no_show"
+                ? saveNoShow
+                : () => goTo(canPayCash ? "method" : "review"),
             disabled: !outcome || previewLoading || !!previewError,
             loading: busy,
           }}
@@ -543,75 +716,74 @@ export default function AppointmentOutcomeScreen() {
     );
   };
 
-  const renderDone = () => {
-    const noShow = markedOutcome === "no_show";
-    const canConfirm = !!appt?.canConfirmInPersonPayment;
-    const actions = [
-      { key: "calendar", label: t("aoViewInCalendar"), icon: "calendar-month" as const, onPress: openCalendar },
-      { key: "next", label: t("aoNextAppointment"), icon: "skip-next" as const, onPress: openNextAppointment, loading: nextLoading },
-      { key: "home", label: t("aoBackToDashboard"), icon: "home" as const, onPress: openDashboard },
-    ];
+  const renderMethod = () => {
+    if (!appt?.canMarkOutcome) return unavailable(t("aoAlreadyMarked"));
     return (
-      <ScrollView
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
-      >
-        <SuccessHero
-          tone={noShow ? "danger" : "success"}
-          icon={noShow ? "person-off" : "check"}
-          title={noShow ? t("aoNoShowDoneTitle") : t("aoCompletedDoneTitle")}
-          subtitle={customerName}
-          lines={[when]}
-        />
-        {canConfirm ? (
-          <InfoNote
-            icon="storefront"
-            title={claim ? t("aoClaimWaitingTitle") : null}
-            text={
-              claim
-                ? t("aoClaimWaitingBody", { name: customerName })
-                : t("aoPaysAtShop")
-            }
-          />
-        ) : null}
-        <View style={styles.actions}>
-          {canConfirm ? (
-            <FlowButton
-              label={t("aoConfirmPayment")}
+      <>
+        <ScrollView
+          contentContainerStyle={styles.content}
+          showsVerticalScrollIndicator={false}
+        >
+          <VisitSummaryCard
+            name={customerName}
+            service={service}
+            when={when}
+            image={appt.userProfilePic}
+          >
+            {completedPreview ? (
+              <MoneyRow label={t("ckServiceTotal")} value={money(servicePrice)} />
+            ) : (
+              <View style={styles.previewLoading}>
+                <ActivityIndicator color={theme.darkGreen} />
+              </View>
+            )}
+          </VisitSummaryCard>
+          <View style={styles.group} accessibilityRole="radiogroup">
+            <FlowTitle compact title={t("ckHowPaid")} />
+            <RadioCard
               icon="payments"
-              onPress={() => {
-                setActionError(null);
-                setStep("payment");
-              }}
+              title={t("ckMethodCash")}
+              subtitle={t("ckMethodCashSub")}
+              selected={payMethod === "cash"}
+              onPress={() => setPayMethod("cash")}
             />
+            <RadioCard
+              icon="schedule"
+              title={t("ckMethodUnpaid")}
+              subtitle={t("ckMethodUnpaidSub")}
+              selected={payMethod === "unpaid"}
+              onPress={() => setPayMethod("unpaid")}
+            />
+          </View>
+          {payMethod === "unpaid" ? (
+            <InfoNote tone="warm" icon="schedule" text={t("ckUnpaidNote")} />
+          ) : (
+            <InfoNote icon="storefront" text={t("ckCashNote")} />
+          )}
+          {previewError ? (
+            <InfoNote tone="error" icon="error-outline" text={previewError} />
           ) : null}
-          {actions.map((action, index) => (
-            <FlowButton
-              key={action.key}
-              label={action.label}
-              icon={action.icon}
-              variant={!canConfirm && index === 0 ? "primary" : "outline"}
-              onPress={action.onPress}
-              loading={"loading" in action ? action.loading : false}
-            />
-          ))}
-        </View>
-      </ScrollView>
+        </ScrollView>
+        <FlowFooter
+          primary={{
+            label: t("continue"),
+            onPress: () => goTo("review"),
+            disabled: !payMethod || !completedPreview,
+          }}
+          hint={!payMethod ? t("ckPickMethod") : null}
+        />
+      </>
     );
   };
 
-  const renderPayment = () => {
-    if (!appt?.canConfirmInPersonPayment) {
-      return (
-        <>
-          <ScrollView contentContainerStyle={styles.content}>
-            {customerCard}
-            <InfoNote text={t("aoNothingToConfirm")} />
-          </ScrollView>
-          <FlowFooter primary={{ label: t("done"), onPress: leave }} />
-        </>
-      );
+  const renderReview = () => {
+    if (mode === "collect" && !appt?.canConfirmInPersonPayment) {
+      return unavailable(t("aoNothingToConfirm"));
     }
+    if (mode === "checkout" && !appt?.canMarkOutcome) {
+      return unavailable(t("aoAlreadyMarked"));
+    }
+    const canChange = mode === "checkout" && canPayCash;
     const claimedAt = formatIsoDateTime(claim?.claimedAt);
     return (
       <>
@@ -621,12 +793,35 @@ export default function AppointmentOutcomeScreen() {
           keyboardShouldPersistTaps="handled"
           bottomOffset={moderateHeightScale(24)}
         >
-          <FlowTitle
-            title={t("aoPaymentQuestion")}
-            subtitle={t("aoPaymentSubtitle")}
-          />
-          {customerCard}
-          {claim ? (
+          <VisitSummaryCard
+            name={customerName}
+            service={service}
+            when={when}
+            image={appt?.userProfilePic}
+          >
+            <View style={styles.methodRow}>
+              <Text style={styles.methodLabel}>{t("ckPaymentMethod")}</Text>
+              <View style={styles.methodValueWrap}>
+                <Text style={styles.methodValue}>{methodLabel}</Text>
+                {canChange ? (
+                  <TouchableOpacity
+                    onPress={stepBack}
+                    disabled={busy}
+                    hitSlop={{ top: 12, bottom: 12, left: 20, right: 12 }}
+                    style={styles.changeBtn}
+                    accessibilityRole="button"
+                    accessibilityLabel={t("ckChangeMethod")}
+                  >
+                    <Text style={styles.changeText}>{t("ckChange")}</Text>
+                  </TouchableOpacity>
+                ) : null}
+              </View>
+            </View>
+            <SummaryDivider />
+            <MoneyRow label={t("ckServiceTotal")} value={money(servicePrice)} />
+          </VisitSummaryCard>
+
+          {mode === "collect" && claim ? (
             <InfoNote
               tone="warm"
               icon="storefront"
@@ -634,50 +829,72 @@ export default function AppointmentOutcomeScreen() {
               text={[
                 claim.tipAmount != null && claim.tipAmount > 0
                   ? t("aoClaimWithTip", {
-                      amount: formatVisitMoney(owed),
-                      tip: formatVisitMoney(claim.tipAmount),
+                      amount: money(servicePrice),
+                      tip: money(claim.tipAmount),
                     })
-                  : t("aoClaimNoTip", { amount: formatVisitMoney(owed) }),
+                  : t("aoClaimNoTip", { amount: money(servicePrice) }),
                 claimedAt,
               ]
                 .filter(Boolean)
                 .join("\n")}
             />
-          ) : (
-            <InfoNote icon="storefront" text={t("aoPaysAtShop")} />
-          )}
-          {owed != null ? (
-            <FlowCard style={styles.card}>
-              <MoneyRow label={t("aoAmountDue")} value={formatVisitMoney(owed)} total />
-            </FlowCard>
           ) : null}
-          <FlowTextField
-            label={t("aoCashTipLabel")}
-            prefix="$"
-            value={cashTipText}
-            onChangeText={(text) => setCashTipText(sanitizeAmountInput(text))}
-            keyboardType="decimal-pad"
-            placeholder="0.00"
-            helper={t("aoCashTipHelper")}
-            returnKeyType="done"
-          />
+
+          {isCashPayment ? (
+            <>
+              <View style={styles.group}>
+                <FlowTitle compact title={t("ckAddTip")} />
+                <CheckoutTipPicker
+                  tip={tip}
+                  onTip={onTipChange}
+                  customText={customTip}
+                  onCustomText={onCustomTipChange}
+                  error={tipError}
+                />
+              </View>
+              <FlowCard style={styles.card}>
+                <MoneyRow label={t("ckService")} value={money(servicePrice)} />
+                <MoneyRow label={t("ckTip")} value={money(tipAmount ?? 0)} />
+                <SummaryDivider />
+                <MoneyRow
+                  label={t("ckTotalCollected")}
+                  value={money(totalCollected)}
+                  total
+                />
+              </FlowCard>
+              <InfoNote icon="info-outline" text={t("ckConfirmAfterPayment")} />
+            </>
+          ) : canPayCash ? (
+            <>
+              <FlowCard style={styles.card}>
+                <MoneyRow label={t("ckStillOwed")} value={money(servicePrice)} total />
+              </FlowCard>
+              <InfoNote tone="warm" icon="schedule" text={t("ckUnpaidNote")} />
+            </>
+          ) : (
+            <InfoNote
+              icon={
+                appt?.appointmentType === "subscription"
+                  ? "card-membership"
+                  : "check-circle-outline"
+              }
+              text={completedPreview?.message || t("ckNothingToCollect")}
+            />
+          )}
           {errorNote}
         </KeyboardAwareScrollView>
         <FlowFooter
           primary={{
-            label: t("aoConfirmPayment"),
-            onPress: confirmPayment,
+            label: mode === "collect" ? t("ckConfirmPayment") : t("ckConfirmComplete"),
+            onPress: mode === "collect" ? confirmCollected : confirmCheckout,
             loading: busy,
-            icon: "check",
+            disabled: isCashPayment && tipAmount == null,
           }}
           tertiary={
-            appt.canRejectInPersonPayment
+            mode === "collect" && appt?.canRejectInPersonPayment
               ? {
                   label: t("aoNotReceived"),
-                  onPress: () => {
-                    setActionError(null);
-                    setStep("reject");
-                  },
+                  onPress: () => goTo("reject"),
                   disabled: busy,
                 }
               : null
@@ -687,18 +904,133 @@ export default function AppointmentOutcomeScreen() {
     );
   };
 
-  const renderReject = () => {
-    if (!appt?.canRejectInPersonPayment) {
+  const renderDone = () => {
+    if (!result) return null;
+    const doneActions = (primary: "transaction" | "appointment") => (
+      <View style={styles.actions}>
+        {primary === "transaction" && canViewTransactions ? (
+          <FlowButton
+            label={t("ckViewTransaction")}
+            icon="receipt-long"
+            onPress={openTransactions}
+          />
+        ) : (
+          <FlowButton
+            label={t("ckViewAppointment")}
+            icon="event-note"
+            onPress={openAppointment}
+          />
+        )}
+        <FlowButton
+          variant="outline"
+          icon="home"
+          label={t("aoBackToDashboard")}
+          onPress={openDashboard}
+        />
+      </View>
+    );
+    const header = (
+      title: string,
+      badges: React.ComponentProps<typeof StatusBadges>["items"],
+      tone: "success" | "danger" = "success",
+    ) => (
+      <View style={styles.doneHeader}>
+        <SuccessHero
+          tone={tone}
+          icon={tone === "danger" ? "person-off" : "check"}
+          title={title}
+        />
+        {badges.length ? <StatusBadges items={badges} /> : null}
+        <View>
+          <Text style={styles.doneName}>{customerName}</Text>
+          {when ? <Text style={styles.doneWhen}>{when}</Text> : null}
+        </View>
+      </View>
+    );
+    const completedBadge = {
+      label: t("ckBadgeCompleted"),
+      tone: "success" as const,
+      icon: "check-circle" as const,
+    };
+
+    if (result.kind === "no_show") {
       return (
-        <>
-          <ScrollView contentContainerStyle={styles.content}>
-            {customerCard}
-            <InfoNote text={t("aoNoClaimToReject")} />
-          </ScrollView>
-          <FlowFooter primary={{ label: t("done"), onPress: leave }} />
-        </>
+        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+          {header(t("aoNoShowDoneTitle"), [], "danger")}
+          {doneActions("appointment")}
+        </ScrollView>
       );
     }
+
+    if (result.kind === "paid") {
+      const p = result.payment;
+      const serviceAmount = p?.serviceAmount ?? servicePrice ?? 0;
+      const tipValue = p?.tipAmount ?? 0;
+      const total = p?.totalAmount ?? roundCents(serviceAmount + tipValue);
+      return (
+        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+          {header(
+            result.collected ? t("ckPaymentRecordedTitle") : t("aoCompletedDoneTitle"),
+            [
+              completedBadge,
+              { label: t("ckBadgePaid"), tone: "success", icon: "payments" },
+            ],
+          )}
+          <FlowCard style={styles.card}>
+            <MoneyRow label={service || t("ckService")} value={money(serviceAmount)} />
+            <SummaryDivider />
+            <MoneyRow label={t("ckPaymentMethod")} value={t("ckMethodCash")} />
+            <MoneyRow label={t("ckTip")} value={money(tipValue)} />
+            <SummaryDivider />
+            <MoneyRow label={t("ckTotalCollected")} value={money(total)} total />
+          </FlowCard>
+          {doneActions("transaction")}
+        </ScrollView>
+      );
+    }
+
+    if (result.kind === "unpaid") {
+      return (
+        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+          {header(t("aoCompletedDoneTitle"), [
+            completedBadge,
+            { label: t("ckBadgeUnpaid"), tone: "warn", icon: "schedule" },
+          ])}
+          <FlowCard style={styles.card}>
+            <MoneyRow label={service || t("ckService")} value={money(servicePrice)} />
+            <SummaryDivider />
+            <MoneyRow label={t("ckPaymentMethod")} value={t("ckMethodUnpaid")} />
+            <SummaryDivider />
+            <MoneyRow label={t("ckStillOwed")} value={money(servicePrice)} total />
+          </FlowCard>
+          <InfoNote tone="warm" icon="schedule" text={t("ckUnpaidDoneNote")} />
+          {doneActions("appointment")}
+        </ScrollView>
+      );
+    }
+
+    const membership =
+      completedPreview?.appointmentType === "subscription" ||
+      appt?.appointmentType === "subscription";
+    return (
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        {header(t("aoCompletedDoneTitle"), [
+          completedBadge,
+          membership
+            ? { label: t("ckBadgeMembership"), tone: "neutral", icon: "card-membership" }
+            : { label: t("ckBadgePaid"), tone: "success", icon: "payments" },
+        ])}
+        <FlowCard style={styles.card}>
+          {service ? <MoneyRow label={t("ckService")} value={service} /> : null}
+          <MoneyRow label={t("ckPaymentMethod")} value={coveredLabel} />
+        </FlowCard>
+        {doneActions(membership ? "appointment" : "transaction")}
+      </ScrollView>
+    );
+  };
+
+  const renderReject = () => {
+    if (!appt?.canRejectInPersonPayment) return unavailable(t("aoNoClaimToReject"));
     return (
       <>
         <KeyboardAwareScrollView
@@ -711,7 +1043,12 @@ export default function AppointmentOutcomeScreen() {
             title={t("aoRejectTitle")}
             subtitle={t("aoRejectSubtitle", { name: customerName })}
           />
-          {customerCard}
+          <VisitSummaryCard
+            name={customerName}
+            service={service}
+            when={when}
+            image={appt.userProfilePic}
+          />
           <FlowTextField
             label={t("aoRejectReasonLabel")}
             placeholder={t("aoRejectReasonPlaceholder")}
@@ -751,34 +1088,6 @@ export default function AppointmentOutcomeScreen() {
     );
   };
 
-  const renderPaid = () => (
-    <ScrollView
-      contentContainerStyle={styles.content}
-      showsVerticalScrollIndicator={false}
-    >
-      <SuccessHero
-        icon="payments"
-        title={t("aoPaidTitle")}
-        amount={owed != null ? formatVisitMoney(owed) : null}
-        subtitle={t("aoPaidBody", { name: customerName })}
-        lines={[
-          recordedTip > 0
-            ? t("aoPaidCashTip", { amount: formatVisitMoney(recordedTip) })
-            : null,
-        ]}
-      />
-      <View style={styles.actions}>
-        <FlowButton label={t("done")} onPress={leave} />
-        <FlowButton
-          variant="outline"
-          icon="home"
-          label={t("aoBackToDashboard")}
-          onPress={openDashboard}
-        />
-      </View>
-    </ScrollView>
-  );
-
   const renderRejected = () => (
     <ScrollView
       contentContainerStyle={styles.content}
@@ -803,18 +1112,21 @@ export default function AppointmentOutcomeScreen() {
   );
 
   // ── Frame ──────────────────────────────────────────────────────────────
+  const checkoutHasMethod = mode === "checkout" && canPayCash;
   const headerTitle =
     step === "status"
       ? t("aoUpdateStatus")
-      : step === "done"
-        ? t("aoAllSet")
-        : step === "reject" || step === "rejected"
-          ? t("aoNotReceived")
-          : t("aoPaymentTitle");
+      : step === "method"
+        ? t("ckCheckoutTitle")
+        : step === "review"
+          ? t("ckReviewTitle")
+          : step === "reject" || step === "rejected"
+            ? t("aoNotReceived")
+            : "";
   const headerStep =
-    step === "status" && appt?.canMarkOutcome
+    step === "method" && appt?.canMarkOutcome
       ? { current: 1, total: 2 }
-      : step === "done"
+      : step === "review" && checkoutHasMethod && appt?.canMarkOutcome
         ? { current: 2, total: 2 }
         : null;
 
@@ -843,18 +1155,16 @@ export default function AppointmentOutcomeScreen() {
     body =
       step === "status"
         ? renderStatus()
-        : step === "done"
-          ? renderDone()
-          : step === "payment"
-            ? renderPayment()
-            : step === "reject"
-              ? renderReject()
-              : step === "paid"
-                ? renderPaid()
+        : step === "method"
+          ? renderMethod()
+          : step === "review"
+            ? renderReview()
+            : step === "done"
+              ? renderDone()
+              : step === "reject"
+                ? renderReject()
                 : renderRejected();
   }
-
-  const isEndScreen = step === "done" || step === "paid" || step === "rejected";
 
   return (
     <View style={styles.root}>
@@ -863,7 +1173,7 @@ export default function AppointmentOutcomeScreen() {
         step={headerStep}
         onBack={onHeaderBack}
         backDisabled={busy}
-        backIcon={isEndScreen || !previousStep() ? "close" : "back"}
+        backIcon={isEndScreen || !canStepBack ? "close" : "back"}
       />
       {body}
     </View>

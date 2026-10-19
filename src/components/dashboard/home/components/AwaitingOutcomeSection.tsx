@@ -452,7 +452,7 @@ export default function AwaitingOutcomeSection({
                     onPress={() => openOutcomeFlow(item.id, "completed")}
                   >
                     <Text style={styles.completedButtonText}>
-                      {t("markCompleted")}
+                      {t("ckCompleteCheckout")}
                     </Text>
                   </TouchableOpacity>
                   <TouchableOpacity

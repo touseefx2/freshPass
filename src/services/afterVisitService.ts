@@ -19,6 +19,15 @@ export function getApiErrorMessage(error: unknown, fallback: string): string {
   return err?.data?.message || err?.message || fallback;
 }
 
+/** First 422 message for one field (`errors.tip_amount[0]`), else null. */
+export function getApiFieldError(error: unknown, field: string): string | null {
+  const errors = (error as { data?: { errors?: Record<string, unknown> } } | null)
+    ?.data?.errors;
+  const value = errors?.[field];
+  if (Array.isArray(value)) return typeof value[0] === "string" ? value[0] : null;
+  return typeof value === "string" ? value : null;
+}
+
 function unwrap<T>(response: ApiResponse<T>, fallback: string): T {
   if (response.success && response.data != null) {
     return response.data;
@@ -85,6 +94,31 @@ export async function confirmInPersonPayment<T = unknown>(
     { tip_amount: cashTip },
   );
   return unwrap(response, "Could not confirm the payment.");
+}
+
+/**
+ * Business checkout: completes the visit in one call. With `paidCash` the cash
+ * payment (and its tip) is recorded too; without it the visit stays owed
+ * (Not Yet Paid). A 422 changes nothing. Returns the updated appointment.
+ */
+export async function completeAppointment<T = unknown>(
+  appointmentId: number | string,
+  payment: { paidCash: boolean; tip: number },
+  headers?: Record<string, string>,
+): Promise<T> {
+  const body: { outcome: "completed"; paid_cash?: true; tip_amount?: number } = {
+    outcome: "completed",
+  };
+  if (payment.paidCash) {
+    body.paid_cash = true;
+    if (payment.tip > 0) body.tip_amount = payment.tip;
+  }
+  const response = await ApiService.post<ApiResponse<T>>(
+    appointmentsEndpoints.markOutcome(appointmentId),
+    body,
+    headers ? { headers } : undefined,
+  );
+  return unwrap(response, "Could not complete this appointment.");
 }
 
 /** Business: the salon payment didn't arrive (only while a claim waits). */

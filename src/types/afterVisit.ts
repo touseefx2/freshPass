@@ -21,9 +21,15 @@ export type InPersonPaymentStatus = "claimed" | "confirmed" | "rejected";
 
 export interface InPersonPayment {
   status: InPersonPaymentStatus | string;
+  /** Always "cash": the only in-person payment FreshPass records */
+  method?: "cash" | string | null;
+  /** Service total as booked (set once the payment is recorded) */
+  serviceAmount?: number | null;
   claimedAt: string | null;
   /** Cash tip the customer named (claim) or the business recorded */
   tipAmount: number | null;
+  /** serviceAmount + tipAmount */
+  totalAmount?: number | null;
   resolvedAt: string | null;
   resolvedByName: string | null;
 }
