@@ -1691,8 +1691,8 @@ export default function BusinessDetailScreen() {
   const [reviewsTotal, setReviewsTotal] = useState(0);
   const [reviewsAverageRating, setReviewsAverageRating] = useState(0);
 
-  // "Favourite" and "Follow" are the same row server-side; `is_following` is
-  // the current field, `is_favorited` the legacy alias.
+  // Heart = favourite (POST /favorite); Follow button = follow (separate API).
+  const [isFavorited, setIsFavorited] = useState<boolean | null>(null);
   const [isFollowing, setIsFollowing] = useState<boolean | null>(null);
   const [followersCount, setFollowersCount] = useState<number | null>(null);
   const [followLoading, setFollowLoading] = useState(false);
@@ -1776,9 +1776,12 @@ export default function BusinessDetailScreen() {
         setIsFollowing(
           typeof business.is_following === "boolean"
             ? business.is_following
-            : typeof business.is_favorited === "boolean"
-              ? business.is_favorited
-              : false,
+            : false,
+        );
+        setIsFavorited(
+          typeof business.is_favorited === "boolean"
+            ? business.is_favorited
+            : false,
         );
         setFollowersCount(
           typeof business.followers_count === "number"
@@ -1812,7 +1815,6 @@ export default function BusinessDetailScreen() {
         ? {
             ...prev,
             is_following: following,
-            is_favorited: following,
             ...(followers != null ? { followers_count: followers } : {}),
           }
         : prev,
@@ -1857,6 +1859,48 @@ export default function BusinessDetailScreen() {
       );
     } finally {
       setFollowLoading(false);
+    }
+  };
+
+  const handleToggleFavorite = async () => {
+    const isInternetConnected = await checkInternetConnection();
+    if (!isInternetConnected) {
+      Alert.alert(t("error"), t("noInternetConnection"));
+      return;
+    }
+
+    if (!params.business_id || isFavorited === null) {
+      return;
+    }
+
+    const previousValue = isFavorited;
+    const nextValue = !previousValue;
+    const applyFavorite = (value: boolean) => {
+      setIsFavorited(value);
+      setBusinessData((prev: any) =>
+        prev ? { ...prev, is_favorited: value } : prev,
+      );
+    };
+
+    // Optimistic UI update
+    applyFavorite(nextValue);
+
+    try {
+      const response = await ApiService.post<{
+        success: boolean;
+        favorited?: boolean;
+      }>(businessEndpoints.favorite(params.business_id));
+
+      if (!response?.success) {
+        applyFavorite(previousValue);
+        return;
+      }
+      if (typeof response.favorited === "boolean") {
+        applyFavorite(response.favorited);
+      }
+    } catch (error: any) {
+      applyFavorite(previousValue);
+      Alert.alert(t("error"), error?.message || t("somethingWentWrong"));
     }
   };
 
@@ -4125,17 +4169,17 @@ export default function BusinessDetailScreen() {
               ? undefined
               : isGuest
                 ? () => dispatch(setGuestModeModalVisible(true))
-                : handleToggleFollow
+                : handleToggleFavorite
           }
           disabled={!actionsEnabled || isBusinessOwnerView}
           accessibilityRole="button"
-          accessibilityState={{ selected: !!isFollowing }}
-          accessibilityLabel={isFollowing ? t("following") : t("follow")}
+          accessibilityState={{ selected: !!isFavorited }}
+          accessibilityLabel={t("favorites")}
         >
           <MaterialIcons
-            name={isFollowing ? "favorite" : "favorite-border"}
+            name={isFavorited ? "favorite" : "favorite-border"}
             size={moderateWidthScale(20)}
-            color={isFollowing ? theme.selectCard : theme.darkGreen}
+            color={isFavorited ? theme.selectCard : theme.darkGreen}
           />
         </TouchableOpacity>
       </View>

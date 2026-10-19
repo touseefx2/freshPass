@@ -1,4 +1,10 @@
-import React, { useMemo, useState, useEffect, useCallback, useRef } from "react";
+import React, {
+  useMemo,
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+} from "react";
 import {
   StyleSheet,
   FlatList,
@@ -10,10 +16,25 @@ import {
   Pressable,
   RefreshControl,
   AppState,
-  LayoutAnimation,
   type AppStateStatus,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
+import Animated, {
+  FadeInDown,
+  FadeOutUp,
+  LinearTransition,
+  ReduceMotion,
+} from "react-native-reanimated";
+
+// Details open top-down, each section a beat after the last.
+const detailEnter = (index: number) =>
+  FadeInDown.duration(320)
+    .delay(index * 70)
+    .reduceMotion(ReduceMotion.System);
+const detailExit = FadeOutUp.duration(160).reduceMotion(ReduceMotion.System);
+const cardLayout = LinearTransition.duration(280).reduceMotion(
+  ReduceMotion.System,
+);
 import { useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
@@ -673,7 +694,6 @@ export default function subscriptionCustomer() {
   // Cards start collapsed: the pass header only, details on tap.
   const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set());
   const toggleExpanded = useCallback((id: number) => {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setExpandedIds((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
@@ -882,12 +902,7 @@ export default function subscriptionCustomer() {
       }>(businessEndpoints.cancelSubscription(selectedSubscription.id), {});
 
       if (response.success) {
-        showBanner(
-          t("success"),
-          t("cmCancelled"),
-          "success",
-          2500,
-        );
+        showBanner(t("success"), t("cmCancelled"), "success", 2500);
         setCancelModalVisible(false);
         setSelectedSubscription(null);
         setConfirmChecked(false);
@@ -904,12 +919,7 @@ export default function subscriptionCustomer() {
         );
       }
     } catch (err: any) {
-      showBanner(
-        t("error"),
-        err.message || t("cmCancelFailed"),
-        "error",
-        2500,
-      );
+      showBanner(t("error"), err.message || t("cmCancelFailed"), "error", 2500);
     } finally {
       setIsCancelling(false);
     }
@@ -947,14 +957,13 @@ export default function subscriptionCustomer() {
       const canCancel = canCancelCustomerSubscription(item);
       const showCancelledBanner = pill.label === "Cancelled" && canBook;
       const visits = resolveVisits(item);
-      const visitsLeft = visits
-        ? (visits.bookable ?? visits.remaining)
-        : null;
-      const hasBookableService = visitsLeft != null
-        ? visitsLeft > 0
-        : (item.subscriptionPlanServices?.some(
-            (svc) => (svc.quantity ?? 1) > 0,
-          ) ?? false);
+      const visitsLeft = visits ? (visits.bookable ?? visits.remaining) : null;
+      const hasBookableService =
+        visitsLeft != null
+          ? visitsLeft > 0
+          : (item.subscriptionPlanServices?.some(
+              (svc) => (svc.quantity ?? 1) > 0,
+            ) ?? false);
       const scheduleDate =
         dateDisplay.date != null
           ? dateDisplay.kind === "nextPayment"
@@ -969,7 +978,8 @@ export default function subscriptionCustomer() {
       const description = item.subscriptionPlanDescription?.trim();
       const showDescription =
         !!description &&
-        description.toLowerCase() !== item.subscriptionPlan?.trim().toLowerCase();
+        description.toLowerCase() !==
+          item.subscriptionPlan?.trim().toLowerCase();
       const services = item.subscriptionPlanServices ?? [];
       const expanded = expandedIds.has(item.id);
       const summary = [
@@ -986,7 +996,11 @@ export default function subscriptionCustomer() {
         label: string,
         value: string,
       ) => (
-        <View style={styles.dateTile} accessible accessibilityLabel={`${label}, ${value}`}>
+        <View
+          style={styles.dateTile}
+          accessible
+          accessibilityLabel={`${label}, ${value}`}
+        >
           <View style={styles.dateIcon}>
             <Feather
               name={icon}
@@ -1006,17 +1020,23 @@ export default function subscriptionCustomer() {
       );
 
       return (
-        <View style={styles.card}>
+        <Animated.View style={styles.card} layout={cardLayout}>
           <TouchableOpacity
             activeOpacity={0.92}
             onPress={() => toggleExpanded(item.id)}
             accessibilityRole="button"
             accessibilityLabel={`${item.subscriptionPlan}, ${pill.label}, ${item.business}`}
-            accessibilityHint={expanded ? "Hides membership details" : "Shows membership details"}
+            accessibilityHint={
+              expanded ? "Hides membership details" : "Shows membership details"
+            }
             accessibilityState={{ expanded }}
           >
             <LinearGradient
-              colors={[theme.darkGreenDeep, theme.darkGreen, theme.darkGreenLight]}
+              colors={[
+                theme.darkGreenDeep,
+                theme.darkGreen,
+                theme.darkGreenLight,
+              ]}
               locations={[0, 0.55, 1]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
@@ -1093,166 +1113,202 @@ export default function subscriptionCustomer() {
           </TouchableOpacity>
 
           {expanded ? (
-          <View style={styles.body}>
-            {showDescription ? (
-              <Text style={styles.description}>{description}</Text>
-            ) : null}
+            <Animated.View style={styles.body} exiting={detailExit}>
+              {showDescription ? (
+                <Animated.View entering={detailEnter(0)}>
+                  <Text style={styles.description}>{description}</Text>
+                </Animated.View>
+              ) : null}
 
-            {visits ? (
-              <View
-                accessible
-                accessibilityLabel={`Visits left: ${visitsLeft} of ${visits.total}`}
-              >
-                <View style={styles.visitsHead}>
-                  <Text style={styles.sectionLabel}>Visits left</Text>
-                  <Text style={styles.visitsCount}>
-                    {visitsLeft}
-                    <Text style={styles.visitsTotal}> / {visits.total}</Text>
-                  </Text>
-                </View>
-                <View style={styles.track}>
+              {visits ? (
+                <Animated.View entering={detailEnter(1)}>
                   <View
-                    style={[styles.trackFill, { width: `${visitsPercent}%` }]}
-                  />
-                </View>
-              </View>
-            ) : null}
-
-            {item.paymentDate || scheduleDate ? (
-              <View style={styles.dateTiles}>
-                {item.paymentDate
-                  ? dateTile("credit-card", "Last payment", item.paymentDate)
-                  : null}
-                {scheduleDate
-                  ? dateTile(
-                      "calendar",
-                      getScheduleDateLabel(dateDisplay.kind),
-                      scheduleDate,
-                    )
-                  : null}
-              </View>
-            ) : null}
-
-            {services.length > 0 ? (
-              <View>
-                <Text style={styles.sectionLabel}>Included services</Text>
-                <View style={styles.services}>
-                  {services.map((svc, index) => {
-                    const qty = svc.quantity ?? 1;
-                    const duration =
-                      svc.durationHours > 0 || svc.durationMinutes > 0
-                        ? formatCustomerServiceDuration(
-                            svc.durationHours,
-                            svc.durationMinutes,
-                          )
-                        : null;
-                    const meta = [duration, `$${svc.price}`, svc.description]
-                      .filter(Boolean)
-                      .join(" · ");
-                    return (
+                    accessible
+                    accessibilityLabel={`Visits left: ${visitsLeft} of ${visits.total}`}
+                  >
+                    <View style={styles.visitsHead}>
+                      <Text style={styles.sectionLabel}>Visits left</Text>
+                      <Text style={styles.visitsCount}>
+                        {visitsLeft}
+                        <Text style={styles.visitsTotal}>
+                          {" "}
+                          / {visits.total}
+                        </Text>
+                      </Text>
+                    </View>
+                    <View style={styles.track}>
                       <View
-                        key={svc.id}
                         style={[
-                          styles.serviceRow,
-                          index > 0 && styles.serviceRowBorder,
+                          styles.trackFill,
+                          { width: `${visitsPercent}%` },
                         ]}
-                      >
-                        <View
-                          style={[
-                            styles.serviceText,
-                            qty <= 0 && styles.serviceUsedUp,
-                          ]}
-                        >
-                          <Text style={styles.serviceName} numberOfLines={2}>
-                            {svc.name}
-                          </Text>
-                          <Text style={styles.serviceMeta} numberOfLines={2}>
-                            {meta}
-                          </Text>
-                        </View>
-                        <View
-                          style={[
-                            styles.qtyChip,
-                            qty <= 0 && styles.qtyChipEmpty,
-                          ]}
-                          accessible
-                          accessibilityLabel={`${qty} left`}
-                        >
-                          <Text
+                      />
+                    </View>
+                  </View>
+                </Animated.View>
+              ) : null}
+
+              {item.paymentDate || scheduleDate ? (
+                <Animated.View entering={detailEnter(2)}>
+                  <View style={styles.dateTiles}>
+                    {item.paymentDate
+                      ? dateTile(
+                          "credit-card",
+                          "Last payment",
+                          item.paymentDate,
+                        )
+                      : null}
+                    {scheduleDate
+                      ? dateTile(
+                          "calendar",
+                          getScheduleDateLabel(dateDisplay.kind),
+                          scheduleDate,
+                        )
+                      : null}
+                  </View>
+                </Animated.View>
+              ) : null}
+
+              {services.length > 0 ? (
+                <Animated.View entering={detailEnter(3)}>
+                  <View>
+                    <Text style={styles.sectionLabel}>Included services</Text>
+                    <View style={styles.services}>
+                      {services.map((svc, index) => {
+                        const qty = svc.quantity ?? 1;
+                        const duration =
+                          svc.durationHours > 0 || svc.durationMinutes > 0
+                            ? formatCustomerServiceDuration(
+                                svc.durationHours,
+                                svc.durationMinutes,
+                              )
+                            : null;
+                        const meta = [
+                          duration,
+                          `$${svc.price}`,
+                          svc.description,
+                        ]
+                          .filter(Boolean)
+                          .join(" · ");
+                        return (
+                          <View
+                            key={svc.id}
                             style={[
-                              styles.qtyText,
-                              qty <= 0 && styles.qtyTextEmpty,
+                              styles.serviceRow,
+                              index > 0 && styles.serviceRowBorder,
                             ]}
                           >
-                            ×{qty}
-                          </Text>
-                        </View>
-                      </View>
-                    );
-                  })}
-                </View>
-              </View>
-            ) : null}
+                            <View
+                              style={[
+                                styles.serviceText,
+                                qty <= 0 && styles.serviceUsedUp,
+                              ]}
+                            >
+                              <Text
+                                style={styles.serviceName}
+                                numberOfLines={2}
+                              >
+                                {svc.name}
+                              </Text>
+                              <Text
+                                style={styles.serviceMeta}
+                                numberOfLines={2}
+                              >
+                                {meta}
+                              </Text>
+                            </View>
+                            <View
+                              style={[
+                                styles.qtyChip,
+                                qty <= 0 && styles.qtyChipEmpty,
+                              ]}
+                              accessible
+                              accessibilityLabel={`${qty} left`}
+                            >
+                              <Text
+                                style={[
+                                  styles.qtyText,
+                                  qty <= 0 && styles.qtyTextEmpty,
+                                ]}
+                              >
+                                ×{qty}
+                              </Text>
+                            </View>
+                          </View>
+                        );
+                      })}
+                    </View>
+                  </View>
+                </Animated.View>
+              ) : null}
 
-            {showCancelledBanner ? (
-              <View style={styles.cancelledBanner}>
-                <Feather
-                  name="info"
-                  size={moderateWidthScale(20)}
-                  color={theme.selectCard}
-                />
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.cancelledTitle}>Membership Cancelled</Text>
-                  <Text style={styles.cancelledSub}>
-                    You can still use this membership until{" "}
-                    <Text style={{ fontFamily: fonts.fontBold }}>
-                      {formatCustomerSubscriptionDate(item.endsAt)}
-                    </Text>
-                  </Text>
-                </View>
-              </View>
-            ) : null}
+              {showCancelledBanner ? (
+                <Animated.View entering={detailEnter(4)}>
+                  <View style={styles.cancelledBanner}>
+                    <Feather
+                      name="info"
+                      size={moderateWidthScale(20)}
+                      color={theme.selectCard}
+                    />
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.cancelledTitle}>
+                        Membership Cancelled
+                      </Text>
+                      <Text style={styles.cancelledSub}>
+                        You can still use this membership until{" "}
+                        <Text style={{ fontFamily: fonts.fontBold }}>
+                          {formatCustomerSubscriptionDate(item.endsAt)}
+                        </Text>
+                      </Text>
+                    </View>
+                  </View>
+                </Animated.View>
+              ) : null}
 
-            {canBook ? (
-              <View style={styles.actions}>
-                <FlowButton
-                  label="Book Appointment"
-                  icon="event"
-                  onPress={() => handleBookAppointment(item)}
-                  disabled={!hasBookableService}
-                />
-                {!hasBookableService ? (
-                  <Text style={[styles.helper, styles.helperWarning]}>
-                    {canCancel
-                      ? "All services for this billing period have been used. Booking will unlock again after your next auto-charge when counts reset."
-                      : "All services for this billing period have been used. No more bookings are available on this membership."}
-                  </Text>
-                ) : canCancel ? (
-                  <Text style={styles.helper}>
-                    Visits reset after each monthly payment.
-                  </Text>
-                ) : null}
-              </View>
-            ) : null}
+              {canBook ? (
+                <Animated.View entering={detailEnter(5)}>
+                  <View style={styles.actions}>
+                    <FlowButton
+                      label="Book Appointment"
+                      icon="event"
+                      onPress={() => handleBookAppointment(item)}
+                      disabled={!hasBookableService}
+                    />
+                    {!hasBookableService ? (
+                      <Text style={[styles.helper, styles.helperWarning]}>
+                        {canCancel
+                          ? "All services for this billing period have been used. Booking will unlock again after your next auto-charge when counts reset."
+                          : "All services for this billing period have been used. No more bookings are available on this membership."}
+                      </Text>
+                    ) : canCancel ? (
+                      <Text style={styles.helper}>
+                        Visits reset after each monthly payment.
+                      </Text>
+                    ) : null}
+                  </View>
+                </Animated.View>
+              ) : null}
 
-            {!showCancelledBanner && canCancel ? (
-              <TouchableOpacity
-                style={styles.cancelLink}
-                onPress={() => handleCancelSubscription(item)}
-                activeOpacity={0.6}
-                accessibilityRole="button"
-              >
-                <Feather
-                  name="x-circle"
-                  size={moderateWidthScale(16)}
-                  color={theme.red}
-                />
-                <Text style={styles.cancelLinkText}>Cancel Membership</Text>
-              </TouchableOpacity>
-            ) : null}
-          </View>
+              {!showCancelledBanner && canCancel ? (
+                <Animated.View entering={detailEnter(6)}>
+                  <TouchableOpacity
+                    style={styles.cancelLink}
+                    onPress={() => handleCancelSubscription(item)}
+                    activeOpacity={0.6}
+                    accessibilityRole="button"
+                  >
+                    <Feather
+                      name="x-circle"
+                      size={moderateWidthScale(16)}
+                      color={theme.red}
+                    />
+                    <Text style={styles.cancelLinkText}>Cancel Membership</Text>
+                  </TouchableOpacity>
+                </Animated.View>
+              ) : null}
+            </Animated.View>
           ) : null}
-        </View>
+        </Animated.View>
       );
     },
     [
