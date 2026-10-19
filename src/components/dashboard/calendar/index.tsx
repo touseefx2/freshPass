@@ -29,12 +29,10 @@ import {
 import DashboardHeader from "@/src/components/DashboardHeader";
 import { MaterialIcons, Feather, Ionicons } from "@expo/vector-icons";
 import TimePickerModal from "@/src/components/timePickerModal";
-import AppImage from "@/src/components/AppImage";
 import EarningsStaffPickerModal, {
   type StaffPickerRow,
 } from "@/src/components/earningsStaffPickerModal";
 import type { StaffIdFilter } from "@/src/types/businessEarnings";
-import { getStaffInitials } from "@/src/services/businessEarningsService";
 import { isSoloSubscription } from "@/src/state/slices/userSlice";
 import dayjs from "dayjs";
 import weekOfYear from "dayjs/plugin/weekOfYear";
@@ -205,9 +203,11 @@ type ViewMode = "day" | "week" | "month";
 
 const SLOT_INTERVAL_MINUTES = 30;
 const HOUR_HEIGHT = heightScale(60);
+// Day view is taller so a 30 min visit fits name, service, barber and time.
+const DAY_HOUR_HEIGHT = heightScale(150);
 const MIN_BLOCK_HEIGHT_COMPACT = heightScale(36);
 const MIN_BLOCK_HEIGHT_DETAILED = heightScale(40);
-const TIME_GUTTER_WIDTH = widthScale(44);
+const TIME_GUTTER_WIDTH = widthScale(58);
 const BLOCK_LINE_HEIGHT = moderateHeightScale(16);
 const GRID_START_HOUR = 0;
 const GRID_END_HOUR = 24;
@@ -253,6 +253,9 @@ const formatMinutesLabel = (minutes: number) => {
   return `${displayHour}:${minute.toString().padStart(2, "0")} ${suffix}`;
 };
 
+const toTitleCase = (text: string) =>
+  text.toLowerCase().replace(/(^|\s)\S/g, (c) => c.toUpperCase());
+
 const formatShortTimeLabel = (minutes: number) => {
   const hour = Math.floor(minutes / 60);
   const minute = minutes % 60;
@@ -284,6 +287,7 @@ const layoutDayAppointments = (
   dayAppointments: CalendarAppointment[],
   startHour: number,
   minBlockHeight: number,
+  hourHeight: number = HOUR_HEIGHT,
 ): PositionedAppointment[] => {
   const blockMinutes = (appointment: CalendarAppointment) =>
     Math.max(appointment.duration_minutes, SLOT_INTERVAL_MINUTES);
@@ -342,8 +346,8 @@ const layoutDayAppointments = (
       const duration = blockMinutes(appointment);
       positioned.push({
         appointment,
-        top: (offsetMinutes / 60) * HOUR_HEIGHT,
-        height: Math.max((duration / 60) * HOUR_HEIGHT, minBlockHeight),
+        top: (offsetMinutes / 60) * hourHeight,
+        height: Math.max((duration / 60) * hourHeight, minBlockHeight),
         column,
         totalColumns,
       });
@@ -399,44 +403,6 @@ const createStyles = (theme: Theme) =>
     segmentTextActive: {
       color: theme.white,
       fontFamily: fonts.fontMedium,
-    },
-    staffFilterButton: {
-      alignSelf: "stretch",
-      minWidth: widthScale(44),
-      minHeight: widthScale(44),
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "center",
-      gap: moderateWidthScale(2),
-      marginLeft: moderateWidthScale(8),
-      paddingHorizontal: moderateWidthScale(8),
-      borderRadius: moderateWidthScale(8),
-      borderWidth: 1,
-      borderColor: theme.borderLight,
-      backgroundColor: theme.secondary,
-    },
-    staffFilterButtonActive: {
-      backgroundColor: theme.darkGreen,
-      borderColor: theme.darkGreen,
-    },
-    staffFilterAvatar: {
-      width: widthScale(24),
-      height: widthScale(24),
-      borderRadius: widthScale(12),
-      backgroundColor: theme.white,
-      alignItems: "center",
-      justifyContent: "center",
-      overflow: "hidden",
-    },
-    staffFilterAvatarImage: {
-      width: "100%",
-      height: "100%",
-    },
-    staffFilterAvatarText: {
-      fontSize: fontSize.size10,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-      includeFontPadding: false,
     },
     toolbarRight: {
       flexDirection: "row",
@@ -560,14 +526,46 @@ const createStyles = (theme: Theme) =>
     },
     todayLabel: {
       flex: 1,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: moderateWidthScale(8),
       paddingVertical: moderateHeightScale(10),
       paddingHorizontal: moderateWidthScale(14),
-      justifyContent: "center",
     },
     todayLabelRow: {
       flexDirection: "row",
       alignItems: "center",
-      gap: moderateWidthScale(8),
+      gap: moderateWidthScale(10),
+      flexShrink: 1,
+    },
+    staffFilterPill: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(6),
+      flexShrink: 1,
+      maxWidth: widthScale(150),
+      minHeight: heightScale(36),
+      paddingHorizontal: moderateWidthScale(10),
+      borderRadius: moderateWidthScale(8),
+      borderWidth: 1,
+      borderColor: theme.borderLight,
+      backgroundColor: theme.white,
+    },
+    staffFilterPillText: {
+      flexShrink: 1,
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
+    },
+    manageAvailabilityButton: {
+      flexShrink: 0,
+      minHeight: heightScale(36),
+      justifyContent: "center",
+      paddingHorizontal: moderateWidthScale(12),
+      borderRadius: moderateWidthScale(18),
+      borderWidth: 1,
+      borderColor: theme.darkGreen,
     },
     todayText: {
       fontSize: fontSize.size14,
@@ -594,8 +592,7 @@ const createStyles = (theme: Theme) =>
     manageAvailabilityText: {
       fontSize: fontSize.size12,
       fontFamily: fonts.fontMedium,
-      color: theme.primary,
-      marginLeft: moderateWidthScale(8),
+      color: theme.darkGreen,
     },
     gridRow: {
       flexDirection: "row",
@@ -659,6 +656,41 @@ const createStyles = (theme: Theme) =>
       shadowOpacity: 0.08,
       shadowRadius: 2,
       elevation: 1,
+    },
+    // Opaque base so overlapping tinted blocks don't blend into grey.
+    blockBase: {
+      flex: 1,
+      borderRadius: moderateWidthScale(8),
+      backgroundColor: theme.background,
+    },
+    blockDetailed: {
+      justifyContent: "flex-start",
+      paddingHorizontal: moderateWidthScale(12),
+      paddingVertical: moderateHeightScale(8),
+      gap: moderateHeightScale(2),
+      borderLeftWidth: 4,
+    },
+    blockHeaderRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(8),
+    },
+    blockClientDetailed: {
+      flex: 1,
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+      textTransform: "capitalize",
+    },
+    blockTimeRange: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
+    },
+    blockServiceDetailed: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontRegular,
+      color: theme.darkGreenLight,
     },
     blockTime: {
       fontSize: fontSize.size9,
@@ -1305,6 +1337,7 @@ export default function CalendarScreen() {
 
   const today = dayjs();
   const [viewMode, setViewMode] = useState<ViewMode>("day");
+  const hourHeight = viewMode === "day" ? DAY_HOUR_HEIGHT : HOUR_HEIGHT;
   const [selectedDate, setSelectedDate] = useState(today);
   const [week, setWeek] = useState(getWeekDays(today));
   const [appointments, setAppointments] = useState<CalendarAppointment[]>([]);
@@ -1359,12 +1392,13 @@ export default function CalendarScreen() {
 
   const blockPalette = useMemo(
     () => [
-      { bg: theme.apptMintBg, accent: theme.apptMintAccent },
-      { bg: theme.apptPeachBg, accent: theme.apptPeachAccent },
-      { bg: theme.apptBlueBg, accent: theme.apptBlueAccent },
-      { bg: theme.apptPinkBg, accent: theme.apptPinkAccent },
-      { bg: theme.apptLavenderBg, accent: theme.apptLavenderAccent },
-      { bg: theme.apptGoldBg, accent: theme.apptGoldAccent },
+      // Solid pastels (client sample): the shared rgba fills look grey here.
+      { bg: "#DFE8D3", accent: theme.apptMintAccent },
+      { bg: "#FBE6C9", accent: theme.apptPeachAccent },
+      { bg: "#DDE5F6", accent: theme.apptBlueAccent },
+      { bg: "#FBDDD5", accent: theme.apptPinkAccent },
+      { bg: "#E8E0F4", accent: theme.apptLavenderAccent },
+      { bg: "#FCEBC0", accent: theme.apptGoldAccent },
     ],
     [theme],
   );
@@ -1800,7 +1834,7 @@ export default function CalendarScreen() {
     [],
   );
 
-  const gridHeight = (GRID_END_HOUR - GRID_START_HOUR) * HOUR_HEIGHT;
+  const gridHeight = (GRID_END_HOUR - GRID_START_HOUR) * hourHeight;
 
   const layoutByDate = useMemo(() => {
     const map: Record<string, PositionedAppointment[]> = {};
@@ -1812,17 +1846,18 @@ export default function CalendarScreen() {
         viewMode === "day"
           ? MIN_BLOCK_HEIGHT_DETAILED
           : MIN_BLOCK_HEIGHT_COMPACT,
+        hourHeight,
       );
     });
     return map;
-  }, [gridDays, appointmentsByDate, viewMode]);
+  }, [gridDays, appointmentsByDate, viewMode, hourHeight]);
 
   const isTodayVisible = useMemo(
     () => gridDays.some((day) => day.isSame(today, "day")),
     [gridDays],
   );
 
-  const nowTop = ((nowMinutes - GRID_START_HOUR * 60) / 60) * HOUR_HEIGHT;
+  const nowTop = ((nowMinutes - GRID_START_HOUR * 60) / 60) * hourHeight;
   const showNowLine = isTodayVisible && viewMode !== "month";
 
   const monthWeeks = useMemo(() => {
@@ -1904,7 +1939,7 @@ export default function CalendarScreen() {
       anchorMinutes = firstAppointment?.start_minutes ?? 9 * 60;
     }
     const offset =
-      ((anchorMinutes - GRID_START_HOUR * 60) / 60) * HOUR_HEIGHT - HOUR_HEIGHT;
+      ((anchorMinutes - GRID_START_HOUR * 60) / 60) * hourHeight - HOUR_HEIGHT;
     const timeout = setTimeout(() => {
       scrollViewRef.current?.scrollTo({
         y: Math.max(0, offset),
@@ -2376,7 +2411,7 @@ export default function CalendarScreen() {
     // Snap click Y to the nearest 30-minute slot in that day column.
     const rawMinutes =
       GRID_START_HOUR * 60 +
-      Math.max(0, (event.nativeEvent.locationY / HOUR_HEIGHT) * 60);
+      Math.max(0, (event.nativeEvent.locationY / hourHeight) * 60);
     const maxStart = 24 * 60 - SLOT_INTERVAL_MINUTES;
     const snapped = Math.min(
       maxStart,
@@ -2486,40 +2521,82 @@ export default function CalendarScreen() {
           },
         ]}
       >
+        <View style={styles.blockBase}>
         <TouchableOpacity
           style={[
             styles.block,
+            !isCompact && styles.blockDetailed,
             { backgroundColor: palette.bg, borderLeftColor: palette.accent },
           ]}
           activeOpacity={0.8}
           onPress={handlePress}
         >
-          <Text
-            numberOfLines={1}
-            style={[
-              styles.blockClient,
-              cancelled && { color: theme.red },
-              isCompact && { fontSize: fontSize.size9, fontFamily: fonts.fontMedium },
-            ]}
-          >
-            {appointment.client_name}
-          </Text>
-          <Text
-            numberOfLines={1}
-            style={[
-              styles.blockService,
-              cancelled && styles.cancelledLabel,
-              isCompact && { fontSize: fontSize.size9 },
-            ]}
-          >
-            {cancelled ? "CANCELLED" : appointment.title}
-          </Text>
+          {isCompact ? (
+            <>
+              <Text
+                numberOfLines={1}
+                style={[
+                  styles.blockClient,
+                  cancelled && { color: theme.red },
+                  { fontSize: fontSize.size9, fontFamily: fonts.fontMedium },
+                ]}
+              >
+                {appointment.client_name}
+              </Text>
+              <Text
+                numberOfLines={1}
+                style={[
+                  styles.blockService,
+                  cancelled && styles.cancelledLabel,
+                  { fontSize: fontSize.size9 },
+                ]}
+              >
+                {cancelled ? "CANCELLED" : appointment.title}
+              </Text>
+            </>
+          ) : (
+            <>
+              <View style={styles.blockHeaderRow}>
+                <Text
+                  numberOfLines={1}
+                  style={[
+                    styles.blockClientDetailed,
+                    cancelled && { color: theme.red },
+                  ]}
+                >
+                  {appointment.client_name}
+                </Text>
+                {visibleCols === 1 && (
+                  <Text numberOfLines={1} style={styles.blockTimeRange}>
+                    {`${formatShortTimeLabel(appointment.start_minutes)} – ${formatMinutesLabel(
+                      (appointment.start_minutes + appointment.duration_minutes) % (24 * 60),
+                    )}`}
+                  </Text>
+                )}
+              </View>
+              <Text
+                numberOfLines={1}
+                style={[
+                  styles.blockServiceDetailed,
+                  cancelled && styles.cancelledLabel,
+                ]}
+              >
+                {cancelled ? "CANCELLED" : toTitleCase(appointment.title)}
+              </Text>
+              {appointment.originalAppointment.staffName ? (
+                <Text numberOfLines={1} style={styles.blockServiceDetailed}>
+                  {`${t("barber")}: ${toTitleCase(appointment.originalAppointment.staffName)}`}
+                </Text>
+              ) : null}
+            </>
+          )}
           {extraCount > 0 && (
             <View style={styles.overlapBadge}>
               <Text style={styles.overlapBadgeText}>+{extraCount}</Text>
             </View>
           )}
         </TouchableOpacity>
+        </View>
       </View>
     );
   };
@@ -2613,9 +2690,9 @@ export default function CalendarScreen() {
 
         {dayBreaks.map((block) => {
           const top =
-            ((block.startMinutes - GRID_START_HOUR * 60) / 60) * HOUR_HEIGHT;
+            ((block.startMinutes - GRID_START_HOUR * 60) / 60) * hourHeight;
           const height = Math.max(
-            ((block.endMinutes - block.startMinutes) / 60) * HOUR_HEIGHT,
+            ((block.endMinutes - block.startMinutes) / 60) * hourHeight,
             heightScale(20),
           );
           return (
@@ -2794,12 +2871,29 @@ export default function CalendarScreen() {
               key={hour}
               style={[
                 styles.hourLabel,
-                { top: index * HOUR_HEIGHT - moderateHeightScale(6) },
+                { top: index * hourHeight - moderateHeightScale(6) },
               ]}
             >
               {formatHourLabel(hour)}
             </Text>
           ))}
+          {viewMode === "day" &&
+            hours.slice(0, -1).map((hour, index) => (
+              <Text
+                key={`half-${hour}`}
+                style={[
+                  styles.hourLabel,
+                  {
+                    top:
+                      index * hourHeight +
+                      hourHeight / 2 -
+                      moderateHeightScale(6),
+                  },
+                ]}
+              >
+                {formatMinutesLabel(hour * 60 + 30)}
+              </Text>
+            ))}
           {showNowLine && (
             <View
               style={[
@@ -2819,14 +2913,14 @@ export default function CalendarScreen() {
             <React.Fragment key={`line-${hour}`}>
               <View
                 pointerEvents="none"
-                style={[styles.hourLine, { top: index * HOUR_HEIGHT }]}
+                style={[styles.hourLine, { top: index * hourHeight }]}
               />
               {index < hours.length - 1 && (
                 <View
                   pointerEvents="none"
                   style={[
                     styles.halfHourLine,
-                    { top: index * HOUR_HEIGHT + HOUR_HEIGHT / 2 },
+                    { top: index * hourHeight + hourHeight / 2 },
                   ]}
                 />
               )}
@@ -3014,49 +3108,6 @@ export default function CalendarScreen() {
               </TouchableOpacity>
             ))}
           </View>
-          {showStaffFilter && (
-            <TouchableOpacity
-              style={[
-                styles.staffFilterButton,
-                selectedStaffOption && styles.staffFilterButtonActive,
-              ]}
-              activeOpacity={0.8}
-              onPress={() => {
-                closeOverlays();
-                setStaffPickerVisible(true);
-              }}
-              accessibilityRole="button"
-              accessibilityLabel={`${t("earningsStaffPickerTitle")}: ${
-                selectedStaffOption?.name ?? t("earningsAllStaff")
-              }`}
-            >
-              {selectedStaffOption ? (
-                <View style={styles.staffFilterAvatar}>
-                  {selectedStaffOption.profileImage ? (
-                    <AppImage
-                      uri={selectedStaffOption.profileImage}
-                      style={styles.staffFilterAvatarImage}
-                    />
-                  ) : (
-                    <Text style={styles.staffFilterAvatarText}>
-                      {getStaffInitials(selectedStaffOption.name)}
-                    </Text>
-                  )}
-                </View>
-              ) : (
-                <Ionicons
-                  name="people-outline"
-                  size={iconScale(18)}
-                  color={theme.darkGreen}
-                />
-              )}
-              <Ionicons
-                name="chevron-down"
-                size={iconScale(14)}
-                color={selectedStaffOption ? theme.white : theme.darkGreen}
-              />
-            </TouchableOpacity>
-          )}
         </View>
 
         {/* Navigation: arrows + range label */}
@@ -3113,39 +3164,63 @@ export default function CalendarScreen() {
             >
               <View style={styles.todayLabel}>
                 <View style={styles.todayLabelRow}>
-                  <Text style={styles.todayText}>
+                  <Text style={styles.todayText} numberOfLines={1}>
                     {formatDate(selectedDate)}
                   </Text>
+                  {showStaffFilter && (
+                    <TouchableOpacity
+                      style={styles.staffFilterPill}
+                      activeOpacity={0.8}
+                      onPress={() => {
+                        closeOverlays();
+                        setStaffPickerVisible(true);
+                      }}
+                      accessibilityRole="button"
+                      accessibilityLabel={`${t("earningsStaffPickerTitle")}: ${
+                        selectedStaffOption?.name ?? t("earningsAllStaff")
+                      }`}
+                    >
+                      <Text style={styles.staffFilterPillText} numberOfLines={1}>
+                        {selectedStaffOption?.name ?? t("earningsAllStaff")}
+                      </Text>
+                      <Ionicons
+                        name="chevron-down"
+                        size={iconScale(16)}
+                        color={theme.darkGreen}
+                      />
+                    </TouchableOpacity>
+                  )}
                   {loading && (
                     <ActivityIndicator size="small" color={theme.primary} />
                   )}
-                  {canManageLeaves && leaveForSelectedDate && (
-                    <TouchableOpacity
-                      onPress={() => openLeaveDetailBox(leaveForSelectedDate)}
-                      style={styles.leaveBox}
-                      activeOpacity={0.7}
-                    >
-                      <MaterialIcons
-                        name="event"
-                        size={iconScale(16)}
-                        color={theme.primary}
-                      />
-                      <Text style={styles.leaveBoxText}>
-                        {t(leaveBadgeLabelKey(leaveForSelectedDate, isOwner))}
-                      </Text>
-                    </TouchableOpacity>
-                  )}
-                  {canManageLeaves && !leaveForSelectedDate && !isPastDate && (
-                    <TouchableOpacity
-                      onPress={() => openApplyBox("leave", undefined, selectedDate)}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={styles.manageAvailabilityText}>
-                        {t("manageAvailability")}
-                      </Text>
-                    </TouchableOpacity>
-                  )}
                 </View>
+                {canManageLeaves && leaveForSelectedDate && (
+                  <TouchableOpacity
+                    onPress={() => openLeaveDetailBox(leaveForSelectedDate)}
+                    style={styles.leaveBox}
+                    activeOpacity={0.7}
+                  >
+                    <MaterialIcons
+                      name="event"
+                      size={iconScale(16)}
+                      color={theme.primary}
+                    />
+                    <Text style={styles.leaveBoxText} numberOfLines={1}>
+                      {t(leaveBadgeLabelKey(leaveForSelectedDate, isOwner))}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+                {canManageLeaves && !leaveForSelectedDate && !isPastDate && (
+                  <TouchableOpacity
+                    onPress={() => openApplyBox("leave", undefined, selectedDate)}
+                    style={styles.manageAvailabilityButton}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.manageAvailabilityText} numberOfLines={1}>
+                      {t("manageAvailability")}
+                    </Text>
+                  </TouchableOpacity>
+                )}
               </View>
             </TouchableOpacity>
 
