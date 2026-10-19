@@ -174,6 +174,8 @@ export async function fetchOwnerFreeTimes(params: {
   date: string;
   staffId: number;
   serviceIds: number[];
+  /** Gap between start times (the "30 min slots" menu) */
+  slotMinutes?: number;
 }): Promise<string[]> {
   const res = await ApiService.get<{ success?: boolean; data?: unknown }>(
     appointmentsEndpoints.availableSlots({
@@ -181,6 +183,7 @@ export async function fetchOwnerFreeTimes(params: {
       date: params.date,
       staff_id: params.staffId,
       service_ids: params.serviceIds,
+      slot_minutes: params.slotMinutes,
     }),
   );
   const data = res?.data as unknown;
@@ -202,6 +205,53 @@ export async function fetchOwnerFreeTimes(params: {
       return `${h.padStart(2, "0")}:${m.slice(0, 2)}`;
     });
   return Array.from(new Set(times)).sort();
+}
+
+type HoursRow = { day?: string | null; closed?: boolean | null };
+
+/** Lowercase names ("sunday") of days marked closed; [] when no hours set. */
+function closedDayNames(rows: unknown): string[] {
+  if (!Array.isArray(rows)) return [];
+  return (rows as HoursRow[])
+    .filter((row) => row?.closed && typeof row.day === "string")
+    .map((row) => (row.day as string).toLowerCase());
+}
+
+export type OwnerBookingSchedule = {
+  /** Salon IANA zone; slot times are in this zone */
+  timezone: string | null;
+  /** Days the salon is closed */
+  closedDays: string[];
+  /** Days each barber (staff id) is off */
+  staffClosedDays: Record<number, string[]>;
+};
+
+/** Salon zone and closed days, so the date strip can grey them out. */
+export async function fetchOwnerBookingSchedule(
+  businessId: number,
+): Promise<OwnerBookingSchedule> {
+  const res = await ApiService.get<{
+    data?: {
+      business?: {
+        timezone?: string | null;
+        hours?: unknown;
+        staff?: { id?: number; working_hours?: unknown }[] | null;
+      };
+    };
+  }>(businessEndpoints.businessDetails(businessId));
+  const business = res?.data?.business;
+  const staffClosedDays: Record<number, string[]> = {};
+  (business?.staff ?? []).forEach((row) => {
+    if (row?.id != null) staffClosedDays[row.id] = closedDayNames(row.working_hours);
+  });
+  return {
+    timezone:
+      typeof business?.timezone === "string" && business.timezone
+        ? business.timezone
+        : null,
+    closedDays: closedDayNames(business?.hours),
+    staffClosedDays,
+  };
 }
 
 export type OwnerBookingResult = {

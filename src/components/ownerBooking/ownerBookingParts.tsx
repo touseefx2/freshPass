@@ -1,13 +1,17 @@
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
+  Modal,
+  Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
+  useWindowDimensions,
   type StyleProp,
   type ViewStyle,
 } from "react-native";
-import { MaterialIcons } from "@expo/vector-icons";
+import { Feather, MaterialIcons } from "@expo/vector-icons";
 import dayjs, { type Dayjs } from "dayjs";
 import { useTranslation } from "react-i18next";
 import AppImage from "@/src/components/AppImage";
@@ -24,6 +28,13 @@ import { resolveApiImageUrl } from "@/src/utils/media";
 import { EveningIcon, MorningIcon, NightIcon } from "@/assets/icons";
 
 /** Rows and chips for the owner's "New appointment" steps. */
+
+/** Same side padding as the flow screens (the date strip bleeds into it). */
+const PAGE_PAD = moderateWidthScale(20);
+const SLOT_GAP = moderateWidthScale(8);
+const SLOT_COLUMNS = 4;
+const DATE_CHIP_W = widthScale(54);
+const DATE_CHIP_GAP = moderateWidthScale(8);
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -115,31 +126,33 @@ const createStyles = (theme: Theme) =>
     chips: {
       flexDirection: "row",
       flexWrap: "wrap",
-      gap: moderateWidthScale(8),
+      gap: SLOT_GAP,
     },
     chip: {
-      minWidth: "30%",
-      flexGrow: 1,
-      minHeight: heightScale(48),
-      borderRadius: moderateWidthScale(14),
+      height: heightScale(44),
+      borderRadius: moderateWidthScale(12),
       borderWidth: 1.5,
       borderColor: theme.borderNormal,
       backgroundColor: theme.white,
       alignItems: "center",
       justifyContent: "center",
-      paddingHorizontal: moderateWidthScale(8),
     },
     chipOn: {
       backgroundColor: theme.darkGreen,
       borderColor: theme.darkGreen,
     },
     chipText: {
-      fontSize: fontSize.size16,
+      fontSize: fontSize.size14,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
       fontVariant: ["tabular-nums"],
     },
     chipTextOn: { color: theme.white },
+    chipSkeleton: {
+      height: heightScale(44),
+      borderRadius: moderateWidthScale(12),
+      backgroundColor: theme.lightGreen07,
+    },
     // Field-like row (date / time)
     field: {
       flexDirection: "row",
@@ -284,6 +297,14 @@ export function SelectRow({
   );
 }
 
+function useSlotWidth() {
+  const { width } = useWindowDimensions();
+  return Math.floor(
+    (width - PAGE_PAD * 2 - SLOT_GAP * (SLOT_COLUMNS - 1)) / SLOT_COLUMNS,
+  );
+}
+
+/** Four-across time grid, same as the customer "Pick a date & time". */
 export function TimeChips({
   times,
   selected,
@@ -296,6 +317,7 @@ export function TimeChips({
   onSelect: (time: string) => void;
 }) {
   const { styles } = useStyles();
+  const slotWidth = useSlotWidth();
   return (
     <View style={styles.chips} accessibilityRole="radiogroup">
       {times.map((time) => {
@@ -303,19 +325,197 @@ export function TimeChips({
         return (
           <TouchableOpacity
             key={time}
-            activeOpacity={0.8}
+            activeOpacity={0.75}
             onPress={() => onSelect(time)}
-            style={[styles.chip, on && styles.chipOn]}
+            style={[styles.chip, { width: slotWidth }, on && styles.chipOn]}
             accessibilityRole="radio"
-            accessibilityState={{ checked: on }}
+            accessibilityState={{ selected: on, checked: on }}
           >
-            <Text style={[styles.chipText, on && styles.chipTextOn]}>
+            <Text
+              style={[styles.chipText, on && styles.chipTextOn]}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.85}
+            >
               {format(time)}
             </Text>
           </TouchableOpacity>
         );
       })}
     </View>
+  );
+}
+
+/** Grey placeholders while free times load. */
+export function TimeChipsSkeleton() {
+  const { styles } = useStyles();
+  const slotWidth = useSlotWidth();
+  return (
+    <View style={styles.chips}>
+      {Array.from({ length: 8 }, (_, i) => (
+        <View key={i} style={[styles.chipSkeleton, { width: slotWidth }]} />
+      ))}
+    </View>
+  );
+}
+
+export const SLOT_MINUTE_OPTIONS = [5, 15, 30, 45] as const;
+export type SlotMinutes = (typeof SLOT_MINUTE_OPTIONS)[number];
+export const DEFAULT_SLOT_MINUTES: SlotMinutes = 30;
+
+const createSlotMenuStyles = (theme: Theme) =>
+  StyleSheet.create({
+    link: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(2),
+      minHeight: heightScale(32),
+    },
+    linkText: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontMedium,
+      color: theme.orangeBrownText,
+    },
+    // Shadow on the outer view: iOS drops shadows on overflow:hidden views.
+    menu: {
+      position: "absolute",
+      minWidth: widthScale(170),
+      borderRadius: moderateWidthScale(14),
+      backgroundColor: theme.white,
+      shadowColor: theme.darkGreen,
+      shadowOffset: { width: 0, height: 8 },
+      shadowOpacity: 0.18,
+      shadowRadius: 16,
+      elevation: 8,
+    },
+    menuInner: {
+      borderRadius: moderateWidthScale(14),
+      borderWidth: 1,
+      borderColor: theme.borderNormal,
+      overflow: "hidden",
+    },
+    item: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: moderateWidthScale(12),
+      minHeight: heightScale(44),
+      paddingHorizontal: moderateWidthScale(16),
+    },
+    itemBorder: {
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: theme.borderNormal,
+    },
+    itemOn: { backgroundColor: theme.upcomingCard },
+    itemText: {
+      fontSize: fontSize.size15,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
+      fontVariant: ["tabular-nums"],
+    },
+    itemTextOn: { fontFamily: fonts.fontBold },
+  });
+
+/** "30 min slots ⌄" link with its dropdown, placed under the link. */
+export function SlotLengthMenu({
+  value,
+  onChange,
+}: {
+  value: SlotMinutes;
+  onChange: (minutes: SlotMinutes) => void;
+}) {
+  const { t } = useTranslation();
+  const { colors } = useTheme();
+  const theme = colors as Theme;
+  const styles = useMemo(() => createSlotMenuStyles(theme), [theme]);
+  const { width: windowWidth } = useWindowDimensions();
+  const linkRef = useRef<View>(null);
+  const [anchor, setAnchor] = useState<{ top: number; right: number } | null>(
+    null,
+  );
+  const open = () => {
+    // measure (page coords), not measureInWindow: the latter is off by the
+    // status bar on edge-to-edge Android.
+    linkRef.current?.measure((_x, _y, w, h, pageX, pageY) => {
+      setAnchor({
+        top: pageY + h + moderateHeightScale(4),
+        right: Math.max(PAGE_PAD, windowWidth - (pageX + w)),
+      });
+    });
+  };
+  const label = t("bkFlowSlotLength", { count: value });
+  return (
+    <>
+      <TouchableOpacity
+        ref={linkRef}
+        style={styles.link}
+        onPress={open}
+        activeOpacity={0.6}
+        hitSlop={{ top: 8, bottom: 8, left: 12, right: 8 }}
+        accessibilityRole="button"
+        accessibilityLabel={label}
+        accessibilityState={{ expanded: anchor != null }}
+      >
+        <Text style={styles.linkText}>{label}</Text>
+        <MaterialIcons
+          name={anchor ? "expand-less" : "expand-more"}
+          size={moderateWidthScale(18)}
+          color={theme.orangeBrownText}
+        />
+      </TouchableOpacity>
+      <Modal
+        visible={anchor != null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setAnchor(null)}
+      >
+        <Pressable
+          style={StyleSheet.absoluteFillObject}
+          onPress={() => setAnchor(null)}
+          accessibilityLabel={t("close")}
+        />
+        {anchor ? (
+          <View
+            style={[styles.menu, { top: anchor.top, right: anchor.right }]}
+            accessibilityRole="menu"
+          >
+            <View style={styles.menuInner}>
+              {SLOT_MINUTE_OPTIONS.map((minutes, index) => {
+                const on = value === minutes;
+                return (
+                  <TouchableOpacity
+                    key={minutes}
+                    activeOpacity={0.7}
+                    style={[
+                      styles.item,
+                      index > 0 && styles.itemBorder,
+                      on && styles.itemOn,
+                    ]}
+                    onPress={() => {
+                      setAnchor(null);
+                      if (!on) onChange(minutes);
+                    }}
+                    accessibilityRole="menuitem"
+                    accessibilityState={{ selected: on }}
+                  >
+                    <Text style={[styles.itemText, on && styles.itemTextOn]}>
+                      {t("bkFlowSlotLength", { count: minutes })}
+                    </Text>
+                    {on ? (
+                      <MaterialIcons
+                        name="check"
+                        size={moderateWidthScale(18)}
+                        color={theme.selectCard}
+                      />
+                    ) : null}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+        ) : null}
+      </Modal>
+    </>
   );
 }
 
@@ -498,136 +698,217 @@ export function PickerField({
 
 const createDateStripStyles = (theme: Theme) =>
   StyleSheet.create({
-    wrap: { gap: moderateHeightScale(10) },
     header: {
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
+      gap: moderateWidthScale(8),
     },
     arrow: {
-      width: widthScale(44),
-      height: widthScale(44),
-      borderRadius: widthScale(22),
-      alignItems: "center",
-      justifyContent: "center",
-      backgroundColor: theme.white,
+      width: widthScale(40),
+      height: widthScale(40),
+      borderRadius: moderateWidthScale(10),
       borderWidth: 1,
-      borderColor: theme.borderLight,
-    },
-    arrowOff: { opacity: 0.35 },
-    month: {
-      fontSize: fontSize.size16,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-    },
-    days: {
-      flexDirection: "row",
-      gap: moderateWidthScale(6),
-    },
-    day: {
-      flex: 1,
-      minHeight: heightScale(62),
-      borderRadius: moderateWidthScale(14),
-      borderWidth: 1.5,
       borderColor: theme.borderNormal,
       backgroundColor: theme.white,
       alignItems: "center",
       justifyContent: "center",
+    },
+    arrowOff: { opacity: 0.35 },
+    month: {
+      flex: 1,
+      textAlign: "center",
+      fontSize: fontSize.size16,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    strip: { marginHorizontal: -PAGE_PAD },
+    stripContent: {
+      paddingHorizontal: PAGE_PAD,
+      gap: DATE_CHIP_GAP,
+      paddingVertical: moderateHeightScale(2),
+    },
+    day: {
+      width: DATE_CHIP_W,
+      paddingVertical: moderateHeightScale(7),
+      borderRadius: moderateWidthScale(14),
+      borderWidth: 1.5,
+      borderColor: theme.borderLight,
+      backgroundColor: theme.white,
+      alignItems: "center",
       gap: moderateHeightScale(2),
     },
     dayOn: {
-      backgroundColor: theme.darkGreen,
-      borderColor: theme.darkGreen,
+      backgroundColor: theme.orangeBrown30,
+      borderColor: theme.selectCard,
     },
-    dayOff: { opacity: 0.35 },
+    dayOff: {
+      opacity: 0.35,
+      backgroundColor: "transparent",
+    },
     dayName: {
       fontSize: fontSize.size12,
       fontFamily: fonts.fontMedium,
       color: theme.lightGreen,
     },
+    dayNameOn: {
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
     dayNum: {
-      fontSize: fontSize.size18,
+      fontSize: fontSize.size17,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
       fontVariant: ["tabular-nums"],
     },
-    dayTextOn: { color: theme.white },
   });
 
-/** One week of days (Mon–Sun) with arrows; past days can't be picked. */
+/**
+ * Month header (‹ October 2026 ›) over a scrolling row of that month's days,
+ * same as the customer "Pick a date & time". Past and closed days can't be
+ * picked; another month jumps to its first open day.
+ */
 export function DateStrip({
   value,
   onChange,
+  isDisabled,
 }: {
   value: Dayjs;
   onChange: (date: Dayjs) => void;
+  /** Closed days (past days are always off) */
+  isDisabled?: (date: Dayjs) => boolean;
 }) {
+  const { t } = useTranslation();
   const { colors } = useTheme();
   const theme = colors as Theme;
   const styles = useMemo(() => createDateStripStyles(theme), [theme]);
   const today = dayjs().startOf("day");
-  const [weekStart, setWeekStart] = React.useState(() => {
-    const d = value.startOf("day");
-    return d.subtract((d.day() + 6) % 7, "day");
-  });
-  const days = Array.from({ length: 7 }, (_, i) => weekStart.add(i, "day"));
-  const canGoBack = weekStart.isAfter(today, "day");
+  const isOff = (day: Dayjs) =>
+    day.isBefore(today, "day") || !!isDisabled?.(day);
+
+  // Month shown in the strip; follows the picked day.
+  const [month, setMonth] = useState(() => value.startOf("month"));
+  const valueKey = value.format("YYYY-MM-DD");
+  useEffect(() => {
+    setMonth(value.startOf("month"));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [valueKey]);
+  const isCurrentMonth = month.isSame(today, "month");
+
+  const days = useMemo(() => {
+    const start = isCurrentMonth ? dayjs().startOf("day") : month;
+    const end = month.endOf("month");
+    const list: Dayjs[] = [];
+    for (let d = start; !d.isAfter(end, "day"); d = d.add(1, "day")) {
+      list.push(d);
+    }
+    return list;
+  }, [month, isCurrentMonth]);
+
+  const changeMonth = (delta: 1 | -1) => {
+    const next = month.add(delta, "month").startOf("month");
+    if (next.isBefore(today, "month")) return;
+    let day = next.isSame(today, "month") ? today : next;
+    while (day.isSame(next, "month")) {
+      if (!isOff(day)) {
+        onChange(day);
+        return;
+      }
+      day = day.add(1, "day");
+    }
+    setMonth(next);
+  };
+
+  // Keep the picked day in view.
+  const stripRef = useRef<ScrollView>(null);
+  useEffect(() => {
+    const index = days.findIndex((d) => d.isSame(value, "day"));
+    if (index < 0) {
+      stripRef.current?.scrollTo({ x: 0, animated: false });
+      return;
+    }
+    const timer = setTimeout(() => {
+      stripRef.current?.scrollTo({
+        x: Math.max(0, index * (DATE_CHIP_W + DATE_CHIP_GAP) - DATE_CHIP_W),
+        animated: true,
+      });
+    }, 80);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [valueKey, days]);
+
   return (
-    <View style={styles.wrap}>
+    <>
       <View style={styles.header}>
         <TouchableOpacity
-          style={[styles.arrow, !canGoBack && styles.arrowOff]}
-          disabled={!canGoBack}
-          onPress={() => setWeekStart((w) => w.subtract(7, "day"))}
+          onPress={() => changeMonth(-1)}
+          disabled={isCurrentMonth}
+          style={[styles.arrow, isCurrentMonth && styles.arrowOff]}
+          activeOpacity={0.7}
           accessibilityRole="button"
-          accessibilityLabel="Previous week"
+          accessibilityLabel={t("bkFlowPrevMonth")}
+          accessibilityState={{ disabled: isCurrentMonth }}
         >
-          <MaterialIcons
+          <Feather
             name="chevron-left"
-            size={moderateWidthScale(26)}
+            size={moderateWidthScale(20)}
             color={theme.darkGreen}
           />
         </TouchableOpacity>
-        <Text style={styles.month}>
-          {`${days[0].format("MMM D")} – ${days[6].format("MMM D, YYYY")}`}
+        <Text style={styles.month} accessibilityRole="header">
+          {month.format("MMMM YYYY")}
         </Text>
         <TouchableOpacity
+          onPress={() => changeMonth(1)}
           style={styles.arrow}
-          onPress={() => setWeekStart((w) => w.add(7, "day"))}
+          activeOpacity={0.7}
           accessibilityRole="button"
-          accessibilityLabel="Next week"
+          accessibilityLabel={t("bkFlowNextMonth")}
         >
-          <MaterialIcons
+          <Feather
             name="chevron-right"
-            size={moderateWidthScale(26)}
+            size={moderateWidthScale(20)}
             color={theme.darkGreen}
           />
         </TouchableOpacity>
       </View>
-      <View style={styles.days} accessibilityRole="radiogroup">
+      <ScrollView
+        ref={stripRef}
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.strip}
+        contentContainerStyle={styles.stripContent}
+      >
         {days.map((day) => {
           const on = day.isSame(value, "day");
-          const past = day.isBefore(today, "day");
+          const off = isOff(day);
+          const isToday = day.isSame(today, "day");
           return (
             <TouchableOpacity
               key={day.format("YYYY-MM-DD")}
-              style={[styles.day, on && styles.dayOn, past && styles.dayOff]}
-              disabled={past}
               onPress={() => onChange(day)}
-              accessibilityRole="radio"
-              accessibilityState={{ checked: on, disabled: past }}
-              accessibilityLabel={day.format("dddd, MMMM D")}
+              disabled={off}
+              activeOpacity={0.75}
+              style={[styles.day, on && styles.dayOn, off && styles.dayOff]}
+              accessibilityRole="button"
+              accessibilityLabel={
+                off && !day.isBefore(today, "day")
+                  ? `${day.format("dddd, MMMM D")}, ${t("bkFlowClosed")}`
+                  : day.format("dddd, MMMM D")
+              }
+              accessibilityState={{ selected: on, disabled: off }}
             >
-              <Text style={[styles.dayName, on && styles.dayTextOn]}>
-                {day.format("ddd")}
+              <Text
+                style={[styles.dayName, on && styles.dayNameOn]}
+                numberOfLines={1}
+              >
+                {isToday ? t("bkFlowToday") : day.format("ddd")}
               </Text>
-              <Text style={[styles.dayNum, on && styles.dayTextOn]}>
-                {day.format("D")}
-              </Text>
+              <Text style={styles.dayNum}>{day.format("D")}</Text>
             </TouchableOpacity>
           );
         })}
-      </View>
-    </View>
+      </ScrollView>
+    </>
   );
 }

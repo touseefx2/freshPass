@@ -25,7 +25,6 @@ import {
   FlowCard,
   FlowTitle,
   InfoNote,
-  SectionLabel,
 } from "@/src/components/reelFlow/flowParts";
 import { FlowTextField } from "@/src/components/reelFlow/detailsFields";
 import {
@@ -37,17 +36,26 @@ import {
 } from "@/src/components/afterVisit/afterVisitParts";
 import {
   DAY_PERIODS,
+  DEFAULT_SLOT_MINUTES,
   DateStrip,
   PeriodTabs,
   SelectRow,
+  SlotLengthMenu,
   TimeChips,
+  TimeChipsSkeleton,
   getDayPeriod,
   type DayPeriod,
+  type SlotMinutes,
 } from "@/src/components/ownerBooking/ownerBookingParts";
+import {
+  formatSalonTimeZone,
+  getDeviceTimeZone,
+} from "@/src/utils/salonTimezone";
 import {
   CUSTOMER_SEARCH_PAGE_SIZE,
   OwnerBookingError,
   createOwnerBooking,
+  fetchOwnerBookingSchedule,
   fetchOwnerBookingServices,
   fetchOwnerBookingStaff,
   fetchOwnerFreeTimes,
@@ -55,6 +63,7 @@ import {
   type NewCustomerInput,
   type OwnerBookingCustomer,
   type OwnerBookingResult,
+  type OwnerBookingSchedule,
   type OwnerBookingService,
   type OwnerBookingStaff,
 } from "@/src/services/ownerBookingService";
@@ -125,6 +134,24 @@ const createStyles = (theme: Theme) =>
       gap: moderateWidthScale(10),
       paddingVertical: moderateHeightScale(16),
     },
+    timeSection: { gap: moderateHeightScale(12) },
+    timezone: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+    },
+    timeHeaderRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: moderateWidthScale(12),
+    },
+    timeHeaderTitle: {
+      flexShrink: 1,
+      fontSize: fontSize.size16,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
     muted: {
       fontSize: fontSize.size15,
       fontFamily: fonts.fontRegular,
@@ -174,6 +201,8 @@ export default function AddAppointmentScreen() {
   // ── Form data ──────────────────────────────────────────────────────────
   const [staff, setStaff] = useState<OwnerBookingStaff[]>([]);
   const [services, setServices] = useState<OwnerBookingService[]>([]);
+  /** Salon zone + closed days; null if it couldn't load (nothing greyed). */
+  const [schedule, setSchedule] = useState<OwnerBookingSchedule | null>(null);
   const [dataLoading, setDataLoading] = useState(true);
   const [dataError, setDataError] = useState<string | null>(null);
 
@@ -224,6 +253,8 @@ export default function AddAppointmentScreen() {
   const freeRequest = useRef(0);
   const [timeError, setTimeError] = useState<string | null>(null);
   const [period, setPeriod] = useState<DayPeriod | null>(null);
+  const [slotMinutes, setSlotMinutes] =
+    useState<SlotMinutes>(DEFAULT_SLOT_MINUTES);
 
   // ── Review / submit ────────────────────────────────────────────────────
   const [notes, setNotes] = useState("");
@@ -246,12 +277,15 @@ export default function AddAppointmentScreen() {
     setDataLoading(true);
     setDataError(null);
     try {
-      const [staffList, serviceList] = await Promise.all([
+      const [staffList, serviceList, scheduleData] = await Promise.all([
         fetchOwnerBookingStaff(businessId),
         fetchOwnerBookingServices(businessId),
+        // Only greys closed days / labels the zone; booking works without it.
+        fetchOwnerBookingSchedule(businessId).catch(() => null),
       ]);
       setStaff(staffList);
       setServices(serviceList);
+      setSchedule(scheduleData);
       // Keep the calendar's barber when bookable; one barber needs no choice.
       setStaffId((current) =>
         current != null && staffList.some((s) => s.id === current)
@@ -333,6 +367,7 @@ export default function AddAppointmentScreen() {
       date: dateStr,
       staffId,
       serviceIds,
+      slotMinutes,
     })
       .then((times) => {
         if (requestId !== freeRequest.current) return;
@@ -349,7 +384,23 @@ export default function AddAppointmentScreen() {
         if (requestId === freeRequest.current) setFreeLoading(false);
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step, businessId, staffId, dateStr, serviceIds.join(","), freeTimesKey]);
+  }, [step, businessId, staffId, dateStr, serviceIds.join(","), slotMinutes, freeTimesKey]);
+
+  // Salon or barber day off: greyed in the date strip, like customer booking.
+  const isDayClosed = (day: dayjs.Dayjs) => {
+    if (!schedule) return false;
+    const name = day.locale("en").format("dddd").toLowerCase();
+    if (schedule.closedDays.includes(name)) return true;
+    return staffId != null && !!schedule.staffClosedDays[staffId]?.includes(name);
+  };
+
+  const timezoneText = schedule?.timezone
+    ? t("bkFlowSalonTimezone", { zone: formatSalonTimeZone(schedule.timezone) })
+    : getDeviceTimeZone()
+      ? t("bkFlowTimezone", {
+          zone: formatSalonTimeZone(getDeviceTimeZone() as string),
+        })
+      : null;
 
   // ── Validation ─────────────────────────────────────────────────────────
   const validateNewCustomer = (): boolean => {
@@ -857,34 +908,36 @@ export default function AddAppointmentScreen() {
         showsVerticalScrollIndicator={false}
       >
         <FlowTitle
-          title={t("oaTimeTitle")}
+          title={t("bkFlowTimeTitle")}
           subtitle={t("oaTimeSubtitle", { name: selectedStaff?.name ?? "" })}
         />
         {timeError ? (
           <InfoNote tone="error" icon="event-busy" text={timeError} />
         ) : null}
 
-        <View style={{ gap: moderateHeightScale(10) }}>
-          <SectionLabel label={t("oaWhen")} />
+        <View style={styles.timeSection}>
           <DateStrip
             value={date}
+            isDisabled={isDayClosed}
             onChange={(next) => {
               setDate(next);
               setTimeError(null);
             }}
           />
+          {timezoneText ? (
+            <Text style={styles.timezone}>{timezoneText}</Text>
+          ) : null}
         </View>
 
-        <View style={{ gap: moderateHeightScale(10) }}>
-          <SectionLabel
-            label={t("oaFreeTimes")}
-            meta={date.format("ddd, MMM D")}
-          />
+        <View style={styles.timeSection}>
+          <View style={styles.timeHeaderRow}>
+            <Text style={styles.timeHeaderTitle}>
+              {t("bkFlowAvailableTimes")}
+            </Text>
+            <SlotLengthMenu value={slotMinutes} onChange={setSlotMinutes} />
+          </View>
           {freeLoading ? (
-            <View style={styles.loadingRow}>
-              <ActivityIndicator color={theme.darkGreen} />
-              <Text style={styles.muted}>{t("oaCheckingTimes")}</Text>
-            </View>
+            <TimeChipsSkeleton />
           ) : freeError ? (
             <>
               <InfoNote tone="error" icon="error-outline" text={freeError} />
