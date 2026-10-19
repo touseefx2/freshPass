@@ -138,6 +138,8 @@ function mapOwnerReelToFeedReel(
     look_tag: owner.look_tag,
     promotion_text: owner.promotion_text,
     product_tag: owner.product_tag,
+    product_id: owner.product_id ?? owner.product?.id ?? null,
+    product: owner.product ?? null,
     available_now: owner.available_now,
     published_at: owner.published_at,
     video: {
