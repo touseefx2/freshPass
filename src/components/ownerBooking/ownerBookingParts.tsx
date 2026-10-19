@@ -25,6 +25,7 @@ import {
   widthScale,
 } from "@/src/theme/dimensions";
 import { resolveApiImageUrl } from "@/src/utils/media";
+import { getDefaultAvatarImage } from "@/src/services/remoteConfigService";
 import { EveningIcon, MorningIcon, NightIcon } from "@/assets/icons";
 
 /** Rows and chips for the owner's "New appointment" steps. */
@@ -35,6 +36,8 @@ const SLOT_GAP = moderateWidthScale(8);
 const SLOT_COLUMNS = 4;
 const DATE_CHIP_W = widthScale(54);
 const DATE_CHIP_GAP = moderateWidthScale(8);
+const STAFF_TILE_GAP = moderateWidthScale(10);
+const STAFF_TILE_PAD = moderateWidthScale(6);
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -910,5 +913,174 @@ export function DateStrip({
         })}
       </ScrollView>
     </>
+  );
+}
+
+const createStaffTileStyles = (theme: Theme) =>
+  StyleSheet.create({
+    grid: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: STAFF_TILE_GAP,
+    },
+    tile: {
+      padding: STAFF_TILE_PAD,
+      paddingBottom: moderateHeightScale(10),
+      borderRadius: moderateWidthScale(18),
+      borderWidth: 2,
+      borderColor: theme.borderLight,
+      backgroundColor: theme.white,
+      alignItems: "center",
+      gap: moderateHeightScale(2),
+    },
+    tileOn: {
+      borderColor: theme.selectCard,
+      backgroundColor: theme.upcomingCard,
+    },
+    photo: {
+      width: "100%",
+      height: "100%",
+      borderRadius: moderateWidthScale(13),
+      backgroundColor: theme.emptyProfileImage,
+    },
+    check: {
+      position: "absolute",
+      top: moderateWidthScale(6),
+      right: moderateWidthScale(6),
+      width: widthScale(24),
+      height: widthScale(24),
+      borderRadius: widthScale(12),
+      backgroundColor: theme.selectCard,
+      borderWidth: 2,
+      borderColor: theme.white,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    badgeWrap: {
+      position: "absolute",
+      left: 0,
+      right: 0,
+      bottom: -moderateHeightScale(8),
+      alignItems: "center",
+    },
+    badge: {
+      paddingHorizontal: moderateWidthScale(8),
+      paddingVertical: moderateHeightScale(2),
+      borderRadius: moderateWidthScale(10),
+      backgroundColor: theme.selectCard,
+      borderWidth: 1.5,
+      borderColor: theme.white,
+    },
+    badgeText: {
+      fontSize: fontSize.size10,
+      fontFamily: fonts.fontBold,
+      color: theme.white,
+      letterSpacing: 0.3,
+    },
+    name: {
+      marginTop: moderateHeightScale(10),
+      maxWidth: "100%",
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+      textAlign: "center",
+      textTransform: "capitalize",
+    },
+    sub: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+      textAlign: "center",
+    },
+  });
+
+/** Barber grid, 3 per row (photo, name, experience), like customer "Choose staff". */
+export function StaffGrid({
+  staff,
+  selectedId,
+  onSelect,
+}: {
+  staff: {
+    id: number;
+    name: string;
+    isOwner: boolean;
+    image: string | null;
+    experience: string | null;
+  }[];
+  selectedId: number | null;
+  onSelect: (id: number) => void;
+}) {
+  const { t } = useTranslation();
+  const { colors } = useTheme();
+  const theme = colors as Theme;
+  const styles = useMemo(() => createStaffTileStyles(theme), [theme]);
+  const { width } = useWindowDimensions();
+  const tileWidth = Math.floor((width - PAGE_PAD * 2 - STAFF_TILE_GAP * 2) / 3);
+  const photoSize = tileWidth - STAFF_TILE_PAD * 2 - 4; // minus the 2px border
+  const fallbackUri = getDefaultAvatarImage();
+  return (
+    <View style={styles.grid} accessibilityRole="radiogroup">
+      {staff.map((member) => {
+        const on = member.id === selectedId;
+        const uri = resolveApiImageUrl(member.image) || fallbackUri;
+        return (
+          <TouchableOpacity
+            key={member.id}
+            activeOpacity={0.8}
+            onPress={() => onSelect(member.id)}
+            style={[styles.tile, { width: tileWidth }, on && styles.tileOn]}
+            accessibilityRole="radio"
+            accessibilityLabel={[
+              member.name,
+              member.isOwner ? t("owner") : null,
+              member.experience,
+            ]
+              .filter(Boolean)
+              .join(", ")}
+            accessibilityState={{ selected: on, checked: on }}
+          >
+            <View style={{ width: photoSize, height: photoSize }}>
+              <AppImage
+                uri={uri}
+                style={styles.photo}
+                resizeMode="cover"
+                fallback={
+                  <AppImage uri={fallbackUri} style={styles.photo} resizeMode="cover" />
+                }
+              />
+              {member.isOwner ? (
+                <View style={styles.badgeWrap} pointerEvents="none">
+                  <View style={styles.badge}>
+                    <Text style={styles.badgeText} numberOfLines={1}>
+                      {t("owner")}
+                    </Text>
+                  </View>
+                </View>
+              ) : null}
+              {on ? (
+                <View style={styles.check}>
+                  <MaterialIcons
+                    name="check"
+                    size={moderateWidthScale(14)}
+                    color={theme.white}
+                  />
+                </View>
+              ) : null}
+            </View>
+            <Text style={styles.name} numberOfLines={1}>
+              {member.name}
+            </Text>
+            <Text
+              style={styles.sub}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.85}
+            >
+              {member.experience ?? " "}
+            </Text>
+          </TouchableOpacity>
+        );
+      })}
+    </View>
   );
 }

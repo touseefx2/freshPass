@@ -27,6 +27,8 @@ export type OwnerBookingStaff = {
   name: string;
   isOwner: boolean;
   image: string | null;
+  /** "3 year exp" line shown under the name */
+  experience: string | null;
 };
 
 export type OwnerBookingService = {
@@ -114,6 +116,7 @@ type StaffRow = {
   user?: { profile_image_url?: string | null } | null;
   profile_image_url?: string | null;
   avatar?: string | null;
+  description?: string | number | null;
 };
 
 export async function fetchOwnerBookingStaff(
@@ -136,6 +139,10 @@ export async function fetchOwnerBookingStaff(
       isOwner: row.is_owner === true,
       image:
         row.user?.profile_image_url ?? row.profile_image_url ?? row.avatar ?? null,
+      experience:
+        row.description != null && String(row.description).trim()
+          ? String(row.description).trim()
+          : null,
     }));
 }
 

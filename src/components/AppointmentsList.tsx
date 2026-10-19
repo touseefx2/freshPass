@@ -40,6 +40,8 @@ import type { OutcomeSummary } from "@/src/types/cancellationPolicy";
 type AppointmentRow = Appointment & {
   paymentMethod?: string;
   owesPayment?: boolean;
+  paidAt?: string | null;
+  inPersonPayment?: { status?: string; method?: string } | null;
   outcomeSummary?: OutcomeSummary | null;
 };
 
@@ -495,7 +497,11 @@ export default function AppointmentsList({
     const owesPayment =
       item.owesPayment ??
       !(item.paymentMethod === "pay_now" && item.paidAmount != null);
-    if (!owesPayment && item.paidAmount != null) {
+    // Cash checkout: paidAmount stays null, backend marks inPersonPayment confirmed.
+    if (item.inPersonPayment?.status === "confirmed") {
+      return { label: t("outcomePaymentPaidInPerson"), tone: "paid" };
+    }
+    if (!owesPayment && (item.paidAmount != null || item.paidAt)) {
       return { label: t("paidLabel"), tone: "paid" };
     }
     if (normalizeStatus(item.status) === "completed") {

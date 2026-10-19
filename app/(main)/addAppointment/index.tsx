@@ -41,6 +41,7 @@ import {
   PeriodTabs,
   SelectRow,
   SlotLengthMenu,
+  StaffGrid,
   TimeChips,
   TimeChipsSkeleton,
   getDayPeriod,
@@ -873,22 +874,14 @@ export default function AddAppointmentScreen() {
         {staff.length === 0 ? (
           <InfoNote tone="warm" text={t("oaNoBarbers")} />
         ) : (
-          <View style={styles.list} accessibilityRole="radiogroup">
-            {staff.map((member) => (
-              <SelectRow
-                key={member.id}
-                title={member.name}
-                image={member.image}
-                tag={member.isOwner ? t("owner") : null}
-                tagTone="neutral"
-                selected={staffId === member.id}
-                onPress={() => {
-                  setStaffId(member.id);
-                  setTimeError(null);
-                }}
-              />
-            ))}
-          </View>
+          <StaffGrid
+            staff={staff}
+            selectedId={staffId}
+            onSelect={(id) => {
+              setStaffId(id);
+              setTimeError(null);
+            }}
+          />
         )}
       </ScrollView>
       <FlowFooter
