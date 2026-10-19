@@ -166,6 +166,12 @@ function buildRevenueLine(
       `${t("earningsFilterMemberships")} ${formatMoneyPlain(item.revenue.subscriptionRevenue, currency)}`,
     );
   }
+  // Products go to the business row, never to a person
+  if ((item.revenue.productRevenue ?? 0) > 0) {
+    parts.push(
+      `${t("bhProducts")} ${formatMoneyPlain(item.revenue.productRevenue ?? 0, currency)}`,
+    );
+  }
   if (item.revenue.otherRevenue > 0) {
     parts.push(
       `${t("earningsFilterOther")} ${formatMoneyPlain(item.revenue.otherRevenue, currency)}`,

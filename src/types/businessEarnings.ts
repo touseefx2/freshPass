@@ -3,6 +3,7 @@ export type RevenueSourceFilter =
   | "subscription"
   | "appointment"
   | "tip"
+  | "product"
   | "other";
 
 export type PaymentStatusFilter =
@@ -22,6 +23,7 @@ export type EarningsRevenueSource =
   | "subscription"
   | "appointment"
   | "tip"
+  | "product"
   | "other";
 
 export type StaffIdFilter = number | "all";
@@ -71,8 +73,51 @@ export interface EarningsRevenue {
   subscriptionRevenue: number;
   appointmentRevenue: number;
   tipRevenue: number;
+  /** Optional: older backends omit it. */
+  productRevenue?: number;
   otherRevenue: number;
   total: number;
+}
+
+/** Period for the business home + Transactions screens. Never both shapes. */
+export type EarningsPeriodQuery =
+  | { month: string }
+  | { from_date: string; to_date: string };
+
+export interface OverviewLine {
+  amount: number;
+  count: number;
+}
+
+/**
+ * Gross money taken in the period: online payments + confirmed shop visits +
+ * confirmed cash tips. The four tiles + `other` add up to `totalRevenue`.
+ */
+export interface EarningsOverview {
+  totalRevenue: number;
+  onlineRevenue: number;
+  inPersonRevenue: number;
+  transactionsCount: number;
+  services: OverviewLine;
+  tips: OverviewLine;
+  /** amount = membership charges; visits = completed visits a membership covered */
+  memberships: OverviewLine & { visits: number };
+  products: OverviewLine;
+  /** Cancellation and no-show fees */
+  other: OverviewLine;
+}
+
+export interface RevenueChartPoint {
+  key: string;
+  label: string;
+  amount: number;
+  count: number;
+}
+
+export interface RevenueChart {
+  granularity: "hour" | "day" | "month";
+  /** Empty buckets included with amount 0 */
+  points: RevenueChartPoint[];
 }
 
 export interface EarningsDeductions {
@@ -165,6 +210,10 @@ export interface EarningsReport {
   collectedAtLocation: CollectedAtLocation;
   feeDataCoverage: FeeDataCoverage;
   payouts: EarningsPayouts;
+  /** Optional: older backends omit it. */
+  overview?: EarningsOverview;
+  /** Optional: older backends omit it. */
+  chart?: RevenueChart;
 }
 
 export interface EarningsMonthRow {
@@ -181,6 +230,8 @@ export interface StaffEarningsRevenue {
   subscriptionRevenue: number;
   appointmentRevenue: number;
   tipRevenue: number;
+  /** Always 0 for a person: product sales go to the business row */
+  productRevenue?: number;
   otherRevenue: number;
 }
 
@@ -248,7 +299,29 @@ export interface EarningsTransaction {
   staffName: string | null;
   /** True when credited staff is the business owner-as-staff. */
   staffIsOwner?: boolean;
+  /**
+   * Fields below come only with include_in_person=1 (and newer backends).
+   * `id` is the id of that kind of record, so key rows by kind + id.
+   */
+  kind?: EarningsTransactionKind;
+  paymentMethod?: EarningsPaymentMethod;
+  customerImage?: string | null;
+  /** ISO 8601 */
+  occurredAt?: string | null;
+  /** YYYY-MM-DD */
+  appointmentDate?: string | null;
+  /** HH:mm */
+  appointmentTime?: string | null;
+  orderId?: number | null;
 }
+
+export type EarningsTransactionKind =
+  | "payment"
+  | "in_person"
+  | "cash_tip"
+  | "membership_visit";
+
+export type EarningsPaymentMethod = "online" | "in_person" | "membership";
 
 export interface EarningsTransactionsMeta {
   currentPage: number;

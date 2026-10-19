@@ -23,15 +23,14 @@ import {
   moderateWidthScale,
 } from "@/src/theme/dimensions";
 import SummaryStats from "./components/SummaryStats";
-import StaffOnDuty from "./components/StaffOnDuty";
 import AppointmentsSection from "./components/AppointmentsSection";
 import AwaitingOutcomeSection, {
   type AwaitingOutcomeAppointment,
 } from "./components/AwaitingOutcomeSection";
 import PaymentsToConfirmSection from "./components/PaymentsToConfirmSection";
 import WorkHistory from "./components/WorkHistory";
-import CustomersSection from "./components/CustomersSection";
 import WelcomeSection from "./components/WelcomeSection";
+import BusinessHomeContent from "./business/BusinessHomeContent";
 import DashboardHeader from "../../DashboardHeader";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import RetryButton from "@/src/components/retryButton";
@@ -40,7 +39,6 @@ import {
   setBusinessStatus,
   UserRole,
   BusinessStatus,
-  canShowStaffManagement,
 } from "@/src/state/slices/userSlice";
 import {
   ApiService,
@@ -52,7 +50,6 @@ import Logger from "@/src/services/logger";
 import {
   userEndpoints,
   dashboardEndpoints,
-  staffEndpoints,
   appointmentsEndpoints,
   chatEndpoints,
 } from "@/src/services/endpoints";
@@ -78,6 +75,10 @@ const createStyles = (theme: Theme) =>
     },
     scrollContent: {
       paddingVertical: moderateHeightScale(15),
+    },
+    businessScrollContent: {
+      paddingTop: moderateHeightScale(15),
+      paddingBottom: moderateHeightScale(36),
     },
     statsContainer: {
       paddingHorizontal: moderateWidthScale(20),
@@ -128,7 +129,6 @@ export default function HomeScreen() {
 
   const [dashboardStats, setDashboardStats] =
     useState<DashboardStatsData | null>(null);
-  const [staffData, setStaffData] = useState<any[] | null>(null);
   const [appointmentsData, setAppointmentsData] = useState<
     Appointment[] | null
   >(null);
@@ -143,6 +143,10 @@ export default function HomeScreen() {
   const [awaitingOutcomeLoading, setAwaitingOutcomeLoading] = useState(false);
   // Bumped on pull-to-refresh so "Payments to confirm" reloads too.
   const [paymentsRefreshKey, setPaymentsRefreshKey] = useState(0);
+  // Business home: bumped after a good status fetch (focus, pull, retry) so the
+  // period sections reload; 0 = status not loaded yet.
+  const [businessHomeRefreshKey, setBusinessHomeRefreshKey] = useState(0);
+  const isBusinessHome = userRole === "business";
   const [refreshing, setRefreshing] = useState(false);
 
   const handleFetchUserStatus = async (): Promise<boolean> => {
@@ -248,70 +252,6 @@ export default function HomeScreen() {
       showBanner(
         t("apiFailed"),
         error?.message || t("failedToFetchDashboardStats"),
-        "error",
-        2500,
-      );
-    }
-  };
-
-  const showStaffOnDuty =
-    userRole === "business" && canShowStaffManagement(businessStatus);
-
-  const handleFetchStaff = async (active?: string) => {
-    // Only fetch staff for business role when the section is visible
-    if (!showStaffOnDuty) return;
-    try {
-      const response = await ApiService.get<{
-        success: boolean;
-        message: string;
-        data: Array<{
-          id: number;
-          user_id: number;
-          name: string;
-          email: string;
-          business_id: number;
-          active: number;
-          description: string | null;
-          invitation_token: string;
-          invitation_status: string;
-          is_owner?: boolean;
-          is_business_owner?: boolean;
-          completed_appointments_count: number;
-          business: {
-            id: number;
-            title: string;
-          };
-          user: {
-            id: number;
-            name: string;
-            email: string;
-            email_notifications: boolean | null;
-            profile_image_url: string | null;
-            working_hours: any[];
-          };
-          created_at: string;
-          createdAt: string;
-        }>;
-      }>(staffEndpoints.list(active));
-
-      if (response.success && response.data) {
-        // const filteredStaff = response.data.filter(
-        //   (staff) => staff.invitation_token == null,
-        // );
-
-        const sortedStaff = [...response.data].sort((a, b) => {
-          const aActive = a.active === 1;
-          const bActive = b.active === 1;
-          if (aActive === bActive) return 0;
-          return aActive ? -1 : 1;
-        });
-        setStaffData(sortedStaff);
-      }
-    } catch (error: any) {
-      if (isRequestCanceled(error)) return;
-      showBanner(
-        t("apiFailed"),
-        error?.message || t("failedToFetchStaffDetails"),
         "error",
         2500,
       );
@@ -494,12 +434,14 @@ export default function HomeScreen() {
       handleFetchUserDetails();
       dispatch(fetchNotificationUnreadCount());
       handleFetchChatUnreadCount();
-      handleFetchDashboardStats();
-      if (userRole === "business") {
-        handleFetchStaff();
-      }
       handleFetchAwaitingOutcome();
       setPaymentsRefreshKey((key) => key + 1);
+      if (userRole === "business") {
+        // Stats, revenue, appointments and staff load per period in BusinessHomeContent
+        setBusinessHomeRefreshKey((key) => key + 1);
+        return;
+      }
+      handleFetchDashboardStats();
       handleFetchAppointments();
       handleFetchWorkHistory();
     }
@@ -561,7 +503,9 @@ export default function HomeScreen() {
       ) : (
         <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={
+            isBusinessHome ? styles.businessScrollContent : styles.scrollContent
+          }
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -571,60 +515,66 @@ export default function HomeScreen() {
             />
           }
         >
-          {/* Welcome Section - Only for Staff role */}
-          {userRole === "staff" && <WelcomeSection />}
-
-          {/* Summary Statistics - All roles */}
-          <View style={styles.statsContainer}>
-            <SummaryStats
-              callApi={handleFetchDashboardStats}
-              data={dashboardStats}
+          {isBusinessHome ? (
+            <BusinessHomeContent
+              refreshKey={businessHomeRefreshKey}
+              awaitingOutcomeData={awaitingOutcomeData}
+              awaitingOutcomeLoading={awaitingOutcomeLoading}
+              onRefreshAwaitingOutcome={handleFetchAwaitingOutcome}
+              paymentsRefreshKey={paymentsRefreshKey}
+              onError={(message) =>
+                showBanner(
+                  t("apiFailed"),
+                  message || t("failedToFetchDashboardStats"),
+                  "error",
+                  2500,
+                )
+              }
             />
-          </View>
+          ) : (
+            <>
+              {/* Welcome Section - Only for Staff role */}
+              {userRole === "staff" && <WelcomeSection />}
 
-          {/* Staff on Duty - Business role when Stripe is connected and plan allows staff */}
-          {showStaffOnDuty && (
-            <StaffOnDuty data={staffData} callApi={() => handleFetchStaff()} />
+              {/* Summary Statistics - All roles */}
+              <View style={styles.statsContainer}>
+                <SummaryStats
+                  callApi={handleFetchDashboardStats}
+                  data={dashboardStats}
+                />
+              </View>
+
+              {/* Appointments + Awaiting outcome */}
+              <View style={styles.appointmentsContainer}>
+                <AppointmentsSection
+                  data={appointmentsData}
+                  totalCount={appointmentsTotalCount}
+                  callApi={handleFetchAppointments}
+                />
+                {userRole === "staff" && (
+                  <AwaitingOutcomeSection
+                    data={awaitingOutcomeData}
+                    loading={awaitingOutcomeLoading}
+                    onRefresh={handleFetchAwaitingOutcome}
+                  />
+                )}
+                {userRole === "staff" && (
+                  <PaymentsToConfirmSection refreshKey={paymentsRefreshKey} />
+                )}
+              </View>
+
+              <View style={styles.line} />
+
+              {/* Work History - All roles */}
+              <View style={styles.workHistoryContainer}>
+                <WorkHistory
+                  data={workHistoryData}
+                  totalCount={workHistoryTotalCount}
+                  callApi={handleFetchWorkHistory}
+                />
+              </View>
+            </>
           )}
-
-          {/* Appointments + Awaiting outcome */}
-          <View style={styles.appointmentsContainer}>
-            <AppointmentsSection
-              data={appointmentsData}
-              totalCount={appointmentsTotalCount}
-              callApi={handleFetchAppointments}
-            />
-            {(userRole === "business" || userRole === "staff") && (
-              <AwaitingOutcomeSection
-                data={awaitingOutcomeData}
-                loading={awaitingOutcomeLoading}
-                onRefresh={handleFetchAwaitingOutcome}
-              />
-            )}
-            {(userRole === "business" || userRole === "staff") && (
-              <PaymentsToConfirmSection refreshKey={paymentsRefreshKey} />
-            )}
-          </View>
-
-          <View style={styles.line} />
-
-          {/* Customers - Business only */}
-          {userRole === "business" && (
-            <View style={styles.workHistoryContainer}>
-              <CustomersSection />
-            </View>
-          )}
-
-          <View style={styles.line} />
-
-          {/* Work History - All roles */}
-          <View style={styles.workHistoryContainer}>
-            <WorkHistory
-              data={workHistoryData}
-              totalCount={workHistoryTotalCount}
-              callApi={handleFetchWorkHistory}
-            />
-          </View>
         </ScrollView>
       )}
     </View>

@@ -188,27 +188,54 @@ export const iapEndpoints = {
  * Dashboard endpoints
  */
 export const dashboardEndpoints = {
-  stats: (month?: string) => {
-    if (month) {
-      return `/api/dashboard/stats?month=${month}`;
+  /** A month string, or a period ({ month } or { from_date, to_date }). None = all-time. */
+  stats: (
+    period?:
+      | string
+      | { month?: string; from_date?: string; to_date?: string },
+  ) => {
+    const queryParams = new URLSearchParams();
+    if (typeof period === "string") {
+      if (period) queryParams.append("month", period);
+    } else if (period?.month) {
+      queryParams.append("month", period.month);
+    } else if (period?.from_date && period?.to_date) {
+      queryParams.append("from_date", period.from_date);
+      queryParams.append("to_date", period.to_date);
     }
-    return `/api/dashboard/stats`;
+    const query = queryParams.toString();
+    return `/api/dashboard/stats${query ? `?${query}` : ""}`;
   },
 };
 
 /**
  * Business earnings endpoints
  */
+/** Never send `month` with `from_date`/`to_date` — the server returns 422. */
+function appendEarningsPeriod(
+  queryParams: URLSearchParams,
+  params?: { month?: string; from_date?: string; to_date?: string },
+) {
+  if (params?.month) {
+    queryParams.append("month", params.month);
+  } else if (params?.from_date && params?.to_date) {
+    queryParams.append("from_date", params.from_date);
+    queryParams.append("to_date", params.to_date);
+  }
+}
+
 export const businessEarningsEndpoints = {
   report: (params?: {
     month?: string;
+    from_date?: string;
+    to_date?: string;
     revenue_source?: string;
     payment_status?: string;
     transaction_type?: string;
     staff_id?: string | number;
   }) => {
     const queryParams = new URLSearchParams();
-    if (params?.month) queryParams.append("month", params.month);
+    appendEarningsPeriod(queryParams, params);
     if (params?.revenue_source && params.revenue_source !== "all") {
       queryParams.append("revenue_source", params.revenue_source);
     }
@@ -238,12 +265,14 @@ export const businessEarningsEndpoints = {
   },
   staff: (params?: {
     month?: string;
+    from_date?: string;
+    to_date?: string;
     revenue_source?: string;
     payment_status?: string;
     transaction_type?: string;
   }) => {
     const queryParams = new URLSearchParams();
-    if (params?.month) queryParams.append("month", params.month);
+    appendEarningsPeriod(queryParams, params);
     if (params?.revenue_source && params.revenue_source !== "all") {
       queryParams.append("revenue_source", params.revenue_source);
     }
@@ -258,15 +287,20 @@ export const businessEarningsEndpoints = {
   },
   transactions: (params?: {
     month?: string;
+    from_date?: string;
+    to_date?: string;
     revenue_source?: string;
     payment_status?: string;
     transaction_type?: string;
     staff_id?: string | number;
+    /** Adds shop visits, cash tips and membership visits to the online rows */
+    include_in_person?: boolean;
     page?: number;
     per_page?: number;
   }) => {
     const queryParams = new URLSearchParams();
-    if (params?.month) queryParams.append("month", params.month);
+    appendEarningsPeriod(queryParams, params);
+    if (params?.include_in_person) queryParams.append("include_in_person", "1");
     if (params?.revenue_source && params.revenue_source !== "all") {
       queryParams.append("revenue_source", params.revenue_source);
     }

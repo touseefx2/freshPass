@@ -138,6 +138,7 @@ export default function EarningsFilterModal({
     { value: "appointment", label: t("earningsFilterAppointments") },
     { value: "subscription", label: t("earningsFilterMemberships") },
     { value: "tip", label: t("earningsFilterTips") },
+    { value: "product", label: t("bhProducts") },
     { value: "other", label: t("earningsFilterOther") },
   ];
 

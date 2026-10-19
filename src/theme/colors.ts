@@ -88,6 +88,20 @@ export const themes = {
     apptLavenderAccent: "#6B4F8A",
     apptGoldBg: "rgba(175, 138, 37, 0.16)",
     apptGoldAccent: "#8F7320",
+    // Business home tiles + status chips (pastel fill, AA text accent)
+    tileMint: "#EAF2E1",
+    tilePeach: "#FBF0DC",
+    tileRose: "#FBE7E3",
+    successGreen: "#2F7A34",
+    accentAmber: "#C9822A",
+    accentRose: "#C8402F",
+    // Revenue bar chart on the dark green card
+    chartBar: "#A7BC84",
+    chartBarPeak: "#EEF4DF",
+    chartBarEmpty: "rgba(255, 255, 255, 0.14)",
+    // Staff Overview card: soft photo panel + avatar disc
+    staffPhotoPanel: "#EEEEE7",
+    staffAvatarDisc: "#DFDFD7",
   },
   dark: {},
   blue: {},

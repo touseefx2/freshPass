@@ -3,6 +3,7 @@ import { businessEarningsEndpoints } from "./endpoints";
 import type {
   EarningsFilters,
   EarningsMonthRow,
+  EarningsPeriodQuery,
   EarningsReport,
   EarningsReportApiResponse,
   EarningsMonthsApiResponse,
@@ -205,4 +206,74 @@ export function getStaffInitials(name: string | null | undefined): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
   if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
   return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+}
+
+/* ── Business home + Transactions screens (period = day / week / month / range) ── */
+
+export const HOME_TRANSACTIONS_PREVIEW = 5;
+
+/** GET /business/earnings for a period: `overview` (tiles) + `chart` (bars). */
+export async function fetchEarningsForPeriod(
+  period: EarningsPeriodQuery,
+): Promise<EarningsReport> {
+  const response = await ApiService.get<EarningsReportApiResponse>(
+    businessEarningsEndpoints.report(period),
+  );
+  if (!response.data) {
+    throw new Error(response.message || "Failed to load earnings report");
+  }
+  return response.data;
+}
+
+/** One row per staff member for the period (Pro only). */
+export async function fetchStaffEarningsForPeriod(
+  period: EarningsPeriodQuery,
+): Promise<StaffEarningsReport> {
+  const response = await ApiService.get<StaffEarningsApiResponse>(
+    businessEarningsEndpoints.staff(period),
+  );
+  if (!response.data) {
+    throw new Error(response.message || "Failed to load staff earnings");
+  }
+  return response.data;
+}
+
+/** Online + in-person rows (include_in_person=1), newest first. */
+export async function fetchPeriodTransactions(
+  period: EarningsPeriodQuery,
+  options: {
+    revenueSource?: RevenueSourceFilter;
+    page?: number;
+    perPage?: number;
+  } = {},
+): Promise<{
+  transactions: EarningsTransaction[];
+  meta: EarningsTransactionsMeta;
+}> {
+  const page = options.page ?? 1;
+  const perPage = options.perPage ?? EARNINGS_TRANSACTIONS_PER_PAGE;
+  const response = await ApiService.get<EarningsTransactionsApiResponse>(
+    businessEarningsEndpoints.transactions({
+      ...period,
+      revenue_source: options.revenueSource ?? "all",
+      include_in_person: true,
+      page,
+      per_page: perPage,
+    }),
+  );
+
+  const transactions = response.data?.data ?? [];
+  const meta = response.data?.meta ?? {
+    currentPage: page,
+    perPage,
+    total: transactions.length,
+    lastPage: 1,
+    hasMore: false,
+  };
+  return { transactions, meta };
+}
+
+/** List key: ids are per kind (payment / appointment / tip), never unique alone. */
+export function transactionKey(item: EarningsTransaction): string {
+  return `${item.kind ?? "payment"}-${item.id}`;
 }

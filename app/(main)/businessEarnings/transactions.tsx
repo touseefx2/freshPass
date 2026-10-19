@@ -97,7 +97,7 @@ export default function BusinessEarningsTransactionsScreen() {
     () => ({
       revenueSource: asFilterValue(
         params.revenue_source,
-        ["all", "subscription", "appointment", "tip", "other"] as const,
+        ["all", "subscription", "appointment", "tip", "product", "other"] as const,
         DEFAULT_EARNINGS_FILTERS.revenueSource,
       ) as RevenueSourceFilter,
       paymentStatus: asFilterValue(
