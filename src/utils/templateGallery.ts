@@ -22,7 +22,7 @@ import type {
 
 type Translate = (key: string, options?: Record<string, unknown>) => string;
 
-/** Video Reel sample shown when a template's `preview_video_url` is empty */
+/** Sample shown when a template's `preview_video_url` is empty (both tabs) */
 const FALLBACK_VIDEO_PREVIEW_URL =
   "https://freshpass-media.nyc3.cdn.digitaloceanspaces.com/media/videos/129/Bn2WhsaA48UaBf7LKdxX6LmyNAgQPhRAwxgDjOpt.mp4";
 
@@ -119,16 +119,18 @@ export function photoReelGalleryItem(
           })
         : "",
     coverUrl: tpl.thumbnail_url || null,
-    previewVideoUrl: tpl.preview_video_url || null,
+    previewVideoUrl: videoPreviewUrl(tpl.preview_video_url),
     icon: mediaIcon,
     features,
     autoBuild: false,
-    // The API sends no reel length; each media field is one clip
-    lengthSeconds: null,
+    lengthSeconds:
+      tpl.length_seconds && tpl.length_seconds > 0 ? tpl.length_seconds : null,
+    // Each media field is one clip
     clipCount: fields.length || null,
-    // `music_name` is a stock id, not a song title
-    musicTitle: null,
-    musicUrl: null,
+    // `music.title` only — `music_name` on older templates is a stock id
+    musicTitle: tpl.music?.title?.trim() || null,
+    // Played over the preview, like the Video Reel tab
+    musicUrl: tpl.music?.url?.trim() || null,
   };
 }
 

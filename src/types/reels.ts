@@ -371,6 +371,10 @@ export type ReelTemplate = {
   media_count: number;
   has_music: boolean;
   music_name: string | null;
+  /** The template's song (title + url); newer templates only */
+  music?: AutoReelMusic | null;
+  /** Finished reel length; newer templates only */
+  length_seconds?: number | null;
   is_active: boolean;
   created_at: string;
 };

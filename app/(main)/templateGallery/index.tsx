@@ -102,6 +102,9 @@ import {
 type Styles = ReturnType<typeof createStyles>;
 type IconName = React.ComponentProps<typeof MaterialIcons>["name"];
 
+/** Tabs shown as the full-screen cover; both since 10-19 (Photo Reels now send a preview video) */
+const FULL_COVER_KINDS: TemplateGalleryKind[] = ["video", "photo"];
+
 const KINDS: {
   kind: TemplateGalleryKind;
   icon: React.ComponentProps<typeof Ionicons>["name"];
@@ -205,6 +208,12 @@ function coverFacts(
       a11y: t("templateGalleryClipsA11y", { count: item.clipCount }),
     });
   }
+  // Photo Reels name no song (stock file ids), so just "Includes music"
+  const music =
+    item.kind === "photo" && !item.musicTitle
+      ? item.features.find((f) => f.icon === "music-note")
+      : undefined;
+  if (music) facts.push({ key: "music", icon: music.icon, text: music.label });
   return facts;
 }
 
@@ -1382,13 +1391,15 @@ export default function TemplateGalleryScreen() {
     }, [kind]),
   );
 
-  const isVideoTab = kind === "video";
-  const coverWidth = isVideoTab ? width : cardWidth;
-  const cardHeight = isVideoTab
+  // CapCut-style full-screen cover (autoplaying sample, chips, button over
+  // it); a tab left out falls back to the card + info boxes layout
+  const fullCover = FULL_COVER_KINDS.includes(kind);
+  const coverWidth = fullCover ? width : cardWidth;
+  const cardHeight = fullCover
     ? Math.round(stageHeight)
     : Math.round(cardWidth * CARD_RATIO);
-  const gap = isVideoTab ? VIDEO_CARD_GAP : CARD_GAP;
-  const pageInset = isVideoTab ? 0 : sideInset;
+  const gap = fullCover ? VIDEO_CARD_GAP : CARD_GAP;
+  const pageInset = fullCover ? 0 : sideInset;
   const snap = coverWidth + gap;
 
   const tab = tabs[kind];
@@ -1533,7 +1544,7 @@ export default function TemplateGalleryScreen() {
           cardWidth={coverWidth}
           cardHeight={cardHeight}
           sideInset={sideInset}
-          withInfo={!isVideoTab}
+          withInfo={!fullCover}
           bottomInset={footerHeight}
           styles={styles}
         />
@@ -1582,7 +1593,7 @@ export default function TemplateGalleryScreen() {
         entering={FadeIn.duration(220).reduceMotion(ReduceMotion.System)}
       >
         <View
-          style={isVideoTab ? null : [styles.carousel, styles.carouselContent]}
+          style={fullCover ? null : [styles.carousel, styles.carouselContent]}
         >
           <Animated.View
             style={[
@@ -1597,7 +1608,7 @@ export default function TemplateGalleryScreen() {
           >
             {templates.map((item, i) => (
               <View key={item.id} {...offscreen(i)}>
-                {isVideoTab ? (
+                {fullCover ? (
                   <VideoTemplateCover
                     item={item}
                     index={i}
@@ -1649,7 +1660,7 @@ export default function TemplateGalleryScreen() {
         </View>
 
         {/* Photo tab: each template's info as a page that slides with the covers */}
-        {isVideoTab ? null : (
+        {fullCover ? null : (
           <Animated.View
             style={[styles.infoRow, { width: count * width }, infoTrack]}
           >
@@ -1739,13 +1750,13 @@ export default function TemplateGalleryScreen() {
 
   // Video tab with a cover showing: footer laid over the video
   // (also while loading, so the skeleton has the same layout)
-  const overlay = isVideoTab && !tab.error && (tab.loading || !!current);
+  const overlay = fullCover && !tab.error && (tab.loading || !!current);
 
   const renderFooter = () => (
     <View
       style={[
         styles.footer,
-        isVideoTab && styles.videoFooter,
+        fullCover && styles.videoFooter,
         overlay && styles.videoFooterOverlay,
         {
           paddingBottom: overlay
@@ -1755,14 +1766,14 @@ export default function TemplateGalleryScreen() {
         },
       ]}
       onLayout={
-        isVideoTab
+        fullCover
           ? (e) => setFooterHeight(e.nativeEvent.layout.height)
           : undefined
       }
     >
       {/* Content fades out under the footer instead of a hard cut (the
               Video tab's footer sits over the cover's own dark fade) */}
-      {isVideoTab ? null : (
+      {fullCover ? null : (
         <LinearGradient
           colors={[`${theme.background}00`, theme.background]}
           style={styles.footerFade}
@@ -1885,11 +1896,11 @@ export default function TemplateGalleryScreen() {
       style={[
         styles.segmentBar,
         { paddingTop: insets.top + moderateHeightScale(4) },
-        isVideoTab && styles.videoTabs,
+        fullCover && styles.videoTabs,
         overlay && styles.videoTabsOverlay,
       ]}
       onLayout={
-        isVideoTab
+        fullCover
           ? (e) => setTabsHeight(e.nativeEvent.layout.height)
           : undefined
       }
@@ -1946,7 +1957,7 @@ export default function TemplateGalleryScreen() {
 
   return (
     <View style={styles.safeArea}>
-      {isVideoTab ? (
+      {fullCover ? (
         // Video tab: the covers fill the whole screen; back button and tabs
         // float over their top, dots / credits / button over their bottom
         <View
