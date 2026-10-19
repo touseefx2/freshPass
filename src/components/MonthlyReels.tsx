@@ -20,7 +20,7 @@ import type { MediaLimits } from "@/src/types/media";
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
     card: {
-      borderRadius: moderateWidthScale(14),
+      borderRadius: moderateWidthScale(16),
       borderWidth: 1,
       borderColor: theme.borderLight,
       backgroundColor: theme.white,
@@ -105,7 +105,7 @@ const createStyles = (theme: Theme) =>
       lineHeight: fontSize.size16,
     },
     warnText: {
-      color: theme.orangeBrown,
+      color: theme.orangeBrownText,
     },
     errorText: {
       color: theme.red,
@@ -162,6 +162,44 @@ const createStyles = (theme: Theme) =>
       fontSize: fontSize.size11,
       fontFamily: fonts.fontRegular,
       color: theme.lightGreen,
+    },
+    resetChip: {
+      paddingHorizontal: moderateWidthScale(8),
+      paddingVertical: moderateHeightScale(3),
+      borderRadius: moderateWidthScale(999),
+      backgroundColor: theme.lightGreen07,
+    },
+    resetChipText: {
+      fontSize: fontSize.size11,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
+    },
+    summaryValue: {
+      fontSize: fontSize.size26,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+      fontVariant: ["tabular-nums"],
+    },
+    summaryOf: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontMedium,
+      color: theme.lightGreen,
+    },
+    splitRow: {
+      flexDirection: "row",
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderColor: theme.lightGreen015,
+      paddingVertical: moderateHeightScale(10),
+    },
+    splitCell: {
+      flex: 1,
+      gap: moderateHeightScale(2),
+    },
+    splitDivider: {
+      width: StyleSheet.hairlineWidth,
+      backgroundColor: theme.lightGreen015,
+      marginHorizontal: moderateWidthScale(14),
     },
     inlineRow: {
       flexDirection: "row",
@@ -536,39 +574,52 @@ export function BusinessReelsSummaryCard({
             color={theme.buttonBack}
           />
         </View>
-        <View style={styles.headerText}>
-          <Text style={styles.title} accessibilityRole="header">
-            {t("monthlyReels")}
-          </Text>
-          <Text style={styles.subtitle}>
-            {t("monthlyReelsBusinessSubtitle", { count: max })}
-          </Text>
-        </View>
+        <Text style={[styles.title, { flex: 1 }]} accessibilityRole="header">
+          {t("monthlyReels")}
+        </Text>
+        {resetLabel ? (
+          <View style={styles.resetChip}>
+            <Text style={styles.resetChipText}>
+              {t("monthlyReelsResets", { date: resetLabel })}
+            </Text>
+          </View>
+        ) : null}
       </View>
 
-      <View style={{ gap: moderateHeightScale(6) }}>
+      <View style={{ gap: moderateHeightScale(8) }}>
         <View style={styles.usageTop}>
-          <Text style={styles.usageValue}>
-            {used} / {max}
+          <Text style={styles.summaryValue}>
+            {used}
+            <Text style={styles.summaryOf}> / {max}</Text>
           </Text>
           <Text style={styles.usageLabel}>
-            {resetLabel
-              ? t("monthlyReelsResets", { date: resetLabel })
-              : t("monthlyReelsUsedThisMonth")}
+            {t("monthlyReelsUsedThisMonth")}
           </Text>
         </View>
         <ReelUsageBar used={used} limit={max} />
       </View>
 
-      <View style={styles.statsRow}>
-        <View style={styles.stat}>
-          <Text style={styles.statValue}>{limits.assigned_to_staff ?? 0}</Text>
+      <View style={styles.splitRow}>
+        <View style={styles.splitCell}>
           <Text style={styles.statLabel}>{t("monthlyReelsGivenToStaff")}</Text>
+          <Text style={styles.statValue}>{limits.assigned_to_staff ?? 0}</Text>
         </View>
-        <View style={styles.stat}>
-          <Text style={styles.statValue}>{limits.unassigned ?? 0}</Text>
+        <View style={styles.splitDivider} />
+        <View style={styles.splitCell}>
           <Text style={styles.statLabel}>{t("monthlyReelsForYou")}</Text>
+          <Text style={styles.statValue}>{limits.unassigned ?? 0}</Text>
         </View>
+      </View>
+
+      <View style={styles.helperRow}>
+        <MaterialIcons
+          name="info-outline"
+          size={moderateWidthScale(14)}
+          color={theme.lightGreen}
+        />
+        <Text style={styles.helperText}>
+          {t("monthlyReelsBusinessSubtitle", { count: max })}
+        </Text>
       </View>
     </View>
   );

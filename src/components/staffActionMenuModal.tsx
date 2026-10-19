@@ -105,32 +105,22 @@ const createStyles = (theme: Theme) =>
     card: {
       width: "100%",
       backgroundColor: theme.white,
-      borderRadius: moderateWidthScale(28),
-      paddingTop: AVATAR_SIZE / 2 + moderateHeightScale(20),
-      paddingBottom: moderateHeightScale(22),
+      borderRadius: moderateWidthScale(24),
+      paddingTop: AVATAR_SIZE / 2 + moderateHeightScale(14),
+      paddingBottom: moderateHeightScale(12),
       paddingHorizontal: moderateWidthScale(20),
       alignItems: "center",
       borderWidth: 1,
       borderColor: theme.borderLight,
       // Layered depth
       shadowColor: theme.darkGreen,
-      shadowOffset: { width: 0, height: moderateHeightScale(18) },
-      shadowOpacity: 0.18,
-      shadowRadius: moderateWidthScale(28),
-      elevation: 16,
-    },
-    cardHighlight: {
-      position: "absolute",
-      top: 0,
-      left: 0,
-      right: 0,
-      height: moderateHeightScale(72),
-      borderTopLeftRadius: moderateWidthScale(28),
-      borderTopRightRadius: moderateWidthScale(28),
-      backgroundColor: theme.lightGreen05,
+      shadowOffset: { width: 0, height: moderateHeightScale(12) },
+      shadowOpacity: 0.14,
+      shadowRadius: moderateWidthScale(24),
+      elevation: 12,
     },
     name: {
-      fontSize: fontSize.size22,
+      fontSize: fontSize.size20,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
       textAlign: "center",
@@ -142,62 +132,37 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontRegular,
       color: theme.lightGreen,
       textAlign: "center",
-      marginBottom: moderateHeightScale(22),
+      marginBottom: moderateHeightScale(20),
       paddingHorizontal: moderateWidthScale(8),
     },
     actionsRow: {
-      flexDirection: "row",
       width: "100%",
-      gap: moderateWidthScale(12),
-      marginBottom: moderateHeightScale(8),
+      gap: moderateHeightScale(10),
     },
     actionTile: {
-      flex: 1,
+      flexDirection: "row",
       alignItems: "center",
       justifyContent: "center",
-      gap: moderateHeightScale(10),
-      paddingVertical: moderateHeightScale(18),
-      borderRadius: moderateWidthScale(20),
+      gap: moderateWidthScale(8),
+      height: moderateHeightScale(50),
+      borderRadius: moderateWidthScale(14),
       borderWidth: 1,
     },
     editTile: {
       backgroundColor: theme.darkGreen,
       borderColor: theme.darkGreen,
-      shadowColor: theme.darkGreen,
-      shadowOffset: { width: 0, height: moderateHeightScale(8) },
-      shadowOpacity: 0.35,
-      shadowRadius: moderateWidthScale(12),
-      elevation: 8,
     },
     deleteTile: {
       backgroundColor: theme.white,
       borderColor: theme.lightRedBorder,
-      shadowColor: theme.red,
-      shadowOffset: { width: 0, height: moderateHeightScale(6) },
-      shadowOpacity: 0.18,
-      shadowRadius: moderateWidthScale(10),
-      elevation: 6,
-    },
-    actionIconBubble: {
-      width: moderateWidthScale(44),
-      height: moderateWidthScale(44),
-      borderRadius: moderateWidthScale(14),
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    editIconBubble: {
-      backgroundColor: theme.white15,
-    },
-    deleteIconBubble: {
-      backgroundColor: theme.lightRed,
     },
     editLabel: {
-      fontSize: fontSize.size14,
+      fontSize: fontSize.size15,
       fontFamily: fonts.fontBold,
       color: theme.white,
     },
     deleteLabel: {
-      fontSize: fontSize.size14,
+      fontSize: fontSize.size15,
       fontFamily: fonts.fontBold,
       color: theme.red,
     },
@@ -317,9 +282,7 @@ export default function StaffActionMenuModal({
             style={styles.card}
             onPress={(e) => e.stopPropagation()}
           >
-            <View style={styles.cardHighlight} />
-
-            <Text style={styles.name} numberOfLines={1}>
+                        <Text style={styles.name} numberOfLines={1}>
               {staffName || t("employees")}
             </Text>
             <Text style={styles.subtitle}>
@@ -333,13 +296,7 @@ export default function StaffActionMenuModal({
                 onPress={onEdit}
                 accessibilityRole="button"
               >
-                <View style={[styles.actionIconBubble, styles.editIconBubble]}>
-                  <Feather
-                    name="edit-2"
-                    size={iconScale(18)}
-                    color={theme.white}
-                  />
-                </View>
+                <Feather name="edit-2" size={iconScale(16)} color={theme.white} />
                 <Text style={styles.editLabel}>{t("edit")}</Text>
               </TouchableOpacity>
 
@@ -349,15 +306,11 @@ export default function StaffActionMenuModal({
                 onPress={onDelete}
                 accessibilityRole="button"
               >
-                <View
-                  style={[styles.actionIconBubble, styles.deleteIconBubble]}
-                >
-                  <MaterialIcons
-                    name="delete-outline"
-                    size={iconScale(20)}
-                    color={theme.red}
-                  />
-                </View>
+                <MaterialIcons
+                  name="delete-outline"
+                  size={iconScale(19)}
+                  color={theme.red}
+                />
                 <Text style={styles.deleteLabel}>{t("delete")}</Text>
               </TouchableOpacity>
             </View>

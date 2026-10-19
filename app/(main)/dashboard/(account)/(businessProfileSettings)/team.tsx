@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { useFocusEffect, useRouter } from "expo-router";
 import {
   Alert,
@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import AppImage from "@/src/components/AppImage";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Feather } from "@expo/vector-icons";
+import { Feather, MaterialIcons } from "@expo/vector-icons";
 import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { useTranslation } from "react-i18next";
 import { Theme } from "@/src/theme/colors";
@@ -23,16 +23,12 @@ import {
   widthScale,
 } from "@/src/theme/dimensions";
 import StackHeader from "@/src/components/StackHeader";
-import FloatingInput from "@/src/components/floatingInput";
 import CustomToggle from "@/src/components/customToggle";
 import BuyBusinessPlanModal from "@/src/components/BuyBusinessPlanModal";
 import UpgradeToBusinessModal from "@/src/components/UpgradeToBusinessModal";
 import RemoveOwnerAsStaffModal from "@/src/components/removeOwnerAsStaffModal";
 import StaffActionMenuModal from "@/src/components/staffActionMenuModal";
 import { Skeleton } from "@/src/components/skeletons";
-import {
-  setStaffInvitationEmail,
-} from "@/src/state/slices/completeProfileSlice";
 import { setActionLoader, setBusinessPlansModalVisible, setBusinessPlansModalBusinessOnly, setStripeConnectModalVisible } from "@/src/state/slices/generalSlice";
 import {
   canAddStaffMembers,
@@ -44,11 +40,7 @@ import { ApiService } from "@/src/services/api";
 import Logger from "@/src/services/logger";
 import { staffEndpoints } from "@/src/services/endpoints";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
-import { validateEmail } from "@/src/services/validationService";
-import {
-  BusinessReelsSummaryCard,
-  StaffReelUsageInline,
-} from "@/src/components/MonthlyReels";
+import { BusinessReelsSummaryCard } from "@/src/components/MonthlyReels";
 import {
   fetchMonthlyReelLimits,
   findStaffReelLimit,
@@ -74,85 +66,101 @@ const createStyles = (theme: Theme) =>
       paddingHorizontal: moderateWidthScale(20),
     },
     contentContainer: {
-      paddingVertical: moderateHeightScale(24),
-      gap: moderateHeightScale(16),
+      paddingTop: moderateHeightScale(20),
+      paddingBottom: moderateHeightScale(32),
+      gap: moderateHeightScale(24),
     },
     titleSec: {
-      marginTop: moderateHeightScale(8),
-      gap: moderateHeightScale(5),
+      gap: moderateHeightScale(6),
     },
-    title: {
-      fontSize: fontSize.size24,
+    // Team overview (top)
+    hero: {
+      backgroundColor: theme.darkGreen,
+      borderRadius: moderateWidthScale(20),
+      paddingHorizontal: moderateWidthScale(18),
+      paddingTop: moderateHeightScale(18),
+      paddingBottom: moderateHeightScale(16),
+      gap: moderateHeightScale(16),
+    },
+    heroTitle: {
+      fontSize: fontSize.size20,
       fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
+      color: theme.white,
     },
-    subtitle: {
-      fontSize: fontSize.size14,
+    heroSubtitle: {
+      fontSize: fontSize.size13,
       fontFamily: fonts.fontRegular,
-      color: theme.lightGreen,
-    },
-    inputSection: {
-      gap: moderateHeightScale(4),
-    },
-    inputRowContainer: {
-      flexDirection: "row",
-      gap: moderateWidthScale(12),
-    },
-    inviteButton: {
-      backgroundColor: theme.orangeBrown,
-      borderRadius: moderateWidthScale(8),
-      paddingHorizontal: moderateWidthScale(17),
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    inviteButtonDisabled: {
-      backgroundColor: theme.lightGreen2,
-      opacity: 0.6,
-    },
-    inviteButtonText: {
-      fontSize: fontSize.size14,
-      fontFamily: fonts.fontMedium,
-      color: theme.darkGreen,
-    },
-    errorText: {
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontRegular,
-      color: theme.link,
+      color: theme.white70,
+      lineHeight: fontSize.size13 * 1.45,
       marginTop: moderateHeightScale(4),
-      paddingHorizontal: moderateWidthScale(4),
     },
-    memberCard: {
+    heroStats: {
       flexDirection: "row",
+      borderRadius: moderateWidthScale(14),
+      backgroundColor: theme.white15,
+      paddingVertical: moderateHeightScale(12),
+    },
+    heroStat: {
+      flex: 1,
       alignItems: "center",
-      gap: moderateWidthScale(12),
+      gap: moderateHeightScale(2),
     },
-    memberAvatar: {
-      width: widthScale(44),
-      height: widthScale(44),
-      borderRadius: widthScale(44) / 2,
-      backgroundColor: theme.emptyProfileImage,
+    heroStatDivider: {
+      width: StyleSheet.hairlineWidth,
+      backgroundColor: theme.white50,
+      marginVertical: moderateHeightScale(4),
     },
-    memberMoreButton: {
-      padding: moderateWidthScale(6),
+    heroStatValue: {
+      fontSize: fontSize.size20,
+      fontFamily: fonts.fontBold,
+      color: theme.white,
+      fontVariant: ["tabular-nums"],
     },
-    employeesHeader: {
+    heroStatLabel: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontMedium,
+      color: theme.white70,
+    },
+    section: {
+      gap: moderateHeightScale(12),
+    },
+    sectionHeader: {
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
       gap: moderateWidthScale(10),
     },
-    employeesTitle: {
+    sectionTitleRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(8),
+    },
+    sectionTitle: {
       fontSize: fontSize.size16,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
     },
+    countPill: {
+      minWidth: moderateWidthScale(24),
+      paddingHorizontal: moderateWidthScale(8),
+      paddingVertical: moderateHeightScale(2),
+      borderRadius: moderateWidthScale(999),
+      backgroundColor: theme.lightGreen07,
+      alignItems: "center",
+    },
+    countPillText: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+      fontVariant: ["tabular-nums"],
+    },
     addEmployeeButton: {
       flexDirection: "row",
       alignItems: "center",
-      gap: moderateWidthScale(4),
+      gap: moderateWidthScale(6),
+      minHeight: moderateHeightScale(40),
       backgroundColor: theme.darkGreen,
-      paddingHorizontal: moderateWidthScale(12),
-      paddingVertical: moderateHeightScale(7),
+      paddingHorizontal: moderateWidthScale(14),
       borderRadius: moderateWidthScale(999),
     },
     addEmployeeButtonText: {
@@ -160,211 +168,250 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontBold,
       color: theme.white,
     },
-    employeesHint: {
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontRegular,
-      color: theme.lightGreen,
+    // Shared flat card surface
+    card: {
+      backgroundColor: theme.white,
+      borderRadius: moderateWidthScale(16),
+      borderWidth: 1,
+      borderColor: theme.borderLight,
     },
-    memberContent: {
-      flex: 1,
+    // Team list rows (memberCard/divider also used by the Team skeleton)
+    memberCard: {
       flexDirection: "row",
-      justifyContent: "space-between",
       alignItems: "center",
+      gap: moderateWidthScale(12),
+      paddingVertical: moderateHeightScale(12),
+      paddingLeft: moderateWidthScale(14),
+      paddingRight: moderateWidthScale(2),
+    },
+    divider: {
+      height: StyleSheet.hairlineWidth,
+      backgroundColor: theme.lightGreen015,
+    },
+    rowDivider: {
+      height: StyleSheet.hairlineWidth,
+      backgroundColor: theme.lightGreen015,
+      marginLeft: moderateWidthScale(14) + widthScale(46) + moderateWidthScale(12),
+    },
+    memberAvatarWrap: {
+      width: widthScale(46),
+      height: widthScale(46),
+    },
+    memberAvatar: {
+      width: widthScale(46),
+      height: widthScale(46),
+      borderRadius: widthScale(46) / 2,
+      backgroundColor: theme.emptyProfileImage,
+    },
+    avatarDot: {
+      position: "absolute",
+      right: 0,
+      bottom: 0,
+      width: moderateWidthScale(13),
+      height: moderateWidthScale(13),
+      borderRadius: moderateWidthScale(7),
+      borderWidth: 2,
+      borderColor: theme.white,
+    },
+    dotActive: {
+      backgroundColor: theme.toggleActive,
+    },
+    dotPending: {
+      backgroundColor: theme.orangeBrown,
+    },
+    dotInactive: {
+      backgroundColor: theme.lightGreen4,
     },
     memberInfo: {
       flex: 1,
       gap: moderateHeightScale(2),
     },
+    memberNameRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(8),
+    },
     memberName: {
-      fontSize: fontSize.size14,
-      fontFamily: fonts.fontMedium,
+      flexShrink: 1,
+      fontSize: fontSize.size15,
+      fontFamily: fonts.fontBold,
       color: theme.darkGreen,
+      textTransform: "capitalize",
     },
     memberEmail: {
       fontSize: fontSize.size12,
       fontFamily: fonts.fontRegular,
       color: theme.lightGreen,
     },
-    memberStatus: {
+    statusChip: {
+      paddingHorizontal: moderateWidthScale(7),
+      paddingVertical: moderateHeightScale(1),
+      borderRadius: moderateWidthScale(999),
+      backgroundColor: theme.lightGreen07,
+    },
+    statusChipPending: {
+      backgroundColor: theme.orangeBrown01,
+    },
+    statusChipText: {
       fontSize: fontSize.size11,
-      fontFamily: fonts.fontRegular,
-      color: theme.lightGreen4,
-    },
-    memberStatusActive: {
-      color: theme.toggleActive,
       fontFamily: fonts.fontMedium,
+      color: theme.lightGreen,
     },
-    divider: {
-      height: 1.2,
-      backgroundColor: theme.borderLight,
-      width: "100%",
+    statusChipTextPending: {
+      color: theme.orangeBrownText,
+    },
+    reelLine: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(4),
+      marginTop: moderateHeightScale(2),
+    },
+    reelLineText: {
+      fontSize: fontSize.size11,
+      fontFamily: fonts.fontMedium,
+      color: theme.lightGreen,
+    },
+    memberMoreButton: {
+      width: moderateWidthScale(44),
+      height: moderateWidthScale(44),
+      alignItems: "center",
+      justifyContent: "center",
     },
     emptyState: {
       alignItems: "center",
+      paddingVertical: moderateHeightScale(28),
+      paddingHorizontal: moderateWidthScale(24),
+      gap: moderateHeightScale(8),
+    },
+    emptyIcon: {
+      width: moderateWidthScale(52),
+      height: moderateWidthScale(52),
+      borderRadius: moderateWidthScale(26),
+      backgroundColor: theme.lightGreen07,
+      alignItems: "center",
       justifyContent: "center",
-      paddingVertical: moderateHeightScale(20),
+      marginBottom: moderateHeightScale(4),
     },
-    emptyStateText: {
-      fontSize: fontSize.size14,
-      fontFamily: fonts.fontRegular,
-      color: theme.lightGreen4,
-      textAlign: "center",
-    },
-    continueButtonContainer: {
-      paddingHorizontal: moderateWidthScale(20),
-      paddingBottom: moderateHeightScale(24),
-      paddingTop: moderateHeightScale(16),
-    },
-    // Home-matching owner add/remove cards
-    ownerSectionTitle: {
+    emptyStateTitle: {
       fontSize: fontSize.size15,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
-      marginBottom: moderateHeightScale(12),
+      textAlign: "center",
     },
-    emptyActionCard: {
-      backgroundColor: theme.white,
-      borderRadius: moderateWidthScale(16),
-      paddingHorizontal: moderateWidthScale(16),
-      paddingVertical: moderateHeightScale(16),
-      borderWidth: 1,
-      borderColor: theme.borderLight,
-      shadowColor: theme.shadow,
-      shadowOffset: { width: 0, height: 3 },
-      shadowOpacity: 0.1,
-      shadowRadius: 5,
-      elevation: 3,
+    emptyStateText: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+      textAlign: "center",
+      lineHeight: fontSize.size13 * 1.45,
     },
-    emptyActionHeader: {
+    // Owner "add myself" card
+    ownerCtaCard: {
+      padding: moderateWidthScale(16),
+      gap: moderateHeightScale(14),
+    },
+    ownerCtaHeader: {
       flexDirection: "row",
       alignItems: "center",
       gap: moderateWidthScale(12),
     },
-    emptyActionCopy: {
+    iconBadge: {
+      width: moderateWidthScale(40),
+      height: moderateWidthScale(40),
+      borderRadius: moderateWidthScale(12),
+      backgroundColor: theme.orangeBrown01,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    ownerCtaCopy: {
       flex: 1,
       gap: moderateHeightScale(2),
     },
-    emptyActionTitle: {
+    ownerCtaTitle: {
       fontSize: fontSize.size15,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
     },
-    emptyActionSubtitle: {
+    ownerCtaSubtitle: {
       fontSize: fontSize.size12,
       fontFamily: fonts.fontRegular,
       color: theme.lightGreen,
     },
-    emptyOutlineButton: {
-      width: "100%",
+    outlineButton: {
       height: moderateHeightScale(44),
-      borderRadius: moderateWidthScale(10),
+      borderRadius: moderateWidthScale(12),
       borderWidth: 1.5,
-      borderColor: theme.selectCard,
+      borderColor: theme.darkGreen,
       alignItems: "center",
       justifyContent: "center",
-      marginTop: moderateHeightScale(14),
-      backgroundColor: theme.white,
     },
-    emptyOutlineButtonText: {
+    outlineButtonText: {
       fontSize: fontSize.size14,
       fontFamily: fonts.fontBold,
-      color: theme.selectCard,
+      color: theme.darkGreen,
     },
-    ownerProfileCard: {
-      paddingHorizontal: moderateWidthScale(16),
-      paddingTop: moderateHeightScale(16),
-      paddingBottom: moderateHeightScale(14),
-      backgroundColor: theme.white,
-      borderRadius: moderateWidthScale(18),
-      borderWidth: 1,
-      borderColor: theme.borderLight,
-      shadowColor: theme.shadow,
-      shadowOffset: { width: 0, height: 3 },
-      shadowOpacity: 0.1,
-      shadowRadius: 5,
-      elevation: 3,
-    },
+    // Owner booking profile card
     ownerProfileRow: {
       flexDirection: "row",
       alignItems: "center",
-      gap: moderateWidthScale(14),
+      gap: moderateWidthScale(12),
+      padding: moderateWidthScale(16),
     },
     ownerAvatarWrap: {
-      position: "relative",
-      width: widthScale(58),
-      height: widthScale(58),
-      marginBottom: moderateHeightScale(4),
-    },
-    ownerAvatarClip: {
-      width: widthScale(58),
-      height: widthScale(58),
-      borderRadius: widthScale(58) / 2,
-      overflow: "hidden",
+      width: widthScale(52),
+      height: widthScale(52),
     },
     ownerAvatar: {
-      width: widthScale(58),
-      height: widthScale(58),
-      borderRadius: widthScale(58) / 2,
+      width: widthScale(52),
+      height: widthScale(52),
+      borderRadius: widthScale(52) / 2,
       backgroundColor: theme.emptyProfileImage,
     },
-    ownerStatusDot: {
-      position: "absolute",
-      bottom: moderateHeightScale(2),
-      left: moderateWidthScale(2),
-      width: moderateWidthScale(12),
-      height: moderateWidthScale(12),
-      borderRadius: moderateWidthScale(6),
-      borderWidth: 2,
-      borderColor: theme.white,
-      zIndex: 2,
-      backgroundColor: theme.toggleActive,
+    ownerInfo: {
+      flex: 1,
+      gap: moderateHeightScale(4),
+    },
+    ownerNameRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(8),
     },
     ownerProfileName: {
-      flex: 1,
-      fontSize: fontSize.size17,
+      flexShrink: 1,
+      fontSize: fontSize.size16,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
       textTransform: "capitalize",
     },
-    ownerBadge: {
-      position: "absolute",
-      bottom: -moderateHeightScale(2),
-      alignSelf: "center",
-      left: 0,
-      right: 0,
-      alignItems: "center",
-      zIndex: 3,
-    },
     ownerBadgePill: {
-      backgroundColor: theme.selectCard,
+      backgroundColor: theme.orangeBrown01,
       paddingHorizontal: moderateWidthScale(8),
       paddingVertical: moderateHeightScale(2),
       borderRadius: moderateWidthScale(999),
-      borderWidth: 1.5,
-      borderColor: theme.white,
     },
     ownerBadgeText: {
-      fontSize: fontSize.size10,
+      fontSize: fontSize.size11,
       fontFamily: fonts.fontBold,
-      color: theme.white,
-      textAlign: "center",
-      lineHeight: moderateHeightScale(13),
+      color: theme.orangeBrownText,
     },
-    ownerProfileDivider: {
-      height: StyleSheet.hairlineWidth,
-      backgroundColor: theme.borderLight,
-      marginTop: moderateHeightScale(14),
-      marginBottom: moderateHeightScale(12),
+    ownerMeta: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
     },
     acceptRow: {
       flexDirection: "row",
       alignItems: "center",
       gap: moderateWidthScale(12),
+      paddingHorizontal: moderateWidthScale(16),
+      paddingVertical: moderateHeightScale(14),
+      backgroundColor: theme.lightGreen05,
+      borderBottomLeftRadius: moderateWidthScale(16),
+      borderBottomRightRadius: moderateWidthScale(16),
     },
     acceptCopy: {
       flex: 1,
-      gap: moderateHeightScale(3),
-      paddingRight: moderateWidthScale(4),
+      gap: moderateHeightScale(2),
     },
     acceptTitle: {
       fontSize: fontSize.size14,
@@ -420,9 +467,6 @@ export default function ManageTeamScreen() {
   const styles = useMemo(() => createStyles(theme), [colors]);
   const { showBanner } = useNotificationContext();
 
-  const { staffInvitationEmail } = useAppSelector(
-    (state) => state.completeProfile,
-  );
   const userId = useAppSelector((state) => state.user.id);
   const userName = useAppSelector((state) => state.user.name);
   const userProfileImage = useAppSelector(
@@ -437,7 +481,6 @@ export default function ManageTeamScreen() {
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [reelLimits, setReelLimits] = useState<MediaLimits | null>(null);
   const [loading, setLoading] = useState(true);
-  const [emailError, setEmailError] = useState<string | null>(null);
   const [buyPlanModalVisible, setBuyPlanModalVisible] = useState(false);
   const [upgradeModalVisible, setUpgradeModalVisible] = useState(false);
   const [ownerBusy, setOwnerBusy] = useState(false);
@@ -445,23 +488,6 @@ export default function ManageTeamScreen() {
   const [actionMenuMember, setActionMenuMember] = useState<TeamMember | null>(
     null,
   );
-
-  const canInvite = useMemo(() => {
-    if (!staffInvitationEmail.trim()) {
-      return false;
-    }
-    const validation = validateEmail(staffInvitationEmail.trim());
-    return validation.isValid;
-  }, [staffInvitationEmail]);
-
-  useEffect(() => {
-    if (staffInvitationEmail.length > 0) {
-      const validation = validateEmail(staffInvitationEmail);
-      setEmailError(validation.error);
-    } else {
-      setEmailError(null);
-    }
-  }, [staffInvitationEmail]);
 
   const fetchTeam = async () => {
     setLoading(true);
@@ -507,80 +533,8 @@ export default function ManageTeamScreen() {
   useFocusEffect(
     useCallback(() => {
       fetchTeam();
-      return () => {
-        dispatch(setStaffInvitationEmail(""));
-        setEmailError(null);
-      };
-    }, [dispatch]),
+    }, []),
   );
-
-  const handleClearEmail = () => {
-    dispatch(setStaffInvitationEmail(""));
-    setEmailError(null);
-  };
-
-  const handleInvite = async () => {
-    if (!isStripeOnboardingCompleted(businessStatus)) {
-      dispatch(setStripeConnectModalVisible(true));
-      return;
-    }
-
-    if (isSoloPlan) {
-      setUpgradeModalVisible(true);
-      return;
-    }
-
-    if (!canAddStaff) {
-      setBuyPlanModalVisible(true);
-      return;
-    }
-
-    if (!staffInvitationEmail.trim()) {
-      return;
-    }
-
-    const email = staffInvitationEmail.trim();
-
-    dispatch(setActionLoader(true));
-
-    try {
-      const response = await ApiService.post<{
-        success: boolean;
-        message: string;
-      }>(staffEndpoints.invite, {
-        email: email,
-      });
-
-      if (response.success) {
-        fetchTeam();
-        dispatch(setStaffInvitationEmail(""));
-
-        showBanner(
-          t("success"),
-          response.message || t("staffInvitationSentSuccess"),
-          "success",
-          3000,
-        );
-      } else {
-        showBanner(
-          t("error"),
-          response.message || t("failedToSendInvitation"),
-          "error",
-          3000,
-        );
-      }
-    } catch (error: any) {
-      Logger.error("Failed to send invitation:", error);
-      showBanner(
-        t("error"),
-        error?.message || t("failedToSendInvitationTryAgain"),
-        "error",
-        3000,
-      );
-    } finally {
-      dispatch(setActionLoader(false));
-    }
-  };
 
   const runOwnerEnable = async () => {
     setOwnerBusy(true);
@@ -781,13 +735,15 @@ export default function ManageTeamScreen() {
     }, 250);
   };
 
-  const getMemberStatus = (member: TeamMember) => {
+  const getMemberStatus = (
+    member: TeamMember,
+  ): { label: string; tone: "active" | "pending" | "inactive" } => {
     if (member.invitation_token && member.invitation_status !== "accepted") {
-      return { label: t("invitationSent"), active: false };
+      return { label: t("invitationSent"), tone: "pending" };
     }
     return member.active === 1
-      ? { label: t("active"), active: true }
-      : { label: t("inactive"), active: false };
+      ? { label: t("active"), tone: "active" }
+      : { label: t("inactive"), tone: "inactive" };
   };
 
   const isOwnerMember = (member: TeamMember) =>
@@ -799,6 +755,15 @@ export default function ManageTeamScreen() {
     teamMembers.find((member) => isOwnerMember(member)) ?? null;
   const employees = teamMembers.filter((member) => !isOwnerMember(member));
   const ownerName = ownerMember?.name || userName || "";
+  const teamStats = employees.reduce(
+    (acc, member) => {
+      const tone = getMemberStatus(member).tone;
+      if (tone === "active") acc.active += 1;
+      if (tone === "pending") acc.invited += 1;
+      return acc;
+    },
+    { active: 0, invited: 0 },
+  );
   const ownerImageUri = getImageUri(userProfileImage);
 
   return (
@@ -813,24 +778,53 @@ export default function ManageTeamScreen() {
           <Skeleton screenType="Team" styles={styles} />
         ) : (
           <>
-            <View style={styles.titleSec}>
-              <Text style={styles.title}>{t("addStaffMembers")}</Text>
-              <Text style={styles.subtitle}>{t("inviteStaffSubtitle")}</Text>
+            <View style={styles.hero}>
+              <View>
+                <Text style={styles.heroTitle} accessibilityRole="header">
+                  {t("manageTeamHeading")}
+                </Text>
+                <Text style={styles.heroSubtitle}>
+                  {t("manageTeamSubtitle")}
+                </Text>
+              </View>
+              <View style={styles.heroStats}>
+                {[
+                  { label: t("employees"), value: employees.length },
+                  { label: t("active"), value: teamStats.active },
+                  { label: t("teamStatInvited"), value: teamStats.invited },
+                ].map((stat, index) => (
+                  <React.Fragment key={stat.label}>
+                    {index > 0 ? <View style={styles.heroStatDivider} /> : null}
+                    <View
+                      style={styles.heroStat}
+                      accessible
+                      accessibilityLabel={`${stat.value} ${stat.label}`}
+                    >
+                      <Text style={styles.heroStatValue}>{stat.value}</Text>
+                      <Text style={styles.heroStatLabel} numberOfLines={1}>
+                        {stat.label}
+                      </Text>
+                    </View>
+                  </React.Fragment>
+                ))}
+              </View>
             </View>
 
             {showOwnerCta && !ownerEnabled ? (
-              <View style={styles.emptyActionCard}>
-                <View style={styles.emptyActionHeader}>
-                  <Feather
-                    name="user"
-                    size={iconScale(22)}
-                    color={theme.selectCard}
-                  />
-                  <View style={styles.emptyActionCopy}>
-                    <Text style={styles.emptyActionTitle} numberOfLines={1}>
+              <View style={[styles.card, styles.ownerCtaCard]}>
+                <View style={styles.ownerCtaHeader}>
+                  <View style={styles.iconBadge}>
+                    <Feather
+                      name="scissors"
+                      size={iconScale(18)}
+                      color={theme.orangeBrownText}
+                    />
+                  </View>
+                  <View style={styles.ownerCtaCopy}>
+                    <Text style={styles.ownerCtaTitle} numberOfLines={1}>
                       {t("staffEmptyOwnerTitle")}
                     </Text>
-                    <Text style={styles.emptyActionSubtitle} numberOfLines={2}>
+                    <Text style={styles.ownerCtaSubtitle} numberOfLines={2}>
                       {t("staffEmptyOwnerSubtitle")}
                     </Text>
                   </View>
@@ -839,12 +833,13 @@ export default function ManageTeamScreen() {
                   activeOpacity={0.7}
                   onPress={handleOwnerEnablePress}
                   disabled={ownerBusy}
-                  style={styles.emptyOutlineButton}
+                  style={styles.outlineButton}
+                  accessibilityRole="button"
                 >
                   {ownerBusy ? (
-                    <ActivityIndicator size="small" color={theme.selectCard} />
+                    <ActivityIndicator size="small" color={theme.darkGreen} />
                   ) : (
-                    <Text style={styles.emptyOutlineButtonText}>
+                    <Text style={styles.outlineButtonText}>
                       {t("addMyselfAsBarber")}
                     </Text>
                   )}
@@ -853,32 +848,32 @@ export default function ManageTeamScreen() {
             ) : null}
 
             {showOwnerCta && ownerEnabled ? (
-              <View>
-                <Text style={styles.ownerSectionTitle}>
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle} accessibilityRole="header">
                   {t("myBookingProfile")}
                 </Text>
-                <View style={styles.ownerProfileCard}>
+                <View style={styles.card}>
                   <View style={styles.ownerProfileRow}>
                     <View style={styles.ownerAvatarWrap}>
-                      <View style={styles.ownerAvatarClip}>
-                        <AppImage
-                          uri={ownerImageUri}
-                          style={styles.ownerAvatar}
-                        />
-                      </View>
-                      <View style={styles.ownerStatusDot} />
-                      <View style={styles.ownerBadge}>
+                      <AppImage uri={ownerImageUri} style={styles.ownerAvatar} />
+                      <View style={[styles.avatarDot, styles.dotActive]} />
+                    </View>
+                    <View style={styles.ownerInfo}>
+                      <View style={styles.ownerNameRow}>
+                        <Text style={styles.ownerProfileName} numberOfLines={1}>
+                          {ownerName}
+                        </Text>
                         <View style={styles.ownerBadgePill}>
                           <Text style={styles.ownerBadgeText}>{t("owner")}</Text>
                         </View>
                       </View>
+                      {ownerMember?.email ? (
+                        <Text style={styles.ownerMeta} numberOfLines={1}>
+                          {ownerMember.email}
+                        </Text>
+                      ) : null}
                     </View>
-                    <Text style={styles.ownerProfileName} numberOfLines={1}>
-                      {ownerName}
-                    </Text>
                   </View>
-
-                  <View style={styles.ownerProfileDivider} />
 
                   <View style={styles.acceptRow}>
                     <View style={styles.acceptCopy}>
@@ -904,135 +899,156 @@ export default function ManageTeamScreen() {
               </View>
             ) : null}
 
-            <View style={styles.inputSection}>
-              <View style={styles.inputRowContainer}>
-                <FloatingInput
-                  label={t("email")}
-                  value={staffInvitationEmail}
-                  onChangeText={(value) =>
-                    dispatch(setStaffInvitationEmail(value))
-                  }
-                  placeholder={t("enterEmail")}
-                  placeholderTextColor={theme.lightGreen2}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  onClear={handleClearEmail}
-                  containerStyle={{ flex: 1 }}
-                />
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <View style={styles.sectionTitleRow}>
+                  <Text style={styles.sectionTitle} accessibilityRole="header">
+                    {t("employees")}
+                  </Text>
+                  {employees.length > 0 ? (
+                    <View style={styles.countPill}>
+                      <Text style={styles.countPillText}>
+                        {employees.length}
+                      </Text>
+                    </View>
+                  ) : null}
+                </View>
                 <TouchableOpacity
-                  onPress={handleInvite}
-                  disabled={!canInvite}
-                  style={[
-                    styles.inviteButton,
-                    !canInvite && styles.inviteButtonDisabled,
-                  ]}
-                  activeOpacity={canInvite ? 0.7 : 1}
+                  activeOpacity={0.7}
+                  onPress={handleAddStaffPress}
+                  style={styles.addEmployeeButton}
+                  accessibilityRole="button"
+                  accessibilityLabel={t("addEmployee")}
                 >
-                  <Text style={styles.inviteButtonText}>{t("invite")}</Text>
+                  <Feather name="plus" size={iconScale(16)} color={theme.white} />
+                  <Text style={styles.addEmployeeButtonText}>
+                    {t("addEmployee")}
+                  </Text>
                 </TouchableOpacity>
               </View>
-              {emailError && <Text style={styles.errorText}>{emailError}</Text>}
-            </View>
 
-            <View style={styles.employeesHeader}>
-              <Text style={styles.employeesTitle}>{t("employees")}</Text>
-              <TouchableOpacity
-                activeOpacity={0.7}
-                onPress={handleAddStaffPress}
-                style={styles.addEmployeeButton}
-                accessibilityLabel={t("addEmployee")}
-              >
-                <Feather name="plus" size={iconScale(14)} color={theme.white} />
-                <Text style={styles.addEmployeeButtonText}>
-                  {t("addEmployee")}
-                </Text>
-              </TouchableOpacity>
-            </View>
-
-            {employees.length === 0 ? (
-              <View style={styles.emptyState}>
-                <Text style={styles.emptyStateText}>
-                  {t("noTeamMemberYet")}
-                </Text>
-              </View>
-            ) : (
-              <>
-                {reelLimits?.staff_reel_limits ? (
-                  <BusinessReelsSummaryCard
-                    limits={reelLimits}
-                    resetLabel={formatReelsResetDate(
-                      reelLimits.monthly_reels_reset_on,
-                    )}
-                  />
-                ) : null}
-                <Text style={styles.employeesHint}>
-                  {t("manageTeamMemberHint")}
-                </Text>
-                {employees.map((member) => {
-                  const reelRow = findStaffReelLimit(reelLimits, member.id);
-                  const status = getMemberStatus(member);
-                  return (
-                    <React.Fragment key={member.id}>
-                      <TouchableOpacity
-                        activeOpacity={0.7}
-                        onPress={() => handleOpenMember(member)}
-                        onLongPress={() => setActionMenuMember(member)}
-                        style={styles.memberCard}
-                        accessibilityRole="button"
-                        accessibilityLabel={member.name || member.email || ""}
-                      >
-                        <AppImage
-                          uri={getImageUri(member.user?.profile_image_url)}
-                          style={styles.memberAvatar}
-                        />
-                        <View style={styles.memberContent}>
+              {employees.length === 0 ? (
+                <View style={[styles.card, styles.emptyState]}>
+                  <View style={styles.emptyIcon}>
+                    <Feather
+                      name="users"
+                      size={iconScale(22)}
+                      color={theme.darkGreen}
+                    />
+                  </View>
+                  <Text style={styles.emptyStateTitle}>
+                    {t("noTeamMemberYet")}
+                  </Text>
+                  <Text style={styles.emptyStateText}>
+                    {t("noTeamMemberYetHint")}
+                  </Text>
+                </View>
+              ) : (
+                <View style={styles.card}>
+                  {employees.map((member, index) => {
+                    const reelRow = findStaffReelLimit(reelLimits, member.id);
+                    const status = getMemberStatus(member);
+                    const dotStyle =
+                      status.tone === "active"
+                        ? styles.dotActive
+                        : status.tone === "pending"
+                          ? styles.dotPending
+                          : styles.dotInactive;
+                    return (
+                      <React.Fragment key={member.id}>
+                        {index > 0 ? <View style={styles.rowDivider} /> : null}
+                        <TouchableOpacity
+                          activeOpacity={0.7}
+                          onPress={() => handleOpenMember(member)}
+                          onLongPress={() => setActionMenuMember(member)}
+                          style={styles.memberCard}
+                          accessibilityRole="button"
+                          accessibilityLabel={`${member.name || member.email || ""}, ${status.label}`}
+                        >
+                          <View style={styles.memberAvatarWrap}>
+                            <AppImage
+                              uri={getImageUri(member.user?.profile_image_url)}
+                              style={styles.memberAvatar}
+                            />
+                            <View style={[styles.avatarDot, dotStyle]} />
+                          </View>
                           <View style={styles.memberInfo}>
-                            <Text style={styles.memberName} numberOfLines={1}>
-                              {member.name || member.email}
-                            </Text>
+                            <View style={styles.memberNameRow}>
+                              <Text style={styles.memberName} numberOfLines={1}>
+                                {member.name || member.email}
+                              </Text>
+                              {status.tone !== "active" ? (
+                                <View
+                                  style={[
+                                    styles.statusChip,
+                                    status.tone === "pending" &&
+                                      styles.statusChipPending,
+                                  ]}
+                                >
+                                  <Text
+                                    style={[
+                                      styles.statusChipText,
+                                      status.tone === "pending" &&
+                                        styles.statusChipTextPending,
+                                    ]}
+                                    numberOfLines={1}
+                                  >
+                                    {status.label}
+                                  </Text>
+                                </View>
+                              ) : null}
+                            </View>
                             {member.email ? (
-                              <Text
-                                style={styles.memberEmail}
-                                numberOfLines={1}
-                              >
+                              <Text style={styles.memberEmail} numberOfLines={1}>
                                 {member.email}
                               </Text>
                             ) : null}
-                            <Text
-                              style={[
-                                styles.memberStatus,
-                                status.active && styles.memberStatusActive,
-                              ]}
-                            >
-                              {status.label}
-                            </Text>
                             {reelRow ? (
-                              <StaffReelUsageInline
-                                limit={reelRow.monthly_reel_limit}
-                                used={reelRow.reels_used_this_month}
-                              />
+                              <View style={styles.reelLine}>
+                                <MaterialIcons
+                                  name="movie-filter"
+                                  size={iconScale(13)}
+                                  color={theme.lightGreen}
+                                />
+                                <Text style={styles.reelLineText} numberOfLines={1}>
+                                  {(reelRow.monthly_reel_limit ?? 0) > 0
+                                    ? t("monthlyReelsInline", {
+                                        used: reelRow.reels_used_this_month,
+                                        limit: reelRow.monthly_reel_limit,
+                                      })
+                                    : t("monthlyReelsNoneGivenShort")}
+                                </Text>
+                              </View>
                             ) : null}
                           </View>
                           <TouchableOpacity
                             onPress={() => setActionMenuMember(member)}
                             style={styles.memberMoreButton}
-                            hitSlop={8}
-                            accessibilityLabel={t("edit")}
+                            accessibilityRole="button"
+                            accessibilityLabel={t("manageStaffActions")}
                           >
                             <Feather
                               name="more-vertical"
                               size={iconScale(20)}
-                              color={theme.darkGreen}
+                              color={theme.lightGreen}
                             />
                           </TouchableOpacity>
-                        </View>
-                      </TouchableOpacity>
-                      <View style={styles.divider} />
-                    </React.Fragment>
-                  );
-                })}
-              </>
-            )}
+                        </TouchableOpacity>
+                      </React.Fragment>
+                    );
+                  })}
+                </View>
+              )}
+            </View>
+
+            {employees.length > 0 && reelLimits?.staff_reel_limits ? (
+              <BusinessReelsSummaryCard
+                limits={reelLimits}
+                resetLabel={formatReelsResetDate(
+                  reelLimits.monthly_reels_reset_on,
+                )}
+              />
+            ) : null}
           </>
         )}
       </ScrollView>
