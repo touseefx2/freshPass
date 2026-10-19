@@ -60,6 +60,7 @@ import {
   fetchReelFeed,
   fetchReelLook,
   getMyReel,
+  getPublicReel,
   likeReel,
   listMyReels,
   publishReel,
@@ -96,6 +97,7 @@ import type {
   ReelLookResponse,
 } from "@/src/types/reels";
 import { resolveApiImageUrl } from "@/src/utils/media";
+import { getAvailableNowBadge } from "@/src/utils/availableNow";
 import {
   clearPendingReelTryOn,
   pollReelTryOnJob,
@@ -109,6 +111,9 @@ const { width: SCREEN_WIDTH, height: WINDOW_HEIGHT } = Dimensions.get("window");
 
 /** Fallback only — the server sends `share_url` on every feed item. */
 const REEL_SHARE_BASE_URL = "https://getfreshpass.com/r";
+
+/** The Available Now status is live; a badge older than this is re-fetched. */
+const AVAILABILITY_STALE_MS = 5 * 60 * 1000;
 
 /** Space reserved above the seek track for pills / CTAs. */
 const SEEK_BAR_CLEARANCE = heightScale(22);
@@ -141,6 +146,7 @@ function mapOwnerReelToFeedReel(
     product_id: owner.product_id ?? owner.product?.id ?? null,
     product: owner.product ?? null,
     available_now: owner.available_now,
+    availability: owner.availability ?? null,
     published_at: owner.published_at,
     video: {
       playback_url: video.playback_url || video.url || "",
@@ -668,6 +674,14 @@ const createStyles = (theme: Theme) =>
       borderRadius: moderateWidthScale(4),
       backgroundColor: theme.green,
     },
+    pillBusyDot: {
+      backgroundColor: theme.orangeBrown,
+    },
+    availabilityRow: {
+      width: "100%",
+      flexDirection: "row",
+      marginBottom: moderateHeightScale(8),
+    },
     pillText: {
       flexShrink: 1,
       fontSize: fontSize.size11,
@@ -781,6 +795,8 @@ type ReelItemProps = {
   onMore: (reel: FeedReel) => void;
   onFollow: (reel: FeedReel) => void;
   onProfile: (reel: FeedReel) => void;
+  /** Tap on the Available Now badge (customers) */
+  onAvailability?: (reel: FeedReel) => void;
   onWantLook: (reel: FeedReel) => void;
   /** Customer closed the product card on this reel (until the feed is reopened). */
   productDismissed?: boolean;
@@ -816,6 +832,7 @@ function ReelFeedItemBase({
   onMore,
   onFollow,
   onProfile,
+  onAvailability,
   onWantLook,
   productDismissed = false,
   onDismissProduct,
@@ -1203,6 +1220,9 @@ function ReelFeedItemBase({
     .filter(Boolean)
     .join(", ");
   const categoryName = reel.category?.name?.trim() || "";
+  // Live from the creator's calendar; nothing for null / off
+  const availabilityBadge = getAvailableNowBadge(reel.availability, t);
+  const canTapAvailability = showAsCustomer && !isPreview && !!onAvailability;
   const dispatch = useAppDispatch();
   const shopProduct = reel.product ?? null;
   const productPrice = shopProduct
@@ -1727,19 +1747,41 @@ function ReelFeedItemBase({
           </View>
         ) : null}
 
-        <View style={styles.pillsRow}>
-          {reel.available_now ? (
-            <View style={styles.pill}>
-              <View style={styles.pillLiveDot} />
+        {availabilityBadge ? (
+          <View style={styles.availabilityRow}>
+            <TouchableOpacity
+              style={styles.pill}
+              activeOpacity={0.8}
+              disabled={!canTapAvailability}
+              onPress={() => onAvailability?.(reel)}
+              accessibilityRole={canTapAvailability ? "button" : undefined}
+              accessibilityLabel={availabilityBadge.label}
+            >
+              <View
+                style={[
+                  styles.pillLiveDot,
+                  !availabilityBadge.available && styles.pillBusyDot,
+                ]}
+              />
               <Text
                 style={styles.pillText}
                 numberOfLines={1}
                 ellipsizeMode="tail"
               >
-                {t("availableNow")}
+                {availabilityBadge.label}
               </Text>
-            </View>
-          ) : null}
+              {canTapAvailability ? (
+                <MaterialIcons
+                  name="chevron-right"
+                  size={moderateWidthScale(14)}
+                  color={theme.white}
+                />
+              ) : null}
+            </TouchableOpacity>
+          </View>
+        ) : null}
+
+        <View style={styles.pillsRow}>
           {!!categoryName && (
             <View style={styles.pill}>
               <MaterialIcons
@@ -2578,6 +2620,60 @@ export default function ReelsFeedScreen() {
 
   }, [activeId, categoryId, feedTab, isOwnerMode, isPreviewMode]);
 
+  /**
+   * Available Now is live but the feed page is cached: re-fetch the active
+   * reel when the feed is back in view (foreground / returning from a screen)
+   * or when its badge is older than AVAILABILITY_STALE_MS.
+   */
+  const reelsRef = useRef(reels);
+  reelsRef.current = reels;
+  const availabilityStampRef = useRef<Map<number, number>>(new Map());
+  const isFeedVisible = isAppActive && isFeedFocused;
+  const wasFeedVisibleRef = useRef(isFeedVisible);
+
+  const refreshReelAvailability = useCallback(
+    async (reelId: number) => {
+      availabilityStampRef.current.set(reelId, Date.now());
+      try {
+        const fresh: { available_now: boolean; availability?: FeedReel["availability"] } =
+          isOwnerMode
+            ? await getMyReel(reelId)
+            : await getPublicReel(reelId, coords);
+        setReels((prev) =>
+          prev.map((r) =>
+            r.id === reelId
+              ? {
+                  ...r,
+                  available_now: fresh.available_now,
+                  availability: fresh.availability ?? null,
+                }
+              : r,
+          ),
+        );
+      } catch (error) {
+        Logger.warn("Failed to refresh reel availability:", error);
+      }
+    },
+    [coords, isOwnerMode],
+  );
+
+  useEffect(() => {
+    const cameBack = isFeedVisible && !wasFeedVisibleRef.current;
+    wasFeedVisibleRef.current = isFeedVisible;
+    if (isPreviewMode || !isFeedVisible || activeId == null) return;
+    const reel = reelsRef.current.find((r) => r.id === activeId);
+    if (!reel?.available_now) return;
+    const stampedAt = availabilityStampRef.current.get(activeId);
+    if (stampedAt == null && !cameBack) {
+      // Just loaded with its page — fresh enough
+      availabilityStampRef.current.set(activeId, Date.now());
+      return;
+    }
+    if (cameBack || Date.now() - (stampedAt ?? 0) > AVAILABILITY_STALE_MS) {
+      void refreshReelAvailability(activeId);
+    }
+  }, [activeId, isFeedVisible, isPreviewMode, refreshReelAvailability]);
+
   /** Each play sends `/view` when playback starts (swipe back / resume = new play). */
   const handlePlayStart = useCallback((reelId: number) => {
     recordReelView(reelId).then((result) => {
@@ -2996,6 +3092,22 @@ export default function ReelsFeedScreen() {
     [router],
   );
 
+  /** Available Now badge → the barber's profile; Book there preselects them. */
+  const openAvailability = useCallback(
+    (reel: FeedReel) => {
+      const staffId = reel.availability?.professional?.staff_id;
+      router.push({
+        pathname: "/(main)/businessDetail",
+        params: {
+          business_id: String(reel.business.id),
+          reel_id: String(reel.id),
+          ...(staffId != null ? { staff_id: String(staffId) } : null),
+        },
+      });
+    },
+    [router],
+  );
+
   const bookFromLook = useCallback(
     (reel: FeedReel, look?: ReelLookResponse | null) => {
       const serviceId = look?.book?.service_id ?? reel.service?.id ?? null;
@@ -3367,6 +3479,7 @@ export default function ReelsFeedScreen() {
                 onMore={handleMore}
                 onFollow={handleFollow}
                 onProfile={openProfile}
+                onAvailability={openAvailability}
                 onWantLook={wantLook}
                 productDismissed={dismissedProductReelIds.has(item.id)}
                 onDismissProduct={dismissProduct}

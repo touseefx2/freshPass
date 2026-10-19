@@ -92,7 +92,7 @@ export function useUploadReel() {
       const result = await ImagePicker.launchCameraAsync({
         mediaTypes: ["videos"],
         quality: 1,
-        videoMaxDuration: MAX_VIDEO_UPLOAD_SECONDS,
+        // No cap: any length is fine, the Trim step checks the reel length
         ...(Platform.OS === "ios" && {
           preferredAssetRepresentationMode:
             ImagePicker.UIImagePickerPreferredAssetRepresentationMode

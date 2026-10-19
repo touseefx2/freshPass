@@ -43,7 +43,7 @@ type AppointmentRow = Appointment & {
   outcomeSummary?: OutcomeSummary | null;
 };
 
-type StatusFilter =
+export type StatusFilter =
   | "upcoming"
   | "needsAttention"
   | "completed"
@@ -312,12 +312,15 @@ interface AppointmentsListProps {
   staffId?: number | null;
   /** Show the barber picker (Business Management). */
   showBarberFilter?: boolean;
+  /** Tab to open on (e.g. "needsAttention" from the home "View all"). */
+  initialStatus?: StatusFilter;
 }
 
 export default function AppointmentsList({
   headerTitle,
   staffId,
   showBarberFilter = false,
+  initialStatus = "upcoming",
 }: AppointmentsListProps) {
   const { t } = useTranslation();
   const { colors } = useTheme();
@@ -325,7 +328,7 @@ export default function AppointmentsList({
   const styles = useMemo(() => createStyles(theme), [colors]);
   const router = useRouter();
 
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("upcoming");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>(initialStatus);
   const [datePreset, setDatePreset] = useState<DatePreset>("any");
   const [pickedDay, setPickedDay] = useState<dayjs.Dayjs | null>(null);
   const [selectedStaffId, setSelectedStaffId] = useState<number | null>(null);

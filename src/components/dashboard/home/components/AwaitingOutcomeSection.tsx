@@ -6,7 +6,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
 } from "react-native";
-import { useTheme } from "@/src/hooks/hooks";
+import { useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { useTranslation } from "react-i18next";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
@@ -274,6 +274,7 @@ export default function AwaitingOutcomeSection({
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
   const router = useRouter();
+  const isBusiness = useAppSelector((state) => state.user.userRole) === "business";
   // Marking happens on the Update status step screen; refresh the list when
   // coming back from it.
   const refreshOnReturn = useRef(false);
@@ -317,7 +318,14 @@ export default function AwaitingOutcomeSection({
           </View>
         </View>
         <TouchableOpacity
-          onPress={() => router.push("/(main)/dashboard/(calendar)")}
+          onPress={() =>
+            isBusiness
+              ? router.push({
+                  pathname: "/(main)/dashboard/(account)/allAppointments" as any,
+                  params: { status: "needsAttention" },
+                })
+              : router.push("/(main)/dashboard/(calendar)")
+          }
           activeOpacity={0.7}
         >
           <Text style={styles.viewAllText}>{t("viewAll")} &gt;</Text>

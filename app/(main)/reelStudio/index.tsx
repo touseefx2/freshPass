@@ -68,7 +68,7 @@ import {
 } from "@/src/services/mediaPermissionService";
 import type { MediaUploadSourceType } from "@/src/types/media";
 import { ensureLocalMediaFileUri } from "@/src/utils/localMediaUri";
-import { MIN_REEL_SECONDS, REEL_LIMIT_FALLBACK } from "@/src/utils/reelLimits";
+import { MIN_REEL_SECONDS, uploadMaxSeconds } from "@/src/utils/reelLimits";
 import StickerLayer, {
   type StickerTransformPatch,
 } from "@/src/components/videoEditor/stickerLayer";
@@ -1024,10 +1024,12 @@ export default function ReelStudioScreen() {
     params.sourceType === "camera" ? "camera" : "device"
   ) as MediaUploadSourceType;
   const paramMaxSeconds = Number(params.maxSeconds);
+  /** Upload a Reel opens with no maxSeconds; templates / auto reels pass one */
+  const isUploadReel = !(Number.isFinite(paramMaxSeconds) && paramMaxSeconds > 0);
   const initialMaxSeconds =
     Number.isFinite(paramMaxSeconds) && paramMaxSeconds > 0
       ? paramMaxSeconds
-      : getCachedMediaLimits()?.max_seconds ?? REEL_LIMIT_FALLBACK.max_seconds;
+      : uploadMaxSeconds(getCachedMediaLimits());
 
   const paramMinSeconds = Number(params.minSeconds);
   /** Template minimum when the opener sets one, else the app-wide reel minimum */
@@ -1338,7 +1340,7 @@ export default function ReelStudioScreen() {
     }
     void getMediaLimits()
       .then((limits) => {
-        if (!cancelled) setMaxSeconds(limits.max_seconds);
+        if (!cancelled) setMaxSeconds(uploadMaxSeconds(limits));
       })
       .catch((error) => {
         Logger.error("Failed to load media limits for studio:", error);
@@ -1364,8 +1366,7 @@ export default function ReelStudioScreen() {
         Math.round(
           (Number.isFinite(paramMaxSeconds) && paramMaxSeconds > 0
             ? paramMaxSeconds
-            : getCachedMediaLimits()?.max_seconds ??
-              REEL_LIMIT_FALLBACK.max_seconds) * 1000,
+            : uploadMaxSeconds(getCachedMediaLimits())) * 1000,
         ),
       );
       // A lone video starts with a window of the allowed length that the
@@ -2642,7 +2643,10 @@ export default function ReelStudioScreen() {
           : {
               mediaTypes: ["videos"],
               quality: 1,
-              videoMaxDuration: Math.max(1, Math.floor(maxSeconds)),
+              // Upload a Reel records any length; Trim checks the total
+              ...(isUploadReel
+                ? {}
+                : { videoMaxDuration: Math.max(1, Math.floor(maxSeconds)) }),
               ...IOS_PICKER_COMPAT,
             },
       );
@@ -2660,6 +2664,7 @@ export default function ReelStudioScreen() {
     clipAddBlocker,
     currentSnapshot,
     dismissKeyboard,
+    isUploadReel,
     maxSeconds,
     showBanner,
     t,
@@ -3712,9 +3717,13 @@ export default function ReelStudioScreen() {
               icon="videocam"
               label={t("flowRecordVideo")}
               tone="warm"
-              sublabel={t("flowRecordUpTo", {
-                time: formatVideoDuration(maxSeconds),
-              })}
+              sublabel={
+                isUploadReel
+                  ? t("flowRecordAnyLength")
+                  : t("flowRecordUpTo", {
+                      time: formatVideoDuration(maxSeconds),
+                    })
+              }
               sublabelIcon="timer"
               badgeIcon="fiber-manual-record"
               onPress={() => {

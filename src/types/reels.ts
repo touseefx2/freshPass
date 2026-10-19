@@ -1,5 +1,6 @@
 import type { MediaVideo } from "@/src/types/media";
 import type { ShopProduct } from "@/src/types/shopProduct";
+import type { AvailableNowStatus } from "@/src/types/availableNow";
 
 export type ReelStatus = "draft" | "published" | "removed";
 
@@ -63,7 +64,10 @@ export type OwnerReel = {
   product_tag: string | null;
   product_id?: number | null;
   product?: ShopProduct | null;
+  /** The creator chose to show the Available Now button */
   available_now: boolean;
+  /** Live status from the creator's calendar; null when available_now is off (and on drafts) */
+  availability?: AvailableNowStatus | null;
   published_at: string | null;
   category: ReelCategory | null;
   service: ReelService | null;
@@ -89,7 +93,10 @@ export type FeedReel = {
   product_tag: string | null;
   product_id?: number | null;
   product?: ShopProduct | null;
+  /** The creator chose to show the Available Now button */
   available_now: boolean;
+  /** Live status from the creator's calendar; null when available_now is off */
+  availability?: AvailableNowStatus | null;
   published_at: string | null;
   video: ReelVideo;
   category: ReelCategory | null;

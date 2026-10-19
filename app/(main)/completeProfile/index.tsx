@@ -39,6 +39,7 @@ import PrivacyBanner from "@/src/components/privacyBanner";
 import { ApiService } from "@/src/services/api";
 import Logger from "@/src/services/logger";
 import { prepareImagesForUpload } from "@/src/utils/prepareImageForUpload";
+import { getDeviceTimeZone } from "@/src/utils/salonTimezone";
 import { businessEndpoints } from "@/src/services/endpoints";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { validateName } from "@/src/services/validationService";
@@ -203,6 +204,9 @@ export default function CompleteProfile() {
         latitude: selectedLocation?.latitude ?? 0, // add
         longitude: selectedLocation?.longitude ?? 0, // add
       };
+      // Salon's zone from the owner's phone; left out when unknown (backend uses the state)
+      const timezone = getDeviceTimeZone();
+      if (timezone) body = { ...body, timezone };
     }
 
     if (currentStep === 5) {

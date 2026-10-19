@@ -13,15 +13,25 @@ export const MIN_REEL_SECONDS = 3;
 /** Defaults when GET /api/media/limits has not resolved or failed. */
 export const REEL_LIMIT_FALLBACK = {
   max_seconds: 30,
+  upload_max_seconds: 60,
   ai_max_images: 12,
 } as const;
+
+/** Upload a Reel limit; older servers only send max_seconds. */
+export function uploadMaxSeconds(limits?: MediaLimits | null): number {
+  return (
+    limits?.upload_max_seconds ??
+    limits?.max_seconds ??
+    REEL_LIMIT_FALLBACK.upload_max_seconds
+  );
+}
 
 /** User-facing length rule from GET /api/media/limits. */
 export function formatReelLimitMessage(
   limits: MediaLimits,
   t: TranslateFn,
 ): string {
-  return t("reelLimitMaxSeconds", { max_seconds: limits.max_seconds });
+  return t("reelLimitMaxSeconds", { max_seconds: uploadMaxSeconds(limits) });
 }
 
 /**

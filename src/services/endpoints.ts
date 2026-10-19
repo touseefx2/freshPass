@@ -941,6 +941,46 @@ export const reelsEndpoints = {
   tryOn: (id: number | string) => `/api/reels/${id}/try-on`,
 };
 
+/**
+ * Available Now — live status from the professional's calendar.
+ * `me` is the signed-in owner/staff's own controls; `list` is the public customer section.
+ */
+export const availableNowEndpoints = {
+  me: `/api/available-now/me`,
+  list: (params?: {
+    category_id?: number | null;
+    latitude?: number;
+    longitude?: number;
+    radius_km?: number;
+    min_price?: number;
+    max_price?: number;
+    within_minutes?: number;
+    page?: number;
+    per_page?: number;
+  }) => {
+    const queryParams = new URLSearchParams();
+    if (params?.category_id != null)
+      queryParams.append("category_id", String(params.category_id));
+    if (params?.latitude != null && params?.longitude != null) {
+      queryParams.append("latitude", String(params.latitude));
+      queryParams.append("longitude", String(params.longitude));
+      if (params.radius_km != null)
+        queryParams.append("radius_km", String(params.radius_km));
+    }
+    if (params?.min_price != null)
+      queryParams.append("min_price", String(params.min_price));
+    if (params?.max_price != null)
+      queryParams.append("max_price", String(params.max_price));
+    if (params?.within_minutes != null)
+      queryParams.append("within_minutes", String(params.within_minutes));
+    if (params?.page != null) queryParams.append("page", String(params.page));
+    if (params?.per_page != null)
+      queryParams.append("per_page", String(params.per_page));
+    const query = queryParams.toString();
+    return `/api/available-now${query ? `?${query}` : ""}`;
+  },
+};
+
 /** Poll reel try-on job status */
 export const tryOnEndpoints = {
   getByJobId: (jobId: string) => `/api/try-ons/${jobId}`,

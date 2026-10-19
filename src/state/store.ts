@@ -123,6 +123,15 @@ const shopCartPersistConfig = {
   whitelist: ["address"],
 };
 
+// Only the collapsed-tab state survives reloads; resetChat + purge clear it on logout
+const chatPersistConfig = {
+  key: "chat",
+  storage: LocalStorageAdapter,
+  whitelist: ["isMinimized"],
+};
+
+const persistedChatReducer = persistReducer(chatPersistConfig, chatReducer);
+
 const persistedInventoryReducer = persistReducer(
   inventoryPersistConfig,
   inventoryReducer,
@@ -139,7 +148,7 @@ const rootReducer = combineReducers({
   completeProfile: completeProfileReducer, // Not persisted
   user: persistedUserReducer, // Persisted with field filtering (id, name, token)
   bsns: bsnsReducer, // Business/booking state
-  chat: chatReducer, // AI Chat state (not persisted)
+  chat: persistedChatReducer, // AI Chat state (only isMinimized persisted)
   categories: categoriesReducer, // Categories state (not persisted)
   download: downloadReducer, // Global download loader (not persisted)
   inventory: persistedInventoryReducer, // Business in-store products + salon delivery options

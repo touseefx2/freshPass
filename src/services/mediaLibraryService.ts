@@ -3,6 +3,7 @@ import { ApiService, checkInternetConnection } from "@/src/services/api";
 import { mediaEndpoints } from "@/src/services/endpoints";
 import Logger from "@/src/services/logger";
 import { store } from "@/src/state/store";
+import { uploadMaxSeconds } from "@/src/utils/reelLimits";
 import { getVideoMetaData } from "react-native-compressor";
 import { UploadCancelledError } from "@/src/utils/uploadCancel";
 import { prepareVideoForUpload, prepareImageForUpload } from "@/src/utils/prepareImageForUpload";
@@ -329,7 +330,7 @@ export function uploadVideo(
       const maxSeconds =
         params.purpose === "auto_reel_source"
           ? MAX_AUTO_REEL_SOURCE_SECONDS
-          : MAX_VIDEO_UPLOAD_SECONDS;
+          : uploadMaxSeconds(cachedMediaLimits);
       const durationSeconds = Math.max(
         1,
         Math.min(maxSeconds, Math.round(params.durationSeconds)),

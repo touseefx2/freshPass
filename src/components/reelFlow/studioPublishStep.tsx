@@ -17,7 +17,7 @@ import { fetchReelServiceOptions } from "@/src/services/reelServicesOptions";
 import { fetchStaffBusinessCategory } from "@/src/services/staffBusinessService";
 import { createReel } from "@/src/services/reelsService";
 import {
-  MAX_VIDEO_UPLOAD_SECONDS,
+  getCachedMediaLimits,
   uploadVideo,
   waitForMediaReady,
 } from "@/src/services/mediaLibraryService";
@@ -39,6 +39,7 @@ import {
 } from "@/src/theme/dimensions";
 import type { MediaUploadSourceType } from "@/src/types/media";
 import type { OwnerReel } from "@/src/types/reels";
+import { uploadMaxSeconds } from "@/src/utils/reelLimits";
 import { isUploadCancelled } from "@/src/utils/uploadCancel";
 import FlowFooter from "./flowFooter";
 import FlowButton from "./flowButton";
@@ -426,7 +427,7 @@ export default function StudioPublishStep({
           fileName: video.fileName,
           sourceType: video.sourceType,
           durationSeconds: Math.min(
-            MAX_VIDEO_UPLOAD_SECONDS,
+            uploadMaxSeconds(getCachedMediaLimits()),
             Math.max(1, Math.round(video.durationMs / 1000)),
           ),
           width: video.width || null,
@@ -764,7 +765,7 @@ export default function StudioPublishStep({
               maxLength={255}
             />
             <ToggleRow
-              title={t("availableNow")}
+              title={t("anReelToggleTitle")}
               subtitle={t("availableNowSubtitle")}
               value={availableNow}
               onValueChange={setAvailableNow}

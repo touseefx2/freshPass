@@ -225,7 +225,9 @@ export default function BusinessHomeContent({
         <SectionHeader
           title={appointmentsTitle}
           actionLabel={t("seeAll")}
-          onAction={() => router.push("/(main)/dashboard/(calendar)")}
+          onAction={() =>
+            router.push("/(main)/dashboard/(account)/allAppointments" as any)
+          }
         />
         <PeriodAppointmentsCard
           appointments={homeAppointments}

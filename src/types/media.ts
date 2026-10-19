@@ -70,6 +70,8 @@ export type MediaUploadPurpose = "auto_reel_source";
 /** GET /api/media/limits — reel length + AI caps */
 export type MediaLimits = {
   max_seconds: number;
+  /** Upload a Reel (own video) limit; missing on older servers */
+  upload_max_seconds?: number;
   followers_count: number;
   ai_seconds_per_image: number;
   ai_max_seconds_per_clip: number;

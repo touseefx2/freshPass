@@ -974,6 +974,8 @@ export default function AccountScreen() {
       router.push("./(businessProfileSettings)");
     } else if (key === "availability") {
       router.push("./staffAvailability");
+    } else if (key === "availableNow") {
+      router.push("./availableNow");
     } else if (key === "uploadWork") {
       if (!ensureCanUploadWork()) return;
       router.push("./staffWorkImages");
@@ -1049,6 +1051,8 @@ export default function AccountScreen() {
         return { name: "storefront", family: "material" };
       case "availability":
         return { name: "event-available", family: "material" };
+      case "availableNow":
+        return { name: "bolt", family: "material" };
       case "uploadWork":
         return { name: "photo-library", family: "material" };
       case "leaveRequest":
@@ -1221,6 +1225,7 @@ export default function AccountScreen() {
     ...(userRole === "staff" && !isGuest
       ? [
           { key: "availability", title: t("setAvailability") },
+          { key: "availableNow", title: t("availableNow") },
           { key: "uploadWork", title: t("uploadYourWork") },
           // Staff post reels for the business within the owner's monthly number
           { key: "mediaLibrary", title: t("mediaLibrary") },

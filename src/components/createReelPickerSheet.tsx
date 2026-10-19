@@ -18,7 +18,8 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "@/src/hooks/hooks";
-import { MAX_VIDEO_UPLOAD_SECONDS } from "@/src/services/mediaLibraryService";
+import { getCachedMediaLimits } from "@/src/services/mediaLibraryService";
+import { uploadMaxSeconds } from "@/src/utils/reelLimits";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import {
@@ -376,7 +377,7 @@ export default function CreateReelPickerSheet({
                   accessibilityRole="button"
                   accessibilityLabel={t(type.titleKey)}
                   accessibilityHint={t(descKey, {
-                    max_seconds: MAX_VIDEO_UPLOAD_SECONDS,
+                    max_seconds: uploadMaxSeconds(getCachedMediaLimits()),
                   })}
                 >
                   {primary ? (
@@ -422,7 +423,7 @@ export default function CreateReelPickerSheet({
                         primary && styles.typeDescPrimary,
                       ]}
                     >
-                      {t(descKey, { max_seconds: MAX_VIDEO_UPLOAD_SECONDS })}
+                      {t(descKey, { max_seconds: uploadMaxSeconds(getCachedMediaLimits()) })}
                     </Text>
                   </View>
                   <View

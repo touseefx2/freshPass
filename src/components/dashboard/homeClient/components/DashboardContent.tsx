@@ -35,6 +35,7 @@ import ShowFavorites, {
 import ShowAppointments from "./ShowAppointments";
 import ShowProTips from "./ShowProTips";
 import HomeReelsSection from "@/src/components/homeReelsSection";
+import HomeAvailableNowSection from "@/src/components/homeAvailableNowSection";
 import { fetchFollowing } from "@/src/services/followService";
 import {
   getDefaultAvatarImage,
@@ -1049,6 +1050,8 @@ export default function DashboardContent() {
           <ShowAppointments appointments={appointments} />
         </View>
       )}
+
+      <HomeAvailableNowSection />
 
       {userRole === "customer" &&
         (favoriteBusinesses.length > 0 ||

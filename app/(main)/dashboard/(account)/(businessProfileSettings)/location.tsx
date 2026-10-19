@@ -37,6 +37,7 @@ import { Skeleton } from "@/src/components/skeletons";
 import { ApiService } from "@/src/services/api";
 import Logger from "@/src/services/logger";
 import { businessEndpoints } from "@/src/services/endpoints";
+import { getDeviceTimeZone } from "@/src/utils/salonTimezone";
 import { useRouter } from "expo-router";
 import StepFourSearchSection from "../../../completeProfile/components/StepFour/StepFourSearchSection";
 import StepFourMapSection from "../../../completeProfile/components/StepFour/StepFourMapSection";
@@ -577,6 +578,11 @@ export default function LocationScreen() {
       }
       if (longitude) {
         formData.append("longitude", longitude);
+      }
+      // Always with the address: a save without it resets the zone to the state guess
+      const timezone = getDeviceTimeZone();
+      if (timezone) {
+        formData.append("timezone", timezone);
       }
 
       const config = {

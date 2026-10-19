@@ -109,6 +109,7 @@ import {
 } from "@/src/components/reelFlow/flowParts";
 import { IMAGES } from "@/src/constant/images";
 import dayjs from "dayjs";
+import { formatSalonTimeZone } from "@/src/utils/salonTimezone";
 import weekOfYear from "dayjs/plugin/weekOfYear";
 import isoWeek from "dayjs/plugin/isoWeek";
 import {
@@ -1388,6 +1389,8 @@ export default function BookingNow() {
   const [showAnyoneHint, setShowAnyoneHint] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /** Salon's IANA zone from business details; slot times are on this clock. */
+  const [salonTimezone, setSalonTimezone] = useState<string | null>(null);
   const [selectedStaffMember, setSelectedStaffMember] =
     useState<StaffMember | null>(null);
   const [selectedDate, setSelectedDateState] = useState(() => dayjs());
@@ -1529,6 +1532,11 @@ export default function BookingNow() {
 
       if (response.success && response.data?.business) {
         const businessData = response.data.business;
+        setSalonTimezone(
+          typeof businessData?.timezone === "string" && businessData.timezone
+            ? businessData.timezone
+            : null,
+        );
         const planTypeRaw = response.data.subscription_plan_type ?? null;
         const subscriptionPlanTypeFromApi: "Solo" | "Business" | null =
           planTypeRaw === "Solo" || planTypeRaw === "Business"
@@ -2058,6 +2066,11 @@ export default function BookingNow() {
   }, [businessHours]);
 
   const getTimezoneText = () => {
+    if (salonTimezone) {
+      return t("bkFlowSalonTimezone", {
+        zone: formatSalonTimeZone(salonTimezone),
+      });
+    }
     try {
       const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
       const offset = new Date().getTimezoneOffset();

@@ -1349,7 +1349,7 @@ export default function PublishReelScreen() {
           <View style={styles.field}>
             <View style={styles.switchRow}>
               <View style={styles.switchTextCol}>
-                <Text style={styles.switchLabel}>{t("availableNow")}</Text>
+                <Text style={styles.switchLabel}>{t("anReelToggleTitle")}</Text>
                 <Text style={styles.switchHint}>{t("availableNowSubtitle")}</Text>
               </View>
               <CustomToggle

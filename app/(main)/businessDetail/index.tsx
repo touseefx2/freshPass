@@ -1563,6 +1563,8 @@ export default function BusinessDetailScreen() {
   const params = useLocalSearchParams<{
     business_id?: string;
     reel_id?: string;
+    /** From a reel's Available Now badge: Book preselects this pro */
+    staff_id?: string;
     scroll_to?: string;
     viewMode?: string;
   }>();
@@ -3386,12 +3388,13 @@ export default function BusinessDetailScreen() {
     dispatch(
       setBusinessDataAction(businessPayload),
     );
-    // Navigate to bookingNow; forward reel attribution when present
+    // Navigate to bookingNow; forward reel attribution and the badge's pro when present
+    const bookParams: Record<string, string> = {};
+    if (attributionReelId) bookParams.reel_id = String(attributionReelId);
+    if (params.staff_id) bookParams.staff_id = params.staff_id;
     router.push({
       pathname: "/(main)/bookingNow",
-      params: attributionReelId
-        ? { reel_id: String(attributionReelId) }
-        : undefined,
+      params: Object.keys(bookParams).length > 0 ? bookParams : undefined,
     });
   };
 

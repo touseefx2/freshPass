@@ -30,6 +30,7 @@ export type SoloRowKey =
   | "personal"
   | "barberProfile"
   | "schedule"
+  | "availableNow"
   | "services"
   | "portfolio"
   | "mediaLibrary"
@@ -231,6 +232,14 @@ export default function SoloProfileView({
       icon: "calendar-blank-outline",
       tileBg: theme.apptGoldBg,
       iconColor: theme.apptGoldAccent,
+    },
+    {
+      key: "availableNow",
+      title: t("availableNow"),
+      subtitle: t("anCardSubtitle"),
+      icon: "lightning-bolt-outline",
+      tileBg: theme.mintTintStrong,
+      iconColor: theme.apptMintAccent,
     },
     {
       key: "services",
