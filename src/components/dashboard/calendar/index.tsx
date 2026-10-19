@@ -1324,6 +1324,8 @@ export default function CalendarScreen() {
   const styles = useMemo(() => createStyles(theme), [colors]);
   const scrollViewRef = useRef<ScrollView>(null);
   const overlayContainerRef = useRef<View>(null);
+  // Manage Availability / leave badge in the Today bar (same spot).
+  const availabilityButtonRef = useRef<View>(null);
   const { showBanner } = useNotificationContext();
   const router = useRouter();
   const userRole = useAppSelector((state: any) => state.user.userRole);
@@ -1974,6 +1976,24 @@ export default function CalendarScreen() {
         });
       },
     );
+  }, []);
+
+  // Drop the box just under the Today-bar button, right-aligned with it.
+  const anchorUnderAvailabilityButton = useCallback(() => {
+    const button = availabilityButtonRef.current;
+    const container = overlayContainerRef.current;
+    if (!button || !container) return;
+    container.measureInWindow((containerX, containerY, containerW) => {
+      button.measureInWindow((x, y, w, h) => {
+        setOverlayAnchor({
+          top: y - containerY + h + moderateHeightScale(6),
+          left: Math.min(
+            Math.max(moderateWidthScale(4), x - containerX + w - APPLY_BOX_WIDTH),
+            Math.max(moderateWidthScale(4), containerW - APPLY_BOX_WIDTH),
+          ),
+        });
+      });
+    });
   }, []);
 
   const goToDate = (date: dayjs.Dayjs) => {
@@ -3196,7 +3216,11 @@ export default function CalendarScreen() {
                 </View>
                 {canManageLeaves && leaveForSelectedDate && (
                   <TouchableOpacity
-                    onPress={() => openLeaveDetailBox(leaveForSelectedDate)}
+                    ref={availabilityButtonRef}
+                    onPress={() => {
+                      openLeaveDetailBox(leaveForSelectedDate);
+                      anchorUnderAvailabilityButton();
+                    }}
                     style={styles.leaveBox}
                     activeOpacity={0.7}
                   >
@@ -3212,7 +3236,11 @@ export default function CalendarScreen() {
                 )}
                 {canManageLeaves && !leaveForSelectedDate && !isPastDate && (
                   <TouchableOpacity
-                    onPress={() => openApplyBox("leave", undefined, selectedDate)}
+                    ref={availabilityButtonRef}
+                    onPress={() => {
+                      openApplyBox("leave", undefined, selectedDate);
+                      anchorUnderAvailabilityButton();
+                    }}
                     style={styles.manageAvailabilityButton}
                     activeOpacity={0.7}
                   >
