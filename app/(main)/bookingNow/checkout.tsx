@@ -79,6 +79,9 @@ const buildAppointmentFormData = (
     if (value === undefined || value === null) return;
     if (Array.isArray(value)) {
       value.forEach((item, i) => formData.append(`${key}[${i}]`, String(item)));
+    } else if (typeof value === "boolean") {
+      // Laravel's boolean rule rejects the string "true" in multipart; send 1/0
+      formData.append(key, value ? "1" : "0");
     } else {
       formData.append(key, String(value));
     }
