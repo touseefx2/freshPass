@@ -1297,12 +1297,18 @@ export default function BookingDetailsById() {
       ? booking?.planDescription
       : booking?.serviceDescription) || null;
 
+  // Pro recorded a cash checkout: paidAmount stays null, inPersonPayment is confirmed.
+  const isCashPaid =
+    !!booking &&
+    !isSubscription &&
+    booking.inPersonPayment?.status === "confirmed";
+
   const paymentHeadline = (() => {
     if (!booking) return "";
     if (isSubscription) {
       return booking.planName || "Plan";
     }
-    if (!booking.owesPayment && booking.paidAmount != null) {
+    if (isCashPaid || (!booking.owesPayment && booking.paidAmount != null)) {
       return userRole === "customer" ? "You paid" : `${staffClientname} paid`;
     }
     return userRole === "customer" ? "I will pay" : "Customer will pay";
@@ -1310,6 +1316,9 @@ export default function BookingDetailsById() {
 
   const paymentSubline = (() => {
     if (!booking || isSubscription) return null;
+    if (isCashPaid) {
+      return "Paid in cash at the business";
+    }
     if (booking.paymentMethod === "pay_now" && !booking.owesPayment) {
       return "Paid online";
     }
@@ -1333,7 +1342,7 @@ export default function BookingDetailsById() {
         : t("payLaterLabel");
 
   const savedCardLabel =
-    !isSubscription && booking?.cardLastFour
+    !isSubscription && !isCashPaid && booking?.cardLastFour
       ? t("savedCardLastFour", { lastFour: booking.cardLastFour })
       : null;
 
@@ -2323,6 +2332,7 @@ export default function BookingDetailsById() {
           {booking.outcomeSummary ? (
             <OutcomeSummaryCard
               summary={booking.outcomeSummary}
+              inPersonPayment={booking.inPersonPayment}
               isBusinessView={
                 userRole === "business" || userRole === "staff"
               }
@@ -2928,8 +2938,8 @@ export default function BookingDetailsById() {
               </Text>
               {booking.type === "service" ? (
                 paidTipBreakdown &&
-                !booking.owesPayment &&
-                booking.paidAmount != null ? (
+                (isCashPaid ||
+                  (!booking.owesPayment && booking.paidAmount != null)) ? (
                   <View style={styles.paymentBreakdownCard}>
                     <View style={styles.paymentBreakdownRow}>
                       <Text style={styles.paymentBreakdownLabel}>Service</Text>
@@ -2963,9 +2973,11 @@ export default function BookingDetailsById() {
                   </View>
                 ) : (
                   <Text style={styles.paymentAmount}>
-                    {!booking.owesPayment && booking.paidAmount != null
-                      ? formatPrice(booking.paidAmount)
-                      : booking.price}
+                    {isCashPaid && booking.inPersonPayment?.totalAmount != null
+                      ? formatPrice(booking.inPersonPayment.totalAmount)
+                      : !booking.owesPayment && booking.paidAmount != null
+                        ? formatPrice(booking.paidAmount)
+                        : booking.price}
                   </Text>
                 )
               ) : (

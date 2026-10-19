@@ -9,10 +9,13 @@ import {
   moderateWidthScale,
 } from "@/src/theme/dimensions";
 import type { OutcomeSummary } from "@/src/types/cancellationPolicy";
+import type { InPersonPayment } from "@/src/types/afterVisit";
 
 interface OutcomeSummaryCardProps {
   summary: OutcomeSummary;
   isBusinessView?: boolean;
+  /** Confirmed cash checkout: summary.totalPaid only counts online charges. */
+  inPersonPayment?: InPersonPayment | null;
 }
 
 const createStyles = (theme: Theme) =>
@@ -207,6 +210,7 @@ function formatMarkedAt(iso: string | null): string | null {
 export default function OutcomeSummaryCard({
   summary,
   isBusinessView = false,
+  inPersonPayment,
 }: OutcomeSummaryCardProps) {
   const { t } = useTranslation();
   const { colors } = useTheme();
@@ -395,7 +399,24 @@ export default function OutcomeSummaryCard({
       });
     }
   }
-  if (summary.cardLastFour) {
+  const cash =
+    !isMembership && inPersonPayment?.status === "confirmed"
+      ? inPersonPayment
+      : null;
+  const cashTip = cash?.tipAmount ?? 0;
+  if (cash && cashTip > 0) {
+    rows.push({
+      key: "cash-tip",
+      label: t("avTipCashChannel"),
+      value: formatMoney(cashTip, summary.currency),
+    });
+  }
+  const totalPaid =
+    cash && !(summary.totalPaid > 0)
+      ? (cash.totalAmount ??
+        (cash.serviceAmount ?? summary.servicePrice ?? 0) + cashTip)
+      : summary.totalPaid;
+  if (summary.cardLastFour && !cash) {
     rows.push({
       key: "card",
       label: t("outcomeCard"),
@@ -469,7 +490,7 @@ export default function OutcomeSummaryCard({
           <View style={styles.totalRow}>
             <Text style={styles.totalLabel}>{t("outcomeTotalPaid")}</Text>
             <Text style={styles.totalValue}>
-              {formatMoney(summary.totalPaid, summary.currency)}
+              {formatMoney(totalPaid, summary.currency)}
             </Text>
           </View>
         </>
