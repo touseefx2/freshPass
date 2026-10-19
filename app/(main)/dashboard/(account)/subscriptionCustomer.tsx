@@ -10,8 +10,10 @@ import {
   Pressable,
   RefreshControl,
   AppState,
+  LayoutAnimation,
   type AppStateStatus,
 } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
@@ -25,8 +27,9 @@ import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { useFocusEffect, useRouter } from "expo-router";
 import { ApiService } from "@/src/services/api";
 import { businessEndpoints } from "@/src/services/endpoints";
-import { Feather } from "@expo/vector-icons";
+import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import RetryButton from "@/src/components/retryButton";
+import FlowButton from "@/src/components/reelFlow/flowButton";
 import { Dropdown } from "react-native-element-dropdown";
 import { useTranslation } from "react-i18next";
 import {
@@ -139,301 +142,307 @@ const createStyles = (theme: Theme) =>
     contentContainer: {
       paddingBottom: moderateHeightScale(30),
     },
-    subscriptionCard: {
+    // ── Membership card: dark "pass" header, light body
+    card: {
       marginHorizontal: moderateWidthScale(20),
-      marginBottom: moderateHeightScale(12),
-      borderRadius: moderateWidthScale(16),
-      backgroundColor: theme.background,
-      padding: moderateWidthScale(16),
+      marginBottom: moderateHeightScale(16),
+      borderRadius: moderateWidthScale(20),
+      backgroundColor: theme.white,
       borderWidth: 1,
       borderColor: theme.borderLight,
-      shadowColor: theme.shadow,
-      shadowOffset: {
-        width: 0,
-        height: 2,
-      },
-      shadowOpacity: 0.1,
-      shadowRadius: 4,
-      elevation: 3,
-    },
-    shadow: {
-      shadowColor: theme.shadow,
-      shadowOffset: {
-        width: 0,
-        height: 1,
-      },
-      shadowOpacity: 0.2,
-      shadowRadius: 1.41,
+      shadowColor: theme.darkGreen,
+      shadowOffset: { width: 0, height: moderateHeightScale(4) },
+      shadowOpacity: 0.08,
+      shadowRadius: moderateWidthScale(10),
       elevation: 2,
     },
-    cardHeader: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      alignItems: "flex-start",
-      marginBottom: moderateHeightScale(10),
+    pass: {
+      borderTopLeftRadius: moderateWidthScale(19),
+      borderTopRightRadius: moderateWidthScale(19),
+      paddingHorizontal: moderateWidthScale(18),
+      paddingTop: moderateHeightScale(16),
+      paddingBottom: moderateHeightScale(16),
+      gap: moderateHeightScale(12),
+      overflow: "hidden",
     },
-    planTitleRow: {
+    passCollapsed: {
+      borderBottomLeftRadius: moderateWidthScale(19),
+      borderBottomRightRadius: moderateWidthScale(19),
+    },
+    passWatermark: {
+      position: "absolute",
+      right: -moderateWidthScale(18),
+      bottom: -moderateHeightScale(26),
+      opacity: 0.07,
+    },
+    passTop: {
       flexDirection: "row",
       alignItems: "center",
-      flex: 1,
-      marginRight: moderateWidthScale(8),
+      justifyContent: "space-between",
+      gap: moderateWidthScale(12),
     },
-    starIcon: {
-      marginRight: moderateWidthScale(6),
+    passBrand: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(8),
     },
-    planTitle: {
-      fontSize: fontSize.size20,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-      textTransform: "capitalize",
-      flex: 1,
+    passBadge: {
+      width: moderateWidthScale(28),
+      height: moderateWidthScale(28),
+      borderRadius: moderateWidthScale(14),
+      backgroundColor: theme.orangeBrown30,
+      alignItems: "center",
+      justifyContent: "center",
     },
-    statusBadge: {
-      paddingHorizontal: moderateWidthScale(12),
-      paddingVertical: moderateHeightScale(4),
-      borderRadius: moderateWidthScale(20),
-      backgroundColor: theme.orangeBrown015,
-      borderWidth: 1,
-      borderColor: theme.orangeBrown,
-    },
-    statusBadgeSuccess: {
-      backgroundColor: theme.lightGreen015,
-      borderColor: theme.buttonBack,
-    },
-    statusBadgeWarning: {
-      backgroundColor: theme.orangeBrown015,
-      borderColor: theme.orangeBrown,
-    },
-    statusBadgeDanger: {
-      backgroundColor: theme.orangeBrown01,
-      borderColor: theme.red,
-    },
-    statusBadgeNeutral: {
-      backgroundColor: theme.lightGreen07,
-      borderColor: theme.borderLight,
-    },
-    statusBadgeInfo: {
-      backgroundColor: theme.lightGreen015,
-      borderColor: theme.lightGreen,
-    },
-    statusText: {
-      fontSize: fontSize.size11,
-      fontFamily: fonts.fontBold,
-      color: theme.orangeBrown,
-      letterSpacing: 0.5,
-    },
-    statusTextSuccess: {
-      color: theme.buttonBack,
-    },
-    statusTextWarning: {
-      color: theme.orangeBrown,
-    },
-    statusTextDanger: {
-      color: theme.red,
-    },
-    statusTextNeutral: {
-      color: theme.darkGreen,
-    },
-    statusTextInfo: {
-      color: theme.darkGreen,
-    },
-    visitsBanner: {
-      backgroundColor: theme.lightGreen07,
-      borderRadius: moderateWidthScale(8),
-      paddingHorizontal: moderateWidthScale(12),
-      paddingVertical: moderateHeightScale(8),
-      marginBottom: moderateHeightScale(8),
-    },
-    visitsBannerText: {
+    passEyebrow: {
       fontSize: fontSize.size12,
-      fontFamily: fonts.fontMedium,
-      color: theme.darkGreen,
+      fontFamily: fonts.fontBold,
+      color: theme.orangeBrown,
+      letterSpacing: 1.4,
+      textTransform: "uppercase",
     },
-    topSection: {
+    passTitleWrap: { gap: moderateHeightScale(4) },
+    passTitle: {
+      fontSize: fontSize.size22,
+      fontFamily: fonts.fontBold,
+      color: theme.white,
+      textTransform: "capitalize",
+    },
+    passBusinessRow: {
       flexDirection: "row",
-      justifyContent: "space-between",
       alignItems: "center",
-      marginBottom: moderateHeightScale(8),
+      gap: moderateWidthScale(6),
     },
-    userInfoRow: {
-      flexDirection: "row",
-      alignItems: "flex-start",
-      flex: 1,
-      marginRight: moderateWidthScale(8),
-      minWidth: 0,
-    },
-    userIcon: {
-      marginRight: moderateWidthScale(6),
-      marginTop: moderateHeightScale(2),
-    },
-    userText: {
-      flex: 1,
+    passBusiness: {
       flexShrink: 1,
-      fontSize: fontSize.size13,
-      fontFamily: fonts.fontMedium,
-      color: theme.darkGreen,
-      opacity: 0.75,
-      textTransform: "capitalize",
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontRegular,
+      color: theme.white80,
     },
-    priceBadge: {
-      backgroundColor: theme.buttonBack,
-      paddingHorizontal: moderateWidthScale(14),
-      paddingVertical: moderateHeightScale(8),
-      borderRadius: moderateWidthScale(12),
+    statusPill: {
+      flexDirection: "row",
       alignItems: "center",
-      minWidth: moderateWidthScale(90),
-      flexShrink: 0,
+      gap: moderateWidthScale(6),
+      paddingHorizontal: moderateWidthScale(10),
+      paddingVertical: moderateHeightScale(5),
+      borderRadius: moderateWidthScale(20),
+      backgroundColor: theme.white15,
     },
-    priceText: {
-      fontSize: fontSize.size20,
+    statusDot: {
+      width: moderateWidthScale(8),
+      height: moderateWidthScale(8),
+      borderRadius: moderateWidthScale(4),
+    },
+    statusLabel: {
+      fontSize: fontSize.size12,
       fontFamily: fonts.fontBold,
       color: theme.white,
     },
-    planPriceLabel: {
-      fontSize: fontSize.size10,
-      fontFamily: fonts.fontRegular,
-      color: theme.white,
-      marginTop: moderateHeightScale(1),
-      opacity: 0.9,
+    passRule: {
+      height: StyleSheet.hairlineWidth,
+      backgroundColor: theme.white50,
+      opacity: 0.5,
     },
-    descriptionText: {
+    passBottom: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(12),
+    },
+    passBottomText: { flex: 1, minWidth: 0, gap: moderateHeightScale(2) },
+    passPriceRow: {
+      flexDirection: "row",
+      alignItems: "baseline",
+      gap: moderateWidthScale(4),
+    },
+    passPrice: {
+      fontSize: fontSize.size26,
+      fontFamily: fonts.fontBold,
+      color: theme.white,
+      fontVariant: ["tabular-nums"],
+    },
+    passPer: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontRegular,
+      color: theme.white70,
+    },
+    passSummary: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontRegular,
+      color: theme.white70,
+    },
+    toggleBtn: {
+      width: moderateWidthScale(44),
+      height: moderateWidthScale(44),
+      borderRadius: moderateWidthScale(22),
+      backgroundColor: theme.white15,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    body: {
+      padding: moderateWidthScale(18),
+      gap: moderateHeightScale(16),
+    },
+    description: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+      lineHeight: fontSize.size20,
+    },
+    visitsHead: {
+      flexDirection: "row",
+      alignItems: "baseline",
+      justifyContent: "space-between",
+      marginBottom: moderateHeightScale(8),
+    },
+    sectionLabel: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontMedium,
+      color: theme.lightGreen,
+    },
+    visitsCount: {
+      fontSize: fontSize.size16,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+      fontVariant: ["tabular-nums"],
+    },
+    visitsTotal: {
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+    },
+    track: {
+      height: moderateHeightScale(8),
+      borderRadius: moderateHeightScale(4),
+      backgroundColor: theme.lightGreen07,
+      overflow: "hidden",
+    },
+    trackFill: {
+      height: "100%",
+      borderRadius: moderateHeightScale(4),
+      backgroundColor: theme.buttonBack,
+    },
+    dateTiles: {
+      flexDirection: "row",
+      gap: moderateWidthScale(10),
+    },
+    dateTile: {
+      flex: 1,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(10),
+      padding: moderateWidthScale(12),
+      borderRadius: moderateWidthScale(14),
+      backgroundColor: theme.lightGreen05,
+    },
+    dateIcon: {
+      width: moderateWidthScale(34),
+      height: moderateWidthScale(34),
+      borderRadius: moderateWidthScale(17),
+      backgroundColor: theme.white,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    dateText: { flex: 1, minWidth: 0, gap: moderateHeightScale(2) },
+    dateLabel: {
       fontSize: fontSize.size12,
       fontFamily: fonts.fontRegular,
-      color: theme.darkGreen,
-      marginBottom: moderateHeightScale(10),
-      opacity: 0.65,
-      lineHeight: fontSize.size18,
-    },
-    paymentDateSection: {
-      flexDirection: "row",
-      alignItems: "center",
-      marginTop: moderateHeightScale(8),
-      marginBottom: moderateHeightScale(6),
-      paddingTop: moderateHeightScale(8),
-      borderTopWidth: 1,
-      borderTopColor: theme.borderLight,
-    },
-    paymentDateLabel: {
-      fontSize: fontSize.size11,
-      fontFamily: fonts.fontMedium,
-      color: theme.darkGreen,
-      marginLeft: moderateWidthScale(6),
-      letterSpacing: 0.3,
-      opacity: 0.7,
-    },
-    paymentDateValue: {
-      fontSize: fontSize.size13,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-      marginLeft: moderateWidthScale(8),
-    },
-    nextRenewalSection: {
-      flexDirection: "row",
-      alignItems: "center",
-      marginTop: moderateHeightScale(6),
-      marginBottom: moderateHeightScale(8),
-      paddingTop: moderateHeightScale(8),
-      borderTopWidth: 1,
-      borderTopColor: theme.borderLight,
-    },
-    nextRenewalLabel: {
-      fontSize: fontSize.size11,
-      fontFamily: fonts.fontMedium,
-      color: theme.darkGreen,
-      marginLeft: moderateWidthScale(6),
-      letterSpacing: 0.3,
-      opacity: 0.7,
-    },
-    nextRenewalDate: {
-      fontSize: fontSize.size13,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-      marginLeft: moderateWidthScale(8),
-    },
-    paymentRenewalRow: {
-      flexDirection: "row",
-      marginTop: moderateHeightScale(6),
-      marginBottom: moderateHeightScale(6),
-      paddingTop: moderateHeightScale(8),
-      borderTopWidth: 1,
-      borderTopColor: theme.borderLight,
-    },
-    paymentDateContainer: {
-      flex: 1,
-      flexDirection: "row",
-      alignItems: "center",
-      marginRight: moderateWidthScale(8),
-    },
-    renewalContainer: {
-      flex: 1,
-      flexDirection: "row",
-      alignItems: "center",
-      marginLeft: moderateWidthScale(8),
-    },
-    dateInfoContainer: {
-      marginLeft: moderateWidthScale(4),
-    },
-    dateLabel: {
-      fontSize: fontSize.size10,
-      fontFamily: fonts.fontMedium,
-      color: theme.darkGreen,
-      opacity: 0.7,
+      color: theme.lightGreen,
     },
     dateValue: {
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-    },
-    bookAppointmentButton: {
-      backgroundColor: theme.buttonBack,
-      paddingVertical: moderateHeightScale(11),
-      paddingHorizontal: moderateWidthScale(20),
-      borderRadius: moderateWidthScale(10),
-      alignSelf: "center",
-      marginTop: moderateHeightScale(6),
-      width: "100%",
-      alignItems: "center",
-      marginBottom: moderateHeightScale(4),
-    },
-    bookAppointmentButtonDisabled: {
-      opacity: 0.45,
-    },
-    bookAppointmentButtonText: {
       fontSize: fontSize.size14,
       fontFamily: fonts.fontBold,
-      color: theme.white,
-      letterSpacing: 0.3,
-    },
-    bookHelperText: {
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontRegular,
       color: theme.darkGreen,
-      opacity: 0.7,
-      textAlign: "center",
-      lineHeight: fontSize.size18,
-      marginBottom: moderateHeightScale(8),
-      paddingHorizontal: moderateWidthScale(4),
+      fontVariant: ["tabular-nums"],
     },
-    bookHelperTextWarning: {
-      color: theme.orangeBrown,
-      opacity: 0.95,
-    },
-    cancelButton: {
-      backgroundColor: "transparent",
-      paddingVertical: moderateHeightScale(10),
-      paddingHorizontal: moderateWidthScale(20),
-      borderRadius: moderateWidthScale(10),
-      alignSelf: "center",
-      width: "100%",
-      alignItems: "center",
+    services: {
+      borderRadius: moderateWidthScale(14),
       borderWidth: 1,
-      borderColor: theme.red,
+      borderColor: theme.borderLight,
+      marginTop: moderateHeightScale(8),
     },
-    cancelButtonText: {
+    serviceRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(12),
+      paddingHorizontal: moderateWidthScale(14),
+      paddingVertical: moderateHeightScale(12),
+    },
+    serviceRowBorder: {
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: theme.borderNormal,
+    },
+    serviceUsedUp: { opacity: 0.5 },
+    serviceText: { flex: 1, minWidth: 0, gap: moderateHeightScale(2) },
+    serviceName: {
+      fontSize: fontSize.size15,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
+    },
+    serviceMeta: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+    },
+    qtyChip: {
+      minWidth: moderateWidthScale(40),
+      paddingHorizontal: moderateWidthScale(10),
+      paddingVertical: moderateHeightScale(4),
+      borderRadius: moderateWidthScale(12),
+      backgroundColor: theme.mintTint,
+      alignItems: "center",
+    },
+    qtyChipEmpty: { backgroundColor: theme.lightGreen07 },
+    qtyText: {
       fontSize: fontSize.size13,
       fontFamily: fonts.fontBold,
+      color: theme.buttonBack,
+      fontVariant: ["tabular-nums"],
+    },
+    qtyTextEmpty: { color: theme.lightGreen },
+    actions: { gap: moderateHeightScale(10) },
+    helper: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+      textAlign: "center",
+      lineHeight: fontSize.size18,
+    },
+    helperWarning: { color: theme.orangeBrownText },
+    cancelLink: {
+      minHeight: moderateHeightScale(44),
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: moderateWidthScale(6),
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: theme.borderNormal,
+      paddingTop: moderateHeightScale(12),
+    },
+    cancelLinkText: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontMedium,
       color: theme.red,
-      letterSpacing: 0.3,
+    },
+    cancelledBanner: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(12),
+      padding: moderateWidthScale(14),
+      borderRadius: moderateWidthScale(14),
+      backgroundColor: theme.upcomingCard,
+      borderWidth: 1,
+      borderColor: theme.orangeBrown30,
+    },
+    cancelledTitle: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontBold,
+      color: theme.orangeBrownText,
+      marginBottom: moderateHeightScale(2),
+    },
+    cancelledSub: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontRegular,
+      color: theme.darkGreen,
+      lineHeight: fontSize.size18,
     },
     emptyContainer: {
       flex: 1,
@@ -635,96 +644,6 @@ const createStyles = (theme: Theme) =>
     confirmButtonDisabled: {
       opacity: 0.5,
     },
-    cancelledStatusContainer: {
-      backgroundColor: theme.lightGreen015,
-      borderRadius: moderateWidthScale(12),
-      padding: moderateWidthScale(16),
-      marginTop: moderateHeightScale(6),
-      marginBottom: moderateHeightScale(6),
-      borderWidth: 1,
-      borderColor: theme.orangeBrown,
-      flexDirection: "row",
-      alignItems: "center",
-    },
-    cancelledIconContainer: {
-      width: moderateWidthScale(40),
-      height: moderateWidthScale(40),
-      borderRadius: moderateWidthScale(20),
-      backgroundColor: theme.orangeBrown015,
-      alignItems: "center",
-      justifyContent: "center",
-      marginRight: moderateWidthScale(12),
-    },
-    cancelledContentContainer: {
-      flex: 1,
-    },
-    cancelledStatusText: {
-      fontSize: fontSize.size14,
-      fontFamily: fonts.fontBold,
-      color: theme.orangeBrown,
-      marginBottom: moderateHeightScale(4),
-    },
-    cancelledStatusSubtext: {
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontRegular,
-      color: theme.darkGreen,
-      opacity: 0.8,
-      lineHeight: fontSize.size18,
-    },
-    detailSection: {
-      marginTop: moderateHeightScale(4),
-      paddingTop: moderateHeightScale(10),
-      borderTopWidth: 1,
-      borderTopColor: theme.borderLight,
-    },
-    servicesSectionTitle: {
-      fontSize: fontSize.size13,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-      marginBottom: moderateHeightScale(8),
-    },
-    serviceItem: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      alignItems: "center",
-      paddingVertical: moderateHeightScale(6),
-      paddingHorizontal: moderateWidthScale(10),
-      backgroundColor: theme.lightGreen015,
-      borderRadius: moderateWidthScale(8),
-      marginVertical: moderateHeightScale(6),
-      borderWidth: 1,
-      borderColor: theme.borderLight,
-    },
-    serviceName: {
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontMedium,
-      color: theme.darkGreen,
-      marginRight: moderateWidthScale(8),
-    },
-    serviceNameContainer: {
-      flex: 1,
-      marginRight: moderateWidthScale(8),
-    },
-    servicePrice: {
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-    },
-    serviceDuration: {
-      fontSize: fontSize.size10,
-      fontFamily: fonts.fontRegular,
-      color: theme.darkGreen,
-      opacity: 0.7,
-      marginTop: moderateHeightScale(2),
-    },
-    serviceDescription: {
-      fontSize: fontSize.size10,
-      fontFamily: fonts.fontRegular,
-      color: theme.darkGreen,
-      opacity: 0.65,
-      marginTop: moderateHeightScale(2),
-      lineHeight: fontSize.size14,
-    },
   });
 
 export default function subscriptionCustomer() {
@@ -751,38 +670,33 @@ export default function subscriptionCustomer() {
   const [isCancelling, setIsCancelling] = useState(false);
   const appStateRef = useRef<AppStateStatus>(AppState.currentState);
   const isFirstFocusRef = useRef(true);
+  // Cards start collapsed: the pass header only, details on tap.
+  const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set());
+  const toggleExpanded = useCallback((id: number) => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
 
-  const getStatusBadgeStyles = useCallback(
+  // Dot colour on the dark pass header; the label carries the meaning too.
+  const getStatusDotColor = useCallback(
     (tone: CustomerSubscriptionPillTone) => {
       switch (tone) {
         case "success":
-          return {
-            badge: styles.statusBadgeSuccess,
-            text: styles.statusTextSuccess,
-          };
+          return theme.green;
         case "warning":
-          return {
-            badge: styles.statusBadgeWarning,
-            text: styles.statusTextWarning,
-          };
+          return theme.orangeBrown;
         case "danger":
-          return {
-            badge: styles.statusBadgeDanger,
-            text: styles.statusTextDanger,
-          };
-        case "info":
-          return {
-            badge: styles.statusBadgeInfo,
-            text: styles.statusTextInfo,
-          };
+          return theme.link;
         default:
-          return {
-            badge: styles.statusBadgeNeutral,
-            text: styles.statusTextNeutral,
-          };
+          return theme.white70;
       }
     },
-    [styles],
+    [theme],
   );
 
   const resolveVisits = useCallback(
@@ -1027,7 +941,6 @@ export default function subscriptionCustomer() {
   const renderItem = useCallback(
     ({ item }: { item: SubscriptionData }) => {
       const pill = getCustomerSubscriptionPill(item);
-      const toneStyles = getStatusBadgeStyles(pill.tone);
       const displayPrice = getCustomerSubscriptionDisplayPrice(item);
       const dateDisplay = getCustomerSubscriptionDateDisplay(item);
       const canBook = canBookCustomerSubscription(item);
@@ -1048,195 +961,297 @@ export default function subscriptionCustomer() {
             ? dateDisplay.date
             : formatCustomerSubscriptionDate(dateDisplay.date)
           : null;
+      const visitsPercent =
+        visits && visits.total > 0
+          ? Math.min(100, Math.max(0, ((visitsLeft ?? 0) / visits.total) * 100))
+          : 0;
+      // The API often repeats the plan name as its description.
+      const description = item.subscriptionPlanDescription?.trim();
+      const showDescription =
+        !!description &&
+        description.toLowerCase() !== item.subscriptionPlan?.trim().toLowerCase();
+      const services = item.subscriptionPlanServices ?? [];
+      const expanded = expandedIds.has(item.id);
+      const summary = [
+        visits ? `${visitsLeft} of ${visits.total} visits left` : null,
+        scheduleDate
+          ? `${getScheduleDateLabel(dateDisplay.kind)} ${scheduleDate}`
+          : null,
+      ]
+        .filter(Boolean)
+        .join(" · ");
+
+      const dateTile = (
+        icon: React.ComponentProps<typeof Feather>["name"],
+        label: string,
+        value: string,
+      ) => (
+        <View style={styles.dateTile} accessible accessibilityLabel={`${label}, ${value}`}>
+          <View style={styles.dateIcon}>
+            <Feather
+              name={icon}
+              size={moderateWidthScale(16)}
+              color={theme.buttonBack}
+            />
+          </View>
+          <View style={styles.dateText}>
+            <Text style={styles.dateLabel} numberOfLines={1}>
+              {label}
+            </Text>
+            <Text style={styles.dateValue} numberOfLines={1}>
+              {value}
+            </Text>
+          </View>
+        </View>
+      );
 
       return (
-        <View style={styles.subscriptionCard}>
-          <View style={styles.cardHeader}>
-            <View style={styles.planTitleRow}>
-              <Feather
-                name="star"
-                size={moderateWidthScale(16)}
-                color={theme.orangeBrown}
-                style={styles.starIcon}
+        <View style={styles.card}>
+          <TouchableOpacity
+            activeOpacity={0.92}
+            onPress={() => toggleExpanded(item.id)}
+            accessibilityRole="button"
+            accessibilityLabel={`${item.subscriptionPlan}, ${pill.label}, ${item.business}`}
+            accessibilityHint={expanded ? "Hides membership details" : "Shows membership details"}
+            accessibilityState={{ expanded }}
+          >
+            <LinearGradient
+              colors={[theme.darkGreenDeep, theme.darkGreen, theme.darkGreenLight]}
+              locations={[0, 0.55, 1]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={[styles.pass, !expanded && styles.passCollapsed]}
+            >
+              <MaterialCommunityIcons
+                name="crown"
+                size={moderateWidthScale(150)}
+                color={theme.white}
+                style={styles.passWatermark}
+                pointerEvents="none"
               />
-              <Text style={styles.planTitle}>{item.subscriptionPlan}</Text>
-            </View>
-            <View style={[styles.statusBadge, toneStyles.badge]}>
-              <Text style={[styles.statusText, toneStyles.text]}>
-                {pill.label.toUpperCase()}
-              </Text>
-            </View>
-          </View>
-
-          <View style={styles.topSection}>
-            <View style={styles.userInfoRow}>
-              <Feather
-                name="user"
-                size={moderateWidthScale(14)}
-                color={theme.darkGreen}
-                style={styles.userIcon}
-              />
-              <Text style={styles.userText} numberOfLines={2}>
-                {item.business}
-              </Text>
-            </View>
-            <View style={styles.priceBadge}>
-              <Text style={styles.priceText}>${displayPrice}</Text>
-              <Text style={styles.planPriceLabel}>/month</Text>
-            </View>
-          </View>
-
-          <View style={styles.detailSection}>
-            {item.subscriptionPlanDescription && (
-              <Text style={styles.descriptionText}>
-                {item.subscriptionPlanDescription}
-              </Text>
-            )}
-            {(item.paymentDate || scheduleDate) && (
-              <View style={styles.paymentRenewalRow}>
-                {item.paymentDate && (
-                  <View style={styles.paymentDateContainer}>
-                    <Feather
-                      name="credit-card"
-                      size={moderateWidthScale(12)}
-                      color={theme.darkGreen}
+              <View style={styles.passTop}>
+                <View style={styles.passBrand}>
+                  <View style={styles.passBadge}>
+                    <MaterialCommunityIcons
+                      name="crown"
+                      size={moderateWidthScale(16)}
+                      color={theme.orangeBrown}
                     />
-                    <View style={styles.dateInfoContainer}>
-                      <Text style={styles.dateLabel}>Payment</Text>
-                      <Text style={styles.dateValue}>{item.paymentDate}</Text>
-                    </View>
                   </View>
-                )}
-                {scheduleDate && (
+                  <Text style={styles.passEyebrow}>Membership</Text>
+                </View>
+                <View style={styles.statusPill}>
                   <View
                     style={[
-                      styles.renewalContainer,
-                      !item.paymentDate && { marginLeft: 0 },
+                      styles.statusDot,
+                      { backgroundColor: getStatusDotColor(pill.tone) },
                     ]}
-                  >
-                    <Feather
-                      name="calendar"
-                      size={moderateWidthScale(12)}
-                      color={theme.darkGreen}
-                    />
-                    <View style={styles.dateInfoContainer}>
-                      <Text style={styles.dateLabel}>
-                        {getScheduleDateLabel(dateDisplay.kind)}
-                      </Text>
-                      <Text style={styles.dateValue}>{scheduleDate}</Text>
-                    </View>
-                  </View>
-                )}
+                  />
+                  <Text style={styles.statusLabel}>{pill.label}</Text>
+                </View>
               </View>
-            )}
-            {visits && (
-              <View style={styles.visitsBanner}>
-                <Text style={styles.visitsBannerText}>
-                  Visits remaining: {visits.bookable ?? visits.remaining} of{" "}
-                  {visits.total}
-                </Text>
-              </View>
-            )}
-            {item.subscriptionPlanServices &&
-              item.subscriptionPlanServices.length > 0 && (
-                <>
-                  {item.subscriptionPlanServices.map((svc) => (
-                    <View key={svc.id} style={styles.serviceItem}>
-                      <View style={styles.serviceNameContainer}>
-                        <Text style={styles.serviceName}>
-                          {svc.name} x {svc.quantity ?? 1}
-                        </Text>
-                        {(svc.durationHours > 0 ||
-                          svc.durationMinutes > 0) && (
-                          <Text style={styles.serviceDuration}>
-                            {formatCustomerServiceDuration(
-                              svc.durationHours,
-                              svc.durationMinutes,
-                            )}
-                          </Text>
-                        )}
-                        {!!svc.description && (
-                          <Text style={styles.serviceDescription}>
-                            {svc.description}
-                          </Text>
-                        )}
-                      </View>
-                      <Text style={styles.servicePrice}>${svc.price}</Text>
-                    </View>
-                  ))}
-                </>
-              )}
-          </View>
 
-          {canBook && (
-            <>
-              <TouchableOpacity
-                style={[
-                  styles.bookAppointmentButton,
-                  !hasBookableService && styles.bookAppointmentButtonDisabled,
-                ]}
-                onPress={() => {
-                  if (!hasBookableService) return;
-                  handleBookAppointment(item);
-                }}
-                disabled={!hasBookableService}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.bookAppointmentButtonText}>
-                  Book Appointment
+              <View style={styles.passTitleWrap}>
+                <Text style={styles.passTitle} numberOfLines={2}>
+                  {item.subscriptionPlan}
                 </Text>
-              </TouchableOpacity>
-              {!hasBookableService ? (
-                <Text
-                  style={[styles.bookHelperText, styles.bookHelperTextWarning]}
-                >
-                  {canCancel
-                    ? "All services for this billing period have been used. Booking will unlock again after your next auto-charge when counts reset."
-                    : "All services for this billing period have been used. No more bookings are available on this membership."}
-                </Text>
-              ) : (
-                canCancel && (
-                  <Text style={styles.bookHelperText}>
-                    After your next auto-charge, your service counts will reset
-                    and become available again for the new billing period.
+                <View style={styles.passBusinessRow}>
+                  <Feather
+                    name="map-pin"
+                    size={moderateWidthScale(14)}
+                    color={theme.white70}
+                  />
+                  <Text style={styles.passBusiness} numberOfLines={1}>
+                    {item.business}
                   </Text>
-                )
-              )}
-            </>
-          )}
+                </View>
+              </View>
 
-          {showCancelledBanner ? (
-            <View style={styles.cancelledStatusContainer}>
-              <View style={styles.cancelledIconContainer}>
+              <View style={styles.passRule} />
+
+              <View style={styles.passBottom}>
+                <View style={styles.passBottomText}>
+                  <View style={styles.passPriceRow}>
+                    <Text style={styles.passPrice}>${displayPrice}</Text>
+                    <Text style={styles.passPer}>/ month</Text>
+                  </View>
+                  {summary ? (
+                    <Text style={styles.passSummary} numberOfLines={1}>
+                      {summary}
+                    </Text>
+                  ) : null}
+                </View>
+                <View style={styles.toggleBtn}>
+                  <Feather
+                    name={expanded ? "chevron-up" : "chevron-down"}
+                    size={moderateWidthScale(22)}
+                    color={theme.white}
+                  />
+                </View>
+              </View>
+            </LinearGradient>
+          </TouchableOpacity>
+
+          {expanded ? (
+          <View style={styles.body}>
+            {showDescription ? (
+              <Text style={styles.description}>{description}</Text>
+            ) : null}
+
+            {visits ? (
+              <View
+                accessible
+                accessibilityLabel={`Visits left: ${visitsLeft} of ${visits.total}`}
+              >
+                <View style={styles.visitsHead}>
+                  <Text style={styles.sectionLabel}>Visits left</Text>
+                  <Text style={styles.visitsCount}>
+                    {visitsLeft}
+                    <Text style={styles.visitsTotal}> / {visits.total}</Text>
+                  </Text>
+                </View>
+                <View style={styles.track}>
+                  <View
+                    style={[styles.trackFill, { width: `${visitsPercent}%` }]}
+                  />
+                </View>
+              </View>
+            ) : null}
+
+            {item.paymentDate || scheduleDate ? (
+              <View style={styles.dateTiles}>
+                {item.paymentDate
+                  ? dateTile("credit-card", "Last payment", item.paymentDate)
+                  : null}
+                {scheduleDate
+                  ? dateTile(
+                      "calendar",
+                      getScheduleDateLabel(dateDisplay.kind),
+                      scheduleDate,
+                    )
+                  : null}
+              </View>
+            ) : null}
+
+            {services.length > 0 ? (
+              <View>
+                <Text style={styles.sectionLabel}>Included services</Text>
+                <View style={styles.services}>
+                  {services.map((svc, index) => {
+                    const qty = svc.quantity ?? 1;
+                    const duration =
+                      svc.durationHours > 0 || svc.durationMinutes > 0
+                        ? formatCustomerServiceDuration(
+                            svc.durationHours,
+                            svc.durationMinutes,
+                          )
+                        : null;
+                    const meta = [duration, `$${svc.price}`, svc.description]
+                      .filter(Boolean)
+                      .join(" · ");
+                    return (
+                      <View
+                        key={svc.id}
+                        style={[
+                          styles.serviceRow,
+                          index > 0 && styles.serviceRowBorder,
+                        ]}
+                      >
+                        <View
+                          style={[
+                            styles.serviceText,
+                            qty <= 0 && styles.serviceUsedUp,
+                          ]}
+                        >
+                          <Text style={styles.serviceName} numberOfLines={2}>
+                            {svc.name}
+                          </Text>
+                          <Text style={styles.serviceMeta} numberOfLines={2}>
+                            {meta}
+                          </Text>
+                        </View>
+                        <View
+                          style={[
+                            styles.qtyChip,
+                            qty <= 0 && styles.qtyChipEmpty,
+                          ]}
+                          accessible
+                          accessibilityLabel={`${qty} left`}
+                        >
+                          <Text
+                            style={[
+                              styles.qtyText,
+                              qty <= 0 && styles.qtyTextEmpty,
+                            ]}
+                          >
+                            ×{qty}
+                          </Text>
+                        </View>
+                      </View>
+                    );
+                  })}
+                </View>
+              </View>
+            ) : null}
+
+            {showCancelledBanner ? (
+              <View style={styles.cancelledBanner}>
                 <Feather
                   name="info"
                   size={moderateWidthScale(20)}
-                  color={theme.orangeBrown}
+                  color={theme.selectCard}
                 />
-              </View>
-              <View style={styles.cancelledContentContainer}>
-                <Text style={styles.cancelledStatusText}>
-                  Membership Cancelled
-                </Text>
-                <Text style={styles.cancelledStatusSubtext}>
-                  You can still use this membership until{" "}
-                  <Text style={{ fontFamily: fonts.fontBold }}>
-                    {formatCustomerSubscriptionDate(item.endsAt)}
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.cancelledTitle}>Membership Cancelled</Text>
+                  <Text style={styles.cancelledSub}>
+                    You can still use this membership until{" "}
+                    <Text style={{ fontFamily: fonts.fontBold }}>
+                      {formatCustomerSubscriptionDate(item.endsAt)}
+                    </Text>
                   </Text>
-                </Text>
+                </View>
               </View>
-            </View>
-          ) : (
-            canCancel && (
+            ) : null}
+
+            {canBook ? (
+              <View style={styles.actions}>
+                <FlowButton
+                  label="Book Appointment"
+                  icon="event"
+                  onPress={() => handleBookAppointment(item)}
+                  disabled={!hasBookableService}
+                />
+                {!hasBookableService ? (
+                  <Text style={[styles.helper, styles.helperWarning]}>
+                    {canCancel
+                      ? "All services for this billing period have been used. Booking will unlock again after your next auto-charge when counts reset."
+                      : "All services for this billing period have been used. No more bookings are available on this membership."}
+                  </Text>
+                ) : canCancel ? (
+                  <Text style={styles.helper}>
+                    Visits reset after each monthly payment.
+                  </Text>
+                ) : null}
+              </View>
+            ) : null}
+
+            {!showCancelledBanner && canCancel ? (
               <TouchableOpacity
-                style={styles.cancelButton}
+                style={styles.cancelLink}
                 onPress={() => handleCancelSubscription(item)}
-                activeOpacity={0.8}
+                activeOpacity={0.6}
+                accessibilityRole="button"
               >
-                <Text style={styles.cancelButtonText}>Cancel Membership</Text>
+                <Feather
+                  name="x-circle"
+                  size={moderateWidthScale(16)}
+                  color={theme.red}
+                />
+                <Text style={styles.cancelLinkText}>Cancel Membership</Text>
               </TouchableOpacity>
-            )
-          )}
+            ) : null}
+          </View>
+          ) : null}
         </View>
       );
     },
@@ -1245,8 +1260,10 @@ export default function subscriptionCustomer() {
       theme,
       handleCancelSubscription,
       handleBookAppointment,
-      getStatusBadgeStyles,
+      getStatusDotColor,
       getScheduleDateLabel,
+      expandedIds,
+      toggleExpanded,
       resolveVisits,
     ],
   );
