@@ -588,6 +588,21 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontBold,
       color: theme.white,
     },
+    productOnReelPill: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(4),
+      borderWidth: 1,
+      borderColor: theme.white15,
+      borderRadius: moderateWidthScale(999),
+      paddingHorizontal: moderateWidthScale(10),
+      paddingVertical: moderateHeightScale(6),
+    },
+    productOnReelText: {
+      fontSize: fontSize.size11,
+      fontFamily: fonts.fontMedium,
+      color: theme.white,
+    },
     ctaRow: {
       width: "100%",
       flexDirection: "row",
@@ -1608,7 +1623,8 @@ function ReelFeedItemBase({
           </View>
         </View>
 
-        {showAsCustomer && shopProduct && !productDismissed ? (
+        {/* Owners see the attached product too (no Shop Now / close) */}
+        {shopProduct && (showAsOwner || !productDismissed) ? (
           <View style={styles.productCardWrap}>
             <View style={styles.productCard}>
               <View style={styles.productThumb}>
@@ -1637,38 +1653,53 @@ function ReelFeedItemBase({
                 )}
                 <Text style={styles.productPrice}>{productPrice}</Text>
               </View>
+              {showAsOwner ? (
+                <View style={styles.productOnReelPill}>
+                  <MaterialIcons
+                    name="link"
+                    size={moderateWidthScale(14)}
+                    color={theme.white}
+                  />
+                  <Text style={styles.productOnReelText}>
+                    {t("productOnReel")}
+                  </Text>
+                </View>
+              ) : (
+                <TouchableOpacity
+                  style={styles.shopBtn}
+                  activeOpacity={0.85}
+                  onPress={() => {
+                    dispatch(setShopProduct(shopProduct!));
+                    router.push({
+                      pathname: "/(main)/shop/productDetail" as any,
+                      params: { productId: shopProduct!.id },
+                    });
+                  }}
+                >
+                  <MaterialIcons
+                    name="shopping-cart"
+                    size={moderateWidthScale(14)}
+                    color={theme.white}
+                  />
+                  <Text style={styles.shopBtnText}>{t("shopNow")}</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+            {showAsCustomer ? (
               <TouchableOpacity
-                style={styles.shopBtn}
-                activeOpacity={0.85}
-                onPress={() => {
-                  dispatch(setShopProduct(shopProduct!));
-                  router.push({
-                    pathname: "/(main)/shop/productDetail" as any,
-                    params: { productId: shopProduct!.id },
-                  });
-                }}
+                style={styles.productClose}
+                activeOpacity={0.8}
+                hitSlop={10}
+                onPress={() => onDismissProduct?.(reel.id)}
+                accessibilityLabel={t("close")}
               >
                 <MaterialIcons
-                  name="shopping-cart"
-                  size={moderateWidthScale(14)}
-                  color={theme.white}
+                  name="close"
+                  size={moderateWidthScale(16)}
+                  color={theme.black}
                 />
-                <Text style={styles.shopBtnText}>{t("shopNow")}</Text>
               </TouchableOpacity>
-            </View>
-            <TouchableOpacity
-              style={styles.productClose}
-              activeOpacity={0.8}
-              hitSlop={10}
-              onPress={() => onDismissProduct?.(reel.id)}
-              accessibilityLabel={t("close")}
-            >
-              <MaterialIcons
-                name="close"
-                size={moderateWidthScale(16)}
-                color={theme.black}
-              />
-            </TouchableOpacity>
+            ) : null}
           </View>
         ) : null}
 
