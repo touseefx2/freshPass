@@ -1,6 +1,6 @@
 {
   "schemaVersion": "2.1",
-  "finalized": false,
+  "finalized": true,
   "source": "claude-code-skill",
   "ruleset": "coderabbit-style@2.0",
   "review": {
@@ -12,15 +12,7 @@
     "mode": "committed",
     "model": "claude-opus-5",
     "effort": "medium",
-    "secondPass": false,
-    "commit": {
-      "sha": "a751c6b703c624b6c60ea7bf023e3d243639cb30",
-      "shortSha": "a751c6b",
-      "message": "Add Crashlytics Native Symbols Support and Enhance Media Edit Module",
-      "authorName": "touseefx2",
-      "authorEmail": "x2app123@gmail.com",
-      "authoredAt": "2026-10-19T20:40:53+05:00"
-    }
+    "secondPass": false
   },
   "developer": {
     "name": "touseefx2",
