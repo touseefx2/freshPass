@@ -1,3 +1,46 @@
+diff --git a/node_modules/expo-media-edit/android/src/main/java/expo/modules/mediaedit/ExpoMediaEditModule.kt b/node_modules/expo-media-edit/android/src/main/java/expo/modules/mediaedit/ExpoMediaEditModule.kt
+index 2789396..a708baa 100644
+--- a/node_modules/expo-media-edit/android/src/main/java/expo/modules/mediaedit/ExpoMediaEditModule.kt
++++ b/node_modules/expo-media-edit/android/src/main/java/expo/modules/mediaedit/ExpoMediaEditModule.kt
+@@ -4,6 +4,7 @@ import android.media.MediaExtractor
+ import android.media.MediaFormat
+ import android.media.MediaMetadataRetriever
+ import android.net.Uri
++import android.os.Build
+ import android.os.Bundle
+ import androidx.media3.common.util.UnstableApi
+ import expo.modules.kotlin.Promise
+@@ -41,7 +42,8 @@ class ExpoMediaEditModule : Module() {
+         val compiled = try {
+           val project = ProjectParser.parse(projectMap)
+           ProjectCompiler.compile(ctx, project, ProjectCompiler.Mode.EXPORT)
+-        } catch (e: Exception) {
++        } catch (e: Throwable) {
++          // Throwable, not Exception: an OutOfMemoryError on this raw thread would kill the app
+           promise.reject("COMPILE_FAILED", "${e.javaClass.simpleName}: ${e.message ?: ""}", e)
+           return@Thread
+         }
+@@ -139,10 +141,16 @@ class ExpoMediaEditModule : Module() {
+       val retriever = MediaMetadataRetriever()
+       try {
+         retriever.setDataSource(ctx, Uri.parse(uri))
+-        val bitmap = retriever.getFrameAtTime(
+-          (timeMs * 1000).toLong(),
+-          MediaMetadataRetriever.OPTION_CLOSEST_SYNC
+-        )
++        val timeUs = (timeMs * 1000).toLong()
++        // Honor width/height like iOS maximumSize — a full-res 4K/8K frame per
++        // filmstrip cell (10 requested at once) runs phones out of memory.
++        val maxW = (options?.get("width") as? Number)?.toInt() ?: 0
++        val maxH = (options?.get("height") as? Number)?.toInt() ?: 0
++        val bitmap = if (maxW > 0 && maxH > 0 && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
++          retriever.getScaledFrameAtTime(timeUs, MediaMetadataRetriever.OPTION_CLOSEST_SYNC, maxW, maxH)
++        } else {
++          retriever.getFrameAtTime(timeUs, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
++        }
+         if (bitmap != null) {
+           val outputFile = createTempFile(ctx, "thumb", ".jpg")
+           outputFile.outputStream().use { out ->
 diff --git a/node_modules/expo-media-edit/android/src/main/java/expo/modules/mediaedit/ProjectCompiler.kt b/node_modules/expo-media-edit/android/src/main/java/expo/modules/mediaedit/ProjectCompiler.kt
 index 68cad71..7da07fc 100644
 --- a/node_modules/expo-media-edit/android/src/main/java/expo/modules/mediaedit/ProjectCompiler.kt
@@ -226,7 +269,7 @@ index 68cad71..7da07fc 100644
  }
  
 diff --git a/node_modules/expo-media-edit/android/src/main/java/expo/modules/mediaedit/ProjectExporter.kt b/node_modules/expo-media-edit/android/src/main/java/expo/modules/mediaedit/ProjectExporter.kt
-index 8b5cea0..5f56431 100644
+index 8b5cea0..806110e 100644
 --- a/node_modules/expo-media-edit/android/src/main/java/expo/modules/mediaedit/ProjectExporter.kt
 +++ b/node_modules/expo-media-edit/android/src/main/java/expo/modules/mediaedit/ProjectExporter.kt
 @@ -1,16 +1,30 @@
@@ -298,27 +341,82 @@ index 8b5cea0..5f56431 100644
    fun export(
      composition: Composition,
      outputFile: File,
-@@ -43,6 +88,7 @@ class ProjectExporter(private val context: Context) {
+@@ -42,34 +87,48 @@ class ProjectExporter(private val context: Context) {
+     completion: (Result<File>) -> Unit,
    ) {
      mainHandler.post {
-       val t = Transformer.Builder(context)
-+        .setAssetLoaderFactory(seekableAssetLoaderFactory())
-         .setVideoMimeType(MimeTypes.VIDEO_H264)
-         .setAudioMimeType(MimeTypes.AUDIO_AAC)
-         .addListener(object : Transformer.Listener {
-@@ -56,7 +102,11 @@ class ProjectExporter(private val context: Context) {
-             stopProgressPolling()
-             transformer = null
-             try { outputFile.delete() } catch (_: Exception) {}
+-      val t = Transformer.Builder(context)
+-        .setVideoMimeType(MimeTypes.VIDEO_H264)
+-        .setAudioMimeType(MimeTypes.AUDIO_AAC)
+-        .addListener(object : Transformer.Listener {
+-          override fun onCompleted(composition: Composition, exportResult: ExportResult) {
+-            stopProgressPolling()
+-            transformer = null
+-            onProgress(1f)
+-            completion(Result.success(outputFile))
+-          }
+-          override fun onError(composition: Composition, exportResult: ExportResult, exportException: ExportException) {
+-            stopProgressPolling()
+-            transformer = null
+-            try { outputFile.delete() } catch (_: Exception) {}
 -            val msg = exportException.message ?: "Unknown export error"
-+            val base = exportException.message ?: "Unknown export error"
-+            val cause = exportException.cause?.let { c ->
-+              c.message?.takeIf { it.isNotBlank() } ?: c.javaClass.simpleName
+-            val isCancel = msg.contains("cancel", ignoreCase = true)
+-            completion(Result.failure(
+-              if (isCancel) CancellationException("Export was cancelled")
+-              else ExportFailed(msg)
+-            ))
+-          }
+-        })
+-        .build()
++      // Runs on the main looper — an uncaught throw here crashes the app instead
++      // of failing the export, so report it through `completion` like onError.
++      try {
++        val t = Transformer.Builder(context)
++          .setAssetLoaderFactory(seekableAssetLoaderFactory())
++          .setVideoMimeType(MimeTypes.VIDEO_H264)
++          .setAudioMimeType(MimeTypes.AUDIO_AAC)
++          .addListener(object : Transformer.Listener {
++            override fun onCompleted(composition: Composition, exportResult: ExportResult) {
++              stopProgressPolling()
++              transformer = null
++              onProgress(1f)
++              completion(Result.success(outputFile))
 +            }
-+            val msg = if (cause != null && !base.contains(cause)) "$base: $cause" else base
-             val isCancel = msg.contains("cancel", ignoreCase = true)
-             completion(Result.failure(
-               if (isCancel) CancellationException("Export was cancelled")
++            override fun onError(composition: Composition, exportResult: ExportResult, exportException: ExportException) {
++              stopProgressPolling()
++              transformer = null
++              try { outputFile.delete() } catch (_: Exception) {}
++              val base = exportException.message ?: "Unknown export error"
++              val cause = exportException.cause?.let { c ->
++                c.message?.takeIf { it.isNotBlank() } ?: c.javaClass.simpleName
++              }
++              val msg = if (cause != null && !base.contains(cause)) "$base: $cause" else base
++              val isCancel = msg.contains("cancel", ignoreCase = true)
++              completion(Result.failure(
++                if (isCancel) CancellationException("Export was cancelled")
++                else ExportFailed(msg)
++              ))
++            }
++          })
++          .build()
+ 
+-      this.transformer = t
+-      try { outputFile.delete() } catch (_: Exception) {}
+-      t.start(composition, outputFile.absolutePath)
+-      startProgressPolling(t, onProgress)
++        this.transformer = t
++        try { outputFile.delete() } catch (_: Exception) {}
++        t.start(composition, outputFile.absolutePath)
++        startProgressPolling(t, onProgress)
++      } catch (e: Throwable) {
++        stopProgressPolling()
++        transformer = null
++        try { outputFile.delete() } catch (_: Exception) {}
++        completion(Result.failure(ExportFailed("${e.javaClass.simpleName}: ${e.message ?: ""}")))
++      }
+     }
+   }
+ 
 diff --git a/node_modules/expo-media-edit/ios/OverlayRenderer.swift b/node_modules/expo-media-edit/ios/OverlayRenderer.swift
 index 329ec6b..a305c31 100644
 --- a/node_modules/expo-media-edit/ios/OverlayRenderer.swift

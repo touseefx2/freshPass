@@ -29,6 +29,7 @@ module.exports = {
       "./plugins/withIosModularHeaders",
       "./plugins/withAndroidReleaseSigning",
       "./plugins/withAndroidAllowBackupReplace",
+      "./plugins/withCrashlyticsNativeSymbols",
       ...(facebookPlugin ? [facebookPlugin] : []),
     ],
   },

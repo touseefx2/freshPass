@@ -3053,7 +3053,9 @@ export default function ReelStudioScreen() {
             ? hasPhoto || musicTracks.length === 0
               ? t("flowExportSourceFailed")
               : t("flowExportSongFailed")
-            : raw || t("failedToExportVideo"),
+            : /OutOfMemory/i.test(raw)
+              ? t("failedToExportVideo")
+              : raw || t("failedToExportVideo"),
           "error",
           5000,
         );
