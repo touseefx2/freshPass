@@ -37,11 +37,9 @@ import {
 } from "@/src/components/afterVisit/afterVisitParts";
 import {
   DateStrip,
-  PickerField,
   SelectRow,
   TimeChips,
 } from "@/src/components/ownerBooking/ownerBookingParts";
-import TimePickerModal from "@/src/components/timePickerModal";
 import {
   CUSTOMER_SEARCH_PAGE_SIZE,
   OwnerBookingError,
@@ -215,7 +213,6 @@ export default function AddAppointmentScreen() {
   const [time, setTime] = useState<string>(
     isValidTime(params.time) ? params.time.padStart(5, "0") : "09:00",
   );
-  const [timePickerOpen, setTimePickerOpen] = useState(false);
   const [freeTimes, setFreeTimes] = useState<string[] | null>(null);
   const [freeLoading, setFreeLoading] = useState(false);
   const [freeError, setFreeError] = useState<string | null>(null);
@@ -330,7 +327,10 @@ export default function AddAppointmentScreen() {
       serviceIds,
     })
       .then((times) => {
-        if (requestId === freeRequest.current) setFreeTimes(times);
+        if (requestId !== freeRequest.current) return;
+        setFreeTimes(times);
+        // Only free times can be booked: drop a tapped time that isn't free.
+        setTime((current) => (times.includes(current) ? current : ""));
       })
       .catch((error) => {
         if (requestId !== freeRequest.current) return;
@@ -365,11 +365,7 @@ export default function AddAppointmentScreen() {
     return date.hour(h).minute(m).isBefore(dayjs());
   }, [date, time]);
 
-  const timeNotFree =
-    !freeLoading &&
-    !!freeTimes &&
-    freeTimes.length > 0 &&
-    !freeTimes.includes(time);
+  const timeIsFree = !freeLoading && !!freeTimes?.includes(time);
 
   // ── Navigation ─────────────────────────────────────────────────────────
   const goTo = (next: Step) => {
@@ -397,6 +393,10 @@ export default function AddAppointmentScreen() {
     } else if (step === "time") {
       if (staffId == null) {
         setTimeError(t("oaPickBarber"));
+        return;
+      }
+      if (!timeIsFree) {
+        setTimeError(t("oaPickTime"));
         return;
       }
       if (isPastSlot) {
@@ -801,13 +801,6 @@ export default function AddAppointmentScreen() {
               setTimeError(null);
             }}
           />
-          <PickerField
-            icon="schedule"
-            label={endTime ? t("oaTimeWithEnd") : t("time")}
-            value={timeLabel}
-            onPress={() => setTimePickerOpen(true)}
-            error={isPastSlot || timeNotFree}
-          />
         </View>
 
         {staffId != null ? (
@@ -834,16 +827,6 @@ export default function AddAppointmentScreen() {
               />
             ) : freeTimes ? (
               <>
-                {timeNotFree ? (
-                  <InfoNote
-                    tone="warm"
-                    icon="schedule"
-                    text={t("oaTimeNotFree", {
-                      time: to12h(time),
-                      name: selectedStaff?.name ?? "",
-                    })}
-                  />
-                ) : null}
                 <TimeChips
                   times={freeTimes}
                   selected={time}
@@ -864,19 +847,6 @@ export default function AddAppointmentScreen() {
           onPress: onNext,
           trailingIcon: "chevron-right",
         }}
-      />
-      <TimePickerModal
-        visible={timePickerOpen}
-        currentHours={Number(time.split(":")[0])}
-        currentMinutes={Number(time.split(":")[1])}
-        onSelect={(hours, minutes) => {
-          setTime(
-            `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`,
-          );
-          setTimeError(null);
-          setTimePickerOpen(false);
-        }}
-        onClose={() => setTimePickerOpen(false)}
       />
     </>
   );

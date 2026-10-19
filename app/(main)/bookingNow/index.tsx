@@ -2313,6 +2313,12 @@ export default function BookingNow() {
       : undefined) ??
     openSlotGroups[0];
 
+  // A new day starts from its own first open period, not the last tab.
+  const selectedDayKey = selectedDate.format("YYYY-MM-DD");
+  useEffect(() => {
+    setActivePeriod(null);
+  }, [selectedDayKey]);
+
   // Keep the picked day in view in the strip.
   useEffect(() => {
     if (stepKey !== "time") return;
