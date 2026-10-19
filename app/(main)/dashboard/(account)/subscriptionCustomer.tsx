@@ -849,17 +849,17 @@ export default function subscriptionCustomer() {
           setTotalPages(response.data.meta.last_page);
         } else {
           if (!append) {
-            setError(t("noSubscriptionsFound"));
+            setError(t("cmNoMemberships"));
             setApiError(true);
           }
         }
       } catch (err: any) {
-        setError(err.message || t("failedToLoadSubscriptions"));
+        setError(err.message || t("cmLoadFailed"));
         setApiError(true);
         if (!append) {
           showBanner(
             t("error"),
-            err.message || t("failedToLoadSubscriptions"),
+            err.message || t("cmLoadFailed"),
             "error",
             2500,
           );
@@ -932,7 +932,7 @@ export default function subscriptionCustomer() {
     if (!businessId) {
       showBanner(
         t("error"),
-        "Business ID is missing for this subscription. Please try again later.",
+        "Business ID is missing for this membership. Please try again later.",
         "error",
         4000,
       );
@@ -970,7 +970,7 @@ export default function subscriptionCustomer() {
       if (response.success) {
         showBanner(
           t("success"),
-          t("subscriptionCancelledSuccessfully"),
+          t("cmCancelled"),
           "success",
           2500,
         );
@@ -984,7 +984,7 @@ export default function subscriptionCustomer() {
       } else {
         showBanner(
           t("error"),
-          response.message || t("failedToCancelSubscription"),
+          response.message || t("cmCancelFailed"),
           "error",
           2500,
         );
@@ -992,7 +992,7 @@ export default function subscriptionCustomer() {
     } catch (err: any) {
       showBanner(
         t("error"),
-        err.message || t("failedToCancelSubscription"),
+        err.message || t("cmCancelFailed"),
         "error",
         2500,
       );
@@ -1192,7 +1192,7 @@ export default function subscriptionCustomer() {
                 >
                   {canCancel
                     ? "All services for this billing period have been used. Booking will unlock again after your next auto-charge when counts reset."
-                    : "All services for this billing period have been used. No more bookings are available on this subscription."}
+                    : "All services for this billing period have been used. No more bookings are available on this membership."}
                 </Text>
               ) : (
                 canCancel && (
@@ -1216,10 +1216,10 @@ export default function subscriptionCustomer() {
               </View>
               <View style={styles.cancelledContentContainer}>
                 <Text style={styles.cancelledStatusText}>
-                  Subscription Cancelled
+                  Membership Cancelled
                 </Text>
                 <Text style={styles.cancelledStatusSubtext}>
-                  You can still use this subscription until{" "}
+                  You can still use this membership until{" "}
                   <Text style={{ fontFamily: fonts.fontBold }}>
                     {formatCustomerSubscriptionDate(item.endsAt)}
                   </Text>
@@ -1233,7 +1233,7 @@ export default function subscriptionCustomer() {
                 onPress={() => handleCancelSubscription(item)}
                 activeOpacity={0.8}
               >
-                <Text style={styles.cancelButtonText}>Cancel Subscription</Text>
+                <Text style={styles.cancelButtonText}>Cancel Membership</Text>
               </TouchableOpacity>
             )
           )}
@@ -1293,7 +1293,7 @@ export default function subscriptionCustomer() {
       <View style={styles.headerRow}>
         <View style={styles.headerDescriptionRow}>
           <Text style={styles.headerDescription}>
-            Manage your active subscriptions and billing information here.
+            Manage your active memberships and billing information here.
           </Text>
         </View>
         <Dropdown
@@ -1333,14 +1333,14 @@ export default function subscriptionCustomer() {
 
   const getEmptyText = useCallback((filter: string) => {
     const filterLabels: { [key: string]: string } = {
-      all: "No subscriptions",
-      active: "No active subscriptions",
-      pending: "No pending subscriptions",
-      paused: "No paused subscriptions",
-      expired: "No expired subscriptions",
-      cancelled: "No cancelled subscriptions",
+      all: "No memberships",
+      active: "No active memberships",
+      pending: "No pending memberships",
+      paused: "No paused memberships",
+      expired: "No expired memberships",
+      cancelled: "No cancelled memberships",
     };
-    return filterLabels[filter] || "No subscriptions";
+    return filterLabels[filter] || "No memberships";
   }, []);
 
   const renderEmpty = useCallback(() => {
@@ -1361,7 +1361,7 @@ export default function subscriptionCustomer() {
         />
         <Text style={styles.emptyText}>{getEmptyText(statusFilter)}</Text>
         <Text style={styles.emptySubtext}>
-          Manage your active subscriptions and billing information here.
+          Manage your active memberships and billing information here.
         </Text>
       </View>
     );
@@ -1370,7 +1370,7 @@ export default function subscriptionCustomer() {
   if (apiError && !loading) {
     return (
       <SafeAreaView edges={["bottom"]} style={styles.container}>
-        <StackHeader title="Subscriptions" />
+        <StackHeader title={t("memberships")} />
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>{error}</Text>
           <RetryButton
@@ -1384,7 +1384,7 @@ export default function subscriptionCustomer() {
 
   return (
     <SafeAreaView edges={["bottom"]} style={styles.container}>
-      <StackHeader title="Subscriptions" />
+      <StackHeader title={t("memberships")} />
       <FlatList
         data={subscriptions}
         renderItem={renderItem}
@@ -1423,7 +1423,7 @@ export default function subscriptionCustomer() {
           >
             {/* Header */}
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Cancel Subscription</Text>
+              <Text style={styles.modalTitle}>Cancel Membership</Text>
               <TouchableOpacity
                 style={styles.modalCloseButton}
                 onPress={() => setCancelModalVisible(false)}
@@ -1464,7 +1464,7 @@ export default function subscriptionCustomer() {
               <View style={styles.consequenceItem}>
                 <Text style={styles.consequenceBullet}>•</Text>
                 <Text style={styles.consequenceText}>
-                  You can re-subscribe at any time.
+                  You can join again at any time.
                 </Text>
               </View>
             </View>
@@ -1490,7 +1490,7 @@ export default function subscriptionCustomer() {
                 )}
               </View>
               <Text style={styles.checkboxText}>
-                I understand that my subscription will be cancelled.
+                I understand that my membership will be cancelled.
               </Text>
             </TouchableOpacity>
 

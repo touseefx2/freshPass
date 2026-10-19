@@ -688,7 +688,7 @@ function CheckoutSubscriptionContent() {
           setPaymentSuccess(true);
           showBanner(
             "Success",
-            "Payment successful! Your subscription will be activated.",
+            "Payment successful! Your membership will be activated.",
             "success",
             4000,
           );
@@ -751,7 +751,7 @@ function CheckoutSubscriptionContent() {
     <SafeAreaView edges={["bottom"]} style={styles.container}>
       <StatusBar barStyle="light-content" />
       {/* Header */}
-      <StackHeader title="Subscription Plans" />
+      <StackHeader title="Membership Plans" />
 
       {loading ? (
         <View style={styles.loadingContainer}>
@@ -782,12 +782,12 @@ function CheckoutSubscriptionContent() {
           <Text style={styles.successMessage}>
             You have successfully subscribed to{" "}
             {subscriptionData?.title || "this plan"}.{"\n\n"}
-            Your subscription is now active and ready to use.
+            Your membership is now active and ready to use.
           </Text>
 
           <View style={[styles.bottomContainer, { width: "60%" }]}>
             <Button
-              title={"View Subscriptions"}
+              title={"View Memberships"}
               onPress={handleViewSubscriptions}
               loading={isSubscribing}
               disabled={isSubscribing}
@@ -810,7 +810,7 @@ function CheckoutSubscriptionContent() {
                 style={styles.changeSubscriptionButton}
               >
                 <Text style={styles.changeSubscriptionText}>
-                  Change subscription
+                  Change membership
                 </Text>
                 <View style={styles.addServiceButton}>
                   <Octicons
@@ -885,7 +885,7 @@ function CheckoutSubscriptionContent() {
                   style={styles.monthlyTagIcon}
                 />
                 <Text style={styles.monthlyTagText}>
-                  Monthly Subscription Available
+                  Monthly Membership Available
                 </Text>
               </View>
 
@@ -953,7 +953,7 @@ function CheckoutSubscriptionContent() {
                       ${subscriptionData.price.toFixed(2)} /mo
                     </Text>
                     <Text style={styles.pricingPeriod}>
-                      Monthly Subscription
+                      Monthly Membership
                     </Text>
                   </View>
                 )}
@@ -964,7 +964,7 @@ function CheckoutSubscriptionContent() {
 
             <View style={styles.bottomContainer}>
               <Button
-                title={paymentSuccess ? "View Subscriptions" : "Subscribe"}
+                title={paymentSuccess ? "View Memberships" : "Join Now"}
                 onPress={
                   paymentSuccess ? handleViewSubscriptions : handleSubscribe
                 }

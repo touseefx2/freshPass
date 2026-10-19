@@ -3588,7 +3588,7 @@ export default function BusinessDetailScreen() {
                                 }}
                               >
                                 <Text style={styles.bookNowButtonText}>
-                                  {t("bookNow")}
+                                  {t("joinNow")}
                                 </Text>
                               </TouchableOpacity>
                             </View>

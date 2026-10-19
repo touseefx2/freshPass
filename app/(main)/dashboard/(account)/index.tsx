@@ -1244,7 +1244,7 @@ export default function AccountScreen() {
       ? [{ key: "myOrders", title: t("myOrders") }]
       : []),
     ...(isCustomer
-      ? [{ key: "subscriptions", title: t("subscription") }]
+      ? [{ key: "subscriptions", title: t("memberships") }]
       : []),
     ...(isCustomer
       ? [{ key: "reviews", title: t("reviews") }]

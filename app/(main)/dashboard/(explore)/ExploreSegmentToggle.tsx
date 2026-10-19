@@ -103,7 +103,7 @@ export default function ExploreSegmentToggle({
   if (variant === "light") {
     const options: { key: ExploreSegmentValue; label: string }[] = [
       { key: "individual", label: t("individualServices") },
-      { key: "subscriptions", label: t("subscriptionsList") },
+      { key: "subscriptions", label: t("memberships") },
     ];
     return (
       <View style={[styles.lightControl, style]} accessibilityRole="tablist">
