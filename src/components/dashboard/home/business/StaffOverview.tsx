@@ -36,7 +36,12 @@ import { ApiService } from "@/src/services/api";
 import { staffEndpoints } from "@/src/services/endpoints";
 import Logger from "@/src/services/logger";
 import type { StaffData } from "../components/StaffOnDuty";
-import { SectionHeader, formatAmountCompact, resolveImageUri } from "./shared";
+import {
+  SectionHeader,
+  formatAmountCompact,
+  formatAmountShort,
+  resolveImageUri,
+} from "./shared";
 
 // ~3½ cards on a phone so the strip shows it scrolls (client sample)
 const CARD_WIDTH = widthScale(104);
@@ -402,7 +407,7 @@ export default function StaffOverview({ staff, statsFor, onStaffChanged }: Props
                     {t("bhApptsCount", { count: stats.appointments })}
                   </Text>
                   <Text style={styles.revenue} numberOfLines={1}>
-                    {stats.revenue == null ? "–" : formatAmountCompact(stats.revenue)}
+                    {stats.revenue == null ? "–" : formatAmountShort(stats.revenue)}
                   </Text>
                 </View>
               </TouchableOpacity>

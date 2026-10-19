@@ -20,7 +20,11 @@ import type {
   EarningsOverview,
   RevenueSourceFilter,
 } from "@/src/types/businessEarnings";
-import { formatAmount, formatAmountCompact } from "./shared";
+import {
+  formatAmount,
+  formatAmountCompact,
+  formatAmountShort,
+} from "./shared";
 
 export interface DashboardAppointmentCounts {
   total?: number;
@@ -424,7 +428,14 @@ export function AppointmentCountTiles({
           accessibilityLabel={`${value(tile.count)} ${tile.label}`}
         >
           {tile.icon}
-          <Text style={styles.countValue}>{value(tile.count)}</Text>
+          <Text
+            style={styles.countValue}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.6}
+          >
+            {value(tile.count)}
+          </Text>
           <Text style={styles.countLabel} numberOfLines={2}>
             {tile.label}
           </Text>
@@ -554,7 +565,7 @@ export function RevenueBreakdownTiles({
               adjustsFontSizeToFit
               minimumFontScale={0.7}
             >
-              {loading ? "–" : formatAmountCompact(item.amount)}
+              {loading ? "–" : formatAmountShort(item.amount)}
             </Text>
             <Text style={styles.breakdownLabel} numberOfLines={1}>
               {item.label}
@@ -615,7 +626,7 @@ export function RevenueBreakdownGrid({
                   adjustsFontSizeToFit
                   minimumFontScale={0.7}
                 >
-                  {loading ? "–" : formatAmountCompact(item.amount)}
+                  {loading ? "–" : formatAmountShort(item.amount)}
                 </Text>
                 <Text style={styles.gridLabel} numberOfLines={1}>
                   {item.label}

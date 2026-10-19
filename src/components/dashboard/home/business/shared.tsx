@@ -189,6 +189,17 @@ export function formatAmountCompact(amount: number | null | undefined): string {
   return `${safe < 0 ? "−" : ""}$${formatted}`;
 }
 
+/** Narrow tiles: "$9,999.50" as is, then "$25K" / "$25.5K" / "$1.2M". */
+export function formatAmountShort(amount: number | null | undefined): string {
+  const value = Number(amount ?? 0);
+  const safe = Number.isFinite(value) ? value : 0;
+  const abs = Math.abs(safe);
+  if (abs < 10_000) return formatAmountCompact(safe);
+  const [div, unit] = abs >= 1_000_000 ? [1_000_000, "M"] : [1_000, "K"];
+  const short = (Math.floor((abs / div) * 10) / 10).toString();
+  return `${safe < 0 ? "−" : ""}$${short}${unit}`;
+}
+
 export function initialsOf(name: string | null | undefined): string {
   if (!name?.trim()) return "?";
   const parts = name.trim().split(/\s+/).filter(Boolean);
