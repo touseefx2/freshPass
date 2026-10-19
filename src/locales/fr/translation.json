@@ -2993,7 +2993,7 @@
   "oaNewCustomerTag": "Nouveau client",
   "oaNextReview": "Suivant : vérifier",
   "oaNextServices": "Suivant : prestations",
-  "oaNextTime": "Suivant : coiffeur et heure",
+  "oaNextTime": "Suivant : coiffeur",
   "oaNoApp": "Pas d'app",
   "oaNoAppEmailOnly": "Pas d'app — e-mail uniquement",
   "oaNoBarbers": "Personne dans votre équipe ne peut prendre de réservations pour le moment.",
@@ -3035,8 +3035,8 @@
   "oaServicesSummary_other": "{{count}} prestations · {{duration}} · {{price}}",
   "oaServicesTitle": "Choisir les prestations",
   "oaTimeNotFree": "{{time}} n'est pas libre pour {{name}}. Choisissez un créneau ci-dessous.",
-  "oaTimeSubtitle": "Seuls les créneaux libres de ce coiffeur sont affichés.",
-  "oaTimeTitle": "Coiffeur, date et heure",
+  "oaTimeSubtitle": "Créneaux libres de {{name}}. Choisissez un jour, puis une heure.",
+  "oaTimeTitle": "Date et heure",
   "oaTimeWithEnd": "Heure (début – fin)",
   "oaViewAppointment": "Voir le rendez-vous",
   "oaWhen": "Quand",
@@ -3158,5 +3158,8 @@
   "anEmptyTitle": "Personne n'est libre pour le moment",
   "anEmptyTitleLater": "Personne n'est libre sur cette période",
   "anEmptySub": "Essayez une période ou une distance plus large.",
-  "anReelToggleTitle": "Afficher Disponible maintenant sur ce reel"
+  "anReelToggleTitle": "Afficher Disponible maintenant sur ce reel",
+  "oaBarberTitle": "Choisir un coiffeur",
+  "oaBarberSubtitle": "Qui s'occupera de ce rendez-vous ?",
+  "oaNextDateTime": "Suivant : date et heure"
 }

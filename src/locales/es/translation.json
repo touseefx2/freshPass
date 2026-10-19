@@ -2993,7 +2993,7 @@
   "oaNewCustomerTag": "Nuevo cliente",
   "oaNextReview": "Siguiente: Revisar",
   "oaNextServices": "Siguiente: Servicios",
-  "oaNextTime": "Siguiente: Barbero y hora",
+  "oaNextTime": "Siguiente: Barbero",
   "oaNoApp": "Sin app",
   "oaNoAppEmailOnly": "Sin app: solo correo",
   "oaNoBarbers": "Ahora nadie de tu equipo puede aceptar reservas.",
@@ -3035,8 +3035,8 @@
   "oaServicesSummary_other": "{{count}} servicios · {{duration}} · {{price}}",
   "oaServicesTitle": "Elige los servicios",
   "oaTimeNotFree": "Las {{time}} no están libres para {{name}}. Elige una hora libre abajo.",
-  "oaTimeSubtitle": "Solo se muestran las horas libres de este barbero.",
-  "oaTimeTitle": "Barbero, fecha y hora",
+  "oaTimeSubtitle": "Horas libres de {{name}}. Elige un día y luego una hora.",
+  "oaTimeTitle": "Fecha y hora",
   "oaTimeWithEnd": "Hora (inicio – fin)",
   "oaViewAppointment": "Ver cita",
   "oaWhen": "Cuándo",
@@ -3158,5 +3158,8 @@
   "anEmptyTitle": "Nadie está libre ahora mismo",
   "anEmptyTitleLater": "Nadie está libre en este tiempo",
   "anEmptySub": "Prueba un tiempo o una distancia mayor.",
-  "anReelToggleTitle": "Mostrar Disponible ahora en este reel"
+  "anReelToggleTitle": "Mostrar Disponible ahora en este reel",
+  "oaBarberTitle": "Elige un barbero",
+  "oaBarberSubtitle": "¿Quién atenderá esta cita?",
+  "oaNextDateTime": "Siguiente: Fecha y hora"
 }

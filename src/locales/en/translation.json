@@ -3049,7 +3049,7 @@
   "oaNewCustomerTag": "New customer",
   "oaNextReview": "Next: Review",
   "oaNextServices": "Next: Services",
-  "oaNextTime": "Next: Barber & time",
+  "oaNextTime": "Next: Barber",
   "oaNoApp": "No app",
   "oaNoAppEmailOnly": "No app — email only",
   "oaNoBarbers": "No one on your team can take bookings right now.",
@@ -3091,8 +3091,8 @@
   "oaServicesSummary_other": "{{count}} services · {{duration}} · {{price}}",
   "oaServicesTitle": "Choose services",
   "oaTimeNotFree": "{{time}} isn't free for {{name}}. Pick a free time below.",
-  "oaTimeSubtitle": "Only free times for this barber are shown.",
-  "oaTimeTitle": "Barber, date & time",
+  "oaTimeSubtitle": "Free times for {{name}}. Pick a day, then a time.",
+  "oaTimeTitle": "Date & time",
   "oaTimeWithEnd": "Time (start – end)",
   "oaViewAppointment": "View appointment",
   "oaWhen": "When",
@@ -3209,5 +3209,8 @@
   "anEmptyTitle": "Nobody is free right now",
   "anEmptyTitleLater": "Nobody is free in this time",
   "anEmptySub": "Try a wider time or distance.",
-  "anReelToggleTitle": "Show Available Now on this reel"
+  "anReelToggleTitle": "Show Available Now on this reel",
+  "oaBarberTitle": "Choose a barber",
+  "oaBarberSubtitle": "Who will do this appointment?",
+  "oaNextDateTime": "Next: Date & time"
 }

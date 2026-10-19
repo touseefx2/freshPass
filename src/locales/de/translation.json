@@ -2993,7 +2993,7 @@
   "oaNewCustomerTag": "Neuer Kunde",
   "oaNextReview": "Weiter: Prüfen",
   "oaNextServices": "Weiter: Leistungen",
-  "oaNextTime": "Weiter: Friseur & Zeit",
+  "oaNextTime": "Weiter: Friseur",
   "oaNoApp": "Keine App",
   "oaNoAppEmailOnly": "Keine App – nur E-Mail",
   "oaNoBarbers": "Gerade kann niemand im Team Buchungen annehmen.",
@@ -3035,8 +3035,8 @@
   "oaServicesSummary_other": "{{count}} Leistungen · {{duration}} · {{price}}",
   "oaServicesTitle": "Leistungen wählen",
   "oaTimeNotFree": "{{time}} ist bei {{name}} nicht frei. Wähle unten eine freie Zeit.",
-  "oaTimeSubtitle": "Es werden nur freie Zeiten dieses Friseurs angezeigt.",
-  "oaTimeTitle": "Friseur, Datum & Uhrzeit",
+  "oaTimeSubtitle": "Freie Zeiten von {{name}}. Wähle einen Tag, dann eine Uhrzeit.",
+  "oaTimeTitle": "Datum & Uhrzeit",
   "oaTimeWithEnd": "Zeit (Beginn – Ende)",
   "oaViewAppointment": "Termin ansehen",
   "oaWhen": "Wann",
@@ -3155,5 +3155,8 @@
   "anEmptyTitle": "Gerade ist niemand frei",
   "anEmptyTitleLater": "In diesem Zeitraum ist niemand frei",
   "anEmptySub": "Versuche einen größeren Zeitraum oder eine größere Entfernung.",
-  "anReelToggleTitle": "„Jetzt verfügbar“ auf diesem Reel zeigen"
+  "anReelToggleTitle": "„Jetzt verfügbar“ auf diesem Reel zeigen",
+  "oaBarberTitle": "Friseur wählen",
+  "oaBarberSubtitle": "Wer übernimmt diesen Termin?",
+  "oaNextDateTime": "Weiter: Datum & Uhrzeit"
 }

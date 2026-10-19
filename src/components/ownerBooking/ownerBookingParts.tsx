@@ -9,6 +9,7 @@ import {
 } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import dayjs, { type Dayjs } from "dayjs";
+import { useTranslation } from "react-i18next";
 import AppImage from "@/src/components/AppImage";
 import { useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
@@ -20,6 +21,7 @@ import {
   widthScale,
 } from "@/src/theme/dimensions";
 import { resolveApiImageUrl } from "@/src/utils/media";
+import { EveningIcon, MorningIcon, NightIcon } from "@/assets/icons";
 
 /** Rows and chips for the owner's "New appointment" steps. */
 
@@ -310,6 +312,142 @@ export function TimeChips({
             <Text style={[styles.chipText, on && styles.chipTextOn]}>
               {format(time)}
             </Text>
+          </TouchableOpacity>
+        );
+      })}
+    </View>
+  );
+}
+
+export type DayPeriod = "morning" | "afternoon" | "evening" | "night";
+
+export const DAY_PERIODS: DayPeriod[] = ["morning", "afternoon", "evening", "night"];
+
+const PERIOD_LABEL_KEYS: Record<DayPeriod, string> = {
+  morning: "bkFlowMorning",
+  afternoon: "bkFlowAfternoon",
+  evening: "bkFlowEvening",
+  night: "bkFlowNight",
+};
+
+/** Same split as the customer booking flow; times before 5 AM count as morning. */
+export function getDayPeriod(time: string): DayPeriod {
+  const hours = Number(time.split(":")[0]) || 0;
+  if (hours >= 12 && hours < 17) return "afternoon";
+  if (hours >= 17 && hours < 20) return "evening";
+  if (hours >= 20) return "night";
+  return "morning";
+}
+
+const createPeriodStyles = (theme: Theme) =>
+  StyleSheet.create({
+    tabs: {
+      flexDirection: "row",
+      borderBottomWidth: 1,
+      borderBottomColor: theme.lightGreen2,
+    },
+    tab: {
+      flex: 1,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: moderateWidthScale(5),
+      minHeight: heightScale(44),
+      paddingHorizontal: moderateWidthScale(2),
+    },
+    tabOff: { opacity: 0.4 },
+    icon: { height: moderateHeightScale(18), justifyContent: "center" },
+    text: {
+      flexShrink: 1,
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontBold,
+      color: theme.lightGreen,
+    },
+    textOn: { color: theme.darkGreen },
+    underline: {
+      position: "absolute",
+      left: 0,
+      right: 0,
+      bottom: -1,
+      height: 3,
+      borderRadius: 2,
+      backgroundColor: theme.orangeBrown,
+    },
+  });
+
+/** Morning / Afternoon / Evening / Night tabs above the time chips. */
+export function PeriodTabs({
+  value,
+  available,
+  onChange,
+}: {
+  value: DayPeriod | null;
+  /** Periods that have free times; the others are dimmed. */
+  available: DayPeriod[];
+  onChange: (period: DayPeriod) => void;
+}) {
+  const { t } = useTranslation();
+  const { colors } = useTheme();
+  const theme = colors as Theme;
+  const styles = useMemo(() => createPeriodStyles(theme), [theme]);
+  const icon = (period: DayPeriod) => {
+    switch (period) {
+      case "morning":
+        return (
+          <MorningIcon
+            width={moderateWidthScale(20)}
+            height={moderateHeightScale(14)}
+          />
+        );
+      case "afternoon":
+        return (
+          <MaterialIcons
+            name="wb-sunny"
+            size={moderateWidthScale(18)}
+            color={theme.darkGreen}
+          />
+        );
+      case "evening":
+        return (
+          <EveningIcon
+            width={moderateWidthScale(20)}
+            height={moderateHeightScale(11)}
+          />
+        );
+      case "night":
+        return (
+          <NightIcon
+            width={moderateWidthScale(16)}
+            height={moderateHeightScale(16)}
+          />
+        );
+    }
+  };
+  return (
+    <View style={styles.tabs} accessibilityRole="tablist">
+      {DAY_PERIODS.map((period) => {
+        const hasTimes = available.includes(period);
+        const on = value === period;
+        return (
+          <TouchableOpacity
+            key={period}
+            activeOpacity={0.7}
+            style={[styles.tab, !hasTimes && styles.tabOff]}
+            disabled={!hasTimes}
+            onPress={() => onChange(period)}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: on, disabled: !hasTimes }}
+          >
+            <View style={styles.icon}>{icon(period)}</View>
+            <Text
+              style={[styles.text, on && styles.textOn]}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.8}
+            >
+              {t(PERIOD_LABEL_KEYS[period])}
+            </Text>
+            {on ? <View style={styles.underline} /> : null}
           </TouchableOpacity>
         );
       })}

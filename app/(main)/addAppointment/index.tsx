@@ -36,9 +36,13 @@ import {
   formatVisitMoney,
 } from "@/src/components/afterVisit/afterVisitParts";
 import {
+  DAY_PERIODS,
   DateStrip,
+  PeriodTabs,
   SelectRow,
   TimeChips,
+  getDayPeriod,
+  type DayPeriod,
 } from "@/src/components/ownerBooking/ownerBookingParts";
 import {
   CUSTOMER_SEARCH_PAGE_SIZE,
@@ -57,12 +61,12 @@ import {
 
 /**
  * Owner "New appointment", one step at a time:
- * customer (search or new) → services → barber, date & time → review →
+ * customer (search or new) → services → barber → date & time → review →
  * booked. One-time service, paid at the shop (POST /api/appointments).
  * Opened from a calendar slot with the date, time and barber filled in.
  */
-type Step = "customer" | "services" | "time" | "review" | "done";
-const STEPS: Step[] = ["customer", "services", "time", "review"];
+type Step = "customer" | "services" | "barber" | "time" | "review" | "done";
+const STEPS: Step[] = ["customer", "services", "barber", "time", "review"];
 
 const SEARCH_DEBOUNCE_MS = 300;
 const PHONE_MAX = 20;
@@ -219,6 +223,7 @@ export default function AddAppointmentScreen() {
   const [freeTimesKey, setFreeTimesKey] = useState(0);
   const freeRequest = useRef(0);
   const [timeError, setTimeError] = useState<string | null>(null);
+  const [period, setPeriod] = useState<DayPeriod | null>(null);
 
   // ── Review / submit ────────────────────────────────────────────────────
   const [notes, setNotes] = useState("");
@@ -307,7 +312,8 @@ export default function AddAppointmentScreen() {
   const totalPrice = selectedServices.reduce((sum, s) => sum + s.price, 0);
   const selectedStaff = staff.find((s) => s.id === staffId) ?? null;
   const dateStr = date.format("YYYY-MM-DD");
-  const endTime = totalMinutes > 0 ? addMinutes(time, totalMinutes) : null;
+  const endTime =
+    totalMinutes > 0 && isValidTime(time) ? addMinutes(time, totalMinutes) : null;
   const timeLabel = endTime
     ? `${to12h(time)} – ${to12h(endTime)}`
     : to12h(time);
@@ -318,6 +324,8 @@ export default function AddAppointmentScreen() {
       return;
     }
     const requestId = ++freeRequest.current;
+    // Don't show (or accept) the last barber's or day's times while loading.
+    setFreeTimes(null);
     setFreeLoading(true);
     setFreeError(null);
     fetchOwnerFreeTimes({
@@ -360,12 +368,48 @@ export default function AddAppointmentScreen() {
 
   const isPastSlot = useMemo(() => {
     if (date.isBefore(dayjs(), "day")) return true;
+    // No time picked yet (e.g. cleared because it wasn't free).
+    if (!isValidTime(time)) return false;
     if (!date.isSame(dayjs(), "day")) return false;
     const [h, m] = time.split(":").map(Number);
     return date.hour(h).minute(m).isBefore(dayjs());
   }, [date, time]);
 
-  const timeIsFree = !freeLoading && !!freeTimes?.includes(time);
+  // Free times still ahead (today's past ones hidden), split by part of day.
+  const openTimes = useMemo(() => {
+    if (!freeTimes) return null;
+    if (!date.isSame(dayjs(), "day")) return freeTimes;
+    const now = dayjs();
+    return freeTimes.filter((slot) => {
+      const [h, m] = slot.split(":").map(Number);
+      return date.hour(h).minute(m).isAfter(now);
+    });
+  }, [freeTimes, date]);
+  const openPeriods = useMemo(
+    () =>
+      DAY_PERIODS.filter((p) =>
+        (openTimes ?? []).some((slot) => getDayPeriod(slot) === p),
+      ),
+    [openTimes],
+  );
+  // Chosen tab, else the picked time's period, else the first with times.
+  const activePeriod =
+    (period && openPeriods.includes(period) ? period : null) ??
+    (isValidTime(time) && openPeriods.includes(getDayPeriod(time))
+      ? getDayPeriod(time)
+      : null) ??
+    openPeriods[0] ??
+    null;
+  const periodTimes = (openTimes ?? []).filter(
+    (slot) => getDayPeriod(slot) === activePeriod,
+  );
+
+  // A new day or barber starts from its own first open period.
+  useEffect(() => {
+    setPeriod(null);
+  }, [dateStr, staffId]);
+
+  const timeIsFree = !freeLoading && !!openTimes?.includes(time);
 
   // ── Navigation ─────────────────────────────────────────────────────────
   const goTo = (next: Step) => {
@@ -389,12 +433,15 @@ export default function AddAppointmentScreen() {
         return;
       }
       setServiceError(null);
-      goTo("time");
-    } else if (step === "time") {
+      goTo("barber");
+    } else if (step === "barber") {
       if (staffId == null) {
         setTimeError(t("oaPickBarber"));
         return;
       }
+      setTimeError(null);
+      goTo("time");
+    } else if (step === "time") {
       if (!timeIsFree) {
         setTimeError(t("oaPickTime"));
         return;
@@ -468,7 +515,9 @@ export default function AddAppointmentScreen() {
             err.message,
         );
         setFreeTimesKey((key) => key + 1);
-        setStep("time");
+        setStep(
+          err.has("staff_id") && !err.has("appointment_time") ? "barber" : "time",
+        );
       } else if (err.has("new_customer")) {
         setNewCustomerErrors({
           name: err.first("new_customer.name") ?? undefined,
@@ -757,40 +806,63 @@ export default function AddAppointmentScreen() {
     </>
   );
 
+  const renderBarber = () => (
+    <>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
+        <FlowTitle
+          title={t("oaBarberTitle")}
+          subtitle={t("oaBarberSubtitle")}
+        />
+        {timeError ? (
+          <InfoNote tone="error" icon="error-outline" text={timeError} />
+        ) : null}
+        {staff.length === 0 ? (
+          <InfoNote tone="warm" text={t("oaNoBarbers")} />
+        ) : (
+          <View style={styles.list} accessibilityRole="radiogroup">
+            {staff.map((member) => (
+              <SelectRow
+                key={member.id}
+                title={member.name}
+                image={member.image}
+                tag={member.isOwner ? t("owner") : null}
+                tagTone="neutral"
+                selected={staffId === member.id}
+                onPress={() => {
+                  setStaffId(member.id);
+                  setTimeError(null);
+                }}
+              />
+            ))}
+          </View>
+        )}
+      </ScrollView>
+      <FlowFooter
+        primary={{
+          label: t("oaNextDateTime"),
+          onPress: onNext,
+          trailingIcon: "chevron-right",
+        }}
+      />
+    </>
+  );
+
   const renderTime = () => (
     <>
       <ScrollView
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        <FlowTitle title={t("oaTimeTitle")} subtitle={t("oaTimeSubtitle")} />
+        <FlowTitle
+          title={t("oaTimeTitle")}
+          subtitle={t("oaTimeSubtitle", { name: selectedStaff?.name ?? "" })}
+        />
         {timeError ? (
           <InfoNote tone="error" icon="event-busy" text={timeError} />
         ) : null}
-
-        <View style={{ gap: moderateHeightScale(10) }}>
-          <SectionLabel label={t("oaBarber")} />
-          {staff.length === 0 ? (
-            <InfoNote tone="warm" text={t("oaNoBarbers")} />
-          ) : (
-            <View style={styles.list} accessibilityRole="radiogroup">
-              {staff.map((member) => (
-                <SelectRow
-                  key={member.id}
-                  title={member.name}
-                  image={member.image}
-                  tag={member.isOwner ? t("owner") : null}
-                  tagTone="neutral"
-                  selected={staffId === member.id}
-                  onPress={() => {
-                    setStaffId(member.id);
-                    setTimeError(null);
-                  }}
-                />
-              ))}
-            </View>
-          )}
-        </View>
 
         <View style={{ gap: moderateHeightScale(10) }}>
           <SectionLabel label={t("oaWhen")} />
@@ -803,43 +875,54 @@ export default function AddAppointmentScreen() {
           />
         </View>
 
-        {staffId != null ? (
-          <View style={{ gap: moderateHeightScale(10) }}>
-            <SectionLabel
-              label={t("oaFreeTimes")}
-              meta={selectedStaff ? selectedStaff.name : null}
-            />
-            {freeLoading ? (
-              <View style={styles.loadingRow}>
-                <ActivityIndicator color={theme.darkGreen} />
-                <Text style={styles.muted}>{t("oaCheckingTimes")}</Text>
-              </View>
-            ) : freeError ? (
+        <View style={{ gap: moderateHeightScale(10) }}>
+          <SectionLabel
+            label={t("oaFreeTimes")}
+            meta={date.format("ddd, MMM D")}
+          />
+          {freeLoading ? (
+            <View style={styles.loadingRow}>
+              <ActivityIndicator color={theme.darkGreen} />
+              <Text style={styles.muted}>{t("oaCheckingTimes")}</Text>
+            </View>
+          ) : freeError ? (
+            <>
               <InfoNote tone="error" icon="error-outline" text={freeError} />
-            ) : freeTimes && freeTimes.length === 0 ? (
-              <InfoNote
-                tone="warm"
-                icon="event-busy"
-                text={t("oaNoFreeTimes", {
-                  name: selectedStaff?.name ?? "",
-                  date: date.format("ddd, MMM D"),
-                })}
+              <FlowButton
+                variant="text"
+                compact
+                label={t("retry")}
+                onPress={() => setFreeTimesKey((key) => key + 1)}
               />
-            ) : freeTimes ? (
-              <>
-                <TimeChips
-                  times={freeTimes}
-                  selected={time}
-                  format={to12h}
-                  onSelect={(next) => {
-                    setTime(next);
-                    setTimeError(null);
-                  }}
-                />
-              </>
-            ) : null}
-          </View>
-        ) : null}
+            </>
+          ) : openTimes && openTimes.length === 0 ? (
+            <InfoNote
+              tone="warm"
+              icon="event-busy"
+              text={t("oaNoFreeTimes", {
+                name: selectedStaff?.name ?? "",
+                date: date.format("ddd, MMM D"),
+              })}
+            />
+          ) : openTimes ? (
+            <>
+              <PeriodTabs
+                value={activePeriod}
+                available={openPeriods}
+                onChange={setPeriod}
+              />
+              <TimeChips
+                times={periodTimes}
+                selected={time}
+                format={to12h}
+                onSelect={(next) => {
+                  setTime(next);
+                  setTimeError(null);
+                }}
+              />
+            </>
+          ) : null}
+        </View>
       </ScrollView>
       <FlowFooter
         primary={{
@@ -1000,11 +1083,13 @@ export default function AddAppointmentScreen() {
         ? renderCustomer()
         : step === "services"
           ? renderServices()
-          : step === "time"
-            ? renderTime()
-            : step === "review"
-              ? renderReview()
-              : renderDone();
+          : step === "barber"
+            ? renderBarber()
+            : step === "time"
+              ? renderTime()
+              : step === "review"
+                ? renderReview()
+                : renderDone();
   }
 
   return (

@@ -2993,7 +2993,7 @@
   "oaNewCustomerTag": "عميل جديد",
   "oaNextReview": "التالي: المراجعة",
   "oaNextServices": "التالي: الخدمات",
-  "oaNextTime": "التالي: الحلاق والوقت",
+  "oaNextTime": "التالي: الحلاق",
   "oaNoApp": "بدون تطبيق",
   "oaNoAppEmailOnly": "بدون تطبيق — البريد فقط",
   "oaNoBarbers": "لا يوجد أحد في فريقك يمكنه استقبال الحجوزات حاليًا.",
@@ -3035,8 +3035,8 @@
   "oaServicesSummary_other": "{{count}} خدمات · {{duration}} · {{price}}",
   "oaServicesTitle": "اختر الخدمات",
   "oaTimeNotFree": "الوقت {{time}} غير متاح لدى {{name}}. اختر وقتًا متاحًا أدناه.",
-  "oaTimeSubtitle": "تظهر فقط الأوقات المتاحة لهذا الحلاق.",
-  "oaTimeTitle": "الحلاق والتاريخ والوقت",
+  "oaTimeSubtitle": "الأوقات المتاحة لـ {{name}}. اختر يومًا ثم وقتًا.",
+  "oaTimeTitle": "التاريخ والوقت",
   "oaTimeWithEnd": "الوقت (البداية – النهاية)",
   "oaViewAppointment": "عرض الموعد",
   "oaWhen": "الموعد",
@@ -3167,5 +3167,8 @@
   "anEmptyTitle": "لا أحد متاح الآن",
   "anEmptyTitleLater": "لا أحد متاح في هذا الوقت",
   "anEmptySub": "جرّب وقتًا أو مسافة أوسع.",
-  "anReelToggleTitle": "إظهار «متاح الآن» على هذا الريل"
+  "anReelToggleTitle": "إظهار «متاح الآن» على هذا الريل",
+  "oaBarberTitle": "اختر الحلاق",
+  "oaBarberSubtitle": "من سيقوم بهذا الموعد؟",
+  "oaNextDateTime": "التالي: التاريخ والوقت"
 }

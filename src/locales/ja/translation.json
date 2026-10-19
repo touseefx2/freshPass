@@ -2993,7 +2993,7 @@
   "oaNewCustomerTag": "新規のお客様",
   "oaNextReview": "次へ：確認",
   "oaNextServices": "次へ：メニュー",
-  "oaNextTime": "次へ：担当者と時間",
+  "oaNextTime": "次へ：担当者",
   "oaNoApp": "アプリなし",
   "oaNoAppEmailOnly": "アプリなし — メールのみ",
   "oaNoBarbers": "現在、予約を受けられるスタッフがいません。",
@@ -3035,8 +3035,8 @@
   "oaServicesSummary_other": "{{count}}件 · {{duration}} · {{price}}",
   "oaServicesTitle": "メニューを選ぶ",
   "oaTimeNotFree": "{{time}}は{{name}}の空きがありません。下から空き時間を選んでください。",
-  "oaTimeSubtitle": "この担当者の空き時間だけを表示しています。",
-  "oaTimeTitle": "担当者・日付・時間",
+  "oaTimeSubtitle": "{{name}}の空き時間です。日付を選んでから時間を選んでください。",
+  "oaTimeTitle": "日付と時間",
   "oaTimeWithEnd": "時間（開始〜終了）",
   "oaViewAppointment": "予約を見る",
   "oaWhen": "日時",
@@ -3152,5 +3152,8 @@
   "anEmptyTitle": "今空いている人はいません",
   "anEmptyTitleLater": "この時間帯に空いている人はいません",
   "anEmptySub": "時間や距離を広げてみてください。",
-  "anReelToggleTitle": "このリールに「今すぐ予約可」を表示"
+  "anReelToggleTitle": "このリールに「今すぐ予約可」を表示",
+  "oaBarberTitle": "担当者を選択",
+  "oaBarberSubtitle": "この予約を担当するのは誰ですか？",
+  "oaNextDateTime": "次へ：日付と時間"
 }
