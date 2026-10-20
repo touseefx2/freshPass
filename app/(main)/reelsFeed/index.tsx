@@ -669,7 +669,7 @@ const createStyles = (theme: Theme) =>
     pillsRow: {
       width: "100%",
       flexDirection: "row",
-      flexWrap: "nowrap",
+      flexWrap: "wrap",
       alignItems: "center",
       gap: moderateWidthScale(8),
     },
@@ -1813,6 +1813,22 @@ function ReelFeedItemBase({
         ) : null}
 
         <View style={styles.pillsRow}>
+          {!!reel.look_tag?.trim() && (
+            <View style={styles.pill}>
+              <MaterialIcons
+                name="auto-awesome"
+                size={moderateWidthScale(12)}
+                color={theme.white}
+              />
+              <Text
+                style={styles.pillText}
+                numberOfLines={1}
+                ellipsizeMode="tail"
+              >
+                {reel.look_tag.trim()}
+              </Text>
+            </View>
+          )}
           {!!categoryName && (
             <View style={styles.pill}>
               <MaterialIcons
