@@ -236,14 +236,24 @@ export function TransactionRow({
   const { t } = useTranslation();
   const moment = transactionMoment(item);
   const method = item.paymentMethod ?? "online";
+  // In-person money is Cash or Card (the shop's own machine).
+  const isCard = method === "in_person" && item.inPersonMethod === "card_terminal";
   const methodLabel =
     method === "in_person"
-      ? t("bhPayInPerson")
+      ? isCard
+        ? t("bhPayCard")
+        : t("bhPayInPerson")
       : method === "membership"
         ? t("bhPayMembership")
         : t("bhPayOnline");
   const methodIcon =
-    method === "in_person" ? (
+    isCard ? (
+      <MaterialCommunityIcons
+        name="credit-card-outline"
+        size={iconScale(15)}
+        color={theme.successGreen}
+      />
+    ) : method === "in_person" ? (
       <MaterialCommunityIcons
         name="cash"
         size={iconScale(16)}

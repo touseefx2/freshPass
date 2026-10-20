@@ -83,6 +83,7 @@ import OutcomeSummaryCard from "@/src/components/OutcomeSummaryCard";
 import type {
   AppointmentReview,
   InPersonPayment,
+  VisitReceipt,
 } from "@/src/types/afterVisit";
 import {
   fetchBookAgain,
@@ -352,6 +353,8 @@ interface BookingItem {
   outcomeSummary?: OutcomeSummary | null;
   /** "I paid at the salon" claim and how the business answered it */
   inPersonPayment?: InPersonPayment | null;
+  /** Checkout receipt (null before completion): paid / covered / unpaid + method */
+  receipt?: VisitReceipt | null;
   canConfirmInPersonPayment?: boolean;
   canRejectInPersonPayment?: boolean;
   /** This visit's review (one per appointment) */
@@ -478,6 +481,8 @@ interface ApiBookingResponse {
   canRestoreVisit?: boolean;
   outcomeSummary?: OutcomeSummary | null;
   inPersonPayment?: InPersonPayment | null;
+  /** Checkout receipt (null before completion): paid / covered / unpaid + method */
+  receipt?: VisitReceipt | null;
   canConfirmInPersonPayment?: boolean;
   canRejectInPersonPayment?: boolean;
   review?: AppointmentReview | null;
@@ -914,6 +919,7 @@ export default function BookingDetailsById() {
       canRestoreVisit: apiData.canRestoreVisit ?? false,
       outcomeSummary: apiData.outcomeSummary ?? null,
       inPersonPayment: apiData.inPersonPayment ?? null,
+      receipt: apiData.receipt ?? null,
       canConfirmInPersonPayment: apiData.canConfirmInPersonPayment ?? false,
       canRejectInPersonPayment: apiData.canRejectInPersonPayment ?? false,
       review: apiData.review ?? null,
@@ -1297,11 +1303,17 @@ export default function BookingDetailsById() {
       ? booking?.planDescription
       : booking?.serviceDescription) || null;
 
-  // Pro recorded a cash checkout: paidAmount stays null, inPersonPayment is confirmed.
-  const isCashPaid =
-    !!booking &&
-    !isSubscription &&
-    booking.inPersonPayment?.status === "confirmed";
+  // Checkout receipt: how the business recorded the payment.
+  const receipt = booking?.receipt ?? null;
+  // Paid at the shop (cash / the shop's card machine): paidAmount stays null.
+  const shopMethod =
+    receipt?.status === "paid" &&
+    (receipt.method === "cash" || receipt.method === "card_terminal")
+      ? receipt.method
+      : booking?.inPersonPayment?.status === "confirmed"
+        ? (booking.inPersonPayment.method ?? "cash")
+        : null;
+  const isCashPaid = !!booking && !isSubscription && !!shopMethod;
 
   const paymentHeadline = (() => {
     if (!booking) return "";
@@ -1317,7 +1329,14 @@ export default function BookingDetailsById() {
   const paymentSubline = (() => {
     if (!booking || isSubscription) return null;
     if (isCashPaid) {
-      return "Paid in cash at the business";
+      return shopMethod === "card_terminal"
+        ? "Paid by card at the business"
+        : "Paid in cash at the business";
+    }
+    if (receipt?.status === "unpaid") {
+      return receipt.method === "freshpass"
+        ? t("ckAwaitingInApp")
+        : t("ckMethodUnpaid");
     }
     if (booking.paymentMethod === "pay_now" && !booking.owesPayment) {
       return "Paid online";
@@ -1329,12 +1348,18 @@ export default function BookingDetailsById() {
   const inPersonStatus = booking?.inPersonPayment?.status;
   const isPaidBadge =
     !!booking &&
-    !booking.owesPayment &&
-    (booking.paidAmount != null || inPersonStatus === "confirmed");
+    (receipt
+      ? receipt.status !== "unpaid"
+      : !booking.owesPayment &&
+        (booking.paidAmount != null || inPersonStatus === "confirmed"));
   const paymentBadgeLabel = isPaidBadge
-    ? inPersonStatus === "confirmed"
-      ? t("avBadgePaidInPerson")
-      : t("paidLabel")
+    ? receipt?.status === "covered"
+      ? t("ckBadgeCovered")
+      : shopMethod === "card_terminal"
+        ? t("avPaidCardTitle")
+        : shopMethod === "cash"
+          ? t("avPaidCashTitle")
+          : t("paidLabel")
     : inPersonStatus === "claimed"
       ? t("avBadgeAwaiting")
       : booking?.status === "complete" && booking.owesPayment
@@ -2950,9 +2975,11 @@ export default function BookingDetailsById() {
                     <View style={styles.paymentBreakdownRow}>
                       <Text style={styles.paymentBreakdownLabel}>
                         Tip for {paidTipBreakdown.recipientName}
-                        {booking.tip?.paymentChannel === "in_person"
-                          ? ` · ${t("avTipCashShort")}`
-                          : ""}
+                        {receipt?.tipMethod === "card_terminal"
+                          ? ` · ${t("ckMethodCardShort")}`
+                          : booking.tip?.paymentChannel === "in_person"
+                            ? ` · ${t("avTipCashShort")}`
+                            : ""}
                       </Text>
                       <Text style={styles.paymentBreakdownValue}>
                         {formatTipAmount(
@@ -2973,8 +3000,12 @@ export default function BookingDetailsById() {
                   </View>
                 ) : (
                   <Text style={styles.paymentAmount}>
-                    {isCashPaid && booking.inPersonPayment?.totalAmount != null
-                      ? formatPrice(booking.inPersonPayment.totalAmount)
+                    {isCashPaid &&
+                    (receipt?.totalCollected ?? booking.inPersonPayment?.totalAmount) != null
+                      ? formatPrice(
+                          (receipt?.totalCollected ??
+                            booking.inPersonPayment?.totalAmount) as number,
+                        )
                       : !booking.owesPayment && booking.paidAmount != null
                         ? formatPrice(booking.paidAmount)
                         : booking.price}

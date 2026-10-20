@@ -3,6 +3,8 @@ import { appointmentsEndpoints, reviewsEndpoints } from "./endpoints";
 import type {
   AppointmentReview,
   BookAgainData,
+  CheckoutMethod,
+  ShopPaymentMethod,
   ViewAndPay,
 } from "@/src/types/afterVisit";
 
@@ -82,36 +84,47 @@ export async function claimPaidInPerson(
 }
 
 /**
- * Business: payment received at the shop. `cashTip` is the cash tip actually
- * received (0 = none). Returns the updated appointment.
+ * Business: payment received at the shop (Not Yet Paid → paid later), in cash
+ * or on the shop's card machine. `cashTip` is the tip actually received
+ * (0 = none). Returns the updated appointment.
  */
 export async function confirmInPersonPayment<T = unknown>(
   appointmentId: number | string,
   cashTip: number,
+  method: ShopPaymentMethod = "cash",
 ): Promise<T> {
   const response = await ApiService.post<ApiResponse<T>>(
     appointmentsEndpoints.confirmInPersonPayment(appointmentId),
-    { tip_amount: cashTip },
+    { paid_method: method, tip_amount: cashTip },
   );
   return unwrap(response, "Could not confirm the payment.");
 }
 
 /**
- * Business checkout: completes the visit in one call. With `paidCash` the cash
- * payment (and its tip) is recorded too; without it the visit stays owed
- * (Not Yet Paid). A 422 changes nothing. Returns the updated appointment.
+ * Business checkout (the register): completes the visit and records how it
+ * was paid in one call. Nothing is charged. `tipMethod` only applies to
+ * freshpass / membership (cash and card tips follow the payment). A 422
+ * changes nothing. Returns the updated appointment (with `receipt`).
  */
 export async function completeAppointment<T = unknown>(
   appointmentId: number | string,
-  payment: { paidCash: boolean; tip: number },
+  payment: { method: CheckoutMethod; tip: number; tipMethod?: ShopPaymentMethod },
   headers?: Record<string, string>,
 ): Promise<T> {
-  const body: { outcome: "completed"; paid_cash?: true; tip_amount?: number } = {
-    outcome: "completed",
-  };
-  if (payment.paidCash) {
-    body.paid_cash = true;
-    if (payment.tip > 0) body.tip_amount = payment.tip;
+  const body: {
+    outcome: "completed";
+    paid_method: CheckoutMethod;
+    tip_amount?: number;
+    tip_method?: ShopPaymentMethod;
+  } = { outcome: "completed", paid_method: payment.method };
+  if (payment.method !== "not_paid" && payment.tip > 0) {
+    body.tip_amount = payment.tip;
+    if (
+      (payment.method === "freshpass" || payment.method === "membership") &&
+      payment.tipMethod
+    ) {
+      body.tip_method = payment.tipMethod;
+    }
   }
   const response = await ApiService.post<ApiResponse<T>>(
     appointmentsEndpoints.markOutcome(appointmentId),

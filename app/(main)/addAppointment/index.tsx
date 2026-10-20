@@ -194,9 +194,35 @@ export default function AddAppointmentScreen() {
     time?: string;
     /** Barber the calendar was filtered to */
     staff_id?: string;
+    /** Book Next Visit (checkout done screen): same customer + services */
+    user_id?: string;
+    customer_name?: string;
+    customer_email?: string;
+    customer_image?: string;
+    /** Comma-separated service ids */
+    service_ids?: string;
   }>();
 
-  const [step, setStep] = useState<Step>("customer");
+  // Book Next Visit arrives with customer, services and barber: start at the time.
+  const prefillUserId = Number(params.user_id);
+  const prefillCustomer: OwnerBookingCustomer | null =
+    Number.isFinite(prefillUserId) && prefillUserId > 0
+      ? {
+          id: prefillUserId,
+          name: params.customer_name ?? null,
+          phone: null,
+          email: params.customer_email ?? null,
+          profile_image_url: params.customer_image ?? null,
+        }
+      : null;
+  const prefillServiceIds = (params.service_ids ?? "")
+    .split(",")
+    .map(Number)
+    .filter((id) => Number.isFinite(id) && id > 0);
+  const isRebook =
+    !!prefillCustomer && prefillServiceIds.length > 0 && !!params.staff_id;
+
+  const [step, setStep] = useState<Step>(isRebook ? "time" : "customer");
   const stepIndex = STEPS.indexOf(step);
 
   // ── Form data ──────────────────────────────────────────────────────────
@@ -211,7 +237,9 @@ export default function AddAppointmentScreen() {
   const [customerMode, setCustomerMode] = useState<"existing" | "new">(
     "existing",
   );
-  const [customer, setCustomer] = useState<OwnerBookingCustomer | null>(null);
+  const [customer, setCustomer] = useState<OwnerBookingCustomer | null>(
+    prefillCustomer,
+  );
   const [newCustomer, setNewCustomer] = useState<NewCustomerInput>({
     name: "",
     phone: "",
@@ -231,7 +259,7 @@ export default function AddAppointmentScreen() {
   const searchRequest = useRef(0);
 
   // ── Services, barber, time ─────────────────────────────────────────────
-  const [serviceIds, setServiceIds] = useState<number[]>([]);
+  const [serviceIds, setServiceIds] = useState<number[]>(prefillServiceIds);
   const [serviceError, setServiceError] = useState<string | null>(null);
   const paramStaffId = Number(params.staff_id);
   const [staffId, setStaffId] = useState<number | null>(
@@ -295,11 +323,26 @@ export default function AddAppointmentScreen() {
             ? staffList[0].id
             : null,
       );
+      // Book Next Visit: drop services no longer offered; if nothing is left
+      // (or the barber is gone) open that step instead of the time.
+      if (isRebook) {
+        const keep = prefillServiceIds.filter((id) =>
+          serviceList.some((svc) => svc.id === id),
+        );
+        setServiceIds(keep);
+        const staffOk =
+          staffList.some((s) => String(s.id) === params.staff_id) ||
+          staffList.length === 1;
+        if (!keep.length) setStep("services");
+        else if (!staffOk) setStep("barber");
+      }
     } catch (error) {
       setDataError((error as Error)?.message || t("oaLoadError"));
     } finally {
       setDataLoading(false);
     }
+    // The Book Next Visit prefill comes from route params, fixed for the screen.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [businessId, t]);
 
   useEffect(() => {

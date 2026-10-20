@@ -1,4 +1,5 @@
 /** Shared types for cancellation / no-show / membership visit flows. */
+import type { CheckoutMethod } from "@/src/types/afterVisit";
 
 export type CancellationCutoffOption = "12" | "24" | "48" | "always";
 
@@ -85,12 +86,32 @@ export interface OutcomePreview {
   hasSavedCard?: boolean;
   policyApplies?: boolean;
   forfeitsVisit?: boolean;
-  /**
-   * outcome=completed: true when a one-time service is still owed, so the
-   * checkout asks how the customer paid. False for membership / paid online.
-   */
+  /** Older field; `checkout` now drives the payment options. */
   canPayCash?: boolean;
+  /** outcome=completed: the register (options, preselect, tip). */
+  checkout?: CheckoutPreview | null;
   currency?: string;
+}
+
+export interface CheckoutOption {
+  method: CheckoutMethod | string;
+  available: boolean;
+  /** Why it is greyed out (shown under the option). */
+  reason: string | null;
+}
+
+export interface CheckoutPreview {
+  /** null = still owed, nothing picked until the business chooses */
+  preselected: CheckoutMethod | null;
+  /** All five, in display order. */
+  options: CheckoutOption[];
+  /** As booked (not today's price). */
+  servicePrice: number | null;
+  /** Already paid in the app. */
+  amountPaid: number | null;
+  /** false = a tip already exists (existingTip); hide the tip input. */
+  canAddTip: boolean;
+  existingTip: { amount: number; method?: string | null } | null;
 }
 
 export interface OutcomeCorrectionPreview {

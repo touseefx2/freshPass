@@ -19,10 +19,47 @@ export type VisitPaymentStatus =
 
 export type InPersonPaymentStatus = "claimed" | "confirmed" | "rejected";
 
+/** How a completed visit was paid (business checkout, `paid_method`). */
+export type CheckoutMethod =
+  | "cash"
+  | "card_terminal"
+  | "freshpass"
+  | "membership"
+  | "not_paid";
+
+/** Money recorded at the shop (record later / tip method): no charge. */
+export type ShopPaymentMethod = "cash" | "card_terminal";
+
+/**
+ * `receipt` on every completed appointment (null before) and on View & Pay:
+ * drives the checkout done screen and the customer's receipt.
+ */
+export interface VisitReceipt {
+  /** paid · covered (membership) · unpaid */
+  status: "paid" | "covered" | "unpaid" | string;
+  /** null while unpaid */
+  method: CheckoutMethod | string | null;
+  businessName?: string | null;
+  services?: string[];
+  /** YYYY-MM-DD */
+  appointmentDate?: string | null;
+  /** HH:mm */
+  appointmentTime?: string | null;
+  /** 0 for a membership visit */
+  serviceAmount: number | null;
+  tipAmount: number | null;
+  /** online (tipped in the app) · cash · card_terminal */
+  tipMethod: "online" | ShopPaymentMethod | string | null;
+  totalCollected: number | null;
+  /** Still owed (unpaid only) */
+  amountDue: number | null;
+  currency?: string | null;
+}
+
 export interface InPersonPayment {
   status: InPersonPaymentStatus | string;
-  /** Always "cash": the only in-person payment FreshPass records */
-  method?: "cash" | string | null;
+  /** cash or card_terminal (the shop's own card machine) */
+  method?: ShopPaymentMethod | string | null;
   /** Service total as booked (set once the payment is recorded) */
   serviceAmount?: number | null;
   claimedAt: string | null;
@@ -101,6 +138,8 @@ export interface ViewAndPay {
   };
   canBookAgain: boolean;
   currency: string;
+  /** Paid / covered / unpaid summary once the visit is completed. */
+  receipt?: VisitReceipt | null;
 }
 
 export interface BookAgainService {

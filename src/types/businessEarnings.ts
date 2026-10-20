@@ -305,6 +305,8 @@ export interface EarningsTransaction {
    */
   kind?: EarningsTransactionKind;
   paymentMethod?: EarningsPaymentMethod;
+  /** in_person rows (incl. cash_tip, which can be a card tip): cash · card_terminal */
+  inPersonMethod?: "cash" | "card_terminal" | null;
   customerImage?: string | null;
   /** ISO 8601 */
   occurredAt?: string | null;

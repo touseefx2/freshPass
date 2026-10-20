@@ -129,10 +129,26 @@ export default function InPersonPaymentCard({
     if (at) lines.push(at);
   } else if (status === "confirmed") {
     tone = styles.confirmed;
-    icon = "payments";
+    icon = payment?.method === "card_terminal" ? "credit-card" : "payments";
     iconColor = theme.buttonBack;
-    title = t("ipCardConfirmedTitle");
-    if (tip > 0) lines.push(t("ipCardCashTip", { amount: formatVisitMoney(tip) }));
+    title =
+      payment?.method === "card_terminal"
+        ? t("avPaidCardTitle")
+        : payment?.method === "cash"
+          ? t("avPaidCashTitle")
+          : t("ipCardConfirmedTitle");
+    // A shop payment's tip goes the same way as the payment (cash or card).
+    if (tip > 0) {
+      lines.push(
+        t("ipCardTipVia", {
+          method:
+            payment?.method === "card_terminal"
+              ? t("ckMethodCardShort")
+              : t("ckMethodCash"),
+          amount: formatVisitMoney(tip),
+        }),
+      );
+    }
     if (payment?.totalAmount != null && tip > 0) {
       lines.push(
         t("ipCardCashTotal", { amount: formatVisitMoney(payment.totalAmount) }),
