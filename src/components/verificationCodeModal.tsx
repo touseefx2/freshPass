@@ -15,6 +15,7 @@ import {
   Keyboard,
   ActivityIndicator,
   TouchableOpacity,
+  Platform,
 } from "react-native";
 import SkeletonPlaceholder from "react-native-skeleton-placeholder";
 import { Feather } from "@expo/vector-icons";
@@ -395,6 +396,30 @@ export default function VerificationCodeModal({
         return;
       }
 
+      const digits = text.replace(/\D/g, "");
+
+      // Keyboard autofill / paste: spread the code across the boxes
+      if (digits.length > 2) {
+        const pasted = digits.slice(-5).split("");
+        const start = pasted.length === 5 ? 0 : index;
+        setCode((prevCode) => {
+          const newCode = [...prevCode];
+          pasted.forEach((d, i) => {
+            if (start + i < 5) newCode[start + i] = d;
+          });
+          const fullCode = newCode.join("");
+          if (fullCode.length === 5) {
+            Keyboard.dismiss();
+            handleVerifyCode(fullCode);
+          } else {
+            const next = Math.min(start + pasted.length, 4);
+            setTimeout(() => inputRefs.current[next]?.focus(), 0);
+          }
+          return newCode;
+        });
+        return;
+      }
+
       // Only allow single digit
       if (text.length > 1) {
         text = text.slice(-1);
@@ -521,7 +546,12 @@ export default function VerificationCodeModal({
                       onChangeText={(text) => handleCodeChange(text, index)}
                       onKeyPress={(e) => handleKeyPress(e, index)}
                       keyboardType="number-pad"
-                      maxLength={1}
+                      textContentType="oneTimeCode"
+                      autoComplete={
+                        Platform.OS === "android" ? "sms-otp" : "one-time-code"
+                      }
+                      importantForAutofill="yes"
+                      maxLength={5}
                       selectTextOnFocus
                       editable={!isVerifying && !isResending}
                     />

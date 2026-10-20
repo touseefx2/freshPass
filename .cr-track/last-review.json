@@ -1,6 +1,6 @@
 {
   "schemaVersion": "2.1",
-  "finalized": false,
+  "finalized": true,
   "source": "claude-code-skill",
   "ruleset": "coderabbit-style@2.0",
   "review": {
@@ -12,15 +12,7 @@
     "mode": "committed",
     "model": "claude-opus-5",
     "effort": "medium",
-    "secondPass": false,
-    "commit": {
-      "sha": "d21be655d276770e204ebfd83bfe8ac441975157",
-      "shortSha": "d21be65",
-      "message": "Add Promotion Pill to Reel Feed Item for Enhanced User Engagement",
-      "authorName": "touseefx2",
-      "authorEmail": "x2app123@gmail.com",
-      "authoredAt": "2026-10-20T19:46:14+05:00"
-    }
+    "secondPass": false
   },
   "developer": {
     "name": "touseefx2",
