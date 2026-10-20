@@ -1,18 +1,26 @@
 {
   "schemaVersion": "2.1",
-  "finalized": true,
+  "finalized": false,
   "source": "claude-code-skill",
   "ruleset": "coderabbit-style@2.0",
   "review": {
-    "id": "2d87275a-606a-4036-904d-5e3f007f5983",
-    "triggeredAt": "2026-10-19T15:40:54.903Z",
-    "completedAt": "2026-10-19T15:41:21.133Z",
-    "durationMs": 25961,
+    "id": "222ea0a1-2874-4e2e-b338-396c37abe5c5",
+    "triggeredAt": "2026-10-20T14:46:16.273Z",
+    "completedAt": "2026-10-20T14:47:00.148Z",
+    "durationMs": 43626,
     "status": "completed",
     "mode": "committed",
     "model": "claude-opus-5",
     "effort": "medium",
-    "secondPass": false
+    "secondPass": false,
+    "commit": {
+      "sha": "d21be655d276770e204ebfd83bfe8ac441975157",
+      "shortSha": "d21be65",
+      "message": "Add Promotion Pill to Reel Feed Item for Enhanced User Engagement",
+      "authorName": "touseefx2",
+      "authorEmail": "x2app123@gmail.com",
+      "authoredAt": "2026-10-20T19:46:14+05:00"
+    }
   },
   "developer": {
     "name": "touseefx2",
@@ -24,54 +32,33 @@
     "remote": "https://github.com/touseefx2/freshPass.git",
     "branch": "redesignAp",
     "baseBranch": "main",
-    "commitBefore": "a751c6b",
+    "commitBefore": "d21be65",
     "isDirty": true,
     "host": "github.com",
     "owner": "touseefx2",
     "repo": "touseefx2/freshPass"
   },
   "project": {
-    "primaryLanguage": "JavaScript"
+    "primaryLanguage": "TypeScript"
   },
   "diffStats": {
-    "filesChanged": 5,
-    "linesAdded": 156,
-    "linesRemoved": 20,
+    "filesChanged": 2,
+    "linesAdded": 58,
+    "linesRemoved": 9,
     "files": [
       {
-        "path": "app.config.js",
-        "language": "JavaScript",
-        "linesAdded": 1,
-        "linesRemoved": 0,
-        "changeType": "modified"
-      },
-      {
-        "path": "app/(main)/reelStudio/index.tsx",
+        "path": "app/(main)/reelsFeed/index.tsx",
         "language": "TypeScript",
-        "linesAdded": 3,
-        "linesRemoved": 1,
-        "changeType": "modified"
-      },
-      {
-        "path": "eas.json",
-        "language": "JSON",
-        "linesAdded": 4,
-        "linesRemoved": 1,
-        "changeType": "modified"
-      },
-      {
-        "path": "patches/expo-media-edit+0.15.6.patch",
-        "language": null,
-        "linesAdded": 116,
-        "linesRemoved": 18,
-        "changeType": "modified"
-      },
-      {
-        "path": "plugins/withCrashlyticsNativeSymbols.js",
-        "language": "JavaScript",
-        "linesAdded": 32,
+        "linesAdded": 31,
         "linesRemoved": 0,
-        "changeType": "added"
+        "changeType": "modified"
+      },
+      {
+        "path": "[REDACTED].tsx",
+        "language": "TypeScript",
+        "linesAdded": 27,
+        "linesRemoved": 9,
+        "changeType": "modified"
       }
     ]
   },
