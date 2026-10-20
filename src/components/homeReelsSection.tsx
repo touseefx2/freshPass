@@ -59,17 +59,20 @@ function CardPreviewVideo({ uri }: { uri: string }) {
   }, [player]);
 
   return (
-    <VideoView
-      player={player}
-      style={[StyleSheet.absoluteFill, { opacity: ready ? 1 : 0 }]}
-      contentFit="cover"
-      nativeControls={false}
-      // SurfaceView under overlays freezes on Android
-      {...(Platform.OS === "android"
-        ? { surfaceType: "textureView" as const }
-        : null)}
-      onFirstFrameRender={() => setReady(true)}
-    />
+    // Native player view swallows taps (Android); let them reach the card
+    <View style={StyleSheet.absoluteFill} pointerEvents="none">
+      <VideoView
+        player={player}
+        style={[StyleSheet.absoluteFill, { opacity: ready ? 1 : 0 }]}
+        contentFit="cover"
+        nativeControls={false}
+        // SurfaceView under overlays freezes on Android
+        {...(Platform.OS === "android"
+          ? { surfaceType: "textureView" as const }
+          : null)}
+        onFirstFrameRender={() => setReady(true)}
+      />
+    </View>
   );
 }
 
