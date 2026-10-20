@@ -57,10 +57,23 @@ import {
   fetchReviewSuggestions,
   fetchViewAndPay,
   getApiErrorMessage,
+  getApiFieldError,
   submitVisitReview,
   waitForVisitPaid,
   type ReviewSuggestion,
+  type ReviewUploadFile,
 } from "@/src/services/afterVisitService";
+import {
+  ReviewMediaPicker,
+  ReviewMediaStrip,
+} from "@/src/components/reviews/reviewMedia";
+import {
+  prepareReviewPhoto,
+  prepareReviewVideo,
+  ReviewFileTooLargeError,
+  type ReviewMedia,
+} from "@/src/utils/reviewMedia";
+import { resolveApiImageUrl } from "@/src/utils/media";
 import {
   fetchAppointmentPaymentSheetParams,
   useStripeAccount as setStripeAccount,
@@ -212,6 +225,17 @@ export default function ViewAndPayScreen() {
   const [comment, setComment] = useState("");
   const [suggestionId, setSuggestionId] = useState<number | null>(null);
   const [suggestions, setSuggestions] = useState<ReviewSuggestion[]>([]);
+  // Optional photo / video: a new pick (local) or the one already on the review
+  const [photo, setPhoto] = useState<ReviewMedia | null>(null);
+  const [video, setVideo] = useState<ReviewMedia | null>(null);
+  const [mediaErrors, setMediaErrors] = useState<{
+    image?: string | null;
+    video?: string | null;
+  }>({});
+  const [uploadProgress, setUploadProgress] = useState<{
+    label: string;
+    percent: number | null;
+  } | null>(null);
 
   const setBusyState = (value: boolean) => {
     busyRef.current = value;
@@ -233,6 +257,11 @@ export default function ViewAndPayScreen() {
     setRating(existing?.overallRating ?? 0);
     setComment(existing?.comment ?? "");
     setSuggestionId(existing?.reviewSuggestionId ?? null);
+    const imageUrl = resolveApiImageUrl(existing?.imageUrl);
+    const videoUrl = resolveApiImageUrl(existing?.videoUrl);
+    setPhoto(imageUrl ? { uri: imageUrl, isLocal: false } : null);
+    setVideo(videoUrl ? { uri: videoUrl, isLocal: false } : null);
+    setMediaErrors({});
     setActionError(null);
     setStep("review");
   }, []);
@@ -522,16 +551,60 @@ export default function ViewAndPayScreen() {
     }
   };
 
+  const setMediaError = useCallback(
+    (kind: "image" | "video", message: string | null) =>
+      setMediaErrors((prev) => ({ ...prev, [kind]: message })),
+    [],
+  );
+
   const sendReview = async () => {
     if (!data || busyRef.current || rating === 0) return;
     setActionError(null);
+    setMediaErrors({});
     setBusyState(true);
+    const existing = data.review.review;
     try {
+      // New picks only; a saved photo / video is kept by leaving it out.
+      let image: ReviewUploadFile | null = null;
+      let videoFile: ReviewUploadFile | null = null;
+      try {
+        if (photo?.isLocal) {
+          setUploadProgress({ label: t("rvPreparingPhoto"), percent: null });
+          image = await prepareReviewPhoto(photo.uri);
+        }
+        if (video?.isLocal) {
+          setUploadProgress({ label: t("rvPreparingVideo"), percent: 0 });
+          videoFile = await prepareReviewVideo(video, (percent) =>
+            setUploadProgress({ label: t("rvPreparingVideo"), percent }),
+          );
+        }
+      } catch (error) {
+        if (error instanceof ReviewFileTooLargeError) {
+          if (error.kind === "video") {
+            setVideo(null);
+            setMediaError("video", t("rvVideoTooLarge"));
+          } else {
+            setPhoto(null);
+            setMediaError("image", t("rvPhotoTooLarge"));
+          }
+          return;
+        }
+        throw error;
+      }
+      if (image || videoFile) {
+        setUploadProgress({ label: t("rvUploading"), percent: 0 });
+      }
       await submitVisitReview({
         appointmentId: data.appointmentId,
         rating,
         comment,
         suggestionId,
+        image,
+        video: videoFile,
+        removeImage: !!existing?.imageUrl && !photo,
+        removeVideo: !!existing?.videoUrl && !video,
+        onUploadProgress: (percent) =>
+          setUploadProgress({ label: t("rvUploading"), percent }),
       });
       showBanner(t("avReviewThanksTitle"), t("avReviewThanksBody"), "success", 3000);
       await load(true);
@@ -541,8 +614,18 @@ export default function ViewAndPayScreen() {
       }
       setStep("done");
     } catch (error) {
-      setActionError(getApiErrorMessage(error, t("failedToSubmitReview")));
+      // 422 on the photo / video: say why and let them pick another one.
+      const imageError = getApiFieldError(error, "image");
+      const videoError = getApiFieldError(error, "video");
+      if (imageError || videoError) {
+        if (imageError && photo?.isLocal) setPhoto(null);
+        if (videoError && video?.isLocal) setVideo(null);
+        setMediaErrors({ image: imageError, video: videoError });
+      } else {
+        setActionError(getApiErrorMessage(error, t("failedToSubmitReview")));
+      }
     } finally {
+      setUploadProgress(null);
       setBusyState(false);
     }
   };
@@ -1140,6 +1223,11 @@ export default function ViewAndPayScreen() {
             {review.comment ? (
               <Text style={styles.reviewComment}>{review.comment}</Text>
             ) : null}
+            <ReviewMediaStrip
+              imageUrl={review.imageUrl}
+              videoUrl={review.videoUrl}
+              style={{ marginTop: moderateHeightScale(4) }}
+            />
           </FlowCard>
         ) : null}
 
@@ -1253,6 +1341,18 @@ export default function ViewAndPayScreen() {
             textAlignVertical="top"
             autoCapitalize="sentences"
           />
+          <View style={{ gap: moderateHeightScale(10) }}>
+            <SectionLabel label={t("rvAddMediaTitle")} meta={t("optional")} />
+            <ReviewMediaPicker
+              photo={photo}
+              video={video}
+              onPhotoChange={setPhoto}
+              onVideoChange={setVideo}
+              errors={mediaErrors}
+              onError={setMediaError}
+              disabled={busy}
+            />
+          </View>
           {errorNote}
         </KeyboardAwareScrollView>
         <FlowFooter
@@ -1262,6 +1362,7 @@ export default function ViewAndPayScreen() {
             disabled: rating === 0,
             loading: busy,
           }}
+          progress={uploadProgress}
           hint={rating === 0 ? t("avPickStars") : null}
         />
       </>

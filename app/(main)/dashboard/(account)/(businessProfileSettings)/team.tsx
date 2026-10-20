@@ -47,6 +47,7 @@ import {
   formatReelsResetDate,
 } from "@/src/services/monthlyReelsService";
 import type { MediaLimits } from "@/src/types/media";
+import { RatingBadge } from "@/src/components/reviews/reviewMedia";
 import {
   disableOwnerAsStaff,
   enableOwnerAsStaff,
@@ -242,6 +243,9 @@ const createStyles = (theme: Theme) =>
       fontSize: fontSize.size12,
       fontFamily: fonts.fontRegular,
       color: theme.lightGreen,
+    },
+    memberRating: {
+      marginTop: moderateHeightScale(3),
     },
     statusChip: {
       paddingHorizontal: moderateWidthScale(7),
@@ -449,6 +453,9 @@ interface TeamMember {
   invitation_token?: string | null;
   invitation_status?: string;
   completed_appointments_count: number;
+  /** Reviews of this member's visits */
+  average_rating?: number | string | null;
+  ratings_count?: number | null;
   monthly_reel_limit?: number | null;
   is_owner?: boolean;
   is_business_owner?: boolean;
@@ -1003,6 +1010,11 @@ export default function ManageTeamScreen() {
                                 {member.email}
                               </Text>
                             ) : null}
+                            <RatingBadge
+                              average={member.average_rating}
+                              count={member.ratings_count}
+                              style={styles.memberRating}
+                            />
                             {reelRow ? (
                               <View style={styles.reelLine}>
                                 <MaterialIcons

@@ -55,6 +55,10 @@ import {
 } from "@/src/services/monthlyReelsService";
 import type { MediaLimits } from "@/src/types/media";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { fetchReviews } from "@/src/services/afterVisitService";
+import type { ReviewListItem } from "@/src/types/reviews";
+import ReviewPreviewCard from "@/src/components/reviews/reviewPreviewCard";
+import { parseRating } from "@/src/components/reviews/reviewMedia";
 
 const VIEWER_BANNER_CONTENT_HEIGHT = moderateHeightScale(28);
 
@@ -460,6 +464,11 @@ const createStyles = (theme: Theme) =>
       borderRightWidth: 1,
       borderRightColor: theme.white15,
     },
+    heroRatingRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(3),
+    },
     heroMetricValue: {
       fontSize: fontSize.size17,
       fontFamily: fonts.fontBold,
@@ -816,6 +825,9 @@ export interface StaffDetailData {
   /** Owner-given share of the business's monthly reels (null = none) */
   monthly_reel_limit?: number | null;
   completed_appointments_count: number;
+  /** Reviews of this staff member's visits (0 when none) */
+  average_rating?: number | string | null;
+  ratings_count?: number | null;
   leaves?: StaffLeave[];
   business: {
     id: number;
@@ -905,6 +917,8 @@ export default function StaffDetail() {
   const dataRef = React.useRef<StaffDetailData | null>(null);
   dataRef.current = data;
   const [reelLimits, setReelLimits] = useState<MediaLimits | null>(null);
+  const [reviews, setReviews] = useState<ReviewListItem[]>([]);
+  const [reviewsTotal, setReviewsTotal] = useState(0);
 
   useEffect(() => {
     setData(null);
@@ -912,6 +926,8 @@ export default function StaffDetail() {
     setLoading(true);
     setWorkImages([]);
     setWorkImagesTotal(0);
+    setReviews([]);
+    setReviewsTotal(0);
   }, [staffId]);
 
   const fetchStaffDetails = useCallback(async () => {
@@ -979,6 +995,24 @@ export default function StaffDetail() {
     }
   }, [staffId]);
 
+  // Latest reviews of this staff member's visits (the profile preview row)
+  const fetchStaffReviews = useCallback(async () => {
+    if (!staffId) return;
+    try {
+      const response = await fetchReviews({
+        staff_id: staffId,
+        page: 1,
+        per_page: 5,
+      });
+      if (response?.success && Array.isArray(response.data)) {
+        setReviews(response.data);
+        setReviewsTotal(response.meta?.total ?? response.data.length);
+      }
+    } catch (err) {
+      Logger.error("Failed to fetch staff reviews preview:", err);
+    }
+  }, [staffId]);
+
   // Owner only: monthly reel usage per staff member
   const fetchReelLimits = useCallback(async () => {
     if (!isBusinessRole || isViewMode) return;
@@ -993,8 +1027,9 @@ export default function StaffDetail() {
     useCallback(() => {
       fetchStaffDetails();
       fetchWorkImages();
+      void fetchStaffReviews();
       void fetchReelLimits();
-    }, [fetchStaffDetails, fetchWorkImages, fetchReelLimits]),
+    }, [fetchStaffDetails, fetchWorkImages, fetchStaffReviews, fetchReelLimits]),
   );
 
   const handleOpenWorkImage = useCallback(
@@ -1019,6 +1054,14 @@ export default function StaffDetail() {
         staffId: String(staffId),
         name: data?.name || "",
       },
+    } as any);
+  }, [data?.name, router, staffId]);
+
+  const handleSeeAllReviews = useCallback(() => {
+    if (!staffId) return;
+    router.push({
+      pathname: "/(main)/userReviews",
+      params: { staff_id: String(staffId), staff_name: data?.name || "" },
     } as any);
   }, [data?.name, router, staffId]);
 
@@ -1302,6 +1345,9 @@ export default function StaffDetail() {
 
   const isActive = Boolean(data.active);
   const totalAppointments = data.completed_appointments_count ?? 0;
+  const ratingValue = parseRating(data.average_rating);
+  const ratingsCount = data.ratings_count ?? 0;
+  const hasRating = ratingsCount > 0 && ratingValue > 0;
   const todayDay = getTodayDayName();
   const openDaysCount = sortedHours.filter((wh) => !wh.closed).length;
   const leaveCount = data.leaves?.length ?? 0;
@@ -1506,6 +1552,39 @@ export default function StaffDetail() {
             </View>
 
             <View style={styles.heroMetrics}>
+              <TouchableOpacity
+                activeOpacity={0.7}
+                disabled={!hasRating}
+                onPress={handleSeeAllReviews}
+                style={[styles.heroMetric, styles.heroMetricDivider]}
+                accessibilityRole={hasRating ? "button" : undefined}
+                accessibilityLabel={
+                  hasRating
+                    ? t("rvRatingA11y", {
+                        rating: ratingValue.toFixed(1),
+                        count: ratingsCount,
+                      })
+                    : t("rvNoReviewsYet")
+                }
+              >
+                <View style={styles.heroRatingRow}>
+                  {hasRating ? (
+                    <MaterialIcons
+                      name="star"
+                      size={moderateWidthScale(16)}
+                      color={theme.orangeBrown}
+                    />
+                  ) : null}
+                  <Text style={styles.heroMetricValue}>
+                    {hasRating ? ratingValue.toFixed(1) : "–"}
+                  </Text>
+                </View>
+                <Text style={styles.heroMetricLabel}>
+                  {hasRating
+                    ? t("rvReviewsCount", { count: ratingsCount })
+                    : t("rvNoReviewsYet")}
+                </Text>
+              </TouchableOpacity>
               <View
                 style={[styles.heroMetric, styles.heroMetricDivider]}
               >
@@ -1633,6 +1712,42 @@ export default function StaffDetail() {
             </View>
           ) : null}
         </View>
+
+        {reviews.length > 0 ? (
+          <View style={styles.sectionContainerFlush}>
+            <View
+              style={[styles.sectionHeaderRow, styles.sectionHeaderPadded]}
+            >
+              <Text style={styles.sectionTitle}>{t("reviews")}</Text>
+              {reviewsTotal > reviews.length ? (
+                <TouchableOpacity
+                  onPress={handleSeeAllReviews}
+                  activeOpacity={0.7}
+                  style={styles.seeAllRow}
+                  accessibilityRole="button"
+                >
+                  <Text style={styles.seeAllText}>
+                    {t("rvSeeAllCount", { count: reviewsTotal })}
+                  </Text>
+                  <MaterialIcons
+                    name="chevron-right"
+                    size={moderateWidthScale(18)}
+                    color={theme.buttonBack}
+                  />
+                </TouchableOpacity>
+              ) : null}
+            </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.workPhotosScroll}
+            >
+              {reviews.map((review) => (
+                <ReviewPreviewCard key={review.id} review={review} />
+              ))}
+            </ScrollView>
+          </View>
+        ) : null}
 
         {workImages.length > 0 ? (
           <View style={styles.sectionContainerFlush}>

@@ -65,6 +65,11 @@ import Button from "@/src/components/button";
 import { ApiService, checkInternetConnection } from "@/src/services/api";
 import Logger from "@/src/services/logger";
 import { businessEndpoints, reviewsEndpoints } from "@/src/services/endpoints";
+import {
+  RatingBadge,
+  ReviewMediaStrip,
+  ReviewServedBy,
+} from "@/src/components/reviews/reviewMedia";
 import { followBusiness, unfollowBusiness } from "@/src/services/followService";
 import { reportReelEvent } from "@/src/services/reelsService";
 import RetryButton from "@/src/components/retryButton";
@@ -927,6 +932,12 @@ const createStyles = (theme: Theme) =>
     },
     staffStatusDotActive: {
       backgroundColor: theme.toggleActive,
+    },
+    staffRatingBadge: {
+      position: "absolute",
+      top: moderateHeightScale(6),
+      left: moderateWidthScale(6),
+      zIndex: 2,
     },
     staffStatusDotInactive: {
       backgroundColor: theme.lightGreen5,
@@ -2638,6 +2649,8 @@ export default function BusinessDetailScreen() {
           image: image,
           active: staff.active,
           is_owner: staff.is_owner === true,
+          average_rating: staff.average_rating ?? 0,
+          ratings_count: staff.ratings_count ?? 0,
         };
       });
   }, [businessData]);
@@ -2738,6 +2751,7 @@ export default function BusinessDetailScreen() {
     const reviewText = review.comment || "";
     const shouldShowSeeMore = reviewText.length > textWrapLength;
     const suggestionTitle = review.review_suggestion?.title || null;
+    const hasMedia = !!(review.image_url || review.video_url);
 
     return (
       <View
@@ -2776,11 +2790,13 @@ export default function BusinessDetailScreen() {
           <Text style={styles.reviewSuggestionTitle}>{suggestionTitle}</Text>
         )}
 
-        {reviewText && (
+        {reviewText ? (
           <View
             style={[
               styles.reviewCardTextContainer,
-              isHorizontal && styles.reviewCardTextContainerHorizontal,
+              isHorizontal &&
+                !hasMedia &&
+                styles.reviewCardTextContainerHorizontal,
             ]}
           >
             <Text
@@ -2804,7 +2820,22 @@ export default function BusinessDetailScreen() {
               </Text>
             )}
           </View>
-        )}
+        ) : null}
+
+        <ReviewMediaStrip
+          imageUrl={review.image_url}
+          videoUrl={review.video_url}
+          size={widthScale(56)}
+          style={{ marginTop: moderateHeightScale(10) }}
+        />
+
+        {review.staff?.name ? (
+          <ReviewServedBy
+            name={review.staff.name}
+            image={review.staff.profile_image_url}
+            style={{ marginTop: moderateHeightScale(10) }}
+          />
+        ) : null}
       </View>
     );
   };
@@ -3369,6 +3400,8 @@ export default function BusinessDetailScreen() {
           working_hours: staffWorkingHours,
           active: staff.active,
           is_owner: staff.is_owner === true,
+          average_rating: staff.average_rating ?? 0,
+          ratings_count: staff.ratings_count ?? 0,
         };
       });
 
@@ -3829,6 +3862,13 @@ export default function BusinessDetailScreen() {
                       ? styles.staffStatusDotActive
                       : styles.staffStatusDotInactive,
                   ]}
+                />
+                <RatingBadge
+                  overlay
+                  showCount={false}
+                  average={staff.average_rating}
+                  count={staff.ratings_count}
+                  style={styles.staffRatingBadge}
                 />
                 <LinearGradient
                   colors={[

@@ -110,6 +110,7 @@ import {
 import { IMAGES } from "@/src/constant/images";
 import dayjs from "dayjs";
 import { formatSalonTimeZone } from "@/src/utils/salonTimezone";
+import { RatingBadge } from "@/src/components/reviews/reviewMedia";
 import weekOfYear from "dayjs/plugin/weekOfYear";
 import isoWeek from "dayjs/plugin/isoWeek";
 import {
@@ -146,6 +147,8 @@ type StaffCarouselItem = {
   image: string | null;
   active: boolean | null | undefined;
   is_owner: boolean;
+  average_rating?: number | string | null;
+  ratings_count?: number | null;
 };
 
 type StepKey =
@@ -668,6 +671,11 @@ const createStyles = (theme: Theme) =>
       borderColor: theme.white,
       alignItems: "center",
       justifyContent: "center",
+    },
+    staffRatingBadge: {
+      position: "absolute",
+      top: moderateWidthScale(6),
+      left: moderateWidthScale(6),
     },
     ownerBadgeWrap: {
       position: "absolute",
@@ -1212,6 +1220,15 @@ function StaffTile({
             </View>
           </View>
         ) : null}
+        {!isAnyone ? (
+          <RatingBadge
+            overlay
+            showCount={false}
+            average={staff.average_rating}
+            count={staff.ratings_count}
+            style={styles.staffRatingBadge}
+          />
+        ) : null}
         {isSelected ? (
           <View style={styles.staffCheck}>
             <MaterialIcons
@@ -1720,6 +1737,8 @@ export default function BookingNow() {
               working_hours: staffWorkingHours,
               active: staff.active,
               is_owner: staff.is_owner === true,
+              average_rating: staff.average_rating ?? 0,
+              ratings_count: staff.ratings_count ?? 0,
             };
           });
 
@@ -2108,6 +2127,8 @@ export default function BookingNow() {
         image: staff.image,
         active: staff.active,
         is_owner: staff.is_owner === true,
+        average_rating: staff.average_rating,
+        ratings_count: staff.ratings_count,
       }));
 
     const showAnyone =

@@ -292,6 +292,8 @@ export default function AddAppointmentScreen() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [result, setResult] = useState<OwnerBookingResult | null>(null);
 
+  // Book Next Visit prefill is applied once; later reloads keep the owner's picks.
+  const rebookApplied = useRef(false);
   const leave = useCallback(() => {
     if (router.canGoBack()) router.back();
     else router.replace("/(main)/dashboard/(calendar)" as any);
@@ -325,7 +327,8 @@ export default function AddAppointmentScreen() {
       );
       // Book Next Visit: drop services no longer offered; if nothing is left
       // (or the barber is gone) open that step instead of the time.
-      if (isRebook) {
+      if (isRebook && !rebookApplied.current) {
+        rebookApplied.current = true;
         const keep = prefillServiceIds.filter((id) =>
           serviceList.some((svc) => svc.id === id),
         );

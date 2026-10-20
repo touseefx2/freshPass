@@ -254,6 +254,11 @@ export async function prepareVideoForUpload(
     onProgress?: (percent: number) => void;
     /** Abort → stops compression and throws UploadCancelledError (no original-file fallback) */
     signal?: AbortSignal;
+    /**
+     * Re-encode even small / already-light files, so the result is always
+     * H.264 (e.g. review videos: the server rejects HEVC).
+     */
+    alwaysReencode?: boolean;
   },
 ): Promise<PreparedVideoFile> {
   throwIfAborted(options?.signal);
@@ -273,7 +278,7 @@ export async function prepareVideoForUpload(
       // Continue with original URI
     }
 
-    if (await isVideoAlreadyLight(inputUri)) {
+    if (!options?.alwaysReencode && (await isVideoAlreadyLight(inputUri))) {
       options?.onProgress?.(100);
       return { uri, type: mimeType, name: fileName };
     }
@@ -292,7 +297,9 @@ export async function prepareVideoForUpload(
         compressionMethod: "manual",
         maxSize: VIDEO_MAX_SIZE,
         bitrate: VIDEO_BITRATE,
-        minimumFileSizeForCompress: VIDEO_MIN_FILE_SIZE_MB,
+        minimumFileSizeForCompress: options?.alwaysReencode
+          ? 0
+          : VIDEO_MIN_FILE_SIZE_MB,
         getCancellationId: (id: string) => {
           cancellationId = id;
           if (options?.signal?.aborted) CompressorVideo.cancelCompression(id);

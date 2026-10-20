@@ -144,3 +144,6 @@ app-example
 .claude/
  
 .claude/skills/ponytail/
+
+# CR-Track local review output
+.cr-track/

@@ -513,6 +513,8 @@ export const reviewsEndpoints = {
     per_page?: number;
     business_id?: number | string;
     user_id?: number | string;
+    /** Only reviews of visits this staff member did */
+    staff_id?: number | string;
   }) => {
     const queryParams = new URLSearchParams();
 
@@ -523,6 +525,8 @@ export const reviewsEndpoints = {
       queryParams.append("business_id", params.business_id.toString());
     if (params?.user_id)
       queryParams.append("user_id", params.user_id.toString());
+    if (params?.staff_id)
+      queryParams.append("staff_id", params.staff_id.toString());
 
     const queryString = queryParams.toString();
     return `/api/reviews${queryString ? `?${queryString}` : ""}`;

@@ -7,6 +7,7 @@ import type {
   ShopPaymentMethod,
   ViewAndPay,
 } from "@/src/types/afterVisit";
+import type { ReviewListResponse } from "@/src/types/reviews";
 
 type ApiResponse<T> = { success: boolean; message: string; data: T };
 
@@ -165,24 +166,87 @@ export async function fetchReviewSuggestions(): Promise<ReviewSuggestion[]> {
   return response.success && Array.isArray(response.data) ? response.data : [];
 }
 
-/** One review per visit: the first send creates it, sending again updates it. */
+/** A local file ready for multipart upload (see `prepareReviewPhoto` / `prepareReviewVideo`). */
+export type ReviewUploadFile = { uri: string; name: string; type: string };
+
+/**
+ * One review per visit: the first send creates it, sending again updates it.
+ * JSON when no file is attached, multipart when a photo or video is. Leaving
+ * both media fields out keeps the current photo / video; a new file replaces
+ * it; `removeImage` / `removeVideo` delete it. (Never PUT: PHP can't read
+ * files sent with PUT.)
+ */
 export async function submitVisitReview(params: {
   appointmentId: number;
   rating: number;
   comment: string;
   suggestionId: number | null;
+  image?: ReviewUploadFile | null;
+  video?: ReviewUploadFile | null;
+  removeImage?: boolean;
+  removeVideo?: boolean;
+  /** 0–100 while a photo / video uploads */
+  onUploadProgress?: (percent: number) => void;
 }): Promise<AppointmentReview | null> {
-  const response = await ApiService.post<ApiResponse<AppointmentReview>>(
-    reviewsEndpoints.create,
-    {
+  const hasFile = !!(params.image || params.video);
+  const removeImage = !!params.removeImage && !params.image;
+  const removeVideo = !!params.removeVideo && !params.video;
+
+  let body: FormData | Record<string, unknown>;
+  if (hasFile) {
+    const form = new FormData();
+    form.append("appointment_id", String(params.appointmentId));
+    form.append("overall_rating", String(params.rating));
+    form.append("comment", params.comment.trim());
+    if (params.suggestionId != null) {
+      form.append("review_suggestion_id", String(params.suggestionId));
+    }
+    if (params.image) form.append("image", params.image as any);
+    if (params.video) form.append("video", params.video as any);
+    if (removeImage) form.append("remove_image", "1");
+    if (removeVideo) form.append("remove_video", "1");
+    body = form;
+  } else {
+    body = {
       appointment_id: params.appointmentId,
       overall_rating: params.rating,
       comment: params.comment.trim(),
       review_suggestion_id: params.suggestionId,
-    },
+      ...(removeImage ? { remove_image: true } : {}),
+      ...(removeVideo ? { remove_video: true } : {}),
+    };
+  }
+
+  const response = await ApiService.post<ApiResponse<AppointmentReview>>(
+    reviewsEndpoints.create,
+    body,
+    hasFile
+      ? {
+          headers: { "Content-Type": "multipart/form-data" },
+          // A 50 MB video on a slow connection outlasts the 2 min default
+          timeout: 5 * 60 * 1000,
+          onUploadProgress: (event) => {
+            if (!params.onUploadProgress || !event.total) return;
+            params.onUploadProgress(
+              Math.min(100, Math.round((event.loaded / event.total) * 100)),
+            );
+          },
+        }
+      : undefined,
   );
   if (!response.success) {
     throw new Error(response.message || "Failed to submit review.");
   }
   return response.data ?? null;
+}
+
+/** GET /api/reviews — a business's, a staff member's or a customer's reviews. */
+export async function fetchReviews(params: {
+  business_id?: number | string;
+  staff_id?: number | string;
+  user_id?: number | string;
+  page?: number;
+  per_page?: number;
+}): Promise<ReviewListResponse> {
+  return ApiService.get<ReviewListResponse>(reviewsEndpoints.list(params));
 }

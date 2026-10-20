@@ -26,45 +26,14 @@ import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { Skeleton } from "@/src/components/skeletons";
 import dayjs from "dayjs";
 import { useLocalSearchParams } from "expo-router";
+import type { ReviewListItem, ReviewListResponse } from "@/src/types/reviews";
+import {
+  ReviewMediaStrip,
+  ReviewServedBy,
+} from "@/src/components/reviews/reviewMedia";
 
-type Review = {
-  id: number;
-  business_id: number;
-  business: {
-    id: number;
-    title: string;
-  };
-  user_id: number;
-  user: {
-    id: number;
-    name: string | null;
-    email: string;
-    profile_image_url: string | null;
-  };
-  overall_rating: string;
-  comment: string;
-  review_suggestion_id: number | null;
-  review_suggestion: {
-    id: number;
-    title: string;
-  } | null;
-  created_at: string;
-};
-
-type ReviewsResponse = {
-  success: boolean;
-  message: string;
-  data: Review[];
-  meta: {
-    current_page: number;
-    per_page: number;
-    total: number;
-    last_page: number;
-  };
-  averages: {
-    overall_average_rating: number;
-  };
-};
+type Review = ReviewListItem;
+type ReviewsResponse = ReviewListResponse;
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -188,6 +157,9 @@ export default function UserReviewsScreen() {
   const params = useLocalSearchParams<{
     business_id?: string;
     user_id?: string;
+    /** Reviews of visits this staff member did (their profile's "See all") */
+    staff_id?: string;
+    staff_name?: string;
     screenName?: string;
   }>();
 
@@ -202,6 +174,7 @@ export default function UserReviewsScreen() {
     Record<string, boolean>
   >({});
   const isCustomerReview = params.screenName === "customerReview";
+  const isStaffReview = !!params.staff_id;
 
   const fetchReviews = useCallback(
     async (page: number = 1, append: boolean = false) => {
@@ -217,13 +190,16 @@ export default function UserReviewsScreen() {
           per_page: number;
           business_id?: string;
           user_id?: string;
+          staff_id?: string;
         } = {
           page,
           per_page: 10,
         };
 
-        // Add business_id if it exists in params
-        if (params.business_id) {
+        if (params.staff_id) {
+          apiParams.staff_id = params.staff_id;
+        } else if (params.business_id) {
+          // Add business_id if it exists in params
           apiParams.business_id = params.business_id;
         }
 
@@ -259,7 +235,7 @@ export default function UserReviewsScreen() {
         setLoadingMore(false);
       }
     },
-    [showBanner, params.business_id, params.user_id],
+    [showBanner, params.business_id, params.user_id, params.staff_id],
   );
 
   useEffect(() => {
@@ -305,11 +281,11 @@ export default function UserReviewsScreen() {
   };
 
   const getUserName = (user: Review["user"]) => {
-    return user.name || user.email.split("@")[0] || "User";
+    return user?.name || user?.email?.split("@")[0] || "User";
   };
 
   const renderReviewItem = ({ item }: { item: Review }) => {
-    const hasImage = !!item.user.profile_image_url;
+    const hasImage = !!item.user?.profile_image_url;
     const reviewText = item.comment || "";
     const isExpanded = expandedReviews[item.id.toString()];
     const shouldShowSeeMore = reviewText.length > textWrapLength && !isExpanded;
@@ -329,7 +305,7 @@ export default function UserReviewsScreen() {
             ]}
           >
             <AppImage
-              uri={getProfileImageUrl(item.user.profile_image_url)}
+              uri={getProfileImageUrl(item.user?.profile_image_url ?? null)}
               style={styles.avatarImage}
             />
           </View>
@@ -341,7 +317,7 @@ export default function UserReviewsScreen() {
         </View>
 
         <View style={styles.starsRow}>
-          {getStars(parseFloat(item.overall_rating)).map((icon, index) => (
+          {getStars(parseFloat(String(item.overall_rating))).map((icon, index) => (
             <MaterialIcons
               key={`${item.id}-star-${index}`}
               name={icon}
@@ -358,7 +334,7 @@ export default function UserReviewsScreen() {
           </Text>
         )}
 
-        {reviewText && (
+        {reviewText ? (
           <>
             <Text style={styles.reviewText}>
               {isExpanded || reviewText.length <= textWrapLength
@@ -380,7 +356,22 @@ export default function UserReviewsScreen() {
               </Text>
             )}
           </>
-        )}
+        ) : null}
+
+        <ReviewMediaStrip
+          imageUrl={item.image_url}
+          videoUrl={item.video_url}
+          style={reviewText ? { marginTop: moderateHeightScale(12) } : null}
+        />
+
+        {/* Business list: which pro did the visit (staff list is all theirs) */}
+        {!isStaffReview && item.staff?.name ? (
+          <ReviewServedBy
+            name={item.staff.name}
+            image={item.staff.profile_image_url}
+            style={{ marginTop: moderateHeightScale(12) }}
+          />
+        ) : null}
       </View>
     );
   };
@@ -403,7 +394,9 @@ export default function UserReviewsScreen() {
         subtitle={
           isCustomerReview
             ? t("reviewsEmptySubtitle")
-            : t("businessReviewsEmptySubtitle")
+            : isStaffReview
+              ? t("rvStaffReviewsEmpty")
+              : t("businessReviewsEmptySubtitle")
         }
       />
     );
@@ -429,7 +422,13 @@ export default function UserReviewsScreen() {
   return (
     <View style={styles.container}>
       <StackHeader
-        title={isCustomerReview ? t("yourReviews") : t("userReviewsRate")}
+        title={
+          isCustomerReview
+            ? t("yourReviews")
+            : isStaffReview && params.staff_name
+              ? t("rvStaffReviewsTitle", { name: params.staff_name })
+              : t("userReviewsRate")
+        }
       />
 
       {loading ? (

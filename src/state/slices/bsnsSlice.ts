@@ -18,6 +18,9 @@ export interface StaffMember {
   working_hours: BusinessHours | null;
   active?: boolean | null;
   is_owner?: boolean;
+  /** Reviews of this staff member's visits */
+  average_rating?: number | string | null;
+  ratings_count?: number | null;
 }
 
 export interface BusinessHours {

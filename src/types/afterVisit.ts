@@ -87,6 +87,11 @@ export interface AppointmentReview {
   comment: string | null;
   reviewSuggestionId: number | null;
   createdAt: string | null;
+  /** Staff member the review also counts for; null = business only */
+  staffId?: number | null;
+  /** Customer's photo / video (go live with the review) */
+  imageUrl?: string | null;
+  videoUrl?: string | null;
 }
 
 export interface ViewAndPayPayment {
