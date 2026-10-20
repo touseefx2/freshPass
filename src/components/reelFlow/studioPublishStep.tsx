@@ -389,16 +389,6 @@ export default function StudioPublishStep({
   const selectedCategoryName =
     categories.find((c) => c.id === categoryId)?.name || categoryName || "";
 
-  // Services belong to the business, not to a category — only offer them when
-  // the reel is in the business's own category.
-  const showServices =
-    services.length > 0 &&
-    (resolvedBusinessCategory?.id == null ||
-      categoryId === resolvedBusinessCategory.id);
-  useEffect(() => {
-    if (!showServices) setServiceId(null);
-  }, [showServices]);
-
   const toggleCategory = useCallback(async () => {
     if (categoryOpen) {
       setCategoryOpen(false);
@@ -743,24 +733,27 @@ export default function StudioPublishStep({
 
         {moreOpen ? (
           <View style={styles.moreBody}>
-            <SelectField
-              label={t("category")}
-              required
-              value={selectedCategoryName || null}
-              placeholder={t("selectCategory")}
-              open={categoryOpen}
-              loading={loadingCategories}
-              options={categories}
-              selectedId={categoryId}
-              onToggle={() => void toggleCategory()}
-              onSelect={(cat) => {
-                userPickedCategoryRef.current = true;
-                setCategoryId(cat.id);
-                setCategoryName(cat.name);
-                setCategoryOpen(false);
-              }}
-            />
-            {showServices ? (
+            {/* Reels always use the business's category; the picker is only a fallback when it can't be resolved */}
+            {resolvedBusinessCategory?.id == null ? (
+              <SelectField
+                label={t("category")}
+                required
+                value={selectedCategoryName || null}
+                placeholder={t("selectCategory")}
+                open={categoryOpen}
+                loading={loadingCategories}
+                options={categories}
+                selectedId={categoryId}
+                onToggle={() => void toggleCategory()}
+                onSelect={(cat) => {
+                  userPickedCategoryRef.current = true;
+                  setCategoryId(cat.id);
+                  setCategoryName(cat.name);
+                  setCategoryOpen(false);
+                }}
+              />
+            ) : null}
+            {services.length > 0 ? (
               <ChoiceChips
                 label={t("serviceOptional")}
                 options={services}
