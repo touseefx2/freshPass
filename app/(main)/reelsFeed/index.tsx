@@ -512,6 +512,24 @@ const createStyles = (theme: Theme) =>
       textShadowOffset: { width: 0, height: 1 },
       textShadowRadius: 4,
     },
+    promoPill: {
+      alignSelf: "flex-start",
+      maxWidth: "100%",
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(5),
+      backgroundColor: theme.orangeBrown,
+      borderRadius: moderateWidthScale(12),
+      paddingHorizontal: moderateWidthScale(10),
+      paddingVertical: moderateHeightScale(4),
+      marginBottom: moderateHeightScale(6),
+    },
+    promoText: {
+      flexShrink: 1,
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontBold,
+      color: theme.black,
+    },
     caption: {
       fontSize: fontSize.size13,
       fontFamily: fonts.fontRegular,
@@ -1632,6 +1650,19 @@ function ReelFeedItemBase({
                     {categoryName}
                   </Text>
                 )}
+              </View>
+            )}
+
+            {!!reel.promotion_text?.trim() && (
+              <View style={styles.promoPill}>
+                <MaterialIcons
+                  name="local-offer"
+                  size={moderateWidthScale(13)}
+                  color={theme.black}
+                />
+                <Text style={styles.promoText} numberOfLines={1}>
+                  {reel.promotion_text.trim()}
+                </Text>
               </View>
             )}
 

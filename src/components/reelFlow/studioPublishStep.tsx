@@ -1,12 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Keyboard, Pressable, StyleSheet, Text, View } from "react-native";
 import { Image } from "expo-image";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
-import {
-  KeyboardAwareScrollView,
-  KeyboardStickyView,
-} from "react-native-keyboard-controller";
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { generateThumbnail } from "expo-media-edit";
 import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
@@ -279,6 +276,17 @@ export default function StudioPublishStep({
   const [shareOpen, setShareOpen] = useState(false);
 
   const busy = publishing || savingDraft;
+
+  // Footer hides while typing so it doesn't cover the field above the keyboard
+  const [keyboardOpen, setKeyboardOpen] = useState(false);
+  useEffect(() => {
+    const show = Keyboard.addListener("keyboardDidShow", () => setKeyboardOpen(true));
+    const hide = Keyboard.addListener("keyboardDidHide", () => setKeyboardOpen(false));
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, []);
   useEffect(() => {
     onBusyChange(busy);
   }, [busy, onBusyChange]);
@@ -380,6 +388,16 @@ export default function StudioPublishStep({
 
   const selectedCategoryName =
     categories.find((c) => c.id === categoryId)?.name || categoryName || "";
+
+  // Services belong to the business, not to a category — only offer them when
+  // the reel is in the business's own category.
+  const showServices =
+    services.length > 0 &&
+    (resolvedBusinessCategory?.id == null ||
+      categoryId === resolvedBusinessCategory.id);
+  useEffect(() => {
+    if (!showServices) setServiceId(null);
+  }, [showServices]);
 
   const toggleCategory = useCallback(async () => {
     if (categoryOpen) {
@@ -658,7 +676,7 @@ export default function StudioPublishStep({
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
-        bottomOffset={moderateHeightScale(140)}
+        bottomOffset={moderateHeightScale(24)}
       >
         <FlowTitle
           title={t("flowPublishTitle")}
@@ -742,7 +760,7 @@ export default function StudioPublishStep({
                 setCategoryOpen(false);
               }}
             />
-            {services.length > 0 ? (
+            {showServices ? (
               <ChoiceChips
                 label={t("serviceOptional")}
                 options={services}
@@ -776,7 +794,7 @@ export default function StudioPublishStep({
         <InfoNote icon="ios-share" text={t("flowShareAfterPublish")} />
       </KeyboardAwareScrollView>
 
-      <KeyboardStickyView offset={{ closed: 0, opened: 0 }}>
+      {!keyboardOpen || busy ? (
         <FlowFooter
           progress={progress}
           primary={{
@@ -793,7 +811,7 @@ export default function StudioPublishStep({
             disabled: busy && !savingDraft,
           }}
         />
-      </KeyboardStickyView>
+      ) : null}
 
       {canLinkProduct ? (
         <ProductPickerSheet
