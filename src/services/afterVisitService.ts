@@ -198,9 +198,9 @@ export async function submitVisitReview(params: {
     form.append("appointment_id", String(params.appointmentId));
     form.append("overall_rating", String(params.rating));
     form.append("comment", params.comment.trim());
-    if (params.suggestionId != null) {
-      form.append("review_suggestion_id", String(params.suggestionId));
-    }
+    // Always sent, like the JSON branch: "" becomes null on the server, which
+    // clears a suggestion the customer deselected.
+    form.append("review_suggestion_id", String(params.suggestionId ?? ""));
     if (params.image) form.append("image", params.image as any);
     if (params.video) form.append("video", params.video as any);
     if (removeImage) form.append("remove_image", "1");
