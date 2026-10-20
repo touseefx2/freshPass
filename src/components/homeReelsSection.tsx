@@ -1,6 +1,10 @@
-import React, { useCallback, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  AppState,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -10,6 +14,8 @@ import {
 import AppImage from "@/src/components/AppImage";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useFocusEffect, useRouter } from "expo-router";
+import { useIsFocused } from "@react-navigation/native";
+import { useVideoPlayer, VideoView } from "expo-video";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
@@ -30,6 +36,41 @@ function formatViews(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
   return String(n);
+}
+
+/**
+ * Muted looping preview on the card in focus (like Instagram suggested reels).
+ * Fades in over the thumbnail once the first frame is ready.
+ */
+function CardPreviewVideo({ uri }: { uri: string }) {
+  const [ready, setReady] = useState(false);
+  const player = useVideoPlayer(uri, (p) => {
+    p.loop = true;
+    p.muted = true;
+    p.play();
+  });
+
+  useEffect(() => {
+    // The OS pauses players in the background; carry on once the app is back
+    const sub = AppState.addEventListener("change", (state) => {
+      if (state === "active") player.play();
+    });
+    return () => sub.remove();
+  }, [player]);
+
+  return (
+    <VideoView
+      player={player}
+      style={[StyleSheet.absoluteFill, { opacity: ready ? 1 : 0 }]}
+      contentFit="cover"
+      nativeControls={false}
+      // SurfaceView under overlays freezes on Android
+      {...(Platform.OS === "android"
+        ? { surfaceType: "textureView" as const }
+        : null)}
+      onFirstFrameRender={() => setReady(true)}
+    />
+  );
 }
 
 const createStyles = (theme: Theme) =>
@@ -116,7 +157,12 @@ const createStyles = (theme: Theme) =>
     },
   });
 
-export default function HomeReelsSection() {
+export default function HomeReelsSection({
+  inView = true,
+}: {
+  /** Section is on screen in the parent scroll; previews stop when it isn't */
+  inView?: boolean;
+}) {
   const { colors } = useTheme();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -127,6 +173,23 @@ export default function HomeReelsSection() {
   const [error, setError] = useState(false);
   const cardsRef = useRef(cards);
   cardsRef.current = cards;
+  const isFocused = useIsFocused();
+  // Card whose preview plays: slides from first to last as the row scrolls,
+  // so every card gets a turn while fully visible
+  const [activeIndex, setActiveIndex] = useState(0);
+  const onRowScroll = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
+      const maxX = contentSize.width - layoutMeasurement.width;
+      const last = cardsRef.current.length - 1;
+      const next =
+        maxX > 0 && last > 0
+          ? Math.min(last, Math.max(0, Math.round((contentOffset.x / maxX) * last)))
+          : 0;
+      setActiveIndex((prev) => (prev === next ? prev : next));
+    },
+    [],
+  );
 
   const load = useCallback(async () => {
     // Show loader only when we don't already have data
@@ -194,11 +257,17 @@ export default function HomeReelsSection() {
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.listPad}
+          onScroll={onRowScroll}
+          scrollEventThrottle={100}
         >
-          {cards.map((card) => {
+          {cards.map((card, index) => {
             const thumb = resolveApiImageUrl(
               card.cover_reel?.video?.thumbnail_url,
             );
+            const previewUri =
+              index === activeIndex && inView && isFocused
+                ? resolveApiImageUrl(card.cover_reel?.video?.playback_url)
+                : null;
             return (
               <TouchableOpacity
                 key={card.id}
@@ -231,6 +300,9 @@ export default function HomeReelsSection() {
                       />
                     </View>
                   )}
+                  {previewUri ? (
+                    <CardPreviewVideo key={previewUri} uri={previewUri} />
+                  ) : null}
                   <View style={styles.viewsBadge}>
                     <MaterialIcons
                       name="visibility"

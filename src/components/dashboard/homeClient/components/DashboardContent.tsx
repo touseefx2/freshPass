@@ -1,5 +1,14 @@
 import React, { useMemo, useState, useRef, useCallback } from "react";
-import { StyleSheet, Text, View, ScrollView, Dimensions } from "react-native";
+import {
+  StyleSheet,
+  Text,
+  View,
+  ScrollView,
+  Dimensions,
+  LayoutChangeEvent,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
+} from "react-native";
 import { useAppSelector, useTheme, useAppDispatch } from "@/src/hooks/hooks";
 import { useTranslation } from "react-i18next";
 import dayjs from "dayjs";
@@ -1011,12 +1020,37 @@ export default function DashboardContent() {
     }, []),
   );
 
+  // Reel previews play only while at least half the reels row is on screen
+  const scrollYRef = useRef(0);
+  const viewportHRef = useRef(0);
+  const reelsBoxRef = useRef<{ y: number; h: number } | null>(null);
+  const [reelsInView, setReelsInView] = useState(false);
+  const updateReelsInView = useCallback(() => {
+    const box = reelsBoxRef.current;
+    const viewH = viewportHRef.current;
+    if (!box || box.h <= 0 || viewH <= 0) return;
+    const top = scrollYRef.current;
+    const shown =
+      Math.min(box.y + box.h, top + viewH) - Math.max(box.y, top);
+    const next = shown >= box.h / 2;
+    setReelsInView((prev) => (prev === next ? prev : next));
+  }, []);
+
   return (
     <ScrollView
       showsVerticalScrollIndicator={false}
       nestedScrollEnabled
       style={styles.container}
       contentContainerStyle={styles.contentContainer}
+      scrollEventThrottle={100}
+      onScroll={(e: NativeSyntheticEvent<NativeScrollEvent>) => {
+        scrollYRef.current = e.nativeEvent.contentOffset.y;
+        updateReelsInView();
+      }}
+      onLayout={(e: LayoutChangeEvent) => {
+        viewportHRef.current = e.nativeEvent.layout.height;
+        updateReelsInView();
+      }}
     >
       <SearchBar
         onSearchPress={() => {
@@ -1104,7 +1138,15 @@ export default function DashboardContent() {
         />
       </View>
 
-      <HomeReelsSection />
+      <View
+        onLayout={(e: LayoutChangeEvent) => {
+          const { y, height } = e.nativeEvent.layout;
+          reelsBoxRef.current = { y, h: height };
+          updateReelsInView();
+        }}
+      >
+        <HomeReelsSection inView={reelsInView} />
+      </View>
 
       {(proTipData?.cards?.length ?? 0) > 0 || proTipLoading || proTipError ? (
         <View style={styles.section}>
