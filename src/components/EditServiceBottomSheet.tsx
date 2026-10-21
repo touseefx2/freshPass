@@ -1,5 +1,7 @@
 import React, { useMemo, useState, useEffect, useRef } from "react";
 import {
+  ActivityIndicator,
+  Alert,
   BackHandler,
   StatusBar,
   StyleSheet,
@@ -11,6 +13,7 @@ import {
 import { Portal } from "@gorhom/portal";
 import Animated, { ReduceMotion, SlideInDown } from "react-native-reanimated";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
@@ -25,12 +28,15 @@ import {
   updateService,
 } from "@/src/state/slices/completeProfileSlice";
 import FlowHeader from "@/src/components/reelFlow/flowHeader";
-import FlowFooter from "@/src/components/reelFlow/flowFooter";
+import Button from "@/src/components/button";
 
 interface EditServiceBottomSheetProps {
   visible: boolean;
   onClose: () => void;
   serviceId: string | null;
+  /** Shown as "Delete Service" when editing; called after the user confirms. */
+  onDelete?: (serviceId: string) => void;
+  deleting?: boolean;
 }
 
 const PRESETS = [15, 30, 45, 60];
@@ -127,8 +133,8 @@ const createStyles = (theme: Theme) =>
     },
     chip: {
       flex: 1,
-      minHeight: heightScale(48),
-      borderRadius: moderateWidthScale(10),
+      minHeight: heightScale(44),
+      borderRadius: moderateWidthScale(22),
       borderWidth: 1,
       borderColor: theme.lightGreen2,
       backgroundColor: theme.white,
@@ -148,6 +154,34 @@ const createStyles = (theme: Theme) =>
     chipTextActive: {
       color: theme.white,
     },
+    customLink: {
+      alignSelf: "flex-start",
+      paddingVertical: moderateHeightScale(4),
+    },
+    customLinkText: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontMedium,
+      color: theme.lightGreen,
+      textDecorationLine: "underline",
+    },
+    customLinkTextActive: {
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    actions: {
+      marginTop: moderateHeightScale(6),
+      gap: moderateHeightScale(8),
+    },
+    deleteButton: {
+      minHeight: heightScale(48),
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    deleteText: {
+      fontSize: fontSize.size15,
+      fontFamily: fonts.fontBold,
+      color: theme.red,
+    },
     helper: {
       fontSize: fontSize.size13,
       fontFamily: fonts.fontRegular,
@@ -164,6 +198,8 @@ export default function EditServiceBottomSheet({
   visible,
   onClose,
   serviceId,
+  onDelete,
+  deleting = false,
 }: EditServiceBottomSheetProps) {
   const dispatch = useAppDispatch();
   const { t } = useTranslation();
@@ -172,6 +208,7 @@ export default function EditServiceBottomSheet({
   const theme = colors as Theme;
   const { services } = useAppSelector((state) => state.completeProfile);
   const customInputRef = useRef<TextInput>(null);
+  const insets = useSafeAreaInsets();
 
   const service = serviceId ? services.find((s) => s.id === serviceId) : null;
 
@@ -323,6 +360,22 @@ export default function EditServiceBottomSheet({
     onClose();
   };
 
+  const confirmDelete = () => {
+    if (!serviceId || !onDelete || deleting) return;
+    Alert.alert(
+      "Delete service",
+      `Are you sure you want to delete "${service?.name ?? "this service"}"?`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: () => onDelete(serviceId),
+        },
+      ],
+    );
+  };
+
   if (!visible) return null;
 
   const priceLabel = currency === "USD" ? "Price ($)" : `Price (${currency})`;
@@ -341,7 +394,10 @@ export default function EditServiceBottomSheet({
 
         <KeyboardAwareScrollView
           style={styles.flex}
-          contentContainerStyle={styles.content}
+          contentContainerStyle={[
+            styles.content,
+            { paddingBottom: moderateHeightScale(28) + insets.bottom },
+          ]}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="interactive"
           showsVerticalScrollIndicator={false}
@@ -389,7 +445,7 @@ export default function EditServiceBottomSheet({
           <View style={styles.field}>
             <Text style={styles.label}>Duration</Text>
             <View style={styles.chipRow} accessibilityRole="radiogroup">
-              {[...PRESETS, "custom" as const].map((value) => {
+              {PRESETS.map((value) => {
                 const active = preset === value;
                 return (
                   <TouchableOpacity
@@ -406,12 +462,28 @@ export default function EditServiceBottomSheet({
                       adjustsFontSizeToFit
                       minimumFontScale={0.8}
                     >
-                      {value === "custom" ? "Custom" : `${value} min`}
+                      {`${value} min`}
                     </Text>
                   </TouchableOpacity>
                 );
               })}
             </View>
+            <TouchableOpacity
+              style={styles.customLink}
+              onPress={() => handleSelectPreset("custom")}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              accessibilityRole="radio"
+              accessibilityState={{ selected: preset === "custom" }}
+            >
+              <Text
+                style={[
+                  styles.customLinkText,
+                  preset === "custom" && styles.customLinkTextActive,
+                ]}
+              >
+                Custom
+              </Text>
+            </TouchableOpacity>
             {preset !== "custom" && errors.duration ? (
               <Text style={styles.errorText}>{errors.duration}</Text>
             ) : null}
@@ -466,15 +538,30 @@ export default function EditServiceBottomSheet({
               <Text style={styles.errorText}>{errors.price}</Text>
             ) : null}
           </View>
-        </KeyboardAwareScrollView>
 
-        {/* Stays behind the keyboard while typing so the fields get the room. */}
-        <FlowFooter
-          primary={{
-            label: serviceId ? "Save Changes" : "Add Service",
-            onPress: handleSave,
-          }}
-        />
+          <View style={styles.actions}>
+            <Button
+              title={serviceId ? "Save Changes" : "Add Service"}
+              onPress={handleSave}
+              disabled={deleting}
+              backgroundColor={theme.darkGreen}
+            />
+            {serviceId && onDelete ? (
+              <TouchableOpacity
+                style={styles.deleteButton}
+                onPress={confirmDelete}
+                disabled={deleting}
+                accessibilityRole="button"
+              >
+                {deleting ? (
+                  <ActivityIndicator size="small" color={theme.red} />
+                ) : (
+                  <Text style={styles.deleteText}>Delete Service</Text>
+                )}
+              </TouchableOpacity>
+            ) : null}
+          </View>
+        </KeyboardAwareScrollView>
       </Animated.View>
     </Portal>
   );

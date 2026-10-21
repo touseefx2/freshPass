@@ -1,7 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
   ScrollView,
   StyleSheet,
   Text,
@@ -9,7 +7,6 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Feather, MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
@@ -33,24 +30,8 @@ import {
 } from "@/src/state/slices/completeProfileSlice";
 import EditServiceBottomSheet from "@/src/components/EditServiceBottomSheet";
 import ServiceListBottomSheet from "@/src/components/ServiceListBottomSheet";
+import ServiceList from "@/src/components/ServiceList";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
-
-const formatDuration = (hours: number, minutes: number): string => {
-  if (hours > 0 && minutes > 0) {
-    return `${hours} hours ${minutes} mins`;
-  } else if (hours > 0) {
-    return `${hours} hours`;
-  } else if (minutes > 0) {
-    return `${minutes} mins`;
-  }
-  return "0 mins";
-};
-
-const formatPrice = (price: number | string, currency: string): string => {
-  const numericPrice =
-    typeof price === "string" ? parseFloat(price || "0") : price;
-  return `$${numericPrice.toFixed(2)} ${currency}`;
-};
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -452,28 +433,6 @@ export default function ManageServicesScreen() {
     setServiceListVisible(true);
   };
 
-  const confirmDeleteService = (serviceId: string, serviceName: string) => {
-    if (deletingServiceId) {
-      return;
-    }
-
-    Alert.alert(
-      "Delete service",
-      `Are you sure you want to delete "${serviceName}"?`,
-      [
-        {
-          text: "Cancel",
-          style: "cancel",
-        },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: () => handleDeleteService(serviceId),
-        },
-      ],
-    );
-  };
-
   const handleDeleteService = async (serviceId: string) => {
     const backendServiceId = serviceIdMap[serviceId];
 
@@ -488,6 +447,7 @@ export default function ManageServicesScreen() {
 
         if (response.success) {
           dispatch(removeService(serviceId));
+          handleCloseEditService();
           setServiceIdMap((prev) => {
             const updated = { ...prev };
             delete updated[serviceId];
@@ -523,6 +483,7 @@ export default function ManageServicesScreen() {
 
     // For newly added services (not yet saved on backend), just remove from local list
     dispatch(removeService(serviceId));
+    handleCloseEditService();
   };
 
   const handleEditService = (serviceId: string) => {
@@ -611,78 +572,14 @@ export default function ManageServicesScreen() {
           <Skeleton screenType="StepEight" styles={styles} />
         ) : (
           <>
-            <View style={styles.titleSec}>
-              <Text style={styles.title}>Your Services</Text>
-              <Text style={styles.subtitle}>
-                This is how clients will book and pay for your work. You can
-                always add more later.
-              </Text>
-            </View>
-
-            {services.length === 0 ? (
-              <View style={styles.emptyState}>
-                <Text style={styles.emptyStateText}>
-                  You haven't added any service yet
-                </Text>
-              </View>
-            ) : (
-              <View style={styles.servicesList}>
-                {services.map((service, index) => (
-                  <React.Fragment key={service.id}>
-                    <View style={styles.serviceCard}>
-                      <TouchableOpacity
-                        onPress={
-                          deletingServiceId
-                            ? undefined
-                            : () =>
-                                confirmDeleteService(service.id, service.name)
-                        }
-                        style={styles.deleteButton}
-                      >
-                        {deletingServiceId === service.id ? (
-                          <ActivityIndicator size="small" color={theme.red} />
-                        ) : (
-                          <MaterialIcons
-                            name="delete-outline"
-                            size={moderateWidthScale(19)}
-                            color={theme.red}
-                          />
-                        )}
-                      </TouchableOpacity>
-                      <View style={styles.serviceInfo}>
-                        <Text style={styles.serviceName}>{service.name}</Text>
-                        <Text style={styles.serviceDetails}>
-                          {formatDuration(service.hours, service.minutes)}
-                        </Text>
-                        {service.description ? (
-                          <Text
-                            style={styles.serviceDescription}
-                            numberOfLines={2}
-                          >
-                            {service.description}
-                          </Text>
-                        ) : null}
-                      </View>
-                      <TouchableOpacity
-                        onPress={
-                          deletingServiceId === service.id
-                            ? undefined
-                            : () => handleEditService(service.id)
-                        }
-                        style={styles.editButton}
-                      >
-                        <Text style={styles.servicePrice}>
-                          {formatPrice(service.price, service.currency)} {"  >"}
-                        </Text>
-                      </TouchableOpacity>
-                    </View>
-                    {index < services.length - 1 && (
-                      <View style={styles.serviceSeparator} />
-                    )}
-                  </React.Fragment>
-                ))}
-              </View>
-            )}
+            <ServiceList
+              services={services}
+              onAdd={() => {
+                setEditingServiceId(null);
+                setEditServiceVisible(true);
+              }}
+              onEdit={handleEditService}
+            />
 
             {!serviceTemplatesLoading &&
               !apiError &&
@@ -692,20 +589,6 @@ export default function ManageServicesScreen() {
                     <Text style={styles.popularTitle}>
                       Popular starting points:
                     </Text>
-                    <TouchableOpacity
-                      onPress={() => {
-                        setEditingServiceId(null);
-                        setEditServiceVisible(true);
-                      }}
-                      style={styles.addServiceCircleButton}
-                      activeOpacity={0.7}
-                    >
-                      <Feather
-                        name="plus"
-                        size={moderateWidthScale(16)}
-                        color={theme.darkGreen}
-                      />
-                    </TouchableOpacity>
                   </View>
                   {popularSuggestions
                     .filter(
@@ -771,6 +654,8 @@ export default function ManageServicesScreen() {
         visible={editServiceVisible}
         onClose={handleCloseEditService}
         serviceId={editingServiceId}
+        onDelete={handleDeleteService}
+        deleting={deletingServiceId !== null}
       />
     </SafeAreaView>
   );

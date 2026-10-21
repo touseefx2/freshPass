@@ -1,6 +1,5 @@
 import React, { useMemo, useState, useEffect } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
-import { Feather, MaterialIcons } from "@expo/vector-icons";
 import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
@@ -39,27 +38,13 @@ import {
 } from "@/src/state/slices/completeProfileSlice";
 import ServiceListBottomSheet from "@/src/components/ServiceListBottomSheet";
 import EditServiceBottomSheet from "@/src/components/EditServiceBottomSheet";
+import ServiceList from "@/src/components/ServiceList";
 import { ApiService } from "@/src/services/api";
 import Logger from "@/src/services/logger";
 import { businessEndpoints } from "@/src/services/endpoints";
 import { Skeleton } from "@/src/components/skeletons";
 import RetryButton from "@/src/components/retryButton";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
-
-const formatDuration = (hours: number, minutes: number): string => {
-  if (hours > 0 && minutes > 0) {
-    return `${hours} hours ${minutes} mins`;
-  } else if (hours > 0) {
-    return `${hours} hours`;
-  } else if (minutes > 0) {
-    return `${minutes} mins`;
-  }
-  return "0 mins";
-};
-
-const formatPrice = (price: number, currency: string): string => {
-  return `$${price.toFixed(2)} ${currency}`;
-};
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -399,6 +384,7 @@ export default function StepNine() {
 
   const handleDeleteService = (serviceId: string) => {
     dispatch(removeService(serviceId));
+    handleCloseEditService();
   };
 
   const handleChangeBusinessCategory = () => {
@@ -486,75 +472,18 @@ export default function StepNine() {
             </Text>
           </View>
 
-          {services.length === 0 ? (
-            <View style={styles.emptyState}>
-              <Text style={styles.emptyStateText}>
-                You haven't added any service yet
-              </Text>
-            </View>
-          ) : (
-            <View style={styles.servicesList}>
-              {services.map((service, index) => (
-                <React.Fragment key={service.id}>
-                  <View style={styles.serviceCard}>
-                    <TouchableOpacity
-                      onPress={() => handleDeleteService(service.id)}
-                      style={styles.deleteButton}
-                    >
-                      <MaterialIcons
-                        name="delete-outline"
-                        size={moderateWidthScale(19)}
-                        color={theme.red}
-                      />
-                    </TouchableOpacity>
-                    <View style={styles.serviceInfo}>
-                      <Text style={styles.serviceName}>{service.name}</Text>
-                      <Text style={styles.serviceDetails}>
-                        {formatDuration(service.hours, service.minutes)}
-                      </Text>
-                      {service.description ? (
-                        <Text
-                          style={styles.serviceDescription}
-                          numberOfLines={2}
-                        >
-                          {service.description}
-                        </Text>
-                      ) : null}
-                    </View>
-                    <TouchableOpacity
-                      onPress={() => handleEditService(service.id)}
-                      style={styles.editButton}
-                    >
-                      <Text style={styles.servicePrice}>
-                        {formatPrice(service.price, service.currency)} {"  >"}
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-                  {index < services.length - 1 && (
-                    <View style={styles.serviceSeparator} />
-                  )}
-                </React.Fragment>
-              ))}
-            </View>
-          )}
+          <ServiceList
+            services={services}
+            onAdd={() => {
+              setEditingServiceId(null);
+              setEditServiceVisible(true);
+            }}
+            onEdit={handleEditService}
+          />
 
           <View style={styles.popularSection}>
             <View style={styles.popularTitleRow}>
               <Text style={styles.popularTitle}>Popular starting points:</Text>
-              <TouchableOpacity
-                onPress={() => {
-                  setEditingServiceId(null);
-                  setEditServiceVisible(true);
-                }}
-                style={styles.addServiceCircleButton}
-                activeOpacity={0.7}
-              >
-                <Feather
-                  name="plus"
-                  size={moderateWidthScale(16)}
-                  color={theme.darkGreen}
-                />
-              </TouchableOpacity>
             </View>
             {popularSuggestions
               .filter((s) => !services.some((service) => service.id === s.id))
@@ -600,6 +529,7 @@ export default function StepNine() {
             visible={editServiceVisible}
             onClose={handleCloseEditService}
             serviceId={editingServiceId}
+            onDelete={handleDeleteService}
           />
         </>
       )}
