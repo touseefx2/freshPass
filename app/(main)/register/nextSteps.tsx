@@ -34,7 +34,7 @@ const steps: StepItem[] = [
   { id: 8, label: "Add staff members", status: "pending" },
   { id: 9, label: "Business hours", status: "pending" },
   { id: 10, label: "Add your services", status: "pending" },
-  { id: 11, label: "Create subscription plans", status: "pending" },
+  { id: 11, label: "Create Membership", status: "pending" },
   { id: 12, label: "Add social media (if any)", status: "pending" },
   { id: 13, label: "Add business photos", status: "pending" },
 ];

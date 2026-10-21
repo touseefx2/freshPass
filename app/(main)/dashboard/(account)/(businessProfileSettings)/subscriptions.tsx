@@ -1225,7 +1225,7 @@ export default function ManageSubscriptionsScreen() {
                         <View style={styles.subscriptionDetailSection}>
                           <View>
                             <Text style={styles.subscriptionDetailTitle}>
-                              Subscription detail
+                              Membership Details
                             </Text>
                           </View>
                           <View style={styles.subscriptionDetailPrice}>

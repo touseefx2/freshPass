@@ -467,7 +467,7 @@ export default function EditSubscriptionBottomSheet({
     const newErrors: typeof errors = {};
 
     if (!packageName.trim()) {
-      newErrors.packageName = "Package name is required";
+      newErrors.packageName = "Membership name is required";
     } else {
       // Check if package name already exists (excluding current subscription if editing)
       const existingSubscription = subscriptions.find(
@@ -476,7 +476,7 @@ export default function EditSubscriptionBottomSheet({
             packageName.toLowerCase().trim() && sub.id !== subscriptionId,
       );
       if (existingSubscription) {
-        newErrors.packageName = "A subscription with this name already exists";
+        newErrors.packageName = "A membership with this name already exists";
       }
     }
 
@@ -549,19 +549,19 @@ export default function EditSubscriptionBottomSheet({
     <ModalizeBottomSheet
       visible={visible}
       onClose={onClose}
-      title={subscriptionId ? "Edit Subscription" : "Add Subscription"}
+      title={subscriptionId ? "Edit Membership" : "Add Membership"}
       footerButtonTitle={subscriptionId ? "Save" : "Add"}
       onFooterButtonPress={handleSave}
       footerButtonDisabled={!hasAtLeastOneService}
       contentStyle={styles.scrollContent}
     >
       <View style={styles.packageNameWrapper}>
-        <Text style={styles.inputLabel}>Package Name</Text>
+        <Text style={styles.inputLabel}>Membership Name</Text>
         <TextInput
           style={styles.textInput}
           value={packageName}
           onChangeText={setPackageName}
-          placeholder="Enter package name"
+          placeholder="Enter membership name"
           placeholderTextColor={theme.lightGreen2}
         />
         {errors.packageName && (
@@ -636,7 +636,7 @@ export default function EditSubscriptionBottomSheet({
 
         <View style={styles.timeInputWrapper}>
           <View style={styles.mainTimeCon}>
-            <Text style={styles.inputLabel}>Price</Text>
+            <Text style={styles.inputLabel}>Monthly Price</Text>
             <View style={styles.timeInputContainer}>
               <Text style={[styles.timeInput, styles.pricePrefix]}>$ </Text>
               <TextInput
