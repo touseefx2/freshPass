@@ -1999,16 +1999,23 @@ export default function BookingNow() {
     [apiSlots],
   );
 
-  // A slot taken (or passed) since it was picked can't be booked: drop it
-  // after a refetch. Only a taken slot gets the "booked by someone else"
-  // banner. A failed refetch keeps it (nothing known).
+  // Day of the last loaded slot list, to tell a day change from a refetch.
+  const lastSlotsDay = useRef<string | null>(null);
+
+  // A picked time that isn't free on the loaded day can't be booked: drop
+  // it. Same day refetch = someone took it, so say so; a new day or a passed
+  // time drops quietly. A failed refetch keeps it (nothing known).
   useEffect(() => {
-    if (slotsLoading || slotsError || !selectedTimeSlot) return;
+    if (slotsLoading || slotsError) return;
+    const day = selectedDate.format("YYYY-MM-DD");
+    const sameDay = lastSlotsDay.current === day;
+    lastSlotsDay.current = day;
+    if (!selectedTimeSlot) return;
     const passed = isSlotDisabled(selectedTimeSlot);
     if (passed || !apiSlots.some((slot) => slot.start === selectedTimeSlot)) {
       setSelectedTimeSlotState(null);
       dispatch(setSelectedTimeSlot(null));
-      if (passed) return;
+      if (passed || !sameDay) return;
       showBanner(
         t("bkFlowSlotTakenTitle"),
         t("bkFlowSlotTakenMessage", {
@@ -2051,11 +2058,6 @@ export default function BookingNow() {
 
   const handleDateSelect = (date: dayjs.Dayjs) => {
     if (isDateDisabled(date)) return;
-    // The picked time belongs to the old day; drop it quietly.
-    if (!date.isSame(selectedDate, "day") && selectedTimeSlot) {
-      setSelectedTimeSlotState(null);
-      dispatch(setSelectedTimeSlot(null));
-    }
     setSelectedDateState(date);
     dispatch(setSelectedDate(date.format("YYYY-MM-DD")));
     setWeek(getWeekDays(date));
