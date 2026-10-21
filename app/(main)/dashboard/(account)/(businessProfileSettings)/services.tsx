@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   ScrollView,
   StyleSheet,
@@ -7,7 +7,6 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
@@ -17,7 +16,6 @@ import {
   moderateWidthScale,
 } from "@/src/theme/dimensions";
 import StackHeader from "@/src/components/StackHeader";
-import Button from "@/src/components/button";
 import { Skeleton } from "@/src/components/skeletons";
 import { ApiService } from "@/src/services/api";
 import Logger from "@/src/services/logger";
@@ -44,7 +42,8 @@ const createStyles = (theme: Theme) =>
       paddingHorizontal: moderateWidthScale(20),
     },
     contentContainer: {
-      paddingVertical: moderateHeightScale(24),
+      paddingTop: moderateHeightScale(8),
+      paddingBottom: moderateHeightScale(24),
       gap: moderateHeightScale(20),
     },
     titleSec: {
@@ -255,7 +254,6 @@ export default function ManageServicesScreen() {
   const { colors } = useTheme();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
-  const router = useRouter();
   const { showBanner } = useNotificationContext();
 
   const { services, businessCategory, serviceTemplates } = useAppSelector(
@@ -266,6 +264,8 @@ export default function ManageServicesScreen() {
 
   const [loading, setLoading] = useState(true);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [pendingSync, setPendingSync] = useState(false);
+  const idsBeforeSheet = useRef("");
   const [editingServiceId, setEditingServiceId] = useState<string | null>(null);
   const [editServiceVisible, setEditServiceVisible] = useState(false);
   const [serviceListVisible, setServiceListVisible] = useState(false);
@@ -281,8 +281,8 @@ export default function ManageServicesScreen() {
   const businessCatId =
     businessCategory?.id || businessStatus?.business_category?.id;
 
-  const fetchServices = async () => {
-    setLoading(true);
+  const fetchServices = async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const response = await ApiService.get<{
         success: boolean;
@@ -427,10 +427,19 @@ export default function ManageServicesScreen() {
     } else {
       dispatch(addService(suggestion));
     }
+    setPendingSync(true);
   };
 
   const handleViewMore = () => {
+    idsBeforeSheet.current = services.map((s) => s.id).join(",");
     setServiceListVisible(true);
+  };
+
+  const handleCloseServiceList = () => {
+    setServiceListVisible(false);
+    if (services.map((s) => s.id).join(",") !== idsBeforeSheet.current) {
+      setPendingSync(true);
+    }
   };
 
   const handleDeleteService = async (serviceId: string) => {
@@ -496,7 +505,15 @@ export default function ManageServicesScreen() {
     setEditingServiceId(null);
   };
 
-  const handleUpdate = async () => {
+  // No Update button (client sample 10-21): every add/edit/select is saved
+  // right away, then the list is re-read so new services get their backend ids.
+  useEffect(() => {
+    if (!pendingSync || isUpdating) return;
+    setPendingSync(false);
+    syncServices();
+  }, [pendingSync, isUpdating, services]);
+
+  const syncServices = async () => {
     setIsUpdating(true);
     try {
       const servicesPayload = services.map((service) => {
@@ -538,7 +555,7 @@ export default function ManageServicesScreen() {
           "success",
           3000,
         );
-        router.back();
+        fetchServices(true);
       } else {
         showBanner(
           "Error",
@@ -562,7 +579,7 @@ export default function ManageServicesScreen() {
 
   return (
     <SafeAreaView edges={["bottom"]} style={styles.container}>
-      <StackHeader title={t("individualServicesListTitle")} />
+      <StackHeader variant="light" title={t("individualServicesListTitle")} />
       <ScrollView
         style={styles.content}
         contentContainerStyle={styles.contentContainer}
@@ -634,7 +651,7 @@ export default function ManageServicesScreen() {
 
                   <ServiceListBottomSheet
                     visible={serviceListVisible}
-                    onClose={() => setServiceListVisible(false)}
+                    onClose={handleCloseServiceList}
                     suggestions={allSuggestions}
                     selectedServiceIds={services.map((s) => s.id)}
                   />
@@ -644,16 +661,11 @@ export default function ManageServicesScreen() {
         )}
       </ScrollView>
 
-      {!loading && (
-        <View style={styles.continueButtonContainer}>
-          <Button title="Update" onPress={handleUpdate} disabled={isUpdating} />
-        </View>
-      )}
-
       <EditServiceBottomSheet
         visible={editServiceVisible}
         onClose={handleCloseEditService}
         serviceId={editingServiceId}
+        onSaved={() => setPendingSync(true)}
         onDelete={handleDeleteService}
         deleting={deletingServiceId !== null}
       />

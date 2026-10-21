@@ -43,7 +43,7 @@ const createStyles = (theme: Theme) =>
     },
     addButton: {
       minHeight: heightScale(50),
-      borderRadius: moderateWidthScale(12),
+      borderRadius: moderateWidthScale(10),
       backgroundColor: theme.buttonBack,
       flexDirection: "row",
       alignItems: "center",
@@ -59,14 +59,14 @@ const createStyles = (theme: Theme) =>
     card: {
       flexDirection: "row",
       alignItems: "center",
-      minHeight: heightScale(72),
-      paddingVertical: moderateHeightScale(14),
-      paddingLeft: moderateWidthScale(16),
-      paddingRight: moderateWidthScale(10),
-      borderRadius: moderateWidthScale(12),
+      minHeight: heightScale(76),
+      paddingVertical: moderateHeightScale(16),
+      paddingLeft: moderateWidthScale(18),
+      paddingRight: moderateWidthScale(12),
+      borderRadius: moderateWidthScale(10),
       borderWidth: 1,
-      borderColor: theme.borderLight,
-      backgroundColor: theme.white,
+      borderColor: theme.lightGreen015,
+      backgroundColor: theme.background,
     },
     info: {
       flex: 1,
@@ -74,7 +74,7 @@ const createStyles = (theme: Theme) =>
       marginRight: moderateWidthScale(12),
     },
     name: {
-      fontSize: fontSize.size16,
+      fontSize: fontSize.size17,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
     },
@@ -85,7 +85,7 @@ const createStyles = (theme: Theme) =>
     },
     price: {
       alignSelf: "flex-start",
-      fontSize: fontSize.size16,
+      fontSize: fontSize.size17,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
       fontVariant: ["tabular-nums"],

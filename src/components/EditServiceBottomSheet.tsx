@@ -14,7 +14,6 @@ import { Portal } from "@gorhom/portal";
 import Animated, { ReduceMotion, SlideInDown } from "react-native-reanimated";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useTranslation } from "react-i18next";
 import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
@@ -27,13 +26,15 @@ import {
   addService,
   updateService,
 } from "@/src/state/slices/completeProfileSlice";
-import FlowHeader from "@/src/components/reelFlow/flowHeader";
+import StackHeader from "@/src/components/StackHeader";
 import Button from "@/src/components/button";
 
 interface EditServiceBottomSheetProps {
   visible: boolean;
   onClose: () => void;
   serviceId: string | null;
+  /** Called after a save is written to the list (e.g. to sync it to the server). */
+  onSaved?: () => void;
   /** Shown as "Delete Service" when editing; called after the user confirms. */
   onDelete?: (serviceId: string) => void;
   deleting?: boolean;
@@ -69,9 +70,9 @@ const createStyles = (theme: Theme) =>
       gap: moderateHeightScale(8),
     },
     label: {
-      fontSize: fontSize.size15,
+      fontSize: fontSize.size14,
       fontFamily: fonts.fontMedium,
-      color: theme.darkGreen,
+      color: theme.lightGreen,
     },
     labelHint: {
       fontFamily: fonts.fontRegular,
@@ -97,7 +98,7 @@ const createStyles = (theme: Theme) =>
       borderColor: theme.link,
     },
     multiline: {
-      minHeight: heightScale(96),
+      minHeight: heightScale(72),
       textAlignVertical: "top",
     },
     affixRow: {
@@ -198,11 +199,11 @@ export default function EditServiceBottomSheet({
   visible,
   onClose,
   serviceId,
+  onSaved,
   onDelete,
   deleting = false,
 }: EditServiceBottomSheetProps) {
   const dispatch = useAppDispatch();
-  const { t } = useTranslation();
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors as Theme), [colors]);
   const theme = colors as Theme;
@@ -357,6 +358,7 @@ export default function EditServiceBottomSheet({
       );
     }
 
+    onSaved?.();
     onClose();
   };
 
@@ -386,9 +388,10 @@ export default function EditServiceBottomSheet({
         style={styles.overlay}
         entering={SlideInDown.duration(260).reduceMotion(ReduceMotion.System)}
       >
-        <StatusBar barStyle="light-content" />
-        <FlowHeader
-          title={serviceId ? t("editService") : "Add Service"}
+        <StatusBar barStyle="dark-content" />
+        <StackHeader
+          variant="light"
+          title={serviceId ? "Edit Service" : "Add Service"}
           onBack={onClose}
         />
 
