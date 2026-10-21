@@ -1,14 +1,13 @@
 import React, { useCallback, useMemo, useState, useEffect } from "react";
 import {
   BackHandler,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
   View,
   TouchableOpacity,
   Text,
   ActivityIndicator,
 } from "react-native";
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
+import { moderateHeightScale } from "@/src/theme/dimensions";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
@@ -278,17 +277,16 @@ export default function completeCusotmerProfile() {
         onBack={handleBack}
         disableBack={currentStep === 1 ? true : false}
       />
-      <KeyboardAvoidingView
-        style={styles.contentContainer}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-      >
-        <ScrollView
+      <View style={styles.contentContainer}>
+        <KeyboardAwareScrollView
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="interactive"
+          bottomOffset={moderateHeightScale(32)}
         >
           {renderStep}
-        </ScrollView>
+        </KeyboardAwareScrollView>
         <View style={styles.buttonWrapper}>
           <Button
             title={continueLabel}
@@ -297,7 +295,7 @@ export default function completeCusotmerProfile() {
             loading={isSubmitting}
           />
         </View>
-      </KeyboardAvoidingView>
+      </View>
 
       <RegisterTermsModal
         visible={showTermsModal}

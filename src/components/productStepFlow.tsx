@@ -12,11 +12,7 @@ import {
 import { MaterialIcons } from "@expo/vector-icons";
 import { useFocusEffect, useNavigation, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import {
-  KeyboardAwareScrollView,
-  KeyboardStickyView,
-} from "react-native-keyboard-controller";
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import Animated, {
   FadeInLeft,
   FadeInRight,
@@ -26,9 +22,7 @@ import * as Haptics from "expo-haptics";
 import AppImage from "@/src/components/AppImage";
 import ImagePickerModal from "@/src/components/imagePickerModal";
 import FlowHeader from "@/src/components/reelFlow/flowHeader";
-import FlowFooter, {
-  flowFooterBottomPad,
-} from "@/src/components/reelFlow/flowFooter";
+import FlowFooter from "@/src/components/reelFlow/flowFooter";
 import {
   FlowCard,
   FlowTitle,
@@ -367,7 +361,6 @@ export default function ProductStepFlow({
   const { colors } = useTheme();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [theme]);
-  const insets = useSafeAreaInsets();
   const delivery = useAppSelector((s) => s.inventory.deliveryOptions);
 
   const isEdit = mode === "edit";
@@ -1080,11 +1073,6 @@ export default function ProductStepFlow({
         }
       : null;
 
-  // FlowFooter pads for the home indicator; under an open keyboard that
-  // padding would be a gap, so the sticky view tucks it behind the keyboard.
-  const footerSafePad = flowFooterBottomPad(insets.bottom);
-  const stickyOpened = footerSafePad - moderateHeightScale(10);
-
   const Entering = direction === 1 ? FadeInRight : FadeInLeft;
 
   return (
@@ -1103,8 +1091,7 @@ export default function ProductStepFlow({
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="interactive"
         showsVerticalScrollIndicator={false}
-        bottomOffset={moderateHeightScale(110)}
-        extraKeyboardSpace={moderateHeightScale(8)}
+        bottomOffset={moderateHeightScale(32)}
       >
         <Animated.View
           style={styles.stepBody}
@@ -1120,13 +1107,13 @@ export default function ProductStepFlow({
         </Animated.View>
       </KeyboardAwareScrollView>
 
-      <KeyboardStickyView offset={{ closed: 0, opened: stickyOpened }}>
+      <View>
         <FlowFooter
           primary={footerPrimary}
           secondary={footerSecondary}
           row
         />
-      </KeyboardStickyView>
+      </View>
 
       <ImagePickerModal
         visible={pickerOpen}

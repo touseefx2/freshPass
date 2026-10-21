@@ -11,10 +11,7 @@ import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import { usePreventRemove } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import {
-  KeyboardAwareScrollView,
-  KeyboardStickyView,
-} from "react-native-keyboard-controller";
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import {
@@ -494,7 +491,7 @@ function BusinessOrderDetail({ orderId }: { orderId: string }) {
           contentContainerStyle={styles.stepContent}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
-          bottomOffset={moderateHeightScale(140)}
+          bottomOffset={moderateHeightScale(32)}
         >
           <FlowTitle
             title={
@@ -530,7 +527,7 @@ function BusinessOrderDetail({ orderId }: { orderId: string }) {
           ) : null}
         </KeyboardAwareScrollView>
 
-        <KeyboardStickyView offset={{ closed: 0, opened: 0 }}>
+        <View>
           {shipStep ? (
             <FlowFooter
               primary={{
@@ -561,7 +558,7 @@ function BusinessOrderDetail({ orderId }: { orderId: string }) {
               }
             />
           )}
-        </KeyboardStickyView>
+        </View>
       </>
     );
   };

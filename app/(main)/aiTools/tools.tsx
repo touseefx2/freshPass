@@ -6,11 +6,9 @@ import React, {
   useEffect,
 } from "react";
 import {
-  ScrollView,
   View,
   Text,
   TouchableOpacity,
-  KeyboardAvoidingView,
   Platform,
   TextInput,
   Keyboard,
@@ -21,7 +19,8 @@ import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
 import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
 import AppImage from "@/src/components/AppImage";
 import { Theme } from "@/src/theme/colors";
-import { moderateWidthScale } from "@/src/theme/dimensions";
+import { moderateHeightScale, moderateWidthScale } from "@/src/theme/dimensions";
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { createStyles } from "./styles";
 import StackHeader from "@/src/components/StackHeader";
 import Button from "@/src/components/button";
@@ -1412,22 +1411,21 @@ export default function Tools() {
         </View>
       )}
 
-      <KeyboardAvoidingView
-        style={styles.contentContainer}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-      >
-        <ScrollView
+      <View style={styles.contentContainer}>
+        <KeyboardAwareScrollView
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="interactive"
           contentInsetAdjustmentBehavior="automatic"
+          bottomOffset={moderateHeightScale(32)}
         >
           {toolType === "Generate Post" && renderPostContent()}
           {toolType === "Generate Collage" && renderCollageContent()}
           {toolType === "Generate Reel" && renderReelContent()}
           {toolType === "Hair Tryon" && renderHairTryonContent()}
-        </ScrollView>
-      </KeyboardAvoidingView>
+        </KeyboardAwareScrollView>
+      </View>
 
       <View style={styles.buttonContainer}>
         {/* For Hair Tryon: show button area only after user selects a type */}

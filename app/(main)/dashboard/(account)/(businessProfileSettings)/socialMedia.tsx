@@ -3,7 +3,6 @@ import {
   StyleSheet,
   Text,
   View,
-  ScrollView,
   TextInput,
   Keyboard,
   Pressable,
@@ -19,6 +18,7 @@ import {
 import StackHeader from "@/src/components/StackHeader";
 import Button from "@/src/components/button";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { ApiService } from "@/src/services/api";
 import Logger from "@/src/services/logger";
 import { businessEndpoints } from "@/src/services/endpoints";
@@ -301,11 +301,13 @@ export default function SocialMediaScreen() {
   return (
     <SafeAreaView edges={["bottom"]} style={styles.container}>
       <StackHeader title={t("yourSocialMedia")} />
-      <ScrollView
+      <KeyboardAwareScrollView
         style={styles.content}
         contentContainerStyle={styles.contentContainer}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="interactive"
+        bottomOffset={moderateHeightScale(32)}
       >
         {loading ? (
           renderSkeleton()
@@ -390,7 +392,7 @@ export default function SocialMediaScreen() {
             </View>
           </>
         )}
-      </ScrollView>
+      </KeyboardAwareScrollView>
 
       {!loading && (
         <View style={styles.continueButtonContainer}>

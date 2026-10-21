@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
-  ScrollView,
   StyleSheet,
   Switch,
   Text,
@@ -11,6 +10,7 @@ import {
 } from "react-native";
 import { useTranslation } from "react-i18next";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
@@ -347,11 +347,13 @@ export default function CancellationPolicyScreen() {
         </View>
       ) : (
         <>
-          <ScrollView
+          <KeyboardAwareScrollView
             style={styles.content}
             contentContainerStyle={styles.contentContainer}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="interactive"
+            bottomOffset={moderateHeightScale(32)}
           >
             <View style={styles.titleSection}>
               <Text style={styles.title}>{t("cancellationPolicy")}</Text>
@@ -480,7 +482,7 @@ export default function CancellationPolicyScreen() {
                 />
               </View>
             </View>
-          </ScrollView>
+          </KeyboardAwareScrollView>
 
           <View style={styles.footer}>
             <Button

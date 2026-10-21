@@ -12,10 +12,7 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { Image } from "expo-image";
 import { useTranslation } from "react-i18next";
 import { MaterialIcons } from "@expo/vector-icons";
-import {
-  KeyboardAwareScrollView,
-  KeyboardStickyView,
-} from "react-native-keyboard-controller";
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
@@ -956,7 +953,7 @@ export default function PublishReelScreen() {
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
-        bottomOffset={moderateHeightScale(90)}
+        bottomOffset={moderateHeightScale(32)}
       >
           <View style={styles.field}>
             <View style={styles.labelRow}>
@@ -1363,7 +1360,7 @@ export default function PublishReelScreen() {
           </View>
       </KeyboardAwareScrollView>
 
-      <KeyboardStickyView offset={{ closed: 0, opened: 0 }}>
+      <View>
         <View
           style={[
             styles.footer,
@@ -1443,7 +1440,7 @@ export default function PublishReelScreen() {
             </TouchableOpacity>
           ) : null}
         </View>
-      </KeyboardStickyView>
+      </View>
     </View>
   );
 }

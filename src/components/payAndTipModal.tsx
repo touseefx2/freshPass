@@ -11,6 +11,7 @@ import {
   View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
@@ -497,7 +498,7 @@ export default function PayAndTipModal({
       animationType="slide"
       onRequestClose={onClose}
     >
-      <View style={styles.overlay}>
+      <KeyboardAvoidingView behavior="padding" style={styles.overlay}>
         <Pressable style={styles.overlayFill} onPress={onClose} />
         <View style={styles.sheet}>
           <View style={styles.handle} />
@@ -671,7 +672,7 @@ export default function PayAndTipModal({
             </ScrollView>
           )}
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }

@@ -31,11 +31,7 @@ import {
 } from "expo-router";
 import { useTheme, useAppSelector, useAppDispatch } from "@/src/hooks/hooks";
 import { useTranslation } from "react-i18next";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import {
-  KeyboardAwareScrollView,
-  KeyboardStickyView,
-} from "react-native-keyboard-controller";
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import {
   formatCustomerScheduleDate,
   getCustomerScheduleDateLabel,
@@ -97,9 +93,7 @@ import AddServiceBottomSheet from "@/src/components/AddServiceBottomSheet";
 import OutcomeConfirmSheet from "@/src/components/OutcomeConfirmSheet";
 import ImagePickerModal from "@/src/components/imagePickerModal";
 import FlowHeader from "@/src/components/reelFlow/flowHeader";
-import FlowFooter, {
-  flowFooterBottomPad,
-} from "@/src/components/reelFlow/flowFooter";
+import FlowFooter from "@/src/components/reelFlow/flowFooter";
 import FlowButton from "@/src/components/reelFlow/flowButton";
 import {
   FlowCard,
@@ -1282,7 +1276,6 @@ export default function BookingNow() {
   const router = useRouter();
   const navigation = useNavigation();
   const dispatch = useAppDispatch();
-  const insets = useSafeAreaInsets();
   const { width: windowWidth } = useWindowDimensions();
   const params = useLocalSearchParams<{
     business_id?: string;
@@ -3618,11 +3611,6 @@ export default function BookingNow() {
           onPress: handleContinue,
         };
 
-  // FlowFooter pads for the home indicator; under an open keyboard that
-  // padding would be a gap, so the sticky view tucks it behind the keyboard.
-  const stickyOpened =
-    flowFooterBottomPad(insets.bottom) - moderateHeightScale(10);
-
   const Entering = direction === 1 ? FadeInRight : FadeInLeft;
 
   return (
@@ -3643,8 +3631,7 @@ export default function BookingNow() {
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="interactive"
         showsVerticalScrollIndicator={false}
-        bottomOffset={moderateHeightScale(110)}
-        extraKeyboardSpace={moderateHeightScale(8)}
+        bottomOffset={moderateHeightScale(32)}
       >
         <Animated.View
           style={styles.stepBody}
@@ -3654,7 +3641,7 @@ export default function BookingNow() {
         </Animated.View>
       </KeyboardAwareScrollView>
 
-      <KeyboardStickyView offset={{ closed: 0, opened: stickyOpened }}>
+      <View>
         {showTotalBar ? (
           <View style={styles.totalBar}>
             <Text style={styles.totalLabel}>{t("bkFlowEstimatedTotal")}</Text>
@@ -3662,7 +3649,7 @@ export default function BookingNow() {
           </View>
         ) : null}
         <FlowFooter primary={footerPrimary} hint={blockedHint} />
-      </KeyboardStickyView>
+      </View>
 
       <Modal
         visible={showAnyoneHint}

@@ -3,7 +3,6 @@ import {
   StyleSheet,
   Text,
   View,
-  ScrollView,
   TextInput,
   Keyboard,
   Pressable,
@@ -18,6 +17,7 @@ import {
 import StackHeader from "@/src/components/StackHeader";
 import Button from "@/src/components/button";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { validateDescription } from "@/src/services/validationService";
 import Logger from "@/src/services/logger";
 import { ApiService } from "@/src/services/api";
@@ -240,11 +240,13 @@ export default function DescriptionScreen() {
   return (
     <SafeAreaView edges={["bottom"]} style={styles.container}>
       <StackHeader title="Description" />
-      <ScrollView
+      <KeyboardAwareScrollView
         style={styles.content}
         contentContainerStyle={styles.contentContainer}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="interactive"
+        bottomOffset={moderateHeightScale(32)}
       >
         {loading ? (
           renderSkeleton()
@@ -284,7 +286,7 @@ export default function DescriptionScreen() {
             )}
           </>
         )}
-      </ScrollView>
+      </KeyboardAwareScrollView>
 
       {!loading && (
         <View style={styles.continueButtonContainer}>

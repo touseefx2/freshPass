@@ -10,7 +10,6 @@ import {
   Text,
   TouchableOpacity,
   View,
-  ScrollView,
   Linking,
   Platform,
   Alert,
@@ -29,6 +28,7 @@ import {
 } from "@/src/state/slices/generalSlice";
 import { Theme } from "@/src/theme/colors";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { moderateHeightScale, moderateWidthScale, iconScale } from "@/src/theme/dimensions";
 import { Ionicons, Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import Button from "@/src/components/button";
@@ -2193,8 +2193,11 @@ export default function BookingDetailsById() {
     }
     return (
       <>
-        <ScrollView
+        <KeyboardAwareScrollView
           showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="interactive"
+          bottomOffset={moderateHeightScale(32)}
           contentContainerStyle={[
             styles.scrollContent,
             // No bottom bar → keep the last card clear of the home indicator.
@@ -3350,7 +3353,7 @@ export default function BookingDetailsById() {
               </View>
             )}
 
-        </ScrollView>
+        </KeyboardAwareScrollView>
 
         {canShowBottomBar && (
           <View

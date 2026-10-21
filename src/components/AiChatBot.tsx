@@ -19,9 +19,9 @@ import {
   Easing,
   Alert,
   Image,
-  KeyboardAvoidingView,
   BackHandler,
 } from "react-native";
+import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { useTheme, useAppDispatch, useAppSelector } from "@/src/hooks/hooks";
 import { useTranslation } from "react-i18next";
 import { Theme } from "@/src/theme/colors";
@@ -1026,11 +1026,15 @@ const AiChatBot: React.FC = () => {
         <Animated.View
           style={[styles.chatBoxContainer, chatBoxAnimStyle, styles.shadow]}
         >
+          {/* Offset = the chat box's top edge on screen, so only the part the
+              keyboard really covers is padded (works on Android too). */}
           <KeyboardAvoidingView
             style={{ flex: 1 }}
-            behavior={Platform.OS === "ios" ? "padding" : undefined}
+            behavior="padding"
             keyboardVerticalOffset={
-              Platform.OS === "ios" ? moderateHeightScale(100) : 0
+              SCREEN_HEIGHT * 0.25 -
+              moderateHeightScale(chatBottomOffset) -
+              bottomInset
             }
           >
             <View style={styles.chatHeader}>

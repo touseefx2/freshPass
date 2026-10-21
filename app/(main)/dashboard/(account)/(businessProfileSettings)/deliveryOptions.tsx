@@ -12,11 +12,7 @@ import * as Haptics from "expo-haptics";
 import Animated, { FadeIn, ReduceMotion } from "react-native-reanimated";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import {
-  KeyboardAwareScrollView,
-  KeyboardStickyView,
-} from "react-native-keyboard-controller";
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
@@ -27,9 +23,7 @@ import {
 import StackHeader from "@/src/components/StackHeader";
 import CustomToggle from "@/src/components/customToggle";
 import { FlowTextField } from "@/src/components/reelFlow/detailsFields";
-import FlowFooter, {
-  flowFooterBottomPad,
-} from "@/src/components/reelFlow/flowFooter";
+import FlowFooter from "@/src/components/reelFlow/flowFooter";
 import { setDeliveryOptions } from "@/src/state/slices/inventorySlice";
 import {
   fetchDeliveryOptions,
@@ -188,7 +182,6 @@ export default function DeliveryOptionsScreen() {
   const { colors } = useTheme();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
-  const insets = useSafeAreaInsets();
   const saved = useAppSelector((s) => s.inventory.deliveryOptions);
 
   const [loading, setLoading] = useState(!saved);
@@ -320,11 +313,6 @@ export default function DeliveryOptionsScreen() {
     });
   }
 
-  // FlowFooter pads for the home indicator; under an open keyboard that
-  // padding would be a gap, so the sticky view tucks it behind the keyboard.
-  const stickyOpened =
-    flowFooterBottomPad(insets.bottom) - moderateHeightScale(10);
-
   const renderRadio = (selected: boolean) => (
     <View style={[styles.radioOuter, selected && styles.radioOuterSelected]}>
       {selected ? <View style={styles.radioInner} /> : null}
@@ -346,8 +334,7 @@ export default function DeliveryOptionsScreen() {
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="interactive"
             showsVerticalScrollIndicator={false}
-            bottomOffset={moderateHeightScale(110)}
-            extraKeyboardSpace={moderateHeightScale(8)}
+            bottomOffset={moderateHeightScale(32)}
           >
             <Text style={styles.subtitle}>{t("deliveryOptionsSubtitle")}</Text>
 
@@ -498,7 +485,7 @@ export default function DeliveryOptionsScreen() {
             </View>
           </KeyboardAwareScrollView>
 
-          <KeyboardStickyView offset={{ closed: 0, opened: stickyOpened }}>
+          <View>
             <FlowFooter
               primary={{
                 label: t("save"),
@@ -507,7 +494,7 @@ export default function DeliveryOptionsScreen() {
                 disabled: saving || nothingOffered,
               }}
             />
-          </KeyboardStickyView>
+          </View>
         </>
       )}
     </View>

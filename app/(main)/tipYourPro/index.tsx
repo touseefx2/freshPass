@@ -9,6 +9,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useStripe } from "@stripe/stripe-react-native";
 import { useTheme, useAppDispatch, useAppSelector } from "@/src/hooks/hooks";
@@ -514,10 +515,12 @@ export default function TipYourProScreen() {
 
     return (
       <>
-        <ScrollView
+        <KeyboardAwareScrollView
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="interactive"
+          bottomOffset={moderateHeightScale(32)}
         >
           {renderTipForm()}
           {paymentSuccess ? (
@@ -525,7 +528,7 @@ export default function TipYourProScreen() {
               Processing your tip. This may take a moment.
             </Text>
           ) : null}
-        </ScrollView>
+        </KeyboardAwareScrollView>
         <View style={styles.bottomButton}>
           <Button
             title="Send tip"

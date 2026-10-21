@@ -1,12 +1,16 @@
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect, useRef } from "react";
 import {
+  BackHandler,
+  StatusBar,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
-import { AntDesign } from "@expo/vector-icons";
+import { Portal } from "@gorhom/portal";
+import Animated, { ReduceMotion, SlideInDown } from "react-native-reanimated";
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { useTranslation } from "react-i18next";
 import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
@@ -15,14 +19,13 @@ import {
   heightScale,
   moderateHeightScale,
   moderateWidthScale,
-  widthScale,
-  iconScale,
 } from "@/src/theme/dimensions";
 import {
   addService,
   updateService,
 } from "@/src/state/slices/completeProfileSlice";
-import ModalizeBottomSheet from "@/src/components/modalizeBottomSheet";
+import FlowHeader from "@/src/components/reelFlow/flowHeader";
+import FlowFooter from "@/src/components/reelFlow/flowFooter";
 
 interface EditServiceBottomSheetProps {
   visible: boolean;
@@ -30,189 +33,130 @@ interface EditServiceBottomSheetProps {
   serviceId: string | null;
 }
 
+const PRESETS = [15, 30, 45, 60];
+// Old hour/minute steppers allowed up to 12 h 59 min.
+const MAX_MINUTES = 12 * 60 + 59;
+
+const formatDuration = (total: number) => {
+  const h = Math.floor(total / 60);
+  const m = total % 60;
+  const parts: string[] = [];
+  if (h) parts.push(`${h} hour${h === 1 ? "" : "s"}`);
+  if (m) parts.push(`${m} minute${m === 1 ? "" : "s"}`);
+  return parts.join(" ");
+};
+
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
-    scrollContent: {
-      gap: moderateHeightScale(16),
+    overlay: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: theme.background,
     },
-    inputLabelTitle: {
-      fontSize: fontSize.size16,
-      fontFamily: fonts.fontBold,
-      color: theme.lightGreen,
+    flex: { flex: 1 },
+    content: {
+      paddingHorizontal: moderateWidthScale(20),
+      paddingTop: moderateHeightScale(12),
+      paddingBottom: moderateHeightScale(28),
+      gap: moderateHeightScale(22),
     },
-    inputWrapper: {
-      borderRadius: moderateWidthScale(8),
-      borderWidth: 1,
-      borderColor: theme.lightGreen2,
-      paddingHorizontal: moderateWidthScale(15),
-      paddingVertical: moderateHeightScale(12),
-      gap: moderateHeightScale(4),
-      marginTop: moderateHeightScale(16),
+    field: {
+      gap: moderateHeightScale(8),
     },
-    inputLabel: {
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontRegular,
-      color: theme.lightGreen,
-    },
-    textInput: {
-      fontSize: fontSize.size16,
-      fontFamily: fonts.fontRegular,
-      color: theme.darkGreen,
-      paddingVertical: 0,
-      height: heightScale(24),
-      flex: 1,
-    },
-    serviceNameWrapper: {
-      gap: moderateHeightScale(2),
-      marginTop: moderateHeightScale(16),
-      backgroundColor: theme.lightGreen07,
-      borderRadius: moderateWidthScale(8),
-      borderWidth: 1,
-      borderColor: theme.lightGreen2,
-      paddingHorizontal: moderateWidthScale(15),
-      paddingVertical: moderateHeightScale(10),
-    },
-    serviceNameWrapperEditable: {
-      backgroundColor: theme.white,
-    },
-    descriptionWrapper: {
-      gap: moderateHeightScale(2),
-      marginTop: 0,
-      backgroundColor: theme.lightGreen07,
-      borderRadius: moderateWidthScale(8),
-      borderWidth: 1,
-      borderColor: theme.lightGreen2,
-      paddingHorizontal: moderateWidthScale(15),
-      paddingVertical: moderateHeightScale(10),
-    },
-    descriptionWrapperEditable: {
-      backgroundColor: theme.white,
-    },
-    serviceNameText: {
-      fontSize: fontSize.size16,
+    label: {
+      fontSize: fontSize.size15,
       fontFamily: fonts.fontMedium,
-      color: theme.lightGreen4,
-      flex: 1,
+      color: theme.darkGreen,
     },
-    serviceNameInput: {
+    labelHint: {
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+    },
+    input: {
+      minHeight: heightScale(50),
+      borderRadius: moderateWidthScale(10),
+      borderWidth: 1,
+      borderColor: theme.lightGreen2,
+      backgroundColor: theme.white,
+      paddingHorizontal: moderateWidthScale(14),
+      paddingVertical: moderateHeightScale(12),
       fontSize: fontSize.size16,
       fontFamily: fonts.fontRegular,
       color: theme.darkGreen,
-      paddingVertical: 0,
-      height: heightScale(24),
-      flex: 1,
     },
-    descriptionInput: {
-      fontSize: fontSize.size16,
-      fontFamily: fonts.fontRegular,
-      color: theme.darkGreen,
-      paddingVertical: 0,
-      minHeight: heightScale(48),
-      flex: 1,
+    inputReadOnly: {
+      backgroundColor: theme.lightGreen07,
+      color: theme.lightGreen,
+    },
+    inputError: {
+      borderColor: theme.link,
+    },
+    multiline: {
+      minHeight: heightScale(96),
       textAlignVertical: "top",
     },
-    profileIcon: {
-      width: widthScale(40),
-      height: widthScale(40),
-      borderRadius: moderateWidthScale(40 / 2),
-      backgroundColor: theme.lightGreen2,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    timeRow: {
+    affixRow: {
       flexDirection: "row",
-      gap: moderateWidthScale(12),
-    },
-    timeInputWrapper: {
-      flex: 1,
-      borderRadius: moderateWidthScale(8),
+      alignItems: "center",
+      minHeight: heightScale(50),
+      borderRadius: moderateWidthScale(10),
       borderWidth: 1,
       borderColor: theme.lightGreen2,
-      flexDirection: "row",
-      justifyContent: "space-between",
+      backgroundColor: theme.white,
+      paddingHorizontal: moderateWidthScale(14),
     },
-    mainTimeCon: {
+    affixInput: {
       flex: 1,
-      paddingHorizontal: moderateWidthScale(15),
-      paddingVertical: moderateHeightScale(10),
-      gap: moderateHeightScale(2),
-    },
-    timeInputContainer: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "flex-start",
-    },
-    timeInput: {
+      paddingVertical: moderateHeightScale(12),
       fontSize: fontSize.size16,
-      fontFamily: fonts.fontMedium,
-      color: theme.darkGreen,
-      paddingVertical: 0,
-      height: heightScale(22),
-      flex: 1,
-      textAlign: "left",
-    },
-    minutesSuffix: {
-      flex: 0,
-      marginLeft: moderateWidthScale(4),
-      lineHeight: heightScale(22),
-      height: heightScale(22),
-      includeFontPadding: false,
-    },
-    pricePrefix: {
-      flex: 0,
-      marginRight: 0,
-      lineHeight: heightScale(22),
-      height: heightScale(22),
-      includeFontPadding: false,
-    },
-    priceInputInner: {
-      paddingLeft: 0,
-    },
-    arrowButtonsContainer: {
-      width: "28%",
-      backgroundColor: theme.grey30,
-      borderLeftWidth: 1,
-      borderLeftColor: theme.lightGreen2,
-      alignItems: "center",
-      justifyContent: "center",
-      borderTopRightRadius: moderateWidthScale(8),
-      borderBottomRightRadius: moderateWidthScale(8),
-    },
-    timeButton: {
-      flex: 1,
-      alignItems: "center",
-      justifyContent: "center",
-      width: "100%",
-    },
-    arrowButtonSeparator: {
-      width: "100%",
-      height: 1,
-      backgroundColor: theme.lightGreen2,
-    },
-    priceInputContainer: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-    },
-    priceInput: {
-      flex: 1,
-      fontSize: fontSize.size16,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-      paddingVertical: 0,
-      height: heightScale(24),
-    },
-    errorText: {
-      fontSize: fontSize.size12,
       fontFamily: fonts.fontRegular,
-      color: theme.link,
-      marginTop: moderateHeightScale(4),
+      color: theme.darkGreen,
+      fontVariant: ["tabular-nums"],
     },
-    timeFieldHint: {
-      fontSize: fontSize.size12,
+    affixText: {
+      fontSize: fontSize.size16,
       fontFamily: fonts.fontRegular,
       color: theme.lightGreen,
-      marginTop: moderateHeightScale(4),
+    },
+    prefixText: {
+      color: theme.darkGreen,
+      marginRight: moderateWidthScale(2),
+    },
+    chipRow: {
+      flexDirection: "row",
+      gap: moderateWidthScale(8),
+    },
+    chip: {
+      flex: 1,
+      minHeight: heightScale(48),
+      borderRadius: moderateWidthScale(10),
+      borderWidth: 1,
+      borderColor: theme.lightGreen2,
+      backgroundColor: theme.white,
+      alignItems: "center",
+      justifyContent: "center",
+      paddingHorizontal: moderateWidthScale(2),
+    },
+    chipActive: {
+      backgroundColor: theme.darkGreen,
+      borderColor: theme.darkGreen,
+    },
+    chipText: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
+    },
+    chipTextActive: {
+      color: theme.white,
+    },
+    helper: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+    },
+    errorText: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontRegular,
+      color: theme.link,
     },
   });
 
@@ -227,6 +171,7 @@ export default function EditServiceBottomSheet({
   const styles = useMemo(() => createStyles(colors as Theme), [colors]);
   const theme = colors as Theme;
   const { services } = useAppSelector((state) => state.completeProfile);
+  const customInputRef = useRef<TextInput>(null);
 
   const service = serviceId ? services.find((s) => s.id === serviceId) : null;
 
@@ -234,12 +179,13 @@ export default function EditServiceBottomSheet({
   const [serviceDescription, setServiceDescription] = useState(
     service?.description ?? service?.name ?? "",
   );
-  const [hoursStr, setHoursStr] = useState("");
-  const [minutesStr, setMinutesStr] = useState("");
+  const [preset, setPreset] = useState<number | "custom">(30);
+  const [customMinutes, setCustomMinutes] = useState("");
   const [price, setPrice] = useState("");
   const [currency] = useState(service?.currency || "USD");
   const [errors, setErrors] = useState<{
     name?: string;
+    duration?: string;
     price?: string;
   }>({});
 
@@ -250,83 +196,73 @@ export default function EditServiceBottomSheet({
     if (serviceId === null) {
       setServiceName("");
       setServiceDescription("");
-      setHoursStr("0");
-      setMinutesStr("0");
+      setPreset(30);
+      setCustomMinutes("");
       setPrice("");
       setErrors({});
     } else if (service) {
       setServiceName(service.name);
       setServiceDescription(service.description ?? service.name);
-      const serviceHours = Math.min(Math.max(service.hours, 0), 12);
-      setHoursStr(serviceHours.toString());
-      const serviceMinutes = Math.min(Math.max(service.minutes, 0), 59);
-      setMinutesStr(serviceMinutes.toString());
+      const total = Math.min(
+        Math.max((service.hours || 0) * 60 + (service.minutes || 0), 0),
+        MAX_MINUTES,
+      );
+      if (PRESETS.includes(total)) {
+        setPreset(total);
+        setCustomMinutes("");
+      } else {
+        setPreset("custom");
+        setCustomMinutes(total ? total.toString() : "");
+      }
       setPrice(service.price.toString());
       setErrors({});
     }
   }, [visible, serviceId, service]);
 
-  const handleHoursChange = (text: string) => {
-    const cleaned = text.replace(/[^0-9]/g, "").slice(0, 2);
-    setHoursStr(cleaned);
-  };
+  useEffect(() => {
+    if (!visible) return;
+    const sub = BackHandler.addEventListener("hardwareBackPress", () => {
+      onClose();
+      return true;
+    });
+    return () => sub.remove();
+  }, [visible, onClose]);
 
-  const handleIncrementHours = () => {
-    const current = parseInt(hoursStr, 10) || 0;
-    if (current < 12) {
-      setHoursStr((current + 1).toString());
+  const totalMinutes =
+    preset === "custom" ? parseInt(customMinutes, 10) || 0 : preset;
+
+  const handleSelectPreset = (value: number | "custom") => {
+    setErrors((e) => ({ ...e, duration: undefined }));
+    if (value === "custom") {
+      if (preset !== "custom" && !customMinutes) {
+        setCustomMinutes(String(preset));
+      }
+      setPreset("custom");
+      setTimeout(() => customInputRef.current?.focus(), 50);
     } else {
-      setHoursStr("0");
+      setPreset(value);
     }
   };
 
-  const handleDecrementHours = () => {
-    const current = parseInt(hoursStr, 10) || 0;
-    if (current > 0) {
-      setHoursStr((current - 1).toString());
-    } else {
-      setHoursStr("12");
-    }
-  };
-
-  const handleMinutesChange = (text: string) => {
-    const cleaned = text.replace(/[^0-9]/g, "").slice(0, 2);
+  const handleCustomChange = (text: string) => {
+    const cleaned = text.replace(/[^0-9]/g, "").slice(0, 3);
     const num = parseInt(cleaned, 10);
-    if (cleaned !== "" && !isNaN(num) && num > 59) {
-      setMinutesStr("0");
-    } else {
-      setMinutesStr(cleaned);
-    }
+    setCustomMinutes(
+      !isNaN(num) && num > MAX_MINUTES ? String(MAX_MINUTES) : cleaned,
+    );
+    setErrors((e) => ({ ...e, duration: undefined }));
   };
 
-  const handleIncrementMinutes = () => {
-    const current = parseInt(minutesStr, 10) || 0;
-    if (current < 59) {
-      setMinutesStr((current + 1).toString());
-    } else {
-      setMinutesStr("0");
-    }
-  };
-
-  const handleDecrementMinutes = () => {
-    const current = parseInt(minutesStr, 10) || 0;
-    if (current > 0) {
-      setMinutesStr((current - 1).toString());
-    } else {
-      setMinutesStr("59");
-    }
-  };
-
-  const handleIncrementPrice = () => {
-    const currentPrice = parseFloat(price) || 0;
-    setPrice((currentPrice + 0.01).toFixed(2));
-  };
-
-  const handleDecrementPrice = () => {
-    const currentPrice = parseFloat(price) || 0;
-    if (currentPrice > 0) {
-      setPrice(Math.max(0, currentPrice - 0.01).toFixed(2));
-    }
+  const handlePriceChange = (text: string) => {
+    const cleaned = text.replace(/[^0-9.]/g, "");
+    const dot = cleaned.indexOf(".");
+    const oneDot =
+      dot >= 0
+        ? cleaned.slice(0, dot + 1) +
+          cleaned.slice(dot + 1).replace(/\./g, "").slice(0, 2)
+        : cleaned;
+    setPrice(oneDot);
+    setErrors((e) => ({ ...e, price: undefined }));
   };
 
   const handleSave = () => {
@@ -339,8 +275,10 @@ export default function EditServiceBottomSheet({
       }
     }
 
-    const hours = Math.min(Math.max(parseInt(hoursStr, 10) || 0, 0), 12);
-    const minutes = Math.min(Math.max(parseInt(minutesStr, 10) || 0, 0), 59);
+    if (totalMinutes <= 0) {
+      newErrors.duration = "Enter how many minutes this service takes";
+    }
+
     const priceValue = parseFloat(price);
     if (isNaN(priceValue) || priceValue <= 0) {
       newErrors.price = "Price must be greater than 0";
@@ -351,6 +289,8 @@ export default function EditServiceBottomSheet({
       return;
     }
 
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
     const descriptionValue =
       serviceDescription.trim() || serviceName.trim();
 
@@ -383,197 +323,159 @@ export default function EditServiceBottomSheet({
     onClose();
   };
 
+  if (!visible) return null;
+
+  const priceLabel = currency === "USD" ? "Price ($)" : `Price (${currency})`;
+
   return (
-    <ModalizeBottomSheet
-      visible={visible}
-      onClose={onClose}
-      title={serviceId ? t("editService") : "Add service"}
-      footerButtonTitle="Save"
-      onFooterButtonPress={handleSave}
-      contentStyle={styles.scrollContent}
-    >
-      <View
-        style={[
-          styles.serviceNameWrapper,
-          isNameEditable && styles.serviceNameWrapperEditable,
-        ]}
+    <Portal>
+      <Animated.View
+        style={styles.overlay}
+        entering={SlideInDown.duration(260).reduceMotion(ReduceMotion.System)}
       >
-        <Text style={styles.inputLabel}>Service name</Text>
-        {isNameEditable ? (
-          <>
+        <StatusBar barStyle="light-content" />
+        <FlowHeader
+          title={serviceId ? t("editService") : "Add Service"}
+          onBack={onClose}
+        />
+
+        <KeyboardAwareScrollView
+          style={styles.flex}
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="interactive"
+          showsVerticalScrollIndicator={false}
+          bottomOffset={moderateHeightScale(32)}
+        >
+          <View style={styles.field}>
+            <Text style={styles.label}>Service name</Text>
             <TextInput
-              style={styles.serviceNameInput}
+              style={[
+                styles.input,
+                !isNameEditable && styles.inputReadOnly,
+                errors.name && styles.inputError,
+              ]}
               value={serviceName}
-              onChangeText={setServiceName}
-              placeholder="Enter service name"
-              placeholderTextColor={theme.lightGreen2}
+              onChangeText={(text) => {
+                setServiceName(text);
+                setErrors((e) => ({ ...e, name: undefined }));
+              }}
+              editable={isNameEditable}
+              placeholder="e.g. Adult Haircut"
+              placeholderTextColor={theme.lightGreen4}
+              returnKeyType="next"
+              accessibilityLabel="Service name"
             />
             {errors.name ? (
               <Text style={styles.errorText}>{errors.name}</Text>
             ) : null}
-          </>
-        ) : (
-          <Text style={styles.serviceNameText}>{serviceName}</Text>
-        )}
-      </View>
-
-      <View
-        style={[
-          styles.descriptionWrapper,
-          styles.descriptionWrapperEditable,
-        ]}
-      >
-        <Text style={styles.inputLabel}>Description</Text>
-        <TextInput
-          style={styles.descriptionInput}
-          value={serviceDescription}
-          onChangeText={setServiceDescription}
-          placeholder="Enter description"
-          placeholderTextColor={theme.lightGreen2}
-          multiline
-        />
-      </View>
-
-      <View style={{ gap: 15 }}>
-        <Text style={styles.inputLabelTitle}>Service time</Text>
-        <View style={styles.timeRow}>
-          <View style={styles.timeInputWrapper}>
-            <View style={styles.mainTimeCon}>
-              <Text style={styles.inputLabel}>Hour</Text>
-              <View style={styles.timeInputContainer}>
-                <TextInput
-                  style={styles.timeInput}
-                  value={hoursStr}
-                  onChangeText={handleHoursChange}
-                  keyboardType="number-pad"
-                  placeholder="0"
-                  placeholderTextColor={theme.lightGreen2}
-                />
-              </View>
-            </View>
-            <View style={styles.arrowButtonsContainer}>
-              <TouchableOpacity
-                onPress={handleIncrementHours}
-                style={styles.timeButton}
-              >
-                <AntDesign
-                  name="caret-up"
-                  size={iconScale(15)}
-                  color={theme.darkGreen}
-                />
-              </TouchableOpacity>
-              <View style={styles.arrowButtonSeparator} />
-              <TouchableOpacity
-                onPress={handleDecrementHours}
-                style={styles.timeButton}
-              >
-                <AntDesign
-                  name="caret-down"
-                  size={iconScale(15)}
-                  color={theme.darkGreen}
-                />
-              </TouchableOpacity>
-            </View>
           </View>
 
-          <View style={styles.timeInputWrapper}>
-            <View style={styles.mainTimeCon}>
-              <Text style={styles.inputLabel}>Time</Text>
-              <View style={styles.timeInputContainer}>
-                <TextInput
-                  style={styles.timeInput}
-                  value={minutesStr}
-                  onChangeText={handleMinutesChange}
-                  keyboardType="number-pad"
-                  placeholder="0"
-                  placeholderTextColor={theme.lightGreen2}
-                />
-                {minutesStr ? (
-                  <Text style={[styles.timeInput, styles.minutesSuffix]}>
-                    {minutesStr === "1" ? " min" : " mins"}
-                  </Text>
-                ) : null}
-              </View>
-            </View>
-            <View style={styles.arrowButtonsContainer}>
-              <TouchableOpacity
-                onPress={handleIncrementMinutes}
-                style={styles.timeButton}
-              >
-                <AntDesign
-                  name="caret-up"
-                  size={iconScale(15)}
-                  color={theme.darkGreen}
-                />
-              </TouchableOpacity>
-              <View style={styles.arrowButtonSeparator} />
-              <TouchableOpacity
-                onPress={handleDecrementMinutes}
-                style={styles.timeButton}
-              >
-                <AntDesign
-                  name="caret-down"
-                  size={iconScale(15)}
-                  color={theme.darkGreen}
-                />
-              </TouchableOpacity>
-            </View>
+          <View style={styles.field}>
+            <Text style={styles.label}>
+              Description <Text style={styles.labelHint}>(optional)</Text>
+            </Text>
+            <TextInput
+              style={[styles.input, styles.multiline]}
+              value={serviceDescription}
+              onChangeText={setServiceDescription}
+              placeholder="e.g. Classic haircut and finish"
+              placeholderTextColor={theme.lightGreen4}
+              multiline
+              accessibilityLabel="Description"
+            />
           </View>
-        </View>
-        <Text style={styles.timeFieldHint}>
-          After 59, value resets to 0 (60 mins = 1 hour, then it restarts).
-        </Text>
 
-        <View style={styles.timeInputWrapper}>
-          <View style={styles.mainTimeCon}>
-            <Text style={styles.inputLabel}>Price</Text>
-            <View style={styles.timeInputContainer}>
-              <Text style={[styles.timeInput, styles.pricePrefix]}>
-                {currency} $
-              </Text>
+          <View style={styles.field}>
+            <Text style={styles.label}>Duration</Text>
+            <View style={styles.chipRow} accessibilityRole="radiogroup">
+              {[...PRESETS, "custom" as const].map((value) => {
+                const active = preset === value;
+                return (
+                  <TouchableOpacity
+                    key={value}
+                    activeOpacity={0.7}
+                    onPress={() => handleSelectPreset(value)}
+                    style={[styles.chip, active && styles.chipActive]}
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected: active }}
+                  >
+                    <Text
+                      style={[styles.chipText, active && styles.chipTextActive]}
+                      numberOfLines={1}
+                      adjustsFontSizeToFit
+                      minimumFontScale={0.8}
+                    >
+                      {value === "custom" ? "Custom" : `${value} min`}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+            {preset !== "custom" && errors.duration ? (
+              <Text style={styles.errorText}>{errors.duration}</Text>
+            ) : null}
+          </View>
+
+          {preset === "custom" ? (
+            <View style={styles.field}>
+              <Text style={styles.label}>Duration in minutes</Text>
+              <View
+                style={[styles.affixRow, errors.duration && styles.inputError]}
+              >
+                <TextInput
+                  ref={customInputRef}
+                  style={styles.affixInput}
+                  value={customMinutes}
+                  onChangeText={handleCustomChange}
+                  keyboardType="number-pad"
+                  placeholder="90"
+                  placeholderTextColor={theme.lightGreen4}
+                  maxLength={3}
+                  accessibilityLabel="Duration in minutes"
+                />
+                <Text style={styles.affixText}>min</Text>
+              </View>
+              {errors.duration ? (
+                <Text style={styles.errorText}>{errors.duration}</Text>
+              ) : totalMinutes > 0 ? (
+                <Text style={styles.helper}>{formatDuration(totalMinutes)}</Text>
+              ) : null}
+            </View>
+          ) : null}
+
+          <View style={styles.field}>
+            <Text style={styles.label}>{priceLabel}</Text>
+            <View style={[styles.affixRow, errors.price && styles.inputError]}>
+              <Text style={[styles.affixText, styles.prefixText]}>$</Text>
               <TextInput
-                style={[styles.timeInput, styles.priceInputInner]}
+                style={styles.affixInput}
                 value={price}
-                onChangeText={(text) => {
-                  const cleaned = text.replace(/[^0-9.]/g, "");
-                  const oneDot =
-                    cleaned.indexOf(".") >= 0
-                      ? cleaned.slice(0, cleaned.indexOf(".") + 1) +
-                        cleaned.slice(cleaned.indexOf(".") + 1).replace(/\./g, "")
-                      : cleaned;
-                  setPrice(oneDot);
+                onChangeText={handlePriceChange}
+                onBlur={() => {
+                  const v = parseFloat(price);
+                  if (!isNaN(v)) setPrice(v.toFixed(2));
                 }}
                 keyboardType="decimal-pad"
                 placeholder="0.00"
-                placeholderTextColor={theme.lightGreen2}
+                placeholderTextColor={theme.lightGreen4}
+                accessibilityLabel={priceLabel}
               />
             </View>
+            {errors.price ? (
+              <Text style={styles.errorText}>{errors.price}</Text>
+            ) : null}
           </View>
-          <View style={[styles.arrowButtonsContainer, { width: "14%" }]}>
-            <TouchableOpacity
-              onPress={handleIncrementPrice}
-              style={styles.timeButton}
-            >
-              <AntDesign
-                name="caret-up"
-                size={iconScale(15)}
-                color={theme.darkGreen}
-              />
-            </TouchableOpacity>
-            <View style={styles.arrowButtonSeparator} />
-            <TouchableOpacity
-              onPress={handleDecrementPrice}
-              style={styles.timeButton}
-            >
-              <AntDesign
-                name="caret-down"
-                size={iconScale(15)}
-                color={theme.darkGreen}
-              />
-            </TouchableOpacity>
-          </View>
-        </View>
-      </View>
-    </ModalizeBottomSheet>
+        </KeyboardAwareScrollView>
+
+        {/* Stays behind the keyboard while typing so the fields get the room. */}
+        <FlowFooter
+          primary={{
+            label: serviceId ? "Save Changes" : "Add Service",
+            onPress: handleSave,
+          }}
+        />
+      </Animated.View>
+    </Portal>
   );
 }

@@ -15,9 +15,8 @@ import {
   Pressable,
   ActivityIndicator,
   Keyboard,
-  KeyboardAvoidingView,
-  Platform,
 } from "react-native";
+import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import AppImage from "@/src/components/AppImage";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
@@ -659,7 +658,7 @@ export default function SearchScreen() {
 
       <KeyboardAvoidingView
         style={styles.container}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        behavior="padding"
         keyboardVerticalOffset={0}
       >
         <View style={styles.content}>

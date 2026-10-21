@@ -1,9 +1,6 @@
 import React, { useCallback, useMemo, useState } from "react";
 import {
   BackHandler,
-  Keyboard,
-  KeyboardAvoidingView,
-  Platform,
   View,
   TouchableOpacity,
   Text,
@@ -45,6 +42,7 @@ import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { validateName } from "@/src/services/validationService";
 import { setBusinessId, setBusinessStatus } from "@/src/state/slices/userSlice";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
+import { moderateHeightScale } from "@/src/theme/dimensions";
 import { useTranslation } from "react-i18next";
 
 export default function CompleteProfile() {
@@ -720,16 +718,16 @@ export default function CompleteProfile() {
         onBack={handleBack}
         disableBack={isOnInitialStepFromHome}
       />
-      <KeyboardAvoidingView
-        style={styles.contentContainer}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-      >
+      <View style={styles.contentContainer}>
+        {/* Keyboard stays open while scrolling so every field can be reviewed;
+            the Continue button sits behind it until the keyboard closes. */}
         <KeyboardAwareScrollView
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="interactive"
+          bottomOffset={moderateHeightScale(32)}
           onScrollBeginDrag={() => {
-            Keyboard.dismiss();
             if (isStepOneDropdownOpen) setIsStepOneDropdownOpen(false);
           }}
         >
@@ -769,7 +767,7 @@ export default function CompleteProfile() {
             loading={isSubmitting}
           />
         </View>
-      </KeyboardAvoidingView>
+      </View>
     </SafeAreaView>
   );
 }
