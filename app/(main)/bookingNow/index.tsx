@@ -1412,6 +1412,7 @@ export default function BookingNow() {
     useState<SlotMinutes>(DEFAULT_SLOT_MINUTES);
   const [slotsLoading, setSlotsLoading] = useState(false);
   const [apiSlots, setApiSlots] = useState<AvailableSlot[]>([]);
+  const slotsRequest = useRef(0);
   const [slotsError, setSlotsError] = useState<string | null>(null);
   const [note, setNote] = useState("");
   const [tryOnImageUrls, setTryOnImageUrls] = useState<string[]>([]);
@@ -1935,6 +1936,7 @@ export default function BookingNow() {
       setSlotsError(null);
       return;
     }
+    const requestId = ++slotsRequest.current;
     setSlotsLoading(true);
     setSlotsError(null);
     ApiService.get<{
@@ -1953,8 +1955,7 @@ export default function BookingNow() {
       }),
     )
       .then((res) => {
-        Logger.log("-------->res", res);
-
+        if (requestId !== slotsRequest.current) return;
         if (res?.success === false) {
           setApiSlots([]);
           setSlotsError(res.message || "Failed to load available slots.");
@@ -1968,6 +1969,7 @@ export default function BookingNow() {
         setApiSlots(normalizeAvailableSlots(rawList));
       })
       .catch((err: any) => {
+        if (requestId !== slotsRequest.current) return;
         setApiSlots([]);
         setSlotsError(
           err?.response?.data?.message ||
@@ -1976,7 +1978,7 @@ export default function BookingNow() {
         );
       })
       .finally(() => {
-        setSlotsLoading(false);
+        if (requestId === slotsRequest.current) setSlotsLoading(false);
       });
   }, [
     selectedDate,
@@ -1988,11 +1990,6 @@ export default function BookingNow() {
     slotMinutes,
   ]);
 
-  // Fetch available slots from API when date or staff changes
-  useEffect(() => {
-    fetchAvailableSlots();
-  }, [fetchAvailableSlots]);
-
   const availableTimeSlots = useMemo(
     () =>
       apiSlots
@@ -2000,6 +1997,16 @@ export default function BookingNow() {
         .filter((start): start is string => isValidTimeSlot(start)),
     [apiSlots],
   );
+
+  // A slot taken since it was picked can't be booked: drop it after a refetch.
+  useEffect(() => {
+    if (slotsLoading || !selectedTimeSlot) return;
+    if (!apiSlots.some((slot) => slot.start === selectedTimeSlot)) {
+      setSelectedTimeSlotState(null);
+      dispatch(setSelectedTimeSlot(null));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [apiSlots, slotsLoading]);
 
   const sortedTimeSlots = useMemo(
     () => sortTimeSlots(availableTimeSlots),
@@ -2186,6 +2193,13 @@ export default function BookingNow() {
   const stepKey = steps[safeIndex];
   const isLastStep = safeIndex === steps.length - 1;
   const busy = continueLoading || rescheduleLoading;
+
+  // Slots are only shown on the time step: fetch on arriving there (and on
+  // date change while there), not on every staff tap.
+  const onTimeStep = stepKey === "time";
+  useEffect(() => {
+    if (onTimeStep) fetchAvailableSlots();
+  }, [onTimeStep, fetchAvailableSlots]);
 
   const goTo = useCallback((index: number, dir: 1 | -1) => {
     Keyboard.dismiss();
