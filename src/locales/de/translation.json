@@ -2675,6 +2675,7 @@
   "bkFlowBackToReview": "Zurück zur Übersicht",
   "bkFlowSlotTakenTitle": "Zeit nicht mehr verfügbar",
   "bkFlowSlotTakenMessage": "{{time}} wurde gerade von jemand anderem gebucht. Bitte wähle eine andere Zeit.",
+  "bkFlowSlotPassedMessage": "{{time}} ist schon vorbei. Bitte wähle eine spätere Zeit.",
   "bkFlowRescheduleButton": "Termin verschieben",
   "bkFlowServicesTitle": "Deine Leistungen",
   "bkFlowServicesSubtitle": "Prüfe deine Buchung. Du kannst weitere hinzufügen.",

@@ -2675,6 +2675,7 @@
   "bkFlowBackToReview": "確認画面に戻る",
   "bkFlowSlotTakenTitle": "この時間は予約できません",
   "bkFlowSlotTakenMessage": "{{time}} は他の方が予約しました。別の時間を選んでください。",
+  "bkFlowSlotPassedMessage": "{{time}} はすでに過ぎています。後の時間を選んでください。",
   "bkFlowRescheduleButton": "予約日時を変更",
   "bkFlowServicesTitle": "ご予約のサービス",
   "bkFlowServicesSubtitle": "予約内容を確認してください。サービスを追加することもできます。",

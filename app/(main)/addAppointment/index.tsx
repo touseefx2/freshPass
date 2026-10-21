@@ -464,14 +464,27 @@ export default function AddAppointmentScreen() {
     return Object.keys(errors).length === 0;
   };
 
-  const isPastSlot = useMemo(() => {
+  // Checked against the clock at press time (not memoised): the picked time
+  // can pass while the owner sits on a step.
+  const isPastSlot = () => {
     if (date.isBefore(dayjs(), "day")) return true;
     // No time picked yet (e.g. cleared because it wasn't free).
     if (!isValidTime(time)) return false;
     if (!date.isSame(dayjs(), "day")) return false;
     const [h, m] = time.split(":").map(Number);
     return date.hour(h).minute(m).isBefore(dayjs());
-  }, [date, time]);
+  };
+
+  // Drop a passed time, reload so passed chips leave the list, and send the
+  // owner back to pick another.
+  const dropPastSlot = (): boolean => {
+    if (!isPastSlot()) return false;
+    setTime("");
+    setTimeError(t("oaPastTime"));
+    setFreeTimesKey((key) => key + 1);
+    if (step !== "time") setStep("time");
+    return true;
+  };
 
   // Free times still ahead (today's past ones hidden), split by part of day.
   const openTimes = useMemo(() => {
@@ -544,10 +557,7 @@ export default function AddAppointmentScreen() {
         setTimeError(t("oaPickTime"));
         return;
       }
-      if (isPastSlot) {
-        setTimeError(t("oaPastTime"));
-        return;
-      }
+      if (dropPastSlot()) return;
       setTimeError(null);
       goTo("review");
     }
@@ -582,6 +592,7 @@ export default function AddAppointmentScreen() {
   // ── Submit ─────────────────────────────────────────────────────────────
   const confirm = async () => {
     if (busyRef.current || !businessId || staffId == null) return;
+    if (dropPastSlot()) return;
     busyRef.current = true;
     setBusy(true);
     setSubmitError(null);

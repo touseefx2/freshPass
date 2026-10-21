@@ -2675,6 +2675,7 @@
   "bkFlowBackToReview": "Volver a la revisión",
   "bkFlowSlotTakenTitle": "Hora ya no disponible",
   "bkFlowSlotTakenMessage": "Alguien acaba de reservar las {{time}}. Elige otra hora.",
+  "bkFlowSlotPassedMessage": "Las {{time}} ya pasaron. Elige una hora posterior.",
   "bkFlowRescheduleButton": "Reprogramar cita",
   "bkFlowServicesTitle": "Tus servicios",
   "bkFlowServicesSubtitle": "Revisa lo que reservas. Puedes añadir más.",

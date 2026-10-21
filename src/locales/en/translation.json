@@ -2732,6 +2732,7 @@
   "bkFlowBackToReview": "Back to review",
   "bkFlowSlotTakenTitle": "Time no longer available",
   "bkFlowSlotTakenMessage": "{{time}} was just booked by someone else. Please pick another time.",
+  "bkFlowSlotPassedMessage": "{{time}} has already passed. Please pick a later time.",
   "bkFlowRescheduleButton": "Reschedule appointment",
   "bkFlowServicesTitle": "Your services",
   "bkFlowServicesSubtitle": "Check what you're booking. You can add more.",

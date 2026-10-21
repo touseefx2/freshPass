@@ -2003,8 +2003,8 @@ export default function BookingNow() {
   const lastSlotsDay = useRef<string | null>(null);
 
   // A picked time that isn't free on the loaded day can't be booked: drop
-  // it. Same day refetch = someone took it, so say so; a new day or a passed
-  // time drops quietly. A failed refetch keeps it (nothing known).
+  // it quietly, like owner booking. Only a time that passed on the same day
+  // says why. A failed refetch keeps it (nothing known).
   useEffect(() => {
     if (slotsLoading || slotsError) return;
     const day = selectedDate.format("YYYY-MM-DD");
@@ -2015,10 +2015,10 @@ export default function BookingNow() {
     if (passed || !apiSlots.some((slot) => slot.start === selectedTimeSlot)) {
       setSelectedTimeSlotState(null);
       dispatch(setSelectedTimeSlot(null));
-      if (passed || !sameDay) return;
+      if (!passed || !sameDay) return;
       showBanner(
         t("bkFlowSlotTakenTitle"),
-        t("bkFlowSlotTakenMessage", {
+        t("bkFlowSlotPassedMessage", {
           time: convertTo12Hour(selectedTimeSlot),
         }),
         "warning",
@@ -2046,6 +2046,24 @@ export default function BookingNow() {
       .second(0)
       .millisecond(0);
     return slotTime.isBefore(now);
+  };
+
+  // Today's picked time may pass while the customer sits on a step: check
+  // on every move forward, drop it and send them back to pick another.
+  const dropPassedSlot = (): boolean => {
+    if (!selectedTimeSlot || !isSlotDisabled(selectedTimeSlot)) return false;
+    setSelectedTimeSlotState(null);
+    dispatch(setSelectedTimeSlot(null));
+    showBanner(
+      t("bkFlowSlotTakenTitle"),
+      t("bkFlowSlotPassedMessage", {
+        time: convertTo12Hour(selectedTimeSlot),
+      }),
+      "warning",
+      4000,
+    );
+    if (stepKey !== "time") goToStep("time");
+    return true;
   };
 
   const handleSlotSelect = (slot: string) => {
@@ -2456,6 +2474,7 @@ export default function BookingNow() {
   }
 
   const submitReschedule = async (lateFeeAccepted: boolean) => {
+    if (dropPassedSlot()) return;
     const bookingId = params.booking_id;
     const businessId = params.business_id;
     if (!bookingId || !businessId) {
@@ -2612,6 +2631,7 @@ export default function BookingNow() {
   };
 
   const handleContinue = async () => {
+    if (dropPassedSlot()) return;
     const businessIdForCheckout = resolveBusinessIdParam(
       resolveRouteParam(params.business_id),
       reduxBusinessId,
@@ -3674,7 +3694,10 @@ export default function BookingNow() {
         }),
         trailingIcon: "chevron-right",
         disabled: !!blockedHint,
-        onPress: () => goTo(safeIndex + 1, 1),
+        onPress: () => {
+          if (dropPassedSlot()) return;
+          goTo(safeIndex + 1, 1);
+        },
       }
     : isReschedule
       ? {

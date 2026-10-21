@@ -2675,6 +2675,7 @@
   "bkFlowBackToReview": "Retour au récapitulatif",
   "bkFlowSlotTakenTitle": "Créneau plus disponible",
   "bkFlowSlotTakenMessage": "{{time}} vient d'être réservé par quelqu'un d'autre. Choisis un autre horaire.",
+  "bkFlowSlotPassedMessage": "{{time}} est déjà passé. Choisis un horaire plus tard.",
   "bkFlowRescheduleButton": "Reporter le rendez-vous",
   "bkFlowServicesTitle": "Vos services",
   "bkFlowServicesSubtitle": "Vérifiez votre réservation. Vous pouvez en ajouter d'autres.",

@@ -2675,6 +2675,7 @@
   "bkFlowBackToReview": "العودة إلى المراجعة",
   "bkFlowSlotTakenTitle": "الوقت لم يعد متاحًا",
   "bkFlowSlotTakenMessage": "تم حجز {{time}} للتو من قبل شخص آخر. يرجى اختيار وقت آخر.",
+  "bkFlowSlotPassedMessage": "لقد مر الوقت {{time}} بالفعل. يرجى اختيار وقت لاحق.",
   "bkFlowRescheduleButton": "إعادة جدولة الموعد",
   "bkFlowServicesTitle": "خدماتك",
   "bkFlowServicesSubtitle": "راجع ما تحجزه. يمكنك إضافة المزيد.",
