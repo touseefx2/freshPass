@@ -40,6 +40,7 @@ interface EditSubscriptionBottomSheetProps {
     serviceCounts?: Record<string, number>;
     servicesPerMonth?: number;
   }) => void;
+  onDelete?: (subscriptionId: string) => void;
 }
 
 const buildDefaultServiceCounts = (
@@ -210,6 +211,22 @@ const createStyles = (theme: Theme) =>
       paddingVertical: 0,
       height: heightScale(24),
     },
+    deleteButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: moderateWidthScale(8),
+      minHeight: moderateHeightScale(44),
+      marginTop: moderateHeightScale(24),
+      borderRadius: moderateWidthScale(10),
+      borderWidth: 1,
+      borderColor: theme.red,
+    },
+    deleteButtonText: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontMedium,
+      color: theme.red,
+    },
     errorText: {
       fontSize: fontSize.size12,
       fontFamily: fonts.fontRegular,
@@ -306,6 +323,7 @@ export default function EditSubscriptionBottomSheet({
   onClose,
   subscriptionId,
   onAddCustomSuggestion,
+  onDelete,
 }: EditSubscriptionBottomSheetProps) {
   const { t } = useTranslation();
   const dispatch = useAppDispatch();
@@ -755,6 +773,18 @@ export default function EditSubscriptionBottomSheet({
           })}
         </View>
       )}
+
+      {subscriptionId && onDelete ? (
+        <TouchableOpacity
+          style={styles.deleteButton}
+          onPress={() => onDelete(subscriptionId)}
+          activeOpacity={0.7}
+          accessibilityRole="button"
+        >
+          <Feather name="trash-2" size={iconScale(16)} color={theme.red} />
+          <Text style={styles.deleteButtonText}>Delete Membership</Text>
+        </TouchableOpacity>
+      ) : null}
 
       <ServicePickerBottomSheet
         visible={servicePickerVisible}

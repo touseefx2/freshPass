@@ -1,22 +1,13 @@
-import React, { useEffect, useMemo, useState, useRef } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  Dimensions,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
-  Animated,
 } from "react-native";
-import { Gesture, GestureDetector } from "react-native-gesture-handler";
-import AnimatedReanimated, {
-  useSharedValue,
-  useAnimatedStyle,
-  runOnJS,
-  withSpring,
-} from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather, MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -49,7 +40,6 @@ import {
   setActionLoaderTitle,
   setStripeConnectModalVisible,
 } from "@/src/state/slices/generalSlice";
-import { Portal } from "@gorhom/portal";
 
 interface ModuleSubscriptionService {
   id: number;
@@ -69,8 +59,8 @@ interface ModuleSubscriptionPlan {
   services: ModuleSubscriptionService[];
 }
 
-const formatPrice = (price: number, currency: string): string => {
-  return `$${price.toFixed(2)} ${currency}`;
+const formatPrice = (price: number): string => {
+  return `$${price.toFixed(2)}`;
 };
 
 const getSuggestionIdForName = (name: string) => {
@@ -129,12 +119,13 @@ const createStyles = (theme: Theme) =>
       paddingHorizontal: moderateWidthScale(20),
     },
     contentContainer: {
-      paddingVertical: moderateHeightScale(24),
-      gap: moderateHeightScale(20),
+      paddingVertical: moderateHeightScale(20),
+      gap: moderateHeightScale(14),
     },
-    titleSec: {
-      marginTop: moderateHeightScale(8),
-      gap: moderateHeightScale(5),
+    sectionLabel: {
+      fontSize: fontSize.size15,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
     },
     title: {
       fontSize: fontSize.size24,
@@ -192,79 +183,155 @@ const createStyles = (theme: Theme) =>
     subscriptionsContainer: {
       gap: moderateHeightScale(16),
     },
-    subscriptionCard: {
-      borderRadius: moderateWidthScale(8),
-      backgroundColor: theme.white,
-      borderWidth: 0.5,
-      borderColor: theme.borderLight,
-      overflow: "hidden",
-      shadowColor: theme.shadow,
-      shadowOffset: {
-        width: 0,
-        height: 1,
-      },
-      shadowOpacity: 0.2,
-      shadowRadius: 1.41,
-      elevation: 2,
-      paddingVertical: moderateHeightScale(14),
-      paddingHorizontal: moderateWidthScale(16),
+    actionRow: {
+      flexDirection: "row",
+      gap: moderateWidthScale(10),
     },
-    subscriptionSeparator: {
-      height: 1,
-      width: "100%",
-      backgroundColor: theme.borderLight,
+    addMembershipButton: {
+      flex: 1,
+      minHeight: moderateHeightScale(48),
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: moderateWidthScale(8),
+      borderRadius: moderateWidthScale(10),
+      backgroundColor: theme.darkGreen,
+      paddingHorizontal: moderateWidthScale(12),
+    },
+    addMembershipText: {
+      fontSize: fontSize.size15,
+      fontFamily: fonts.fontBold,
+      color: theme.white,
+    },
+    createAiButton: {
+      flex: 1,
+      minHeight: moderateHeightScale(48),
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: moderateWidthScale(8),
+      borderRadius: moderateWidthScale(10),
+      borderWidth: 1,
+      borderColor: theme.orangeBrown30,
+      backgroundColor: theme.tilePeach,
+      paddingHorizontal: moderateWidthScale(12),
+    },
+    createAiText: {
+      fontSize: fontSize.size15,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    subscriptionCard: {
+      borderRadius: moderateWidthScale(14),
+      backgroundColor: theme.surfaceRaised,
+      borderWidth: 1,
+      borderColor: theme.borderLight,
+      paddingTop: moderateHeightScale(18),
+      paddingBottom: moderateHeightScale(16),
+      paddingHorizontal: moderateWidthScale(18),
+      shadowColor: theme.shadow,
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.12,
+      shadowRadius: 3,
+      elevation: 2,
     },
     subscriptionCardHeader: {
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
-      marginBottom: moderateHeightScale(12),
-    },
-    subscriptionInfo: {
-      flex: 1,
-      gap: moderateHeightScale(3),
+      gap: moderateWidthScale(12),
     },
     subscriptionName: {
-      fontSize: fontSize.size16,
+      flex: 1,
+      fontSize: fontSize.size20,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
+    },
+    editButton: {
+      minHeight: moderateWidthScale(36),
+      paddingLeft: moderateWidthScale(12),
+      alignItems: "flex-end",
+      justifyContent: "center",
+    },
+    editText: {
+      fontSize: fontSize.size15,
+      fontFamily: fonts.fontMedium,
+      color: theme.orangeBrownText,
     },
     subscriptionDescription: {
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontRegular,
-      color: theme.lightGreen4,
-    },
-    subscriptionCardContent: {
-      marginTop: moderateHeightScale(12),
-    },
-    subscriptionDetailSection: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-    },
-    subscriptionDetailTitle: {
-      fontSize: fontSize.size14,
-      fontFamily: fonts.fontMedium,
-      color: theme.darkGreen,
-    },
-    subscriptionDetailPrice: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: moderateWidthScale(8),
-    },
-    subscriptionPriceText: {
-      fontSize: fontSize.size14,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-    },
-    subscriptionServicesList: {
-      marginTop: moderateHeightScale(6),
-      gap: moderateHeightScale(2),
-    },
-    subscriptionServiceItem: {
-      fontSize: fontSize.size12,
+      marginTop: moderateHeightScale(2),
+      fontSize: fontSize.size13,
       fontFamily: fonts.fontRegular,
       color: theme.lightGreen,
+    },
+    priceRow: {
+      flexDirection: "row",
+      alignItems: "baseline",
+      marginTop: moderateHeightScale(-2),
+      gap: moderateWidthScale(4),
+    },
+    priceText: {
+      fontSize: fontSize.size24 * 1.5,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+      fontVariant: ["tabular-nums"],
+    },
+    perMonthText: {
+      fontSize: fontSize.size18,
+      fontFamily: fonts.fontRegular,
+      color: theme.darkGreen,
+    },
+    accentBar: {
+      width: moderateWidthScale(44),
+      height: moderateHeightScale(3),
+      borderRadius: moderateHeightScale(2),
+      backgroundColor: theme.orangeBrown,
+      marginTop: moderateHeightScale(8),
+      marginBottom: moderateHeightScale(16),
+    },
+    includedLabel: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+      marginBottom: moderateHeightScale(8),
+    },
+    includedList: {
+      gap: moderateHeightScale(8),
+    },
+    includedItem: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(10),
+    },
+    checkCircle: {
+      width: moderateWidthScale(22),
+      height: moderateWidthScale(22),
+      borderRadius: moderateWidthScale(11),
+      backgroundColor: theme.darkGreen,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    includedText: {
+      flex: 1,
+      fontSize: fontSize.size15,
+      fontFamily: fonts.fontRegular,
+      color: theme.darkGreen,
       textTransform: "capitalize",
+    },
+    visitsPill: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(12),
+      marginTop: moderateHeightScale(14),
+      borderRadius: moderateWidthScale(10),
+      backgroundColor: theme.tilePeach,
+      paddingHorizontal: moderateWidthScale(14),
+      paddingVertical: moderateHeightScale(10),
+    },
+    visitsText: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontRegular,
+      color: theme.darkGreen,
     },
     popularSection: {},
     popularTitle: {
@@ -348,91 +415,6 @@ const createStyles = (theme: Theme) =>
       alignItems: "flex-start",
       marginBottom: moderateHeightScale(12),
     },
-    aiToolButtonContainer: {
-      minWidth: moderateWidthScale(50),
-      alignItems: "center",
-      justifyContent: "center",
-      zIndex: 1000,
-      position: "absolute",
-      opacity: 0.9,
-    },
-    aiTooltipOverlayBox: {
-      position: "absolute",
-      bottom: moderateHeightScale(56 + 14),
-      right: 0,
-
-      left: moderateWidthScale(-200),
-      minWidth: moderateWidthScale(220),
-      backgroundColor: theme.background,
-      borderRadius: moderateWidthScale(10),
-      paddingVertical: moderateHeightScale(10),
-      paddingHorizontal: moderateWidthScale(12),
-      paddingRight: moderateWidthScale(32),
-      borderWidth: 1,
-      borderColor: theme.borderLine,
-      shadowColor: theme.shadow,
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.25,
-      shadowRadius: 6,
-      elevation: 8,
-      alignItems: "center",
-    },
-    aiTooltipOverlayBoxRight: {
-      position: "absolute",
-      left: 0,
-      bottom: moderateHeightScale(56 + 14),
-      minWidth: moderateWidthScale(250),
-      backgroundColor: theme.background,
-      borderRadius: moderateWidthScale(10),
-      paddingVertical: moderateHeightScale(10),
-      paddingHorizontal: moderateWidthScale(12),
-      paddingRight: moderateWidthScale(32),
-      borderWidth: 1,
-      borderColor: theme.borderLine,
-      shadowColor: theme.shadow,
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.25,
-      shadowRadius: 6,
-      elevation: 8,
-      alignItems: "center",
-    },
-    aiTooltipOverlayText: {
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontMedium,
-      color: theme.darkGreen,
-    },
-    aiTooltipOverlayClose: {
-      position: "absolute",
-      top: moderateHeightScale(6),
-      right: moderateWidthScale(6),
-      padding: moderateWidthScale(4),
-    },
-    aiToolButton: {
-      width: moderateWidthScale(56),
-      height: moderateWidthScale(56),
-      borderRadius: moderateWidthScale(28),
-      backgroundColor: theme.darkGreenLight,
-      alignItems: "center",
-      justifyContent: "center",
-      shadowColor: theme.shadow,
-      shadowOffset: {
-        width: 0,
-        height: 2,
-      },
-      shadowOpacity: 0.25,
-      shadowRadius: 3.84,
-      elevation: 5,
-    },
-    starContainer: {
-      position: "absolute",
-      width: moderateWidthScale(56),
-      height: moderateWidthScale(56),
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    star: {
-      position: "absolute",
-    },
   });
 
 export default function ManageSubscriptionsScreen() {
@@ -474,137 +456,6 @@ export default function ManageSubscriptionsScreen() {
     string | null
   >(null);
   const [addSubscriptionVisible, setAddSubscriptionVisible] = useState(false);
-  const [showAiTooltipOverlay, setShowAiTooltipOverlay] = useState(true);
-  const AI_BUTTON_SIZE = moderateWidthScale(56);
-  const AI_BUTTON_MARGIN = moderateWidthScale(20);
-  // Just above Update button: container (16+48+24) + gap so icon sits a bit higher
-  const AI_BUTTON_BOTTOM_OFFSET =
-    moderateHeightScale(16) +
-    moderateHeightScale(48) +
-    moderateHeightScale(24) +
-    moderateHeightScale(36);
-  const getDefaultAiButtonPosition = () => {
-    const { width: W, height: H } = Dimensions.get("window");
-    return {
-      left: W - AI_BUTTON_MARGIN - AI_BUTTON_SIZE,
-      top: H - AI_BUTTON_BOTTOM_OFFSET - AI_BUTTON_SIZE,
-    };
-  };
-  const initialAiPos = getDefaultAiButtonPosition();
-  const [aiButtonPosition, setAiButtonPosition] = useState<{
-    left: number;
-    top: number;
-  }>(initialAiPos);
-  const aiButtonPositionRef = useRef(aiButtonPosition);
-  const aiButtonDidDragRef = useRef(false);
-
-  const leftValue = useSharedValue(initialAiPos.left);
-  const topValue = useSharedValue(initialAiPos.top);
-  const startLeftValue = useSharedValue(initialAiPos.left);
-  const startTopValue = useSharedValue(initialAiPos.top);
-  const minLeftV = useSharedValue(moderateWidthScale(16));
-  const maxLeftV = useSharedValue(
-    Dimensions.get("window").width - AI_BUTTON_SIZE - moderateWidthScale(16),
-  );
-  const minTopV = useSharedValue(moderateHeightScale(16));
-  const maxTopV = useSharedValue(
-    Dimensions.get("window").height - AI_BUTTON_SIZE - moderateHeightScale(16),
-  );
-  const buttonWidthV = useSharedValue(AI_BUTTON_SIZE);
-
-  useEffect(() => {
-    const { width: W, height: H } = Dimensions.get("window");
-    const padding = moderateWidthScale(16);
-    minLeftV.value = padding;
-    maxLeftV.value = W - AI_BUTTON_SIZE - padding;
-    minTopV.value = padding;
-    maxTopV.value = H - AI_BUTTON_SIZE - padding;
-    buttonWidthV.value = AI_BUTTON_SIZE;
-  }, [minLeftV, maxLeftV, minTopV, maxTopV, buttonWidthV]);
-
-  const syncPositionToState = (
-    left: number,
-    top: number,
-    tx: number,
-    ty: number,
-  ) => {
-    if (Math.abs(tx) > 6 || Math.abs(ty) > 6) {
-      aiButtonDidDragRef.current = true;
-    }
-    setAiButtonPosition({ left, top });
-  };
-
-  const resetDidDragRef = () => {
-    aiButtonDidDragRef.current = false;
-  };
-
-  const panGesture = useMemo(
-    () =>
-      Gesture.Pan()
-        .onStart(() => {
-          "worklet";
-          runOnJS(resetDidDragRef)();
-          startLeftValue.value = leftValue.value;
-          startTopValue.value = topValue.value;
-        })
-        .onUpdate((e) => {
-          "worklet";
-          const newLeft = Math.min(
-            maxLeftV.value,
-            Math.max(minLeftV.value, startLeftValue.value + e.translationX),
-          );
-          const newTop = Math.min(
-            maxTopV.value,
-            Math.max(minTopV.value, startTopValue.value + e.translationY),
-          );
-          leftValue.value = newLeft;
-          topValue.value = newTop;
-        })
-        .onEnd((e) => {
-          "worklet";
-          const halfBtn = buttonWidthV.value / 2;
-          const screenCenterX =
-            (minLeftV.value + maxLeftV.value + buttonWidthV.value) / 2;
-          const buttonCenterX = leftValue.value + halfBtn;
-          const snapLeft =
-            buttonCenterX < screenCenterX ? minLeftV.value : maxLeftV.value;
-          leftValue.value = withSpring(snapLeft, {
-            damping: 18,
-            stiffness: 180,
-          });
-          runOnJS(syncPositionToState)(
-            snapLeft,
-            topValue.value,
-            e.translationX,
-            e.translationY,
-          );
-        }),
-    [
-      leftValue,
-      topValue,
-      startLeftValue,
-      startTopValue,
-      minLeftV,
-      maxLeftV,
-      minTopV,
-      maxTopV,
-      buttonWidthV,
-    ],
-  );
-
-  const animatedButtonStyle = useAnimatedStyle(() => ({
-    left: leftValue.value,
-    top: topValue.value,
-  }));
-
-  useEffect(() => {
-    aiButtonPositionRef.current = aiButtonPosition;
-  }, [aiButtonPosition]);
-
-  const isButtonOnLeft =
-    aiButtonPosition.left + AI_BUTTON_SIZE / 2 <
-    Dimensions.get("window").width / 2;
-
   const [customSuggestions, setCustomSuggestions] = useState<
     Array<{
       id: string;
@@ -616,113 +467,6 @@ export default function ManageSubscriptionsScreen() {
       serviceCounts?: Record<string, number>;
     }>
   >([]);
-
-  const dismissAiTooltipOverlay = () => {
-    setShowAiTooltipOverlay(false);
-  };
-
-  // Animation values for AI tool button
-  const scaleAnim = useRef(new Animated.Value(1)).current;
-  const rotateAnim = useRef(new Animated.Value(0)).current;
-  const starAnimations = useRef(
-    Array.from({ length: 6 }, () => ({
-      opacity: new Animated.Value(0),
-      scale: new Animated.Value(0),
-      rotate: new Animated.Value(0),
-    })),
-  ).current;
-
-  // Start animations when component mounts
-  useEffect(() => {
-    // Pulse/zoom animation for button
-    const pulseAnimation = Animated.loop(
-      Animated.sequence([
-        Animated.timing(scaleAnim, {
-          toValue: 1.1,
-          duration: 1000,
-          useNativeDriver: true,
-        }),
-        Animated.timing(scaleAnim, {
-          toValue: 1,
-          duration: 1000,
-          useNativeDriver: true,
-        }),
-      ]),
-    );
-
-    // Rotate animation for icon
-    const rotateAnimation = Animated.loop(
-      Animated.timing(rotateAnim, {
-        toValue: 1,
-        duration: 3000,
-        useNativeDriver: true,
-      }),
-    );
-
-    // Sparkling stars animation
-    const starAnimationsLoop = starAnimations.map((star, index) => {
-      const angle = (index * 60 * Math.PI) / 180; // 6 stars, 60 degrees apart
-      const radius = moderateWidthScale(35);
-
-      return Animated.loop(
-        Animated.sequence([
-          Animated.parallel([
-            Animated.timing(star.opacity, {
-              toValue: 1,
-              duration: 500,
-              delay: index * 100,
-              useNativeDriver: true,
-            }),
-            Animated.timing(star.scale, {
-              toValue: 1,
-              duration: 500,
-              delay: index * 100,
-              useNativeDriver: true,
-            }),
-          ]),
-          Animated.parallel([
-            Animated.timing(star.opacity, {
-              toValue: 0.3,
-              duration: 1000,
-              useNativeDriver: true,
-            }),
-            Animated.timing(star.scale, {
-              toValue: 0.8,
-              duration: 1000,
-              useNativeDriver: true,
-            }),
-            Animated.timing(star.rotate, {
-              toValue: 1,
-              duration: 2000,
-              useNativeDriver: true,
-            }),
-          ]),
-          Animated.parallel([
-            Animated.timing(star.opacity, {
-              toValue: 1,
-              duration: 500,
-              useNativeDriver: true,
-            }),
-            Animated.timing(star.scale, {
-              toValue: 1,
-              duration: 500,
-              useNativeDriver: true,
-            }),
-          ]),
-        ]),
-      );
-    });
-
-    pulseAnimation.start();
-    rotateAnimation.start();
-    starAnimationsLoop.forEach((anim) => anim.start());
-
-    return () => {
-      pulseAnimation.stop();
-      rotateAnimation.stop();
-      starAnimationsLoop.forEach((anim) => anim.stop());
-    };
-  }, []);
 
   const fetchBusinessServices = async () => {
     try {
@@ -851,18 +595,19 @@ export default function ManageSubscriptionsScreen() {
     [predefinedSuggestions, customSuggestions],
   );
 
-  const getServiceNames = (
+  const getServiceItems = (
     serviceIds: string[],
     serviceCounts?: Record<string, number>,
-  ): string[] => {
+  ) => {
     return serviceIds
       .map((id) => {
         const service = businessServices.find((s) => s.id.toString() === id);
         if (!service) return null;
-        const count = serviceCounts?.[id];
-        return count ? `${service.name} x${count}` : service.name;
+        return { id, name: service.name, count: serviceCounts?.[id] || 1 };
       })
-      .filter((value): value is string => Boolean(value));
+      .filter((value): value is { id: string; name: string; count: number } =>
+        Boolean(value),
+      );
   };
 
   const confirmDeleteSubscription = (
@@ -874,7 +619,7 @@ export default function ManageSubscriptionsScreen() {
     }
 
     Alert.alert(
-      "Delete subscription plan",
+      "Delete membership",
       `Are you sure you want to delete "${subscriptionName}"?`,
       [
         {
@@ -1079,7 +824,6 @@ export default function ManageSubscriptionsScreen() {
 
   const onClickAi = async () => {
     if (!requireStripeToCreate()) return;
-    if (showAiTooltipOverlay) dismissAiTooltipOverlay();
     if (generatedResult) {
       setModalVisible(true);
     } else {
@@ -1143,14 +887,46 @@ export default function ManageSubscriptionsScreen() {
           <Skeleton screenType="BusinessPlans" styles={styles} />
         ) : (
           <>
-            <View style={styles.titleSec}>
-              <Text style={styles.title}>{t("createSubscriptionPlans")}</Text>
-              <Text style={styles.subtitle}>
-                {canCreatePlans
-                  ? "Offer monthly memberships to attract loyal customers and secure recurring revenue."
-                  : t("subscriptionPlansConnectStripeHint")}
-              </Text>
-            </View>
+            <Text style={styles.sectionLabel}>
+              {canCreatePlans
+                ? "Customer membership plans"
+                : t("subscriptionPlansConnectStripeHint")}
+            </Text>
+
+            {canCreatePlans && (
+              <View style={styles.actionRow}>
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  style={styles.addMembershipButton}
+                  onPress={handleOpenAddSubscription}
+                  accessibilityRole="button"
+                >
+                  <Feather
+                    name="plus"
+                    size={moderateWidthScale(18)}
+                    color={theme.white}
+                  />
+                  <Text style={styles.addMembershipText} numberOfLines={1}>
+                    Add Membership
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  style={styles.createAiButton}
+                  onPress={onClickAi}
+                  accessibilityRole="button"
+                >
+                  <MaterialIcons
+                    name="auto-awesome"
+                    size={moderateWidthScale(18)}
+                    color={theme.orangeBrown}
+                  />
+                  <Text style={styles.createAiText} numberOfLines={1}>
+                    Create with AI
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
 
             {!canCreatePlans && (
               <View style={styles.infoCard}>
@@ -1183,130 +959,95 @@ export default function ManageSubscriptionsScreen() {
             ) : (
               <View style={styles.subscriptionsContainer}>
                 {subscriptions.map((subscription) => {
-                  const serviceNames = getServiceNames(
+                  const serviceItems = getServiceItems(
                     subscription.serviceIds,
                     subscription.serviceCounts,
                   );
+                  const description = subscription.description?.trim();
+                  const showDescription =
+                    !!description &&
+                    description.toLowerCase() !==
+                      subscription.packageName.trim().toLowerCase();
+                  const visits = Number(subscription.servicesPerMonth) || 0;
                   return (
                     <View key={subscription.id} style={styles.subscriptionCard}>
                       <View style={styles.subscriptionCardHeader}>
-                        <View style={styles.subscriptionInfo}>
-                          <Text style={styles.subscriptionName}>
-                            {subscription.packageName}
-                          </Text>
-                          {subscription.description ? (
-                            <Text
-                              style={styles.subscriptionDescription}
-                              numberOfLines={2}
-                            >
-                              {subscription.description}
-                            </Text>
-                          ) : null}
-                        </View>
+                        <Text style={styles.subscriptionName}>
+                          {subscription.packageName}
+                        </Text>
                         <TouchableOpacity
-                          style={{
-                            width: moderateWidthScale(50),
-                            alignItems: "flex-end",
-                            justifyContent: "center",
-                          }}
+                          style={styles.editButton}
                           onPress={() =>
                             handleEditSubscription(subscription.id)
                           }
+                          accessibilityRole="button"
+                          accessibilityLabel={`Edit ${subscription.packageName}`}
                         >
-                          <Feather
-                            name="chevron-right"
-                            size={moderateWidthScale(20)}
-                            color={theme.darkGreen}
-                          />
+                          <Text style={styles.editText}>Edit</Text>
                         </TouchableOpacity>
                       </View>
-                      <View style={styles.subscriptionSeparator} />
-                      <View style={styles.subscriptionCardContent}>
-                        <View style={styles.subscriptionDetailSection}>
-                          <View>
-                            <Text style={styles.subscriptionDetailTitle}>
-                              Membership Details
-                            </Text>
-                          </View>
-                          <View style={styles.subscriptionDetailPrice}>
-                            <Text style={styles.subscriptionPriceText}>
-                              {formatPrice(
-                                subscription.price,
-                                subscription.currency,
-                              )}
-                            </Text>
-                            <TouchableOpacity
-                              onPress={() =>
-                                confirmDeleteSubscription(
-                                  subscription.id,
-                                  subscription.packageName,
-                                )
-                              }
-                            >
-                              {deletingSubscriptionId === subscription.id ? (
-                                <ActivityIndicator
-                                  size="small"
-                                  color={theme.red}
-                                />
-                              ) : (
-                                <MaterialIcons
-                                  name="delete-outline"
-                                  size={moderateWidthScale(19)}
-                                  color={theme.red}
-                                />
-                              )}
-                            </TouchableOpacity>
-                          </View>
-                        </View>
-                        <View style={styles.subscriptionServicesList}>
-                          {serviceNames.map((serviceName, index) => (
-                            <Text
-                              key={index}
-                              style={styles.subscriptionServiceItem}
-                            >
-                              {index + 1}. {serviceName}
-                            </Text>
-                          ))}
-                        </View>
+                      {showDescription ? (
+                        <Text
+                          style={styles.subscriptionDescription}
+                          numberOfLines={2}
+                        >
+                          {description}
+                        </Text>
+                      ) : null}
+                      <View style={styles.priceRow}>
+                        <Text style={styles.priceText}>
+                          {formatPrice(subscription.price)}
+                        </Text>
+                        <Text style={styles.perMonthText}>/month</Text>
                       </View>
+                      <View style={styles.accentBar} />
+                      {serviceItems.length > 0 ? (
+                        <>
+                          <Text style={styles.includedLabel}>
+                            Included each month
+                          </Text>
+                          <View style={styles.includedList}>
+                            {serviceItems.map((item) => (
+                              <View key={item.id} style={styles.includedItem}>
+                                <View style={styles.checkCircle}>
+                                  <Feather
+                                    name="check"
+                                    size={moderateWidthScale(13)}
+                                    color={theme.white}
+                                  />
+                                </View>
+                                <Text style={styles.includedText}>
+                                  {item.count} {item.name}
+                                </Text>
+                              </View>
+                            ))}
+                          </View>
+                        </>
+                      ) : null}
+                      {visits > 0 ? (
+                        <View style={styles.visitsPill}>
+                          <Feather
+                            name="calendar"
+                            size={moderateWidthScale(18)}
+                            color={theme.orangeBrownText}
+                          />
+                          <Text style={styles.visitsText}>
+                            Up to {visits} visit{visits === 1 ? "" : "s"} per
+                            month
+                          </Text>
+                        </View>
+                      ) : null}
                     </View>
                   );
                 })}
               </View>
             )}
 
-            {canCreatePlans && (
+            {canCreatePlans && unselectedSuggestions.length > 0 && (
               <View style={styles.popularSection}>
-              <View
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                }}
-              >
                 <Text style={styles.popularTitle}>
                   Popular starting points:
                 </Text>
-                <TouchableOpacity
-                  activeOpacity={0.7}
-                  onPress={handleOpenAddSubscription}
-                  style={{
-                    width: moderateWidthScale(20),
-                    height: moderateWidthScale(20),
-                    borderRadius: moderateWidthScale(20 / 2),
-                    backgroundColor: theme.orangeBrown,
-                    alignItems: "center",
-                    justifyContent: "center",
-                    overflow: "hidden",
-                  }}
-                >
-                  <Feather
-                    name="plus"
-                    size={moderateWidthScale(16)}
-                    color={theme.white}
-                  />
-                </TouchableOpacity>
-              </View>
 
               {unselectedSuggestions.length > 0 &&
                 unselectedSuggestions.map((suggestion) => {
@@ -1354,120 +1095,11 @@ export default function ManageSubscriptionsScreen() {
         )}
       </ScrollView>
 
-      {!loading && canCreatePlans && (
-        <Portal>
-          <GestureDetector gesture={panGesture}>
-            <AnimatedReanimated.View
-              style={[styles.aiToolButtonContainer, animatedButtonStyle]}
-              pointerEvents="box-none"
-            >
-              {/* Sparkling Stars */}
-              {starAnimations.map((star, index) => {
-                const angle = (index * 60 * Math.PI) / 180; // 6 stars, 60 degrees apart
-                const radius = moderateWidthScale(35);
-                const x = Math.cos(angle) * radius;
-                const y = Math.sin(angle) * radius;
-
-                const rotateInterpolate = star.rotate.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: ["0deg", "360deg"],
-                });
-
-                return (
-                  <Animated.View
-                    key={index}
-                    style={[
-                      {
-                        position: "absolute",
-                        left:
-                          moderateWidthScale(28) + x - moderateWidthScale(6),
-                        top:
-                          moderateHeightScale(28) + y - moderateHeightScale(6),
-                        transform: [
-                          { scale: star.scale },
-                          { rotate: rotateInterpolate },
-                        ],
-                        opacity: star.opacity,
-                      },
-                    ]}
-                  >
-                    <MaterialIcons
-                      name="star"
-                      size={moderateWidthScale(12)}
-                      color={theme.white}
-                    />
-                  </Animated.View>
-                );
-              })}
-
-              {/* First-time overlay: tap to create subscription with AI */}
-              {showAiTooltipOverlay && (
-                <View
-                  style={
-                    isButtonOnLeft
-                      ? styles.aiTooltipOverlayBoxRight
-                      : styles.aiTooltipOverlayBox
-                  }
-                  pointerEvents="box-none"
-                >
-                  <TouchableOpacity
-                    style={styles.aiTooltipOverlayClose}
-                    onPress={dismissAiTooltipOverlay}
-                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                  >
-                    <Feather
-                      name="x"
-                      size={moderateWidthScale(18)}
-                      color={theme.darkGreen}
-                    />
-                  </TouchableOpacity>
-                  <Text style={styles.aiTooltipOverlayText}>
-                    {t("tapToCreateSubscriptionWithAi")}
-                  </Text>
-                </View>
-              )}
-
-              {/* Ai Tool Button with Zoom Animation */}
-              <TouchableOpacity
-                activeOpacity={0.8}
-                onPress={() => {
-                  // if (!aiButtonDidDragRef.current)
-                  onClickAi();
-                }}
-              >
-                <Animated.View
-                  style={[
-                    styles.aiToolButton,
-                    {
-                      transform: [
-                        { scale: scaleAnim },
-                        {
-                          rotate: rotateAnim.interpolate({
-                            inputRange: [0, 1],
-                            outputRange: ["0deg", "360deg"],
-                          }),
-                        },
-                      ],
-                    },
-                  ]}
-                >
-                  <MaterialIcons
-                    name="auto-awesome"
-                    size={moderateWidthScale(28)}
-                    color={theme.white}
-                  />
-                </Animated.View>
-              </TouchableOpacity>
-            </AnimatedReanimated.View>
-          </GestureDetector>
-        </Portal>
-      )}
-
       {!loading && (
         <View style={styles.continueButtonContainer}>
           {canCreatePlans ? (
             <Button
-              title={t("update")}
+              title={t("updateProfileToApply")}
               onPress={handleUpdate}
               disabled={isUpdating}
             />
@@ -1484,6 +1116,12 @@ export default function ManageSubscriptionsScreen() {
         visible={editSubscriptionVisible}
         onClose={handleCloseEditSubscription}
         subscriptionId={editingSubscriptionId}
+        onDelete={(id) => {
+          const name =
+            subscriptions.find((sub) => sub.id === id)?.packageName ?? "";
+          handleCloseEditSubscription();
+          confirmDeleteSubscription(id, name);
+        }}
       />
 
       <EditSubscriptionBottomSheet
