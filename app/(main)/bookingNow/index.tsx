@@ -2037,6 +2037,8 @@ export default function BookingNow() {
     if (!isValidTimeSlot(slot)) return true;
     const today = dayjs().startOf("day");
     const selectedDay = selectedDate.startOf("day");
+    // A day left behind (app open past midnight): every time has passed.
+    if (selectedDay.isBefore(today, "day")) return true;
     if (!selectedDay.isSame(today, "day")) return false;
     const now = dayjs();
     const [hours, minutes] = slot.split(":").map(Number);
