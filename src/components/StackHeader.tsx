@@ -1,11 +1,5 @@
 import React, { useMemo } from "react";
-import {
-  StatusBar,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
@@ -30,8 +24,6 @@ type StackHeaderProps = {
   showLine?: boolean;
   /** When true, uses darkGreen → darkGreenLight gradient instead of solid fill */
   useGradient?: boolean;
-  /** "light" = cream bar with dark title and chevron back (client sample 10-21). */
-  variant?: "dark" | "light";
 };
 
 const createStyles = (theme: Theme) =>
@@ -40,12 +32,6 @@ const createStyles = (theme: Theme) =>
       paddingHorizontal: moderateWidthScale(20),
       paddingBottom: moderateHeightScale(12),
       backgroundColor: theme.darkGreen,
-    },
-    headerContainerLight: {
-      backgroundColor: theme.background,
-    },
-    headerTitleLight: {
-      color: theme.darkGreen,
     },
     headerContainerTransparent: {
       backgroundColor: "transparent",
@@ -86,9 +72,7 @@ export default function StackHeader({
   rightAccessibilityLabel,
   showLine = true,
   useGradient = false,
-  variant = "dark",
 }: StackHeaderProps) {
-  const isLight = variant === "light";
   const { colors } = useTheme();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
@@ -114,15 +98,12 @@ export default function StackHeader({
         accessibilityLabel="Back"
       >
         <MaterialIcons
-          name={isLight ? "chevron-left" : "keyboard-backspace"}
-          size={iconScale(isLight ? 30 : 24)}
-          color={isLight ? theme.darkGreen : theme.white}
-          style={isLight ? { marginLeft: -iconScale(8) } : undefined}
+          name="keyboard-backspace"
+          size={iconScale(24)}
+          color={theme.white}
         />
       </TouchableOpacity>
-      <Text style={[styles.headerTitle, isLight && styles.headerTitleLight]}>
-        {title}
-      </Text>
+      <Text style={styles.headerTitle}>{title}</Text>
       {rightIcon ? (
         onRightPress ? (
           <TouchableOpacity
@@ -146,14 +127,12 @@ export default function StackHeader({
 
   const containerStyle = [
     styles.headerContainer,
-    isLight && styles.headerContainerLight,
     useGradient && styles.headerContainerTransparent,
     { paddingTop: insets.top + moderateHeightScale(12) },
   ];
 
   return (
     <View>
-      {isLight ? <StatusBar barStyle="dark-content" /> : null}
       {useGradient ? (
         <LinearGradient
           colors={[theme.darkGreen, theme.darkGreenLight]}
@@ -166,7 +145,7 @@ export default function StackHeader({
       ) : (
         <View style={containerStyle}>{headerContent}</View>
       )}
-      {showLine && !isLight && <View style={styles.line} />}
+      {showLine && <View style={styles.line} />}
     </View>
   );
 }

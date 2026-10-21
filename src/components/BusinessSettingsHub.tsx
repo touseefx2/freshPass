@@ -42,7 +42,7 @@ export default function BusinessSettingsHub({
 
   return (
     <SafeAreaView edges={["bottom"]} style={styles.container}>
-      <StackHeader title="" />
+      <StackHeader title={title} />
       <ScrollView
         style={styles.content}
         contentContainerStyle={styles.contentContainer}

@@ -24,8 +24,11 @@ import {
 } from "@/src/theme/dimensions";
 import {
   addService,
+  CompleteProfileState,
   updateService,
 } from "@/src/state/slices/completeProfileSlice";
+
+export type EditableService = CompleteProfileState["services"][number];
 import StackHeader from "@/src/components/StackHeader";
 import Button from "@/src/components/button";
 
@@ -33,8 +36,11 @@ interface EditServiceBottomSheetProps {
   visible: boolean;
   onClose: () => void;
   serviceId: string | null;
-  /** Called after a save is written to the list (e.g. to sync it to the server). */
-  onSaved?: () => void;
+  /**
+   * Saves to the server instead of the local list. The editor shows a loader
+   * and closes only when this resolves true; on false it stays open as typed.
+   */
+  onSubmit?: (service: EditableService, isNew: boolean) => Promise<boolean>;
   /** Shown as "Delete Service" when editing; called after the user confirms. */
   onDelete?: (serviceId: string) => void;
   deleting?: boolean;
@@ -199,7 +205,7 @@ export default function EditServiceBottomSheet({
   visible,
   onClose,
   serviceId,
-  onSaved,
+  onSubmit,
   onDelete,
   deleting = false,
 }: EditServiceBottomSheetProps) {
@@ -221,6 +227,7 @@ export default function EditServiceBottomSheet({
   const [customMinutes, setCustomMinutes] = useState("");
   const [price, setPrice] = useState("");
   const [currency] = useState(service?.currency || "USD");
+  const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<{
     name?: string;
     duration?: string;
@@ -303,7 +310,8 @@ export default function EditServiceBottomSheet({
     setErrors((e) => ({ ...e, price: undefined }));
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    if (saving || deleting) return;
     const newErrors: typeof errors = {};
 
     if (isNameEditable) {
@@ -332,33 +340,27 @@ export default function EditServiceBottomSheet({
     const descriptionValue =
       serviceDescription.trim() || serviceName.trim();
 
-    if (serviceId === null) {
-      dispatch(
-        addService({
-          id: `custom-${Date.now()}`,
-          name: serviceName.trim(),
-          description: descriptionValue,
-          hours,
-          minutes,
-          price: priceValue,
-          currency,
-        }),
-      );
-    } else if (serviceId && service) {
-      dispatch(
-        updateService({
-          id: serviceId,
-          name: isNameEditable ? serviceName.trim() : service.name,
-          description: descriptionValue,
-          hours,
-          minutes,
-          price: priceValue,
-          currency,
-        }),
-      );
+    const isNew = serviceId === null;
+    if (!isNew && !service) return;
+    const next: EditableService = {
+      id: isNew ? `custom-${Date.now()}` : serviceId!,
+      name: isNew || isNameEditable ? serviceName.trim() : service!.name,
+      description: descriptionValue,
+      hours,
+      minutes,
+      price: priceValue,
+      currency,
+    };
+
+    if (onSubmit) {
+      setSaving(true);
+      const ok = await onSubmit(next, isNew);
+      setSaving(false);
+      if (ok) onClose();
+      return;
     }
 
-    onSaved?.();
+    dispatch(isNew ? addService(next) : updateService(next));
     onClose();
   };
 
@@ -388,9 +390,8 @@ export default function EditServiceBottomSheet({
         style={styles.overlay}
         entering={SlideInDown.duration(260).reduceMotion(ReduceMotion.System)}
       >
-        <StatusBar barStyle="dark-content" />
+        <StatusBar barStyle="light-content" />
         <StackHeader
-          variant="light"
           title={serviceId ? "Edit Service" : "Add Service"}
           onBack={onClose}
         />
@@ -546,6 +547,7 @@ export default function EditServiceBottomSheet({
             <Button
               title={serviceId ? "Save Changes" : "Add Service"}
               onPress={handleSave}
+              loading={saving}
               disabled={deleting}
               backgroundColor={theme.darkGreen}
             />
@@ -553,7 +555,7 @@ export default function EditServiceBottomSheet({
               <TouchableOpacity
                 style={styles.deleteButton}
                 onPress={confirmDelete}
-                disabled={deleting}
+                disabled={deleting || saving}
                 accessibilityRole="button"
               >
                 {deleting ? (

@@ -42,7 +42,7 @@ const createStyles = (theme: Theme) =>
       paddingHorizontal: moderateWidthScale(20),
     },
     contentContainer: {
-      paddingTop: moderateHeightScale(8),
+      paddingTop: moderateHeightScale(20),
       paddingBottom: moderateHeightScale(24),
       gap: moderateHeightScale(20),
     },
@@ -328,7 +328,7 @@ export default function ManageServicesScreen() {
         if (seq !== undefined && seq !== changeSeq.current) return;
         setServiceIdMap(backendIdMap);
         dispatch(setServices(mapped));
-      } else {
+      } else if (!silent) {
         setServiceIdMap({});
         dispatch(setServices([]));
       }
@@ -340,7 +340,7 @@ export default function ManageServicesScreen() {
         "error",
         3000,
       );
-      dispatch(setServices([]));
+      if (!silent) dispatch(setServices([]));
     } finally {
       setLoading(false);
     }
@@ -522,11 +522,9 @@ export default function ManageServicesScreen() {
     syncServices();
   }, [pendingSync, isUpdating, services]);
 
-  const syncServices = async () => {
-    const seq = changeSeq.current;
-    setIsUpdating(true);
+  const postServices = async (list: typeof services): Promise<boolean> => {
     try {
-      const servicesPayload = services.map((service) => {
+      const servicesPayload = list.map((service) => {
         const isCustom = service.id.startsWith("custom-");
         const description = service.description ?? service.name;
         const base = {
@@ -541,22 +539,16 @@ export default function ManageServicesScreen() {
         return { template_id: Number(service.id), ...base };
       });
 
-      const servicesString = JSON.stringify(servicesPayload);
-
       const formData = new FormData();
-      formData.append("services", servicesString);
-
-      const config = {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      };
+      formData.append("services", JSON.stringify(servicesPayload));
 
       const response = await ApiService.post<{
         success: boolean;
         message: string;
         data?: any;
-      }>(businessEndpoints.profile, formData, config);
+      }>(businessEndpoints.profile, formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
 
       if (response.success) {
         showBanner(
@@ -565,15 +557,14 @@ export default function ManageServicesScreen() {
           "success",
           3000,
         );
-        await fetchServices(true, seq);
-      } else {
-        showBanner(
-          "Error",
-          response.message || "Failed to update services",
-          "error",
-          3000,
-        );
+        return true;
       }
+      showBanner(
+        "Error",
+        response.message || "Failed to update services",
+        "error",
+        3000,
+      );
     } catch (error: any) {
       Logger.error("Failed to update services:", error);
       showBanner(
@@ -582,14 +573,44 @@ export default function ManageServicesScreen() {
         "error",
         3000,
       );
-    } finally {
-      setIsUpdating(false);
     }
+    return false;
+  };
+
+  // Select / View more change the list first; on failure the re-read puts
+  // the list back to what the server has.
+  const syncServices = async () => {
+    const seq = changeSeq.current;
+    setIsUpdating(true);
+    await postServices(services);
+    await fetchServices(true, seq);
+    setIsUpdating(false);
+  };
+
+  // Editor save: the server goes first (editor shows a loader); the list only
+  // changes once it succeeded, and the editor stays open if it failed.
+  const handleSubmitService = async (
+    service: (typeof services)[number],
+    isNew: boolean,
+  ): Promise<boolean> => {
+    const next = isNew
+      ? [...services, service]
+      : services.map((s) => (s.id === service.id ? service : s));
+    changeSeq.current += 1;
+    const seq = changeSeq.current;
+    setIsUpdating(true);
+    const ok = await postServices(next);
+    if (ok) {
+      dispatch(setServices(next));
+      await fetchServices(true, seq);
+    }
+    setIsUpdating(false);
+    return ok;
   };
 
   return (
     <SafeAreaView edges={["bottom"]} style={styles.container}>
-      <StackHeader variant="light" title={t("individualServicesListTitle")} />
+      <StackHeader title={t("individualServicesListTitle")} />
       <ScrollView
         style={styles.content}
         contentContainerStyle={styles.contentContainer}
@@ -675,7 +696,7 @@ export default function ManageServicesScreen() {
         visible={editServiceVisible}
         onClose={handleCloseEditService}
         serviceId={editingServiceId}
-        onSaved={() => markChanged()}
+        onSubmit={handleSubmitService}
         onDelete={handleDeleteService}
         deleting={deletingServiceId !== null}
       />
