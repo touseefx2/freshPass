@@ -7,6 +7,7 @@ import {
   StatusBar,
   BackHandler,
   ActivityIndicator,
+  TouchableOpacity,
 } from "react-native";
 import { useRouter, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useTheme, useAppSelector, useAppDispatch } from "@/src/hooks/hooks";
@@ -49,6 +50,10 @@ import {
 } from "@/src/utils/customerSubscriptionLifecycle";
 import { Feather, MaterialIcons } from "@expo/vector-icons";
 import FlowHeader from "@/src/components/reelFlow/flowHeader";
+import {
+  requestReviewEdit,
+  type ReviewEditTarget,
+} from "@/src/components/booking/reviewEdit";
 import FlowFooter from "@/src/components/reelFlow/flowFooter";
 import {
   FlowCard,
@@ -306,6 +311,14 @@ const createStyles = (theme: Theme) =>
       color: theme.lightGreen,
       lineHeight: fontSize.size20,
     },
+    ckEdit: {
+      width: widthScale(28),
+      height: widthScale(28),
+      borderRadius: widthScale(14),
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: theme.lightGreen07,
+    },
     ckCard: {
       padding: moderateWidthScale(16),
       gap: moderateHeightScale(12),
@@ -347,9 +360,6 @@ const createStyles = (theme: Theme) =>
       color: theme.darkGreen,
       fontVariant: ["tabular-nums"],
     },
-    ckSection: {
-      gap: moderateHeightScale(10),
-    },
     ckPhotos: {
       flexDirection: "row",
       flexWrap: "wrap",
@@ -364,7 +374,10 @@ const createStyles = (theme: Theme) =>
     ckNote: {
       flexDirection: "row",
       gap: moderateWidthScale(10),
-      padding: moderateWidthScale(16),
+    },
+    ckExtrasBody: {
+      paddingHorizontal: moderateWidthScale(16),
+      paddingBottom: moderateHeightScale(14),
     },
     ckNoteText: {
       flex: 1,
@@ -1606,14 +1619,30 @@ function CheckoutContent() {
           : String(staffExperience);
   const isPayNow = paymentMethod === "payNow";
 
+  // Tapping a row goes back to that booking step; bookingNow then returns
+  // straight here (no stepping through the rest again).
+  const editStep = (target: ReviewEditTarget) => {
+    if (processingPayment || policyConfirming) return;
+    requestReviewEdit(target);
+    handleBackNavigation();
+  };
+
   const summaryRow = (
-    key: string,
+    key: ReviewEditTarget,
     icon: React.ReactNode,
     title: string,
     sub: string | null,
     first: boolean,
   ) => (
-    <View key={key} style={[styles.ckRow, !first && styles.ckRowBorder]}>
+    <TouchableOpacity
+      key={key}
+      style={[styles.ckRow, !first && styles.ckRowBorder]}
+      onPress={() => editStep(key)}
+      disabled={processingPayment}
+      activeOpacity={0.7}
+      accessibilityRole="button"
+      accessibilityLabel={`${t("edit")} ${title}`}
+    >
       {icon}
       <View style={styles.ckRowText}>
         <Text style={styles.ckRowTitle} numberOfLines={2}>
@@ -1625,7 +1654,14 @@ function CheckoutContent() {
           </Text>
         ) : null}
       </View>
-    </View>
+      <View style={styles.ckEdit}>
+        <MaterialIcons
+          name="edit"
+          size={moderateWidthScale(14)}
+          color={theme.darkGreen}
+        />
+      </View>
+    </TouchableOpacity>
   );
 
   const roundIcon = (name: React.ComponentProps<typeof MaterialIcons>["name"]) => (
@@ -1640,7 +1676,7 @@ function CheckoutContent() {
 
   const summaryRows = [
     summaryRow(
-      "when",
+      "time",
       roundIcon("event"),
       formatDateDisplay(reduxSelectedDate || ""),
       reduxSelectedTimeSlot
@@ -1822,10 +1858,19 @@ function CheckoutContent() {
           renderPlanCard()
         )}
 
-        {attachedImageUris.length > 0 ? (
-          <View style={styles.ckSection}>
-            <SectionLabel label={t("bkFlowPhotos")} />
-            <View style={styles.ckPhotos}>
+        {/* Photos & note: always shown so they can be added or changed here */}
+        <FlowCard style={styles.ckSummary}>
+          {summaryRow(
+            "extras",
+            roundIcon("add-a-photo"),
+            t("bkFlowStepExtras"),
+            attachedImageUris.length > 0 || note.trim()
+              ? null
+              : t("bkFlowExtrasSubtitle"),
+            true,
+          )}
+          {attachedImageUris.length > 0 ? (
+            <View style={[styles.ckExtrasBody, styles.ckPhotos]}>
               {attachedImageUris.map((uri, index) => (
                 <AppImage
                   key={`${uri}-${index}`}
@@ -1835,13 +1880,9 @@ function CheckoutContent() {
                 />
               ))}
             </View>
-          </View>
-        ) : null}
-
-        {note.trim() ? (
-          <View style={styles.ckSection}>
-            <SectionLabel label={t("bkFlowNote")} />
-            <FlowCard style={styles.ckNote}>
+          ) : null}
+          {note.trim() ? (
+            <View style={[styles.ckExtrasBody, styles.ckNote]}>
               <MaterialIcons
                 name="format-quote"
                 size={moderateWidthScale(22)}
@@ -1850,9 +1891,9 @@ function CheckoutContent() {
               <Text style={styles.ckNoteText} numberOfLines={8}>
                 {note.trim()}
               </Text>
-            </FlowCard>
-          </View>
-        ) : null}
+            </View>
+          ) : null}
+        </FlowCard>
       </ScrollView>
 
       {!isSubscriptionMode ? (

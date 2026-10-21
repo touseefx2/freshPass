@@ -92,6 +92,7 @@ import Animated, {
 import AddServiceBottomSheet from "@/src/components/AddServiceBottomSheet";
 import OutcomeConfirmSheet from "@/src/components/OutcomeConfirmSheet";
 import ImagePickerModal from "@/src/components/imagePickerModal";
+import { takeReviewEdit } from "@/src/components/booking/reviewEdit";
 import FlowHeader from "@/src/components/reelFlow/flowHeader";
 import FlowFooter from "@/src/components/reelFlow/flowFooter";
 import FlowButton from "@/src/components/reelFlow/flowButton";
@@ -1998,12 +1999,24 @@ export default function BookingNow() {
     [apiSlots],
   );
 
-  // A slot taken since it was picked can't be booked: drop it after a refetch.
+  // A slot taken (or passed) since it was picked can't be booked: drop it
+  // after a refetch and say why. A failed refetch keeps it (nothing known).
   useEffect(() => {
-    if (slotsLoading || !selectedTimeSlot) return;
-    if (!apiSlots.some((slot) => slot.start === selectedTimeSlot)) {
+    if (slotsLoading || slotsError || !selectedTimeSlot) return;
+    if (
+      isSlotDisabled(selectedTimeSlot) ||
+      !apiSlots.some((slot) => slot.start === selectedTimeSlot)
+    ) {
       setSelectedTimeSlotState(null);
       dispatch(setSelectedTimeSlot(null));
+      showBanner(
+        t("bkFlowSlotTakenTitle"),
+        t("bkFlowSlotTakenMessage", {
+          time: convertTo12Hour(selectedTimeSlot),
+        }),
+        "warning",
+        4000,
+      );
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [apiSlots, slotsLoading]);
@@ -2213,6 +2226,35 @@ export default function BookingNow() {
       if (index >= 0) goTo(index, index > safeIndex ? 1 : -1);
     },
     [goTo, safeIndex, steps],
+  );
+
+  // Opened from a tapped checkout row: that step's footer goes straight
+  // back to checkout instead of through the remaining steps.
+  const [returnToReview, setReturnToReview] = useState(false);
+  // Back from checkout while already on Date & time (edit or plain back):
+  // the step doesn't change, so refetch here or old slots would show.
+  const stepKeyRef = useRef(stepKey);
+  stepKeyRef.current = stepKey;
+  const fetchSlotsRef = useRef(fetchAvailableSlots);
+  fetchSlotsRef.current = fetchAvailableSlots;
+  const focusedOnceRef = useRef(false);
+  useFocusEffect(
+    useCallback(() => {
+      const firstFocus = !focusedOnceRef.current;
+      focusedOnceRef.current = true;
+      const target = takeReviewEdit();
+      const index = target ? steps.indexOf(target) : -1;
+      if (index >= 0) {
+        setReturnToReview(true);
+        if (steps[index] !== stepKeyRef.current) {
+          goTo(index, -1);
+          return;
+        }
+      }
+      if (!firstFocus && stepKeyRef.current === "time") {
+        fetchSlotsRef.current();
+      }
+    }, [goTo, steps]),
   );
 
   const allowLeaveRef = useRef(false);
@@ -2629,6 +2671,7 @@ export default function BookingNow() {
       dispatch(setSelectedTimeSlot(selectedTimeSlot));
       dispatch(setSelectedNote(note));
       dispatch(setBookingTryOnImageUrls(tryOnImageUrls));
+      setReturnToReview(false);
       router.push({
         pathname: "/(main)/bookingNow/checkout",
         params: {
@@ -2709,6 +2752,7 @@ export default function BookingNow() {
     dispatch(setSelectedTimeSlot(selectedTimeSlot));
     dispatch(setSelectedNote(note));
     dispatch(setBookingTryOnImageUrls(tryOnImageUrls));
+    setReturnToReview(false);
     router.push({
       pathname: "/(main)/bookingNow/checkout",
       params: {
@@ -3600,7 +3644,23 @@ export default function BookingNow() {
           : null;
 
   type FooterAction = React.ComponentProps<typeof FlowFooter>["primary"];
-  const footerPrimary: FooterAction = !isLastStep
+  // Back to checkout once a time is picked (staff edits still pass through
+  // Date & time, since a new staff clears the slot).
+  const canReturnToReview =
+    returnToReview && !isReschedule && safeIndex >= steps.indexOf("time");
+  const footerPrimary: FooterAction = canReturnToReview
+    ? {
+        label: t("bkFlowBackToReview"),
+        trailingIcon: "chevron-right",
+        loading: continueLoading,
+        // Wait for the fresh slots so a just-taken time can't go through.
+        disabled:
+          continueLoading ||
+          !!blockedHint ||
+          (stepKey === "time" && slotsLoading),
+        onPress: handleContinue,
+      }
+    : !isLastStep
     ? {
         label: t("bkFlowNext", {
           step: t(STEP_LABEL_KEYS[steps[safeIndex + 1]]),
