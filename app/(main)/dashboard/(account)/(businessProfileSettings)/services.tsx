@@ -265,6 +265,13 @@ export default function ManageServicesScreen() {
   const [loading, setLoading] = useState(true);
   const [isUpdating, setIsUpdating] = useState(false);
   const [pendingSync, setPendingSync] = useState(false);
+  // Bumped on every local change; a refresh started before the latest change
+  // is dropped so the server's older list can't overwrite it.
+  const changeSeq = useRef(0);
+  const markChanged = () => {
+    changeSeq.current += 1;
+    setPendingSync(true);
+  };
   const idsBeforeSheet = useRef("");
   const [editingServiceId, setEditingServiceId] = useState<string | null>(null);
   const [editServiceVisible, setEditServiceVisible] = useState(false);
@@ -281,7 +288,7 @@ export default function ManageServicesScreen() {
   const businessCatId =
     businessCategory?.id || businessStatus?.business_category?.id;
 
-  const fetchServices = async (silent = false) => {
+  const fetchServices = async (silent = false, seq?: number) => {
     if (!silent) setLoading(true);
     try {
       const response = await ApiService.get<{
@@ -318,6 +325,7 @@ export default function ManageServicesScreen() {
           backendIdMap[key] = service.id;
         });
 
+        if (seq !== undefined && seq !== changeSeq.current) return;
         setServiceIdMap(backendIdMap);
         dispatch(setServices(mapped));
       } else {
@@ -427,7 +435,7 @@ export default function ManageServicesScreen() {
     } else {
       dispatch(addService(suggestion));
     }
-    setPendingSync(true);
+    markChanged();
   };
 
   const handleViewMore = () => {
@@ -438,11 +446,12 @@ export default function ManageServicesScreen() {
   const handleCloseServiceList = () => {
     setServiceListVisible(false);
     if (services.map((s) => s.id).join(",") !== idsBeforeSheet.current) {
-      setPendingSync(true);
+      markChanged();
     }
   };
 
   const handleDeleteService = async (serviceId: string) => {
+    changeSeq.current += 1;
     const backendServiceId = serviceIdMap[serviceId];
 
     // If service exists on backend, delete via API
@@ -514,6 +523,7 @@ export default function ManageServicesScreen() {
   }, [pendingSync, isUpdating, services]);
 
   const syncServices = async () => {
+    const seq = changeSeq.current;
     setIsUpdating(true);
     try {
       const servicesPayload = services.map((service) => {
@@ -555,7 +565,7 @@ export default function ManageServicesScreen() {
           "success",
           3000,
         );
-        fetchServices(true);
+        await fetchServices(true, seq);
       } else {
         showBanner(
           "Error",
@@ -665,7 +675,7 @@ export default function ManageServicesScreen() {
         visible={editServiceVisible}
         onClose={handleCloseEditService}
         serviceId={editingServiceId}
-        onSaved={() => setPendingSync(true)}
+        onSaved={() => markChanged()}
         onDelete={handleDeleteService}
         deleting={deletingServiceId !== null}
       />

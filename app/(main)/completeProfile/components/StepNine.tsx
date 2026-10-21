@@ -465,7 +465,7 @@ export default function StepNine() {
       ) : (
         <>
           <View style={styles.titleSec}>
-            <Text style={styles.title}>Let's add your first service</Text>
+            <Text style={styles.title}>Your Services</Text>
             <Text style={styles.subtitle}>
               This is how clients will book and pay for your work. You can
               always add more later.
