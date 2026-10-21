@@ -1,13 +1,18 @@
 import React, { useMemo, useState, useEffect } from "react";
 import {
+  BackHandler,
+  StatusBar,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
-import { AntDesign, Feather } from "@expo/vector-icons";
-import { useTranslation } from "react-i18next";
+import { Feather } from "@expo/vector-icons";
+import { Portal } from "@gorhom/portal";
+import Animated, { ReduceMotion, SlideInDown } from "react-native-reanimated";
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
@@ -15,15 +20,14 @@ import {
   heightScale,
   moderateHeightScale,
   moderateWidthScale,
-  widthScale,
   iconScale,
-  fontScale,
 } from "@/src/theme/dimensions";
 import {
   updateSubscription,
   addSubscription,
 } from "@/src/state/slices/completeProfileSlice";
-import ModalizeBottomSheet from "@/src/components/modalizeBottomSheet";
+import StackHeader from "@/src/components/StackHeader";
+import Button from "@/src/components/button";
 import ServicePickerBottomSheet from "@/src/components/ServicePickerBottomSheet";
 
 interface EditSubscriptionBottomSheetProps {
@@ -40,6 +44,7 @@ interface EditSubscriptionBottomSheetProps {
     serviceCounts?: Record<string, number>;
     servicesPerMonth?: number;
   }) => void;
+  /** Shown as "Delete Membership" when editing. */
   onDelete?: (subscriptionId: string) => void;
 }
 
@@ -62,259 +67,196 @@ const sumServiceQuantities = (counts: Record<string, number>): number =>
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
-    scrollContent: {
-      gap: moderateHeightScale(16),
+    overlay: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: theme.background,
     },
-    packageNameWrapper: {
-      gap: moderateHeightScale(2),
-      marginTop: moderateHeightScale(16),
-      backgroundColor: theme.white,
-      borderRadius: moderateWidthScale(8),
-      borderWidth: 1,
-      borderColor: theme.lightGreen2,
-      paddingHorizontal: moderateWidthScale(15),
-      paddingVertical: moderateHeightScale(10),
+    flex: { flex: 1 },
+    content: {
+      paddingHorizontal: moderateWidthScale(20),
+      paddingTop: moderateHeightScale(16),
+      gap: moderateHeightScale(20),
     },
-    descriptionWrapper: {
-      gap: moderateHeightScale(2),
-      marginTop: 0,
-      backgroundColor: theme.white,
-      borderRadius: moderateWidthScale(8),
-      borderWidth: 1,
-      borderColor: theme.lightGreen2,
-      paddingHorizontal: moderateWidthScale(15),
-      paddingVertical: moderateHeightScale(10),
+    field: {
+      gap: moderateHeightScale(8),
     },
-    descriptionInput: {
-      fontSize: fontSize.size16,
-      fontFamily: fonts.fontRegular,
-      color: theme.darkGreen,
-      paddingVertical: 0,
-      minHeight: heightScale(48),
-      flex: 1,
-      textAlignVertical: "top",
-    },
-    visitsWrapper: {
-      gap: moderateHeightScale(2),
-      backgroundColor: theme.white,
-      borderRadius: moderateWidthScale(8),
-      borderWidth: 1,
-      borderColor: theme.lightGreen2,
-      paddingHorizontal: moderateWidthScale(15),
-      paddingVertical: moderateHeightScale(10),
-    },
-    visitsInput: {
-      fontSize: fontSize.size16,
+    label: {
+      fontSize: fontSize.size14,
       fontFamily: fonts.fontMedium,
+      color: theme.lightGreen,
+    },
+    sectionTitle: {
+      fontSize: fontSize.size20,
+      fontFamily: fonts.fontBold,
       color: theme.darkGreen,
-      paddingVertical: 0,
     },
-    warningText: {
-      fontSize: fontSize.size12,
+    input: {
+      minHeight: heightScale(50),
+      borderRadius: moderateWidthScale(10),
+      borderWidth: 1,
+      borderColor: theme.lightGreen2,
+      backgroundColor: theme.surfaceRaised,
+      paddingHorizontal: moderateWidthScale(14),
+      paddingVertical: moderateHeightScale(12),
+      fontSize: fontSize.size16,
       fontFamily: fonts.fontRegular,
-      color: theme.orangeBrown,
-      marginTop: moderateHeightScale(4),
-      lineHeight: fontSize.size16,
+      color: theme.darkGreen,
     },
-    inputLabel: {
-      fontSize: fontSize.size12,
+    inputError: {
+      borderColor: theme.link,
+    },
+    affixRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      minHeight: heightScale(50),
+      borderRadius: moderateWidthScale(10),
+      borderWidth: 1,
+      borderColor: theme.lightGreen2,
+      backgroundColor: theme.surfaceRaised,
+      paddingHorizontal: moderateWidthScale(14),
+    },
+    affixInput: {
+      flex: 1,
+      paddingVertical: moderateHeightScale(12),
+      fontSize: fontSize.size16,
+      fontFamily: fonts.fontRegular,
+      color: theme.darkGreen,
+      fontVariant: ["tabular-nums"],
+    },
+    affixText: {
+      fontSize: fontSize.size16,
       fontFamily: fonts.fontRegular,
       color: theme.lightGreen,
     },
-    packageNameText: {
-      fontSize: fontSize.size16,
-      fontFamily: fonts.fontMedium,
-      color: theme.lightGreen4,
-      flex: 1,
-    },
-    textInput: {
-      fontSize: fontSize.size16,
-      fontFamily: fonts.fontRegular,
+    prefixText: {
       color: theme.darkGreen,
-      paddingVertical: 0,
-      height: heightScale(24),
-      flex: 1,
+      marginRight: moderateWidthScale(2),
     },
-    timeInputWrapper: {
-      borderRadius: moderateWidthScale(8),
-      borderWidth: 1,
-      borderColor: theme.lightGreen2,
-      flexDirection: "row",
-      justifyContent: "space-between",
-      width: "48%",
+    serviceList: {
+      gap: moderateHeightScale(10),
     },
-    rowContainer: {
+    serviceCard: {
       flexDirection: "row",
+      alignItems: "center",
       gap: moderateWidthScale(12),
+      borderRadius: moderateWidthScale(12),
+      borderWidth: 1,
+      borderColor: theme.orangeBrown30,
+      backgroundColor: theme.tilePeach,
+      paddingVertical: moderateHeightScale(12),
+      paddingLeft: moderateWidthScale(16),
+      paddingRight: moderateWidthScale(12),
     },
-    mainTimeCon: {
+    serviceInfo: {
       flex: 1,
-      paddingHorizontal: moderateWidthScale(15),
-      paddingVertical: moderateHeightScale(10),
-      gap: moderateHeightScale(2),
+      gap: moderateHeightScale(6),
     },
-    timeInputContainer: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "flex-start",
-    },
-    timeInput: {
-      fontSize: fontSize.size16,
-      fontFamily: fonts.fontMedium,
-      color: theme.darkGreen,
-      paddingVertical: 0,
-      height: heightScale(22),
-      flex: 1,
-      textAlign: "left",
-    },
-    pricePrefix: {
-      flex: 0,
-      marginRight: 0,
-      lineHeight: heightScale(22),
-      height: heightScale(22),
-      includeFontPadding: false,
-    },
-    priceInputInner: {
-      paddingLeft: 0,
-    },
-    arrowButtonsContainer: {
-      width: "28%",
-      backgroundColor: theme.grey30,
-      borderLeftWidth: 1,
-      borderLeftColor: theme.lightGreen2,
-      alignItems: "center",
-      justifyContent: "center",
-      borderTopRightRadius: moderateWidthScale(8),
-      borderBottomRightRadius: moderateWidthScale(8),
-    },
-    timeButton: {
-      flex: 1,
-      alignItems: "center",
-      justifyContent: "center",
-      width: "100%",
-    },
-    arrowButtonSeparator: {
-      width: "100%",
-      height: 1,
-      backgroundColor: theme.lightGreen2,
-    },
-    priceInputContainer: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-    },
-    priceInput: {
-      flex: 1,
+    serviceName: {
       fontSize: fontSize.size16,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
-      paddingVertical: 0,
-      height: heightScale(24),
+      textTransform: "capitalize",
     },
-    deleteButton: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "center",
-      gap: moderateWidthScale(8),
-      minHeight: moderateHeightScale(44),
-      marginTop: moderateHeightScale(24),
-      borderRadius: moderateWidthScale(10),
-      borderWidth: 1,
-      borderColor: theme.red,
+    removeLink: {
+      alignSelf: "flex-start",
+      paddingVertical: moderateHeightScale(2),
     },
-    deleteButtonText: {
-      fontSize: fontSize.size14,
-      fontFamily: fonts.fontMedium,
-      color: theme.red,
-    },
-    errorText: {
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontRegular,
-      color: theme.link,
-      marginTop: moderateHeightScale(4),
-    },
-    serviceDropdown: {
-      borderRadius: moderateWidthScale(8),
-      borderWidth: 1,
-      borderColor: theme.lightGreen2,
-      paddingHorizontal: moderateWidthScale(15),
-      paddingVertical: moderateHeightScale(15),
-      width: "48%",
-    },
-    serviceDropdownButton: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-    },
-    serviceDropdownText: {
-      fontSize: fontSize.size16,
+    removeText: {
+      fontSize: fontSize.size13,
       fontFamily: fonts.fontMedium,
       color: theme.lightGreen,
-      flex: 1,
+      textDecorationLine: "underline",
     },
-    selectedServicesContainer: {
-      flexDirection: "row",
-      flexWrap: "wrap",
-      gap: moderateWidthScale(15),
+    stepperWrap: {
+      alignItems: "center",
+      gap: moderateHeightScale(6),
     },
-    serviceTag: {
+    perMonth: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+    },
+    stepper: {
       flexDirection: "row",
       alignItems: "center",
-      justifyContent: "space-between",
+      gap: moderateWidthScale(4),
+    },
+    stepButton: {
+      width: moderateWidthScale(40),
+      height: moderateWidthScale(40),
+      borderRadius: moderateWidthScale(8),
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    stepMinus: {
+      backgroundColor: theme.lightGreen07,
+    },
+    stepPlus: {
       backgroundColor: theme.orangeBrown,
-      // paddingHorizontal: moderateWidthScale(8),
-      // paddingVertical: moderateHeightScale(6),
-      borderRadius: moderateWidthScale(10),
-      borderWidth: 1,
-      borderColor: theme.lightGreen2,
-      minWidth: widthScale(150),
-      gap: moderateWidthScale(8),
     },
-    serviceTagLeft: {
-      flex: 1,
-      paddingLeft: moderateWidthScale(8),
-      paddingVertical: moderateHeightScale(12),
-      // paddingVertical: moderateHeightScale(6),
+    stepDisabled: {
+      opacity: 0.4,
     },
-    serviceTagText: {
-      fontSize: fontSize.size12,
+    stepValue: {
+      minWidth: moderateWidthScale(28),
+      textAlign: "center",
+      fontSize: fontSize.size17,
       fontFamily: fonts.fontMedium,
       color: theme.darkGreen,
-      flexShrink: 1,
+      fontVariant: ["tabular-nums"],
     },
-    serviceCountArrowColumn: {
-      width: moderateWidthScale(30),
-      height: "100%",
-      backgroundColor: theme.grey30,
-      borderLeftWidth: 1,
-      borderLeftColor: theme.lightGreen2,
-    },
-    serviceCountArrowButton: {
-      flex: 1,
+    addServiceButton: {
+      flexDirection: "row",
       alignItems: "center",
       justifyContent: "center",
-      width: "100%",
+      gap: moderateWidthScale(8),
+      minHeight: heightScale(50),
+      borderRadius: moderateWidthScale(12),
+      borderWidth: 1.5,
+      borderColor: theme.orangeBrown,
+      backgroundColor: theme.tilePeach,
     },
-    serviceCountArrowSeparator: {
-      width: "100%",
-      height: 1,
-      backgroundColor: theme.lightGreen2,
+    addServiceText: {
+      fontSize: fontSize.size16,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
     },
-    disabledArrowButton: {
-      backgroundColor: theme.grey15,
+    howCard: {
+      borderRadius: moderateWidthScale(12),
+      backgroundColor: theme.orangeBrown30,
+      paddingVertical: moderateHeightScale(14),
+      paddingHorizontal: moderateWidthScale(16),
+      gap: moderateHeightScale(6),
     },
-    removeServiceButton: {
-      width: fontScale(18),
-      height: fontScale(18),
+    howTitle: {
+      fontSize: fontSize.size16,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    howText: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontRegular,
+      color: theme.darkGreen,
+      lineHeight: fontSize.size14 * 1.45,
+    },
+    errorText: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontRegular,
+      color: theme.link,
+    },
+    actions: {
+      marginTop: moderateHeightScale(4),
+      gap: moderateHeightScale(8),
+    },
+    deleteButton: {
+      minHeight: heightScale(48),
       alignItems: "center",
       justifyContent: "center",
-      position: "absolute",
-      left: -12,
-      top: -9,
-      backgroundColor: theme.darkGreenLight,
-      borderRadius: fontScale(8),
-      borderWidth: 1,
-      borderColor: theme.lightGreen2,
+    },
+    deleteText: {
+      fontSize: fontSize.size15,
+      fontFamily: fonts.fontBold,
+      color: theme.red,
     },
   });
 
@@ -325,11 +267,11 @@ export default function EditSubscriptionBottomSheet({
   onAddCustomSuggestion,
   onDelete,
 }: EditSubscriptionBottomSheetProps) {
-  const { t } = useTranslation();
   const dispatch = useAppDispatch();
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors as Theme), [colors]);
   const theme = colors as Theme;
+  const insets = useSafeAreaInsets();
   const { subscriptions, businessServices } = useAppSelector(
     (state) => state.completeProfile,
   );
@@ -358,7 +300,6 @@ export default function EditSubscriptionBottomSheet({
     subscription?.description ?? "",
   );
   const [price, setPrice] = useState("");
-  const [visitsTotal, setVisitsTotal] = useState("");
   const [currency] = useState(subscription?.currency || "USD");
   const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>(
     subscription?.serviceIds || [],
@@ -376,7 +317,6 @@ export default function EditSubscriptionBottomSheet({
     packageName?: string;
     price?: string;
     services?: string;
-    visits?: string;
   }>({});
 
   const serviceQtySum = useMemo(
@@ -389,25 +329,17 @@ export default function EditSubscriptionBottomSheet({
       if (subscription) {
         setPackageName(subscription.packageName);
         setDescription(subscription.description ?? "");
-        setPrice(subscription.price.toString());
+        setPrice(subscription.price.toFixed(2));
         setSelectedServiceIds(subscription.serviceIds);
         const counts = buildDefaultServiceCounts(
           subscription.serviceIds,
           subscription.serviceCounts,
         );
         setSelectedServiceCounts(counts);
-        const existingVisits = subscription.servicesPerMonth;
-        if (typeof existingVisits === "number" && existingVisits >= 1) {
-          setVisitsTotal(String(existingVisits));
-        } else {
-          const sum = sumServiceQuantities(counts);
-          setVisitsTotal(sum >= 1 ? String(sum) : "1");
-        }
       } else {
         setPackageName("");
         setDescription("");
-        setPrice("10.00");
-        setVisitsTotal("");
+        setPrice("");
         setSelectedServiceIds([]);
         setSelectedServiceCounts({});
       }
@@ -415,26 +347,14 @@ export default function EditSubscriptionBottomSheet({
     }
   }, [visible, subscription, services]);
 
-  // Prefill visit total from service quantities when empty / zero
   useEffect(() => {
     if (!visible) return;
-    const parsed = parseInt(visitsTotal || "0", 10);
-    if ((!visitsTotal || !parsed || parsed < 1) && serviceQtySum >= 1) {
-      setVisitsTotal(String(serviceQtySum));
-    }
-  }, [serviceQtySum, visible]);
-
-  const handleIncrementPrice = () => {
-    const currentPrice = parseFloat(price) || 0;
-    setPrice((currentPrice + 0.01).toFixed(2));
-  };
-
-  const handleDecrementPrice = () => {
-    const currentPrice = parseFloat(price) || 0;
-    if (currentPrice > 0) {
-      setPrice(Math.max(0, currentPrice - 0.01).toFixed(2));
-    }
-  };
+    const sub = BackHandler.addEventListener("hardwareBackPress", () => {
+      onClose();
+      return true;
+    });
+    return () => sub.remove();
+  }, [visible, onClose]);
 
   const handleSelectServices = (serviceIds: string[]) => {
     setSelectedServiceIds(serviceIds);
@@ -507,10 +427,9 @@ export default function EditSubscriptionBottomSheet({
       newErrors.services = "Add at least one service";
     }
 
-    const visitsValue = parseInt(visitsTotal || "0", 10);
-    if (!Number.isFinite(visitsValue) || visitsValue < 1) {
-      newErrors.visits = t("planVisitsMinError");
-    }
+    // Customers use the service counts in any mix of visits, so the plan's
+    // visit total is always the sum of the counts.
+    const visitsValue = serviceQtySum;
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
@@ -555,243 +474,222 @@ export default function EditSubscriptionBottomSheet({
     onClose();
   };
 
-  const hasAtLeastOneService = selectedServiceIds.length > 0;
-  const visitsParsed = parseInt(visitsTotal || "0", 10);
-  const showVisitsOverage =
-    Number.isFinite(visitsParsed) &&
-    visitsParsed >= 1 &&
-    serviceQtySum >= 1 &&
-    visitsParsed > serviceQtySum;
+
+  const selectedServices = selectedServiceIds
+    .map((id) => services.find((s) => s.id === id))
+    .filter((s): s is (typeof services)[number] => Boolean(s));
+
+  const howItWorks = useMemo(() => {
+    if (selectedServices.length === 0) return null;
+    const included = selectedServices
+      .map((s) => `${selectedServiceCounts[s.id] ?? 1} ${s.name.toLowerCase()}`)
+      .join(" + ");
+    return [
+      `Every month they get ${included} (${serviceQtySum} in total).`,
+      "They can use them all in one visit, or come in on different days.",
+      "Each time they use one, it comes off their count. Counts reset when they pay for the next month.",
+    ];
+  }, [selectedServices, selectedServiceCounts, serviceQtySum]);
+
+  const handlePriceChange = (text: string) => {
+    const cleaned = text.replace(/[^0-9.]/g, "");
+    const dot = cleaned.indexOf(".");
+    setPrice(
+      dot >= 0
+        ? cleaned.slice(0, dot + 1) + cleaned.slice(dot + 1).replace(/\./g, "")
+        : cleaned,
+    );
+    if (errors.price) setErrors((prev) => ({ ...prev, price: undefined }));
+  };
+
+  if (!visible) return null;
 
   return (
-    <ModalizeBottomSheet
-      visible={visible}
-      onClose={onClose}
-      title={subscriptionId ? "Edit Membership" : "Add Membership"}
-      footerButtonTitle={subscriptionId ? "Save" : "Add"}
-      onFooterButtonPress={handleSave}
-      footerButtonDisabled={!hasAtLeastOneService}
-      contentStyle={styles.scrollContent}
-    >
-      <View style={styles.packageNameWrapper}>
-        <Text style={styles.inputLabel}>Membership Name</Text>
-        <TextInput
-          style={styles.textInput}
-          value={packageName}
-          onChangeText={setPackageName}
-          placeholder="Enter membership name"
-          placeholderTextColor={theme.lightGreen2}
-        />
-        {errors.packageName && (
-          <Text style={styles.errorText}>{errors.packageName}</Text>
-        )}
-      </View>
-
-      <View style={styles.descriptionWrapper}>
-        <Text style={styles.inputLabel}>Description</Text>
-        <TextInput
-          style={styles.descriptionInput}
-          value={description}
-          onChangeText={setDescription}
-          placeholder="Enter description"
-          placeholderTextColor={theme.lightGreen2}
-          multiline
-        />
-      </View>
-
-      <View style={styles.visitsWrapper}>
-        <Text style={styles.inputLabel}>Visits per month</Text>
-        <TextInput
-          style={styles.visitsInput}
-          value={visitsTotal}
-          onChangeText={(text) => {
-            const cleaned = text.replace(/[^0-9]/g, "");
-            setVisitsTotal(cleaned);
-            if (errors.visits) {
-              setErrors((prev) => ({ ...prev, visits: undefined }));
-            }
-          }}
-          keyboardType="number-pad"
-          placeholder="1"
-          placeholderTextColor={theme.lightGreen2}
-          maxLength={3}
-        />
-        {errors.visits ? (
-          <Text style={styles.errorText}>{errors.visits}</Text>
-        ) : null}
-        {showVisitsOverage ? (
-          <Text style={styles.warningText}>
-            {t("planVisitsOverageWarning", {
-              total: visitsParsed,
-              serviceTotal: serviceQtySum,
-            })}
-          </Text>
-        ) : null}
-      </View>
-
-      <View
-        style={{
-          flexDirection: "row",
-          justifyContent: "space-between",
-        }}
+    <Portal>
+      <Animated.View
+        style={styles.overlay}
+        entering={SlideInDown.duration(260).reduceMotion(ReduceMotion.System)}
       >
-        <View style={styles.serviceDropdown}>
-          <TouchableOpacity
-            style={styles.serviceDropdownButton}
-            onPress={() => {
-              setServicePickerVisible(true);
-            }}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.serviceDropdownText}>Add service</Text>
-            <Feather
-              name="chevron-down"
-              size={iconScale(19)}
-              color={theme.darkGreen}
-            />
-          </TouchableOpacity>
-        </View>
+        <StatusBar barStyle="light-content" />
+        <StackHeader
+          title={subscriptionId ? "Edit Membership" : "Add Membership"}
+          onBack={onClose}
+        />
 
-        <View style={styles.timeInputWrapper}>
-          <View style={styles.mainTimeCon}>
-            <Text style={styles.inputLabel}>Monthly Price</Text>
-            <View style={styles.timeInputContainer}>
-              <Text style={[styles.timeInput, styles.pricePrefix]}>$ </Text>
+        <KeyboardAwareScrollView
+          style={styles.flex}
+          contentContainerStyle={[
+            styles.content,
+            { paddingBottom: moderateHeightScale(28) + insets.bottom },
+          ]}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="interactive"
+          showsVerticalScrollIndicator={false}
+          bottomOffset={moderateHeightScale(32)}
+        >
+          <View style={styles.field}>
+            <Text style={styles.label}>Membership name</Text>
+            <TextInput
+              style={[styles.input, errors.packageName && styles.inputError]}
+              value={packageName}
+              onChangeText={(text) => {
+                setPackageName(text);
+                if (errors.packageName) {
+                  setErrors((prev) => ({ ...prev, packageName: undefined }));
+                }
+              }}
+              placeholder="e.g. Basic Plan"
+              placeholderTextColor={theme.lightGreen4}
+              accessibilityLabel="Membership name"
+            />
+            {errors.packageName ? (
+              <Text style={styles.errorText}>{errors.packageName}</Text>
+            ) : null}
+          </View>
+
+          <View style={styles.field}>
+            <Text style={styles.label}>Monthly price</Text>
+            <View style={[styles.affixRow, errors.price && styles.inputError]}>
+              <Text style={[styles.affixText, styles.prefixText]}>$</Text>
               <TextInput
-                style={[styles.timeInput, styles.priceInputInner]}
+                style={styles.affixInput}
                 value={price}
-                onChangeText={(text) => {
-                  const cleaned = text.replace(/[^0-9.]/g, "");
-                  const oneDot =
-                    cleaned.indexOf(".") >= 0
-                      ? cleaned.slice(0, cleaned.indexOf(".") + 1) +
-                        cleaned
-                          .slice(cleaned.indexOf(".") + 1)
-                          .replace(/\./g, "")
-                      : cleaned;
-                  setPrice(oneDot);
+                onChangeText={handlePriceChange}
+                onBlur={() => {
+                  const v = parseFloat(price);
+                  if (!isNaN(v)) setPrice(v.toFixed(2));
                 }}
                 keyboardType="decimal-pad"
                 placeholder="0.00"
-                placeholderTextColor={theme.lightGreen2}
+                placeholderTextColor={theme.lightGreen4}
+                accessibilityLabel="Monthly price"
               />
+              <Text style={styles.affixText}>/ month</Text>
             </View>
+            {errors.price ? (
+              <Text style={styles.errorText}>{errors.price}</Text>
+            ) : null}
           </View>
-          <View style={styles.arrowButtonsContainer}>
-            <TouchableOpacity
-              onPress={handleIncrementPrice}
-              style={styles.timeButton}
-            >
-              <AntDesign
-                name="caret-up"
-                size={iconScale(15)}
-                color={theme.darkGreen}
-              />
-            </TouchableOpacity>
-            <View style={styles.arrowButtonSeparator} />
-            <TouchableOpacity
-              onPress={handleDecrementPrice}
-              style={styles.timeButton}
-            >
-              <AntDesign
-                name="caret-down"
-                size={iconScale(15)}
-                color={theme.darkGreen}
-              />
-            </TouchableOpacity>
+
+          <View style={styles.field}>
+            <Text style={styles.sectionTitle}>Included services</Text>
+            <View style={styles.serviceList}>
+              {selectedServices.map((service) => {
+                const count = selectedServiceCounts[service.id] ?? 1;
+                return (
+                  <View key={service.id} style={styles.serviceCard}>
+                    <View style={styles.serviceInfo}>
+                      <Text style={styles.serviceName} numberOfLines={2}>
+                        {service.name}
+                      </Text>
+                      <TouchableOpacity
+                        style={styles.removeLink}
+                        onPress={() => handleRemoveService(service.id)}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Remove ${service.name}`}
+                      >
+                        <Text style={styles.removeText}>Remove</Text>
+                      </TouchableOpacity>
+                    </View>
+                    <View style={styles.stepperWrap}>
+                      <Text style={styles.perMonth}>Uses per month</Text>
+                      <View style={styles.stepper}>
+                        <TouchableOpacity
+                          style={[
+                            styles.stepButton,
+                            styles.stepMinus,
+                            count <= 1 && styles.stepDisabled,
+                          ]}
+                          onPress={() =>
+                            handleDecrementServiceCount(service.id)
+                          }
+                          disabled={count <= 1}
+                          accessibilityRole="button"
+                          accessibilityLabel={`Fewer ${service.name}`}
+                        >
+                          <Feather
+                            name="minus"
+                            size={iconScale(18)}
+                            color={theme.darkGreen}
+                          />
+                        </TouchableOpacity>
+                        <Text style={styles.stepValue}>{count}</Text>
+                        <TouchableOpacity
+                          style={[styles.stepButton, styles.stepPlus]}
+                          onPress={() =>
+                            handleIncrementServiceCount(service.id)
+                          }
+                          accessibilityRole="button"
+                          accessibilityLabel={`More ${service.name}`}
+                        >
+                          <Feather
+                            name="plus"
+                            size={iconScale(18)}
+                            color={theme.darkGreen}
+                          />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  </View>
+                );
+              })}
+
+              <TouchableOpacity
+                style={styles.addServiceButton}
+                onPress={() => setServicePickerVisible(true)}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+              >
+                <Feather
+                  name="plus"
+                  size={iconScale(20)}
+                  color={theme.darkGreen}
+                />
+                <Text style={styles.addServiceText}>Add Service</Text>
+              </TouchableOpacity>
+            </View>
+            {errors.services ? (
+              <Text style={styles.errorText}>{errors.services}</Text>
+            ) : null}
           </View>
-        </View>
-      </View>
 
-      {errors.services ? (
-        <Text style={styles.errorText}>{errors.services}</Text>
-      ) : null}
+          {howItWorks ? (
+            <View style={styles.howCard}>
+              <Text style={styles.howTitle}>How customers use this</Text>
+              {howItWorks.map((line) => (
+                <Text key={line} style={styles.howText}>
+                  {line}
+                </Text>
+              ))}
+            </View>
+          ) : null}
 
-      {selectedServiceIds.length > 0 && (
-        <View style={styles.selectedServicesContainer}>
-          {selectedServiceIds.map((serviceId) => {
-            // First try to find in Redux services
-            let service = services.find((s) => s.id === serviceId);
+          <View style={styles.actions}>
+            <Button
+              title={subscriptionId ? "Save Membership" : "Add Membership"}
+              onPress={handleSave}
+              backgroundColor={theme.darkGreen}
+            />
+            {subscriptionId && onDelete ? (
+              <TouchableOpacity
+                style={styles.deleteButton}
+                onPress={() => onDelete(subscriptionId)}
+                accessibilityRole="button"
+              >
+                <Text style={styles.deleteText}>Delete Membership</Text>
+              </TouchableOpacity>
+            ) : null}
+          </View>
+        </KeyboardAwareScrollView>
 
-            // Only use services selected in Step 8
-
-            if (!service) return null;
-            const serviceCount = selectedServiceCounts[serviceId] ?? 1;
-            const isDecrementDisabled = serviceCount <= 1;
-            return (
-              <View key={serviceId} style={styles.serviceTag}>
-                <View style={styles.serviceTagLeft}>
-                  <Text style={styles.serviceTagText}>
-                    {service.name} ( {serviceCount} )
-                  </Text>
-                </View>
-                <View style={styles.serviceCountArrowColumn}>
-                  <TouchableOpacity
-                    onPress={() => handleIncrementServiceCount(serviceId)}
-                    style={styles.serviceCountArrowButton}
-                  >
-                    <AntDesign
-                      name="caret-up"
-                      size={iconScale(10)}
-                      color={theme.darkGreen}
-                    />
-                  </TouchableOpacity>
-                  <View style={styles.serviceCountArrowSeparator} />
-                  <TouchableOpacity
-                    onPress={() => handleDecrementServiceCount(serviceId)}
-                    style={[
-                      styles.serviceCountArrowButton,
-                      isDecrementDisabled && styles.disabledArrowButton,
-                    ]}
-                    disabled={isDecrementDisabled}
-                  >
-                    <AntDesign
-                      name="caret-down"
-                      size={iconScale(10)}
-                      color={
-                        isDecrementDisabled
-                          ? theme.lightGreen2
-                          : theme.darkGreen
-                      }
-                    />
-                  </TouchableOpacity>
-                </View>
-
-                <TouchableOpacity
-                  onPress={() => handleRemoveService(serviceId)}
-                  style={styles.removeServiceButton}
-                >
-                  <Feather
-                    name="x"
-                    size={iconScale(13)}
-                    // style={{ marginLeft: moderateWidthScale(4) }}
-                    color={theme.white}
-                  />
-                </TouchableOpacity>
-              </View>
-            );
-          })}
-        </View>
-      )}
-
-      {subscriptionId && onDelete ? (
-        <TouchableOpacity
-          style={styles.deleteButton}
-          onPress={() => onDelete(subscriptionId)}
-          activeOpacity={0.7}
-          accessibilityRole="button"
-        >
-          <Feather name="trash-2" size={iconScale(16)} color={theme.red} />
-          <Text style={styles.deleteButtonText}>Delete Membership</Text>
-        </TouchableOpacity>
-      ) : null}
-
-      <ServicePickerBottomSheet
-        visible={servicePickerVisible}
-        onClose={() => setServicePickerVisible(false)}
-        selectedServiceIds={selectedServiceIds}
-        onSelectServices={handleSelectServices}
-      />
-    </ModalizeBottomSheet>
+        <ServicePickerBottomSheet
+          visible={servicePickerVisible}
+          onClose={() => setServicePickerVisible(false)}
+          selectedServiceIds={selectedServiceIds}
+          onSelectServices={handleSelectServices}
+        />
+      </Animated.View>
+    </Portal>
   );
 }

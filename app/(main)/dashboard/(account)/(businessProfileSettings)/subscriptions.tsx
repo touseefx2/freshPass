@@ -318,6 +318,10 @@ const createStyles = (theme: Theme) =>
       color: theme.darkGreen,
       textTransform: "capitalize",
     },
+    includedCount: {
+      fontFamily: fonts.fontBold,
+      fontVariant: ["tabular-nums"],
+    },
     visitsPill: {
       flexDirection: "row",
       alignItems: "center",
@@ -766,7 +770,10 @@ export default function ManageSubscriptionsScreen() {
           name: subscription.packageName,
           description: subscription.description ?? subscription.packageName,
           price: subscription.price,
-          visits_included: Math.max(1, subscription.servicesPerMonth || 1),
+          visits_included: Math.max(
+            1,
+            Object.values(serviceQuantities).reduce((sum, qty) => sum + qty, 0),
+          ),
           plan_services: planServices,
           service_quantities: serviceQuantities,
         };
@@ -968,7 +975,10 @@ export default function ManageSubscriptionsScreen() {
                     !!description &&
                     description.toLowerCase() !==
                       subscription.packageName.trim().toLowerCase();
-                  const visits = Number(subscription.servicesPerMonth) || 0;
+                  const totalUses = serviceItems.reduce(
+                    (sum, item) => sum + item.count,
+                    0,
+                  );
                   return (
                     <View key={subscription.id} style={styles.subscriptionCard}>
                       <View style={styles.subscriptionCardHeader}>
@@ -1017,14 +1027,18 @@ export default function ManageSubscriptionsScreen() {
                                   />
                                 </View>
                                 <Text style={styles.includedText}>
-                                  {item.count} {item.name}
+                                  <Text style={styles.includedCount}>
+                                    {item.count}
+                                  </Text>
+                                  {"  "}
+                                  {item.name}
                                 </Text>
                               </View>
                             ))}
                           </View>
                         </>
                       ) : null}
-                      {visits > 0 ? (
+                      {totalUses > 0 ? (
                         <View style={styles.visitsPill}>
                           <Feather
                             name="calendar"
@@ -1032,8 +1046,8 @@ export default function ManageSubscriptionsScreen() {
                             color={theme.orangeBrownText}
                           />
                           <Text style={styles.visitsText}>
-                            Up to {visits} visit{visits === 1 ? "" : "s"} per
-                            month
+                            {totalUses} service{totalUses === 1 ? "" : "s"} to
+                            use anytime this month
                           </Text>
                         </View>
                       ) : null}
