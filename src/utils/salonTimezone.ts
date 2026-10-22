@@ -43,19 +43,27 @@ export function parseSalonClock(now: unknown): SalonClock | null {
   return Number.isNaN(wallMs) ? null : { wallMs, phoneMs: Date.now() };
 }
 
+// One formatter per zone: salonNow runs for every day cell on each render.
+const zoneFormatters = new Map<string, Intl.DateTimeFormat>();
+
 /** Salon's wall time from its zone on the phone; null if the phone can't. */
 function wallMsInZone(timeZone: string): number | null {
   try {
-    const parts = new Intl.DateTimeFormat("en-US", {
-      timeZone,
-      hourCycle: "h23",
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-    }).formatToParts(new Date());
+    let formatter = zoneFormatters.get(timeZone);
+    if (!formatter) {
+      formatter = new Intl.DateTimeFormat("en-US", {
+        timeZone,
+        hourCycle: "h23",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      });
+      zoneFormatters.set(timeZone, formatter);
+    }
+    const parts = formatter.formatToParts(new Date());
     const get = (type: string) =>
       Number(parts.find((p) => p.type === type)?.value);
     const wallMs = Date.UTC(
@@ -73,44 +81,52 @@ function wallMsInZone(timeZone: string): number | null {
 }
 
 /**
- * The salon's current time as a local dayjs whose date, hour and minute are
- * the salon's, so it compares directly with picked dates and slot times.
+ * The salon's current wall clock: its date ("2026-10-22", also as `today`)
+ * and minutes since midnight. Read straight from the wall fields, never via a
+ * local Date, so the phone's own DST change can't shift it.
+ */
+export type SalonWall = { day: string; minutes: number; today: dayjs.Dayjs };
+
+/**
  * Server `now` plus the phone time passed since (the phone's zone and a wrong
  * phone clock don't matter), else the salon zone, else the phone clock.
  */
 export function salonNow(
   clock: SalonClock | null,
   timeZone?: string | null,
-): dayjs.Dayjs {
+): SalonWall {
   const wallMs = clock
     ? clock.wallMs + (Date.now() - clock.phoneMs)
     : timeZone
       ? wallMsInZone(timeZone)
       : null;
-  if (wallMs == null) return dayjs();
-  const d = new Date(wallMs);
-  return dayjs(
-    new Date(
-      d.getUTCFullYear(),
-      d.getUTCMonth(),
-      d.getUTCDate(),
-      d.getUTCHours(),
-      d.getUTCMinutes(),
-      d.getUTCSeconds(),
-    ),
-  );
+  if (wallMs == null) {
+    const phone = dayjs();
+    return {
+      day: phone.format("YYYY-MM-DD"),
+      minutes: phone.hour() * 60 + phone.minute(),
+      today: phone.startOf("day"),
+    };
+  }
+  const iso = new Date(wallMs).toISOString(); // wall fields, labelled UTC
+  const day = iso.slice(0, 10);
+  return {
+    day,
+    minutes: Number(iso.slice(11, 13)) * 60 + Number(iso.slice(14, 16)),
+    today: dayjs(day),
+  };
 }
 
 /** Has this slot ("HH:mm") on this salon day already started? */
 export function salonSlotHasPassed(
   date: dayjs.Dayjs,
   slot: string,
-  now: dayjs.Dayjs,
+  now: SalonWall,
 ): boolean {
-  if (date.isBefore(now, "day")) return true;
-  if (!date.isSame(now, "day")) return false;
+  const day = date.format("YYYY-MM-DD");
+  if (day !== now.day) return day < now.day;
   const [h, m] = slot.split(":").map(Number);
-  return !date.hour(h).minute(m).second(0).millisecond(0).isAfter(now);
+  return h * 60 + m <= now.minutes;
 }
 
 /**

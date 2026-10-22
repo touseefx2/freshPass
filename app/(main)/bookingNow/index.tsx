@@ -2097,7 +2097,7 @@ export default function BookingNow() {
   };
 
   const isDateDisabled = (date: dayjs.Dayjs): boolean => {
-    const today = nowAtSalon().startOf("day");
+    const today = nowAtSalon().today;
     const selectedDay = date.startOf("day");
     if (selectedDay.isBefore(today)) return true;
     const dayName = getDayNameFromDate(date);
@@ -2116,7 +2116,7 @@ export default function BookingNow() {
     if (!businessHours) return;
     // In reschedule mode, keep the date from params; do not reset to today
     if (params.is_reschedule === "1" && params.appointment_date) return;
-    const today = nowAtSalon().startOf("day");
+    const today = nowAtSalon().today;
     const currentSelected = selectedDate.startOf("day");
     if (currentSelected.isSame(today, "day") && !isDateDisabled(today)) return;
     if (!isDateDisabled(today)) {
@@ -2372,7 +2372,7 @@ export default function BookingNow() {
   }, [selectedDate]);
 
   // The salon's today, not the phone's: the strip starts there.
-  const salonToday = nowAtSalon().startOf("day");
+  const salonToday = nowAtSalon().today;
   const salonTodayKey = salonToday.format("YYYY-MM-DD");
   const isCurrentMonth = visibleMonth.isSame(salonToday, "month");
 

@@ -446,13 +446,13 @@ export default function AddAppointmentScreen() {
   const salonTimeZone = salonZone ?? schedule?.timezone ?? null;
   const nowAtSalon = () => salonNow(salonClock, salonTimeZone);
   // The salon's today, not the phone's: the date strip starts there.
-  const salonToday = nowAtSalon().startOf("day");
+  const salonToday = nowAtSalon().today;
 
   // Phone ahead of the salon (or a stale calendar day): a day before the
   // salon's today can't be booked, so start on the salon's today.
   useEffect(() => {
     if (!salonTimeZone) return;
-    const today = nowAtSalon().startOf("day");
+    const today = nowAtSalon().today;
     if (date.isBefore(today, "day")) setDate(today);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [salonTimeZone]);
@@ -492,7 +492,7 @@ export default function AddAppointmentScreen() {
   // picked time can pass while the owner sits on a step.
   const isPastSlot = () => {
     const now = nowAtSalon();
-    if (date.isBefore(now, "day")) return true;
+    if (date.isBefore(now.today, "day")) return true;
     // No time picked yet (e.g. cleared because it wasn't free).
     if (!isValidTime(time)) return false;
     return salonSlotHasPassed(date, time, now);
