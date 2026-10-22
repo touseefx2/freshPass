@@ -14,6 +14,7 @@ export type NotificationPreferences = {
   biz_reel_bookings: boolean;
   biz_orders: boolean;
   biz_low_stock: boolean;
+  biz_job_applications: boolean;
 };
 
 export type NotificationPreferencesUpdate = Partial<NotificationPreferences>;
@@ -37,6 +38,7 @@ const DEFAULTS: NotificationPreferences = {
   biz_reel_bookings: true,
   biz_orders: true,
   biz_low_stock: true,
+  biz_job_applications: true,
 };
 
 function normalize(
@@ -60,6 +62,8 @@ function normalize(
     biz_reel_bookings: raw?.biz_reel_bookings ?? DEFAULTS.biz_reel_bookings,
     biz_orders: raw?.biz_orders ?? DEFAULTS.biz_orders,
     biz_low_stock: raw?.biz_low_stock ?? DEFAULTS.biz_low_stock,
+    biz_job_applications:
+      raw?.biz_job_applications ?? DEFAULTS.biz_job_applications,
   };
 }
 

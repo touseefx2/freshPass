@@ -53,6 +53,7 @@ const SOLO_BUSINESS_ROUTES: Record<string, string> = {
   businessProfile: "businessProfileMenu",
   products: "products",
   orders: "orders",
+  hiring: "jobPosts",
   socialMedia: "socialMedia",
   cancellationPolicy: "cancellationPolicy",
   team: "team",
@@ -994,6 +995,8 @@ export default function AccountScreen() {
       }
     } else if (key === "myOrders") {
       router.push("/(main)/shop/myOrders" as any);
+    } else if (key === "myJobApplications") {
+      router.push("/(main)/jobs/myApplications" as any);
     } else if (key === "myLooks") {
       router.push("/(main)/myLooks");
     } else if (key === "following") {
@@ -1073,6 +1076,8 @@ export default function AccountScreen() {
         return { name: "star", family: "material" };
       case "myOrders":
         return { name: "receipt-long", family: "material" };
+      case "myJobApplications":
+        return { name: "work-outline", family: "material" };
       case "myLooks":
         return { name: "bookmark", family: "material" };
       case "following":
@@ -1247,6 +1252,10 @@ export default function AccountScreen() {
     // Products bought from reels, with their tracking
     ...(isCustomer && !isGuest
       ? [{ key: "myOrders", title: t("myOrders") }]
+      : []),
+    // Jobs applied for at salons (owner / staff too, from customer mode)
+    ...(isCustomer && !isGuest
+      ? [{ key: "myJobApplications", title: t("jobMyApplications") }]
       : []),
     ...(isCustomer
       ? [{ key: "subscriptions", title: t("memberships") }]

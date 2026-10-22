@@ -22,6 +22,7 @@ import { PlatformVerifiedStarIcon, StarIconSmall } from "@/assets/icons";
 import RetryButton from "@/src/components/retryButton";
 import Button from "@/src/components/button";
 import InclusionsModal from "@/src/components/inclusionsModal";
+import { HiringTag } from "@/src/components/jobs/jobBadges";
 import { createStyles } from "./styles";
 import type {
   ServiceItem,
@@ -36,6 +37,8 @@ export interface VerifiedSalon {
   reviewCount: number;
   image: string | null;
   ownerName?: string | null;
+  /** Has at least one open job post */
+  isHiring?: boolean;
   services?: ServiceItem[];
   subscriptions?: SubscriptionItem[];
 }
@@ -65,12 +68,23 @@ export function BusinessCard({
       activeOpacity={0.9}
       style={styles.verifiedSalonCardNew}
     >
-      <AppImage
-        uri={salon.image}
-        style={styles.verifiedSalonImage}
-        iconSize={widthScale(36)}
-        iconColor={theme.white50}
-      />
+      <View>
+        <AppImage
+          uri={salon.image}
+          style={styles.verifiedSalonImage}
+          iconSize={widthScale(36)}
+          iconColor={theme.white50}
+        />
+        {salon.isHiring ? (
+          <HiringTag
+            style={{
+              position: "absolute",
+              top: moderateHeightScale(6),
+              left: moderateWidthScale(6),
+            }}
+          />
+        ) : null}
+      </View>
       <View style={styles.verifiedSalonContent}>
         <View style={styles.platformVerifiedBadge}>
           <PlatformVerifiedStarIcon

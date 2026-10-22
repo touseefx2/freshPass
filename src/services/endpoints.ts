@@ -1139,3 +1139,43 @@ export const orderEndpoints = {
   shippingDetails: (id: string | number) =>
     `/api/orders/${id}/shipping-details`,
 };
+
+/**
+ * Hiring (job posts). Customer reads work with the public token too;
+ * owner writes need business mode.
+ */
+const jobPageQuery = (params?: {
+  status?: string;
+  page?: number;
+  per_page?: number;
+}) => {
+  const q = new URLSearchParams();
+  if (params?.status) q.append("status", params.status);
+  if (params?.page != null) q.append("page", String(params.page));
+  if (params?.per_page != null) q.append("per_page", String(params.per_page));
+  const query = q.toString();
+  return query ? `?${query}` : "";
+};
+
+export const jobEndpoints = {
+  /** Open posts of one business, newest first. */
+  businessPosts: (
+    businessId: string | number,
+    params?: { page?: number; per_page?: number },
+  ) => `/api/businesses/${businessId}/job-posts${jobPageQuery(params)}`,
+  /** 404 once closed, expired, removed or deleted. */
+  byId: (id: string | number) => `/api/job-posts/${id}`,
+  apply: (id: string | number) => `/api/job-posts/${id}/apply`,
+  myApplications: (params?: { page?: number; per_page?: number }) =>
+    `/api/job-applications/mine${jobPageQuery(params)}`,
+  mine: (params?: { status?: string; page?: number; per_page?: number }) =>
+    `/api/job-posts/mine${jobPageQuery(params)}`,
+  mineById: (id: string | number) => `/api/job-posts/mine/${id}`,
+  applications: (
+    id: string | number,
+    params?: { page?: number; per_page?: number },
+  ) => `/api/job-posts/mine/${id}/applications${jobPageQuery(params)}`,
+  create: `/api/job-posts`,
+  update: (id: string | number) => `/api/job-posts/${id}`,
+  delete: (id: string | number) => `/api/job-posts/${id}`,
+};

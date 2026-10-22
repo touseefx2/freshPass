@@ -93,6 +93,11 @@ import {
   getDefaultBusinessImage,
   getDefaultBusinessLogo,
 } from "@/src/services/remoteConfigService";
+import { HiringRing } from "@/src/components/jobs/jobBadges";
+import { JobListRow, JobRowsCard } from "@/src/components/jobs/jobCards";
+import { fetchBusinessJobPosts } from "@/src/services/jobService";
+import type { JobPost } from "@/src/types/jobs";
+import { hasMoreJobPages } from "@/src/utils/jobHelpers";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 const VIEWER_BANNER_CONTENT_HEIGHT = moderateHeightScale(28);
@@ -1017,6 +1022,69 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
     },
+    jobsHead: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      justifyContent: "space-between",
+      gap: moderateWidthScale(12),
+      marginBottom: moderateHeightScale(14),
+    },
+    jobsHeadText: {
+      flex: 1,
+      gap: moderateHeightScale(4),
+    },
+    jobsTitleRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(8),
+    },
+    jobsTitle: {
+      fontSize: fontSize.size15,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    jobsHiringPill: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(3),
+      paddingHorizontal: moderateWidthScale(8),
+      paddingVertical: moderateHeightScale(2),
+      borderRadius: moderateWidthScale(999),
+      backgroundColor: theme.tileMint,
+    },
+    jobsHiringPillText: {
+      fontSize: fontSize.size11,
+      fontFamily: fonts.fontBold,
+      color: theme.successGreen,
+      letterSpacing: 0.5,
+    },
+    jobsSubtitle: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+      lineHeight: moderateHeightScale(19),
+    },
+    jobsManage: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(2),
+      minHeight: moderateHeightScale(44),
+      paddingLeft: moderateWidthScale(8),
+    },
+    jobsManageText: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontBold,
+      color: theme.buttonBack,
+    },
+    jobsRowDivider: {
+      height: 1,
+      backgroundColor: theme.borderLight,
+      marginHorizontal: moderateWidthScale(16),
+    },
+    jobsLoading: {
+      paddingVertical: moderateHeightScale(24),
+      alignItems: "center",
+    },
     ratingsSectionContent: {
       // No padding here - let scroll be full width
     },
@@ -1594,7 +1662,7 @@ export default function BusinessDetailScreen() {
   }, [attributionReelId]);
 
   const [activeTab, setActiveTab] = useState<
-    "Details" | "Service" | "Ratings" | "Staff"
+    "Details" | "Service" | "Ratings" | "Staff" | "Jobs"
   >("Service");
   const [currentHeroImage, setCurrentHeroImage] = useState<string>(
     "https://images.unsplash.com/photo-1621605815971-fbc98d665033?w=800&q=80",
@@ -1710,6 +1778,18 @@ export default function BusinessDetailScreen() {
   const [followersCount, setFollowersCount] = useState<number | null>(null);
   const [followLoading, setFollowLoading] = useState(false);
 
+  // Hiring: open positions while the business has `is_hiring`
+  const jobsSectionRef = useRef<View>(null);
+  const [jobPosts, setJobPosts] = useState<JobPost[]>([]);
+  const [jobPostsLoading, setJobPostsLoading] = useState(false);
+  const [jobPostsMore, setJobPostsMore] = useState(false);
+  const [jobPostsPage, setJobPostsPage] = useState(1);
+  const [jobPostsTotal, setJobPostsTotal] = useState<number | null>(null);
+  const [showAllJobs, setShowAllJobs] = useState(false);
+  // Bumped on every details load, so the jobs list refreshes with the flag
+  const [detailsVersion, setDetailsVersion] = useState(0);
+  const scrolledToJobsRef = useRef(false);
+
   // Deep link / notification: open memberships segment (R-16 follow_new_membership)
   useEffect(() => {
     if (scrollToTarget !== "memberships") return;
@@ -1756,6 +1836,7 @@ export default function BusinessDetailScreen() {
 
       if (response.success && response.data?.business) {
         setBusinessData(response.data.business);
+        setDetailsVersion((v) => v + 1);
         const ownerWork =
           response.data.owner_work_images ??
           response.data.business?.owner_work_images ??
@@ -1819,6 +1900,65 @@ export default function BusinessDetailScreen() {
       fetchReviews();
     }, []),
   );
+
+  const isHiring = businessData?.is_hiring === true;
+
+  const loadJobPosts = useCallback(
+    async (page: number) => {
+      if (!params.business_id) return;
+      setJobPostsLoading(true);
+      try {
+        const { posts, meta } = await fetchBusinessJobPosts(params.business_id, {
+          page,
+          per_page: 20,
+        });
+        setJobPosts((prev) => {
+          if (page === 1) return posts;
+          const seen = new Set(prev.map((p) => p.id));
+          return [...prev, ...posts.filter((p) => !seen.has(p.id))];
+        });
+        setJobPostsPage(page);
+        setJobPostsMore(hasMoreJobPages(meta));
+        setJobPostsTotal(typeof meta?.total === "number" ? meta.total : null);
+      } catch (err) {
+        Logger.error("Failed to load job posts:", err);
+      } finally {
+        setJobPostsLoading(false);
+      }
+    },
+    [params.business_id],
+  );
+
+  // `is_hiring` is recalculated on every details load (owner closed / posted)
+  useEffect(() => {
+    if (isHiring) {
+      void loadJobPosts(1);
+    } else {
+      setJobPosts([]);
+      setJobPostsTotal(null);
+      setJobPostsMore(false);
+      setActiveTab((tab) => (tab === "Jobs" ? "Service" : tab));
+    }
+  }, [isHiring, detailsVersion, loadJobPosts]);
+
+  // Deep link / list card HIRING tag: open the Jobs section
+  useEffect(() => {
+    if (scrollToTarget !== "jobs") return;
+    if (scrolledToJobsRef.current) return;
+    if (!isHiring || jobPosts.length === 0) return;
+    scrolledToJobsRef.current = true;
+    setActiveTab("Jobs");
+    const timer = setTimeout(() => {
+      const position = sectionPositions.current.jobs;
+      if (position !== undefined && scrollViewRef.current) {
+        scrollViewRef.current.scrollTo({
+          y: Math.max(0, position - moderateHeightScale(80)),
+          animated: true,
+        });
+      }
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [scrollToTarget, isHiring, jobPosts.length]);
 
   const applyFollowState = (following: boolean, followers: number | null) => {
     setIsFollowing(following);
@@ -2658,7 +2798,9 @@ export default function BusinessDetailScreen() {
   const totalReviews = businessData?.ratings_count || reviewsTotal || 0;
   const textWrapLength = 115;
 
-  const handleTabPress = (tab: "Details" | "Service" | "Ratings" | "Staff") => {
+  const handleTabPress = (
+    tab: "Details" | "Service" | "Ratings" | "Staff" | "Jobs",
+  ) => {
     if (isSoloPlan && tab === "Staff") return;
     setActiveTab(tab);
     const sectionKey = tab.toLowerCase();
@@ -3802,6 +3944,132 @@ export default function BusinessDetailScreen() {
     );
   };
 
+  const JOBS_PREVIEW_COUNT = 3;
+
+  const renderJobsContent = () => {
+    const total = jobPostsTotal ?? jobPosts.length;
+    const canCollapse = jobPosts.length > JOBS_PREVIEW_COUNT;
+    const shown =
+      canCollapse && !showAllJobs
+        ? jobPosts.slice(0, JOBS_PREVIEW_COUNT)
+        : jobPosts;
+    return (
+      <View
+        ref={jobsSectionRef}
+        onLayout={() => {
+          measureSectionPosition(jobsSectionRef, "jobs");
+        }}
+        style={styles.contentContainer}
+      >
+        <View style={styles.sectionContentFullWidth}>
+          <View style={styles.jobsHead}>
+            <View style={styles.jobsHeadText}>
+              <View style={styles.jobsTitleRow}>
+                <Text style={styles.jobsTitle} accessibilityRole="header">
+                  {t("jobOpenPositionsCount", { count: total })}
+                </Text>
+                <View style={styles.jobsHiringPill}>
+                  <MaterialIcons
+                    name="work"
+                    size={moderateWidthScale(11)}
+                    color={theme.successGreen}
+                  />
+                  <Text style={styles.jobsHiringPillText}>
+                    {t("jobHiringBadge")}
+                  </Text>
+                </View>
+              </View>
+              <Text style={styles.jobsSubtitle}>
+                {t("jobJoinTeam", { name: businessName })}
+              </Text>
+            </View>
+            {isOwnerPreviewMode ? (
+              <TouchableOpacity
+                style={styles.jobsManage}
+                activeOpacity={0.7}
+                onPress={() =>
+                  router.push(
+                    "/(main)/dashboard/(account)/(businessProfileSettings)/jobPosts" as any,
+                  )
+                }
+                accessibilityRole="button"
+              >
+                <Text style={styles.jobsManageText}>{t("jobManage")}</Text>
+                <MaterialIcons
+                  name="chevron-right"
+                  size={moderateWidthScale(20)}
+                  color={theme.buttonBack}
+                />
+              </TouchableOpacity>
+            ) : null}
+          </View>
+
+          <JobRowsCard style={styles.cardShadow}>
+            {jobPosts.length === 0 ? (
+              <View style={styles.jobsLoading}>
+                {jobPostsLoading ? (
+                  <ActivityIndicator size="small" color={theme.darkGreen} />
+                ) : (
+                  <Text style={styles.jobsSubtitle}>{t("jobNoOpenPositions")}</Text>
+                )}
+              </View>
+            ) : (
+              shown.map((post, index) => (
+                <View key={post.id}>
+                  {index > 0 && <View style={styles.jobsRowDivider} />}
+                  <JobListRow
+                    post={post}
+                    onPress={() =>
+                      router.push({
+                        pathname: "/(main)/jobs/detail" as any,
+                        params: { id: String(post.id) },
+                      })
+                    }
+                  />
+                </View>
+              ))
+            )}
+            {canCollapse ? (
+              <TouchableOpacity
+                style={styles.viewAllRow}
+                activeOpacity={0.7}
+                onPress={() => setShowAllJobs((v) => !v)}
+                accessibilityRole="button"
+                accessibilityState={{ expanded: showAllJobs }}
+              >
+                <Text style={styles.viewAllRowText}>
+                  {showAllJobs
+                    ? t("showLess")
+                    : t("jobViewAllPositions", { count: total })}
+                </Text>
+                <MaterialIcons
+                  name={showAllJobs ? "keyboard-arrow-up" : "keyboard-arrow-down"}
+                  size={moderateWidthScale(20)}
+                  color={theme.darkGreen}
+                />
+              </TouchableOpacity>
+            ) : null}
+            {showAllJobs && jobPostsMore ? (
+              <TouchableOpacity
+                style={styles.viewAllRow}
+                activeOpacity={0.7}
+                disabled={jobPostsLoading}
+                onPress={() => void loadJobPosts(jobPostsPage + 1)}
+                accessibilityRole="button"
+              >
+                {jobPostsLoading ? (
+                  <ActivityIndicator size="small" color={theme.darkGreen} />
+                ) : (
+                  <Text style={styles.viewAllRowText}>{t("jobLoadMore")}</Text>
+                )}
+              </TouchableOpacity>
+            ) : null}
+          </JobRowsCard>
+        </View>
+      </View>
+    );
+  };
+
   const renderStaffContent = () => {
     if (staffMembers.length === 0) {
       return (
@@ -4375,11 +4643,21 @@ export default function BusinessDetailScreen() {
             style={styles.infoSheet}
           >
             <View style={styles.identityRow}>
-              <AppImage
-                uri={getBusinessLogoUrl()}
-                style={styles.businessLogo}
-                resizeMode="cover"
-              />
+              {isHiring ? (
+                <HiringRing onPress={() => handleTabPress("Jobs")}>
+                  <AppImage
+                    uri={getBusinessLogoUrl()}
+                    style={styles.businessLogo}
+                    resizeMode="cover"
+                  />
+                </HiringRing>
+              ) : (
+                <AppImage
+                  uri={getBusinessLogoUrl()}
+                  style={styles.businessLogo}
+                  resizeMode="cover"
+                />
+              )}
               <View style={styles.identityText}>
                 <View style={styles.nameRow}>
                   <Text style={styles.businessName} numberOfLines={2}>
@@ -4716,12 +4994,15 @@ export default function BusinessDetailScreen() {
             {(
               [
                 ["Service", t("tabService")],
+                ["Jobs", t("tabJobs")],
                 ["Details", t("tabDetails")],
                 ["Staff", t("tabStaff")],
                 ["Ratings", t("tabRatings")],
               ] as const
             )
               .filter(([tab]) => !(isSoloPlan && tab === "Staff"))
+              // Jobs only while the business has an open position
+              .filter(([tab]) => tab !== "Jobs" || isHiring)
               .map(([tab, label]) => (
               <TouchableOpacity
                 key={tab}
@@ -4744,6 +5025,12 @@ export default function BusinessDetailScreen() {
 
           {renderServiceContent()}
           <View style={styles.divider} />
+          {isHiring && (
+            <>
+              {renderJobsContent()}
+              <View style={styles.divider} />
+            </>
+          )}
           {renderDetailsContent()}
           <View style={styles.divider} />
           {!isSoloPlan && (

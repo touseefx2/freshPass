@@ -83,6 +83,7 @@ interface VerifiedSalon {
   reviewCount: number;
   image: string | null;
   ownerName?: string | null;
+  isHiring?: boolean;
   services?: ServiceItem[];
   subscriptions?: SubscriptionItem[];
 }
@@ -359,6 +360,7 @@ export default function ExploreScreen() {
           logo_url: string | null;
           owner?: { id?: number; name?: string | null } | null;
           owner_name?: string | null;
+          is_hiring?: boolean;
           portfolio_photos?: Array<{
             id: number;
             path: string;
@@ -388,6 +390,7 @@ export default function ExploreScreen() {
             reviewCount: item.ratings_count || 0,
             image: imageUrl,
             ownerName: getOwnerName(item),
+            isHiring: item.is_hiring === true,
           };
         });
 
@@ -458,6 +461,7 @@ export default function ExploreScreen() {
           logo_url: string | null;
           owner?: { id?: number; name?: string | null } | null;
           owner_name?: string | null;
+          is_hiring?: boolean;
           portfolio_photos?: Array<{ id: number; path: string; url: string }>;
           services?: Array<{
             id: number;
@@ -502,6 +506,7 @@ export default function ExploreScreen() {
             reviewCount: item.ratings_count || 0,
             image: imageUrl,
             ownerName: getOwnerName(item),
+            isHiring: item.is_hiring === true,
           };
 
           const services: ServiceItem[] | undefined = item.services?.map(

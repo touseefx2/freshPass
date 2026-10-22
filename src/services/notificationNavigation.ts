@@ -63,6 +63,7 @@ export type NotificationSubType =
   | "business_order_refunded"
   | "product_low_stock"
   | "product_out_of_stock"
+  | "business_job_application"
   | "moderation_warning"
   | "posting_suspended"
   | "posting_restored"
@@ -253,6 +254,7 @@ function openOwnerReelsList(
  * - type "order" + order_id / model_id (customer role) → shop order screen (every order_* subType)
  * - type "business_order" (owner: new paid order / auto refund) → owner order screen
  * - type "business_product" (owner: low / out of stock) → edit product; products list if deleted
+ * - type "business_job" (owner: new job application) → that post's manage screen with its applicants
  * - type "moderation" (push: subType only): warning / posting_suspended + reel_id → reelsFeed (404 → stay);
  *   account_suspended → sign out if still signed in; restored → nothing
  * - otherwise → notification screen (unless options.skipNotificationScreen is true, e.g. when already on that screen)
@@ -1025,6 +1027,28 @@ export function navigateFromNotificationData(
       });
       return;
     }
+  }
+
+  // Owner: someone applied. The post's screen lists the applicant with their
+  // answers and a Message button (the chat needs a name the payload lacks).
+  if (type === "business_job") {
+    const jobPostId = pickNumber(data, "job_post_id");
+    if (jobPostId != null) {
+      router.push({
+        pathname:
+          "/(main)/dashboard/(account)/(businessProfileSettings)/jobPostDetail" as any,
+        params: { id: String(jobPostId) },
+      });
+      Logger.log(
+        "------>navigateFromNotificationData (business_job) -> jobPostDetail",
+        { job_post_id: jobPostId, application_id: data.application_id },
+      );
+      return;
+    }
+    router.push(
+      "/(main)/dashboard/(account)/(businessProfileSettings)/jobPosts" as any,
+    );
+    return;
   }
 
   // Owner: low / out of stock → edit product to restock. The edit screen reads

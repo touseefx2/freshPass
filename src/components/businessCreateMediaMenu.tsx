@@ -54,6 +54,7 @@ const androidBlurMethod =
 type CreateMenuAction =
   | "newAppointment"
   | "addEmployee"
+  | "hiring"
   | "addProduct"
   | "createReel"
   | "servicesAndMemberships";
@@ -79,6 +80,12 @@ const MENU_ITEMS: MenuItem[] = [
     id: "addEmployee",
     labelKey: "addEmployee",
     icon: "account-multiple-plus-outline",
+    iconSet: "community",
+  },
+  {
+    id: "hiring",
+    labelKey: "jobHiringTitle",
+    icon: "briefcase-outline",
     iconSet: "community",
   },
   {
@@ -437,6 +444,21 @@ export default function BusinessCreateMediaMenu({
           return;
         case "addEmployee":
           handleAddEmployee();
+          return;
+        case "hiring":
+          closeAll();
+          // Profile → Business profile settings → Hiring (job posts)
+          router.push("/(main)/dashboard/(account)");
+          setTimeout(() => {
+            router.push(
+              "/(main)/dashboard/(account)/(businessProfileSettings)",
+            );
+            setTimeout(() => {
+              router.push(
+                "/(main)/dashboard/(account)/(businessProfileSettings)/jobPosts" as any,
+              );
+            }, 5);
+          }, 5);
           return;
         case "addProduct":
           closeAll();

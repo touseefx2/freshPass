@@ -39,6 +39,7 @@ export type SoloRowKey =
   | "appointments"
   | "products"
   | "orders"
+  | "hiring"
   | "socialMedia"
   | "cancellationPolicy"
   | "team"
@@ -306,6 +307,14 @@ export default function SoloProfileView({
       icon: "receipt-text-outline",
       tileBg: theme.apptPeachBg,
       iconColor: theme.orangeBrownText,
+    },
+    {
+      key: "hiring",
+      title: t("jobHiringTitle"),
+      subtitle: t("soloHiringSub"),
+      icon: "briefcase-outline",
+      tileBg: theme.tileMint,
+      iconColor: theme.successGreen,
     },
     {
       key: "socialMedia",
