@@ -53,6 +53,9 @@ function wallMsInZone(timeZone: string): number | null {
     if (!formatter) {
       formatter = new Intl.DateTimeFormat("en-US", {
         timeZone,
+        // hour12 is the widely supported switch; an engine that ignores
+        // hourCycle would otherwise give 12-hour parts ("1" for 1 PM).
+        hour12: false,
         hourCycle: "h23",
         year: "numeric",
         month: "2-digit",

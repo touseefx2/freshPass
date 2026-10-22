@@ -448,12 +448,16 @@ export default function AddAppointmentScreen() {
   // The salon's today, not the phone's: the date strip starts there.
   const salonToday = nowAtSalon().today;
 
-  // Phone ahead of the salon (or a stale calendar day): a day before the
-  // salon's today can't be booked, so start on the salon's today.
+  // Phone's date behind the salon's (or a stale calendar day): a day before
+  // the salon's today can't be booked, so start on the salon's today. Its
+  // time belonged to the old day, so the owner picks again.
   useEffect(() => {
     if (!salonTimeZone) return;
     const today = nowAtSalon().today;
-    if (date.isBefore(today, "day")) setDate(today);
+    if (date.isBefore(today, "day")) {
+      setDate(today);
+      setTime("");
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [salonTimeZone]);
 
@@ -465,8 +469,8 @@ export default function AddAppointmentScreen() {
     return staffId != null && !!schedule.staffClosedDays[staffId]?.includes(name);
   };
 
-  const timezoneText = schedule?.timezone
-    ? t("bkFlowSalonTimezone", { zone: formatSalonTimeZone(schedule.timezone) })
+  const timezoneText = salonTimeZone
+    ? t("bkFlowSalonTimezone", { zone: formatSalonTimeZone(salonTimeZone) })
     : getDeviceTimeZone()
       ? t("bkFlowTimezone", {
           zone: formatSalonTimeZone(getDeviceTimeZone() as string),

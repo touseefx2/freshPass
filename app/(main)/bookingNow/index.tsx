@@ -1412,6 +1412,9 @@ export default function BookingNow() {
   /** Salon's `now` from the last slot load; "today" and "passed" use it. */
   const [salonClock, setSalonClock] = useState<SalonClock | null>(null);
   const nowAtSalon = () => salonNow(salonClock, salonTimezone);
+  // The salon's today, not the phone's: read once per render, since every
+  // day cell's isDateDisabled needs it.
+  const salonToday = nowAtSalon().today;
   const [selectedStaffMember, setSelectedStaffMember] =
     useState<StaffMember | null>(null);
   const [selectedDate, setSelectedDateState] = useState(() => dayjs());
@@ -2097,9 +2100,8 @@ export default function BookingNow() {
   };
 
   const isDateDisabled = (date: dayjs.Dayjs): boolean => {
-    const today = nowAtSalon().today;
     const selectedDay = date.startOf("day");
-    if (selectedDay.isBefore(today)) return true;
+    if (selectedDay.isBefore(salonToday)) return true;
     const dayName = getDayNameFromDate(date);
     if (selectedStaff !== "anyone" && selectedStaffMember?.working_hours) {
       const staffDayHours = selectedStaffMember.working_hours[dayName];
@@ -2371,8 +2373,7 @@ export default function BookingNow() {
     setVisibleMonth(selectedDate.startOf("month"));
   }, [selectedDate]);
 
-  // The salon's today, not the phone's: the strip starts there.
-  const salonToday = nowAtSalon().today;
+  // The strip starts on the salon's today.
   const salonTodayKey = salonToday.format("YYYY-MM-DD");
   const isCurrentMonth = visibleMonth.isSame(salonToday, "month");
 
