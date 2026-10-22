@@ -18,7 +18,7 @@ import {
   iconScale,
 } from "@/src/theme/dimensions";
 import Button from "@/src/components/button";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { GeneratedSubscriptionPlanNormalized } from "@/src/services/aiToolsService";
 
 const formatMonthlyPrice = (price: number, currency: string): string => {
@@ -258,6 +258,8 @@ export default function GeneratedSubscriptionPlansModal({
   const { colors } = useTheme();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
+  // SafeAreaView inside a Modal reports 0 insets on first open; use the app's measured insets instead
+  const insets = useSafeAreaInsets();
   const [selectedPlanIndices, setSelectedPlanIndices] = useState<number[]>([]);
 
   // Reset selection when modal closes
@@ -306,7 +308,12 @@ export default function GeneratedSubscriptionPlansModal({
       onRequestClose={onClose}
       statusBarTranslucent
     >
-      <SafeAreaView style={styles.overlay}>
+      <View
+        style={[
+          styles.overlay,
+          { paddingTop: insets.top, paddingBottom: insets.bottom },
+        ]}
+      >
         <View style={styles.container}>
           <View style={styles.header}>
             <Text style={styles.headerTitle}>Ai Generated Plans</Text>
@@ -428,7 +435,7 @@ export default function GeneratedSubscriptionPlansModal({
             </>
           )}
         </View>
-      </SafeAreaView>
+      </View>
     </Modal>
   );
 }
