@@ -775,17 +775,21 @@ export function DateStrip({
   value,
   onChange,
   isDisabled,
+  today: todayProp,
 }: {
   value: Dayjs;
   onChange: (date: Dayjs) => void;
   /** Closed days (past days are always off) */
   isDisabled?: (date: Dayjs) => boolean;
+  /** The salon's today (defaults to the phone's); earlier days are past */
+  today?: Dayjs;
 }) {
   const { t } = useTranslation();
   const { colors } = useTheme();
   const theme = colors as Theme;
   const styles = useMemo(() => createDateStripStyles(theme), [theme]);
-  const today = dayjs().startOf("day");
+  const today = (todayProp ?? dayjs()).startOf("day");
+  const todayKey = today.format("YYYY-MM-DD");
   const isOff = (day: Dayjs) =>
     day.isBefore(today, "day") || !!isDisabled?.(day);
 
@@ -799,14 +803,14 @@ export function DateStrip({
   const isCurrentMonth = month.isSame(today, "month");
 
   const days = useMemo(() => {
-    const start = isCurrentMonth ? dayjs().startOf("day") : month;
+    const start = isCurrentMonth ? dayjs(todayKey) : month;
     const end = month.endOf("month");
     const list: Dayjs[] = [];
     for (let d = start; !d.isAfter(end, "day"); d = d.add(1, "day")) {
       list.push(d);
     }
     return list;
-  }, [month, isCurrentMonth]);
+  }, [month, isCurrentMonth, todayKey]);
 
   const changeMonth = (delta: 1 | -1) => {
     const next = month.add(delta, "month").startOf("month");

@@ -14,8 +14,10 @@ import { useTheme, useAppSelector, useAppDispatch } from "@/src/hooks/hooks";
 import AppImage from "@/src/components/AppImage";
 import {
   setSelectedStaff,
+  setSelectedTimeSlot,
   type StaffMember,
 } from "@/src/state/slices/bsnsSlice";
+import { bookingTimeError } from "@/src/utils/salonTimezone";
 import {
   setActionLoader,
   setGuestModeModalVisible,
@@ -668,6 +670,18 @@ function CheckoutContent() {
     router.back();
   }, [router]);
 
+  // Server refused the time (passed or taken at the salon): say why, clear
+  // it and reopen Date & time, which loads fresh slots.
+  const handleTimeRefused = (error: unknown, title: string): boolean => {
+    const message = bookingTimeError(error);
+    if (!message) return false;
+    showBanner(title, message, "error", 4000);
+    dispatch(setSelectedTimeSlot(null));
+    requestReviewEdit("time");
+    handleBackNavigation();
+    return true;
+  };
+
   // Handle Android hardware back button
   useFocusEffect(
     useCallback(() => {
@@ -932,6 +946,7 @@ function CheckoutContent() {
     } catch (error: any) {
       dispatch(setActionLoader(false));
       Logger.error("Appointment API Error:", error);
+      if (handleTimeRefused(error, "Booking Failed")) return;
       showBanner(
         "Booking Failed",
         getAppointmentImageErrorMessage(error),
@@ -1468,6 +1483,14 @@ function CheckoutContent() {
       setProcessingPayment(false);
 
       Logger.error("Appointment API Error:", error);
+      if (
+        handleTimeRefused(
+          error,
+          paymentMethod === "payNow" ? "Payment Failed" : "Booking Failed",
+        )
+      ) {
+        return;
+      }
 
       const apiMessage =
         error?.data?.message ||

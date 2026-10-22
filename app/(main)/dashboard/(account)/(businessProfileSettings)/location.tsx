@@ -37,7 +37,12 @@ import { Skeleton } from "@/src/components/skeletons";
 import { ApiService } from "@/src/services/api";
 import Logger from "@/src/services/logger";
 import { businessEndpoints } from "@/src/services/endpoints";
-import { getDeviceTimeZone } from "@/src/utils/salonTimezone";
+import {
+  getDeviceTimeZone,
+  timeZoneLabel,
+  US_TIME_ZONES,
+} from "@/src/utils/salonTimezone";
+import ModalizeBottomSheet from "@/src/components/modalizeBottomSheet";
 import { useRouter } from "expo-router";
 import StepFourSearchSection from "../../../completeProfile/components/StepFour/StepFourSearchSection";
 import StepFourMapSection from "../../../completeProfile/components/StepFour/StepFourMapSection";
@@ -67,7 +72,12 @@ interface LocationData {
   latitude: string;
   longitude: string;
   complete_address: string;
+  /** Zone in use; the address decides it unless the owner picked one */
+  timezone?: string | null;
+  timezone_manual?: boolean;
 }
+
+const AUTO_ZONE = "auto";
 
 const generateSessionToken = () =>
   Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
@@ -143,6 +153,61 @@ const createStyles = (theme: Theme) =>
       fontSize: fontSize.size15,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
+    },
+    zoneCard: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(12),
+      padding: moderateWidthScale(14),
+      borderRadius: moderateWidthScale(12),
+      borderWidth: 1,
+      borderColor: theme.borderLight,
+      backgroundColor: theme.white,
+    },
+    zoneText: {
+      flex: 1,
+      gap: moderateHeightScale(2),
+    },
+    zoneLabel: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontMedium,
+      color: theme.lightGreen,
+    },
+    zoneValue: {
+      fontSize: fontSize.size15,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    zoneHint: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+    },
+    zoneChange: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
+      textDecorationLine: "underline",
+    },
+    zoneOptionRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingVertical: moderateHeightScale(16),
+      borderBottomWidth: 1,
+      borderBottomColor: theme.borderLight,
+    },
+    zoneOptionRowLast: {
+      borderBottomWidth: 0,
+    },
+    zoneOptionText: {
+      flex: 1,
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontRegular,
+      color: theme.darkGreen,
+    },
+    zoneOptionTextSelected: {
+      fontFamily: fonts.fontBold,
     },
     updateButtonContainer: {
       paddingHorizontal: moderateWidthScale(20),
@@ -273,6 +338,10 @@ export default function LocationScreen() {
   const [zipCode, setZipCode] = useState("");
   const [latitude, setLatitude] = useState("");
   const [longitude, setLongitude] = useState("");
+  // Owner's time zone change, sent on save: a zone, AUTO_ZONE (back to the
+  // address), or null for no change.
+  const [zoneChoice, setZoneChoice] = useState<string | null>(null);
+  const [zoneSheetVisible, setZoneSheetVisible] = useState(false);
 
   const ensureSessionToken = useCallback(() => {
     if (!sessionTokenRef.current) {
@@ -579,10 +648,17 @@ export default function LocationScreen() {
       if (longitude) {
         formData.append("longitude", longitude);
       }
-      // Always with the address: a save without it resets the zone to the state guess
+      // The address decides the zone; the phone's only counts with no US state.
       const timezone = getDeviceTimeZone();
       if (timezone) {
         formData.append("timezone", timezone);
+      }
+      // Owner's pick; empty = automatic again (from the address).
+      if (zoneChoice) {
+        formData.append(
+          "manual_timezone",
+          zoneChoice === AUTO_ZONE ? "" : zoneChoice,
+        );
       }
 
       const config = {
@@ -631,9 +707,32 @@ export default function LocationScreen() {
     zipCode,
     latitude,
     longitude,
+    zoneChoice,
     showBanner,
     fetchLocation,
   ]);
+
+  // What the card and sheet show: the unsaved pick, else what's saved.
+  const savedZone = locationData?.timezone || null;
+  const savedManual = !!locationData?.timezone_manual;
+  const selectedZoneOption =
+    zoneChoice ?? (savedManual && savedZone ? savedZone : AUTO_ZONE);
+  const zoneValue =
+    zoneChoice && zoneChoice !== AUTO_ZONE
+      ? timeZoneLabel(zoneChoice)
+      : zoneChoice === AUTO_ZONE
+        ? "Automatic"
+        : savedZone
+          ? timeZoneLabel(savedZone)
+          : "Automatic";
+  const zoneHint =
+    zoneChoice === AUTO_ZONE
+      ? "Set from your address when you update."
+      : zoneChoice
+        ? "Set by you. Saved when you update."
+        : savedManual
+          ? "Set by you"
+          : "Set automatically from your address";
 
   return (
     <SafeAreaView edges={["bottom"]} style={styles.container}>
@@ -701,6 +800,21 @@ export default function LocationScreen() {
                 keyboardType="number-pad"
                 showClearButton={false}
               />
+
+              <TouchableOpacity
+                style={styles.zoneCard}
+                onPress={() => setZoneSheetVisible(true)}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel={`Time zone: ${zoneValue}. ${zoneHint}`}
+              >
+                <View style={styles.zoneText}>
+                  <Text style={styles.zoneLabel}>Time zone</Text>
+                  <Text style={styles.zoneValue}>{zoneValue}</Text>
+                  <Text style={styles.zoneHint}>{zoneHint}</Text>
+                </View>
+                <Text style={styles.zoneChange}>Change</Text>
+              </TouchableOpacity>
             </View>
           </>
         )}
@@ -744,6 +858,56 @@ export default function LocationScreen() {
           </View>
         </>
       )}
+
+      <ModalizeBottomSheet
+        visible={zoneSheetVisible}
+        onClose={() => setZoneSheetVisible(false)}
+        title="Time zone"
+      >
+        {[
+          { zone: AUTO_ZONE, label: "Automatic (from your address)" },
+          ...US_TIME_ZONES,
+        ].map((option, index, list) => {
+          const isSelected = selectedZoneOption === option.zone;
+          return (
+            <TouchableOpacity
+              key={option.zone}
+              onPress={() => {
+                // Picking what's already saved is no change.
+                const unchanged =
+                  option.zone === AUTO_ZONE
+                    ? !savedManual
+                    : savedManual && option.zone === savedZone;
+                setZoneChoice(unchanged ? null : option.zone);
+                setZoneSheetVisible(false);
+              }}
+              activeOpacity={0.7}
+              style={[
+                styles.zoneOptionRow,
+                index === list.length - 1 && styles.zoneOptionRowLast,
+              ]}
+              accessibilityRole="radio"
+              accessibilityState={{ selected: isSelected }}
+            >
+              <Text
+                style={[
+                  styles.zoneOptionText,
+                  isSelected && styles.zoneOptionTextSelected,
+                ]}
+              >
+                {option.label}
+              </Text>
+              {isSelected && (
+                <Feather
+                  name="check"
+                  size={moderateWidthScale(18)}
+                  color={theme.darkGreen}
+                />
+              )}
+            </TouchableOpacity>
+          );
+        })}
+      </ModalizeBottomSheet>
 
       {/* Search Modal */}
       <Modal

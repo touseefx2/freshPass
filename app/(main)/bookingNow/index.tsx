@@ -104,7 +104,14 @@ import {
 } from "@/src/components/reelFlow/flowParts";
 import { IMAGES } from "@/src/constant/images";
 import dayjs from "dayjs";
-import { formatSalonTimeZone } from "@/src/utils/salonTimezone";
+import {
+  bookingTimeError,
+  formatSalonTimeZone,
+  parseSalonClock,
+  salonNow,
+  salonSlotHasPassed,
+  type SalonClock,
+} from "@/src/utils/salonTimezone";
 import { RatingBadge } from "@/src/components/reviews/reviewMedia";
 import weekOfYear from "dayjs/plugin/weekOfYear";
 import isoWeek from "dayjs/plugin/isoWeek";
@@ -1402,6 +1409,9 @@ export default function BookingNow() {
   const [error, setError] = useState<string | null>(null);
   /** Salon's IANA zone from business details; slot times are on this clock. */
   const [salonTimezone, setSalonTimezone] = useState<string | null>(null);
+  /** Salon's `now` from the last slot load; "today" and "passed" use it. */
+  const [salonClock, setSalonClock] = useState<SalonClock | null>(null);
+  const nowAtSalon = () => salonNow(salonClock, salonTimezone);
   const [selectedStaffMember, setSelectedStaffMember] =
     useState<StaffMember | null>(null);
   const [selectedDate, setSelectedDateState] = useState(() => dayjs());
@@ -1908,10 +1918,9 @@ export default function BookingNow() {
     return dayNamesFull[date.day()];
   };
 
-  // Clear selected time slot when date changes (new date has different slots)
+  // New date: the picked time stays only if it's free that day too (the
+  // slot-load effect below drops it otherwise).
   useEffect(() => {
-    setSelectedTimeSlotState(null);
-    dispatch(setSelectedTimeSlot(null));
     dispatch(setAssignedStaffId(null));
   }, [selectedDate, dispatch]);
 
@@ -1944,6 +1953,8 @@ export default function BookingNow() {
       success?: boolean;
       message?: string;
       data?: AvailableSlot[] | { slots?: AvailableSlot[] } | unknown;
+      timezone?: string;
+      now?: string;
     }>(
       appointmentsEndpoints.availableSlots({
         business_id: parseInt(businessId, 10),
@@ -1968,6 +1979,11 @@ export default function BookingNow() {
             ? (res.data as { slots: unknown[] }).slots
             : [];
         setApiSlots(normalizeAvailableSlots(rawList));
+        const clock = parseSalonClock(res?.now);
+        if (clock) setSalonClock(clock);
+        if (typeof res?.timezone === "string" && res.timezone) {
+          setSalonTimezone(res.timezone);
+        }
       })
       .catch((err: any) => {
         if (requestId !== slotsRequest.current) return;
@@ -2006,8 +2022,16 @@ export default function BookingNow() {
   // it quietly, like owner booking. Only a time that passed on the same day
   // says why. A failed refetch keeps it (nothing known).
   useEffect(() => {
-    if (slotsLoading || slotsError) return;
+    if (slotsLoading) return;
     const day = selectedDate.format("YYYY-MM-DD");
+    if (slotsError) {
+      // New day failed to load: a time kept from another day is unchecked.
+      if (selectedTimeSlot && lastSlotsDay.current !== day) {
+        setSelectedTimeSlotState(null);
+        dispatch(setSelectedTimeSlot(null));
+      }
+      return;
+    }
     const sameDay = lastSlotsDay.current === day;
     lastSlotsDay.current = day;
     if (!selectedTimeSlot) return;
@@ -2033,22 +2057,11 @@ export default function BookingNow() {
     [availableTimeSlots],
   );
 
-  const isSlotDisabled = (slot: string): boolean => {
-    if (!isValidTimeSlot(slot)) return true;
-    const today = dayjs().startOf("day");
-    const selectedDay = selectedDate.startOf("day");
-    // A day left behind (app open past midnight): every time has passed.
-    if (selectedDay.isBefore(today, "day")) return true;
-    if (!selectedDay.isSame(today, "day")) return false;
-    const now = dayjs();
-    const [hours, minutes] = slot.split(":").map(Number);
-    const slotTime = dayjs()
-      .hour(hours)
-      .minute(minutes)
-      .second(0)
-      .millisecond(0);
-    return slotTime.isBefore(now);
-  };
+  // On the salon's clock: a day left behind (app open past midnight) or a
+  // time already started today has passed.
+  const isSlotDisabled = (slot: string): boolean =>
+    !isValidTimeSlot(slot) ||
+    salonSlotHasPassed(selectedDate, slot, nowAtSalon());
 
   // Today's picked time may pass while the customer sits on a step: check
   // on every move forward, drop it and send them back to pick another.
@@ -2084,7 +2097,7 @@ export default function BookingNow() {
   };
 
   const isDateDisabled = (date: dayjs.Dayjs): boolean => {
-    const today = dayjs().startOf("day");
+    const today = nowAtSalon().startOf("day");
     const selectedDay = date.startOf("day");
     if (selectedDay.isBefore(today)) return true;
     const dayName = getDayNameFromDate(date);
@@ -2103,7 +2116,7 @@ export default function BookingNow() {
     if (!businessHours) return;
     // In reschedule mode, keep the date from params; do not reset to today
     if (params.is_reschedule === "1" && params.appointment_date) return;
-    const today = dayjs().startOf("day");
+    const today = nowAtSalon().startOf("day");
     const currentSelected = selectedDate.startOf("day");
     if (currentSelected.isSame(today, "day") && !isDateDisabled(today)) return;
     if (!isDateDisabled(today)) {
@@ -2265,10 +2278,16 @@ export default function BookingNow() {
   const fetchSlotsRef = useRef(fetchAvailableSlots);
   fetchSlotsRef.current = fetchAvailableSlots;
   const focusedOnceRef = useRef(false);
+  const reduxTimeSlotRef = useRef(businessData.selectedTimeSlot);
+  reduxTimeSlotRef.current = businessData.selectedTimeSlot;
   useFocusEffect(
     useCallback(() => {
       const firstFocus = !focusedOnceRef.current;
       focusedOnceRef.current = true;
+      // Checkout cleared a time the server refused: drop it here too.
+      if (!firstFocus && !reduxTimeSlotRef.current) {
+        setSelectedTimeSlotState(null);
+      }
       const target = takeReviewEdit();
       const index = target ? steps.indexOf(target) : -1;
       if (index >= 0) {
@@ -2338,9 +2357,9 @@ export default function BookingNow() {
           (slot) => getSlotCategory(slot) === category && !isSlotDisabled(slot),
         ),
       })).filter((group) => group.slots.length > 0),
-    // isSlotDisabled only depends on the selected date
+    // isSlotDisabled depends on the selected date and the salon clock
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [sortedTimeSlots, selectedDate],
+    [sortedTimeSlots, selectedDate, salonClock, salonTimezone],
   );
 
   // Scrollable day strip: today up to ~2 months ahead (and the picked day).
@@ -2352,10 +2371,13 @@ export default function BookingNow() {
     setVisibleMonth(selectedDate.startOf("month"));
   }, [selectedDate]);
 
-  const isCurrentMonth = visibleMonth.isSame(dayjs(), "month");
+  // The salon's today, not the phone's: the strip starts there.
+  const salonToday = nowAtSalon().startOf("day");
+  const salonTodayKey = salonToday.format("YYYY-MM-DD");
+  const isCurrentMonth = visibleMonth.isSame(salonToday, "month");
 
   const stripDays = useMemo(() => {
-    const today = dayjs().startOf("day");
+    const today = dayjs(salonTodayKey);
     const start = isCurrentMonth ? today : visibleMonth.startOf("month");
     const end = visibleMonth.endOf("month");
     const days: dayjs.Dayjs[] = [];
@@ -2363,13 +2385,13 @@ export default function BookingNow() {
       days.push(d);
     }
     return days;
-  }, [visibleMonth, isCurrentMonth]);
+  }, [visibleMonth, isCurrentMonth, salonTodayKey]);
 
   /** Show another month and pick its first open day (or just show it). */
   const changeMonth = (delta: 1 | -1) => {
     const month = visibleMonth.add(delta, "month").startOf("month");
-    if (month.isBefore(dayjs(), "month")) return;
-    const today = dayjs().startOf("day");
+    if (month.isBefore(salonToday, "month")) return;
+    const today = salonToday;
     let day = month.isSame(today, "month") ? today : month;
     while (day.isSame(month, "month")) {
       if (!isDateDisabled(day)) {
@@ -2612,6 +2634,16 @@ export default function BookingNow() {
       // while the customer was picking a slot). Nothing changed; ask and resend.
       if (err?.status === 422 && err?.data?.errors?.late_fee_accepted) {
         setRescheduleFeeMessage(err?.data?.message || err?.message || "");
+        return;
+      }
+      // Time passed or taken at the salon: say why, drop it, show fresh slots.
+      const timeError = bookingTimeError(err);
+      if (timeError) {
+        setSelectedTimeSlotState(null);
+        dispatch(setSelectedTimeSlot(null));
+        showBanner(t("bkFlowSlotTakenTitle"), timeError, "warning", 4000);
+        if (stepKey === "time") fetchAvailableSlots();
+        else goToStep("time");
         return;
       }
       showBanner(
@@ -3159,7 +3191,7 @@ export default function BookingNow() {
       {stripDays.map((day) => {
         const isSelected = day.isSame(selectedDate, "day");
         const isDisabled = isDateDisabled(day);
-        const isToday = day.isSame(dayjs(), "day");
+        const isToday = day.isSame(salonToday, "day");
         return (
           <TouchableOpacity
             key={day.format("YYYY-MM-DD")}
@@ -3695,7 +3727,8 @@ export default function BookingNow() {
           step: t(STEP_LABEL_KEYS[steps[safeIndex + 1]]),
         }),
         trailingIcon: "chevron-right",
-        disabled: !!blockedHint,
+        // Wait for the day's slots: a kept time isn't checked until then.
+        disabled: !!blockedHint || (stepKey === "time" && slotsLoading),
         onPress: () => {
           if (dropPassedSlot()) return;
           goTo(safeIndex + 1, 1);

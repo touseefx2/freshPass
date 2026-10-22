@@ -183,8 +183,18 @@ export async function fetchOwnerFreeTimes(params: {
   serviceIds: number[];
   /** Gap between start times (the "30 min slots" menu) */
   slotMinutes?: number;
-}): Promise<string[]> {
-  const res = await ApiService.get<{ success?: boolean; data?: unknown }>(
+}): Promise<{
+  times: string[];
+  /** Salon's current time (ISO with offset) when the list was built */
+  now: string | null;
+  timezone: string | null;
+}> {
+  const res = await ApiService.get<{
+    success?: boolean;
+    data?: unknown;
+    timezone?: string;
+    now?: string;
+  }>(
     appointmentsEndpoints.availableSlots({
       business_id: params.businessId,
       date: params.date,
@@ -211,7 +221,11 @@ export async function fetchOwnerFreeTimes(params: {
       const [h, m] = time.split(":");
       return `${h.padStart(2, "0")}:${m.slice(0, 2)}`;
     });
-  return Array.from(new Set(times)).sort();
+  return {
+    times: Array.from(new Set(times)).sort(),
+    now: typeof res?.now === "string" ? res.now : null,
+    timezone: typeof res?.timezone === "string" ? res.timezone : null,
+  };
 }
 
 type HoursRow = { day?: string | null; closed?: boolean | null };

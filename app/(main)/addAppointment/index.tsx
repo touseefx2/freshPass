@@ -51,6 +51,10 @@ import {
 import {
   formatSalonTimeZone,
   getDeviceTimeZone,
+  parseSalonClock,
+  salonNow,
+  salonSlotHasPassed,
+  type SalonClock,
 } from "@/src/utils/salonTimezone";
 import {
   CUSTOMER_SEARCH_PAGE_SIZE,
@@ -280,6 +284,9 @@ export default function AddAppointmentScreen() {
   const [freeError, setFreeError] = useState<string | null>(null);
   const [freeTimesKey, setFreeTimesKey] = useState(0);
   const freeRequest = useRef(0);
+  /** Salon's `now` from the last free-times load; "today" and "passed" use it. */
+  const [salonClock, setSalonClock] = useState<SalonClock | null>(null);
+  const [salonZone, setSalonZone] = useState<string | null>(null);
   const [timeError, setTimeError] = useState<string | null>(null);
   const [period, setPeriod] = useState<DayPeriod | null>(null);
   const [slotMinutes, setSlotMinutes] =
@@ -416,8 +423,11 @@ export default function AddAppointmentScreen() {
       serviceIds,
       slotMinutes,
     })
-      .then((times) => {
+      .then(({ times, now, timezone }) => {
         if (requestId !== freeRequest.current) return;
+        const clock = parseSalonClock(now);
+        if (clock) setSalonClock(clock);
+        if (timezone) setSalonZone(timezone);
         setFreeTimes(times);
         // Only free times can be booked: drop a tapped time that isn't free.
         setTime((current) => (times.includes(current) ? current : ""));
@@ -432,6 +442,20 @@ export default function AddAppointmentScreen() {
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, businessId, staffId, dateStr, serviceIds.join(","), slotMinutes, freeTimesKey]);
+
+  const salonTimeZone = salonZone ?? schedule?.timezone ?? null;
+  const nowAtSalon = () => salonNow(salonClock, salonTimeZone);
+  // The salon's today, not the phone's: the date strip starts there.
+  const salonToday = nowAtSalon().startOf("day");
+
+  // Phone ahead of the salon (or a stale calendar day): a day before the
+  // salon's today can't be booked, so start on the salon's today.
+  useEffect(() => {
+    if (!salonTimeZone) return;
+    const today = nowAtSalon().startOf("day");
+    if (date.isBefore(today, "day")) setDate(today);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [salonTimeZone]);
 
   // Salon or barber day off: greyed in the date strip, like customer booking.
   const isDayClosed = (day: dayjs.Dayjs) => {
@@ -464,15 +488,14 @@ export default function AddAppointmentScreen() {
     return Object.keys(errors).length === 0;
   };
 
-  // Checked against the clock at press time (not memoised): the picked time
-  // can pass while the owner sits on a step.
+  // Checked against the salon's clock at press time (not memoised): the
+  // picked time can pass while the owner sits on a step.
   const isPastSlot = () => {
-    if (date.isBefore(dayjs(), "day")) return true;
+    const now = nowAtSalon();
+    if (date.isBefore(now, "day")) return true;
     // No time picked yet (e.g. cleared because it wasn't free).
     if (!isValidTime(time)) return false;
-    if (!date.isSame(dayjs(), "day")) return false;
-    const [h, m] = time.split(":").map(Number);
-    return date.hour(h).minute(m).isBefore(dayjs());
+    return salonSlotHasPassed(date, time, now);
   };
 
   // Drop a passed time, reload so passed chips leave the list, and send the
@@ -489,13 +512,11 @@ export default function AddAppointmentScreen() {
   // Free times still ahead (today's past ones hidden), split by part of day.
   const openTimes = useMemo(() => {
     if (!freeTimes) return null;
-    if (!date.isSame(dayjs(), "day")) return freeTimes;
-    const now = dayjs();
-    return freeTimes.filter((slot) => {
-      const [h, m] = slot.split(":").map(Number);
-      return date.hour(h).minute(m).isAfter(now);
-    });
-  }, [freeTimes, date]);
+    const now = nowAtSalon();
+    return freeTimes.filter((slot) => !salonSlotHasPassed(date, slot, now));
+    // nowAtSalon reads the salon clock
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [freeTimes, date, salonClock, salonTimeZone]);
   const openPeriods = useMemo(
     () =>
       DAY_PERIODS.filter((p) =>
@@ -623,6 +644,10 @@ export default function AddAppointmentScreen() {
             err.first("staff_id") ||
             err.message,
         );
+        // A refused time (passed or taken) can't stay picked.
+        if (err.has("appointment_time") || err.has("appointment_date")) {
+          setTime("");
+        }
         setFreeTimesKey((key) => key + 1);
         setStep(
           err.has("staff_id") && !err.has("appointment_time") ? "barber" : "time",
@@ -968,6 +993,7 @@ export default function AddAppointmentScreen() {
         <View style={styles.timeSection}>
           <DateStrip
             value={date}
+            today={salonToday}
             isDisabled={isDayClosed}
             onChange={(next) => {
               setDate(next);
