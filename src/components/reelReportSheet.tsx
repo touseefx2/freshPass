@@ -126,8 +126,8 @@ export default function ReelReportSheet({
     if (!visible) return;
     setSelectedReason(null);
     setNote("");
-    if (reasons.length > 0) return;
-    setLoadingReasons(true);
+    // Reload on every open; keep the last list on screen while it loads
+    setLoadingReasons(reasons.length === 0);
     (async () => {
       try {
         setReasons(await fetchReportReasons());

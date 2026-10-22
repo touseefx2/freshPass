@@ -13,7 +13,7 @@ import {
 import { LoginManager, AccessToken } from "react-native-fbsdk-next";
 import { useAppSelector, useAppDispatch } from "@/src/hooks/hooks";
 import Logger from "@/src/services/logger";
-import { ApiService } from "@/src/services/api";
+import { ApiService, getAccountSuspendedMessage } from "@/src/services/api";
 import { businessEndpoints } from "@/src/services/endpoints";
 import { MAIN_ROUTES } from "@/src/constant/routes";
 import {
@@ -81,6 +81,18 @@ export function useSocialLogin() {
       }
     }
   }, []);
+
+  // 403 account_suspended (FreshPass moderation) — show the server's message
+  // instead of the generic "sign-in failed" alert.
+  const alertIfAccountSuspended = useCallback(
+    (error: any): boolean => {
+      const message = getAccountSuspendedMessage(error);
+      if (!message) return false;
+      Alert.alert(t("accountSuspendedTitle"), message);
+      return true;
+    },
+    [t],
+  );
 
   const handleSocialLoginResponse = useCallback(
     (response: SocialLoginApiResponse) => {
@@ -292,6 +304,7 @@ export function useSocialLogin() {
       }
     } catch (error: any) {
       Logger.error("Google Sign-In Error:", error);
+      if (alertIfAccountSuspended(error)) return;
 
       if (error.code === statusCodes.SIGN_IN_CANCELLED) {
         Logger.log("User cancelled Google Sign-In");
@@ -306,7 +319,7 @@ export function useSocialLogin() {
         );
       }
     }
-  }, [t, selectedRole, handleSocialLoginResponse]);
+  }, [t, selectedRole, handleSocialLoginResponse, alertIfAccountSuspended]);
 
   const handleAppleLogin = useCallback(async () => {
     try {
@@ -363,6 +376,7 @@ export function useSocialLogin() {
       }
     } catch (error: any) {
       Logger.error("Apple Sign-In Error:", error);
+      if (alertIfAccountSuspended(error)) return;
 
       if (error.code === appleAuth.Error.CANCELED) {
         Logger.log("User cancelled Apple Sign-In");
@@ -380,7 +394,7 @@ export function useSocialLogin() {
         );
       }
     }
-  }, [t, selectedRole, handleSocialLoginResponse]);
+  }, [t, selectedRole, handleSocialLoginResponse, alertIfAccountSuspended]);
 
   const handleAppleLoginAndroid = useCallback(async () => {
     try {
@@ -439,12 +453,13 @@ export function useSocialLogin() {
       }
     } catch (error: any) {
       Logger.error("Apple Android Sign-In Error:", error);
+      if (alertIfAccountSuspended(error)) return;
       Alert.alert(
         t("appleSignInFailed"),
         error.message || t("errorDuringAppleSignIn"),
       );
     }
-  }, [t, selectedRole, handleSocialLoginResponse]);
+  }, [t, selectedRole, handleSocialLoginResponse, alertIfAccountSuspended]);
 
   const handleFacebookLogin = useCallback(async () => {
     try {
@@ -519,12 +534,13 @@ export function useSocialLogin() {
         error?.name,
         error,
       );
+      if (alertIfAccountSuspended(error)) return;
       Alert.alert(
         t("facebookSignInFailed"),
         error?.message || t("errorDuringFacebookSignIn"),
       );
     }
-  }, [t, selectedRole, handleSocialLoginResponse]);
+  }, [t, selectedRole, handleSocialLoginResponse, alertIfAccountSuspended]);
 
   const handleSocialLogin = useCallback(
     async (provider: SocialProvider) => {

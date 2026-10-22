@@ -20,7 +20,7 @@ import {
   setSavedPassword,
 } from "@/src/state/slices/generalSlice";
 import { resetCompleteProfile } from "../state/slices/completeProfileSlice";
-import { Platform } from "react-native";
+import { Alert, Platform } from "react-native";
 import { router } from "expo-router";
 import { MAIN_ROUTES } from "../constant/routes";
 import Logger from "./logger";
@@ -363,6 +363,36 @@ const handleLogout = async (options?: { skipApi?: boolean }) => {
 };
 
 /**
+ * Server message when a call was refused with 403 `account_suspended`
+ * (FreshPass moderation), else null. Works on axios errors and on the errors
+ * ApiService rethrows (`status` + `data`).
+ */
+export const getAccountSuspendedMessage = (error: any): string | null => {
+  const status = error?.status ?? error?.response?.status;
+  const body = error?.data ?? error?.response?.data;
+  if (status !== 403 || body?.data?.error_code !== "account_suspended") {
+    return null;
+  }
+  return (
+    body?.message ||
+    body?.error ||
+    "Your account has been suspended by FreshPass."
+  );
+};
+
+/**
+ * Account suspended (403 elsewhere, or the `account_suspended` push tapped while
+ * still signed in): sign out like a dead token, then show why on the sign-in screen.
+ */
+export const signOutSuspendedAccount = async (message?: string) => {
+  await handleLogout({ skipApi: true });
+  Alert.alert(
+    i18n.isInitialized ? i18n.t("accountSuspendedTitle") : "Account suspended",
+    message || "Your account has been suspended by FreshPass.",
+  );
+};
+
+/**
  * Get readable error message from API response
  */
 const getErrorMessage = (error: AxiosError): string => {
@@ -483,6 +513,28 @@ apiClient.interceptors.response.use(
       (sessionError as any).status = 401;
       (sessionError as any).isSessionExpired = true;
       return Promise.reject(sessionError);
+    }
+
+    // 403 account_suspended: the server already deleted every token. Sign-in
+    // calls show the message on their own screen; anywhere else it's a 401
+    // with the server's message (no /api/logout — it would only 401).
+    const suspendedMessage = getAccountSuspendedMessage({
+      status: error.response?.status,
+      data: error.response?.data,
+    });
+    if (suspendedMessage) {
+      const requestUrl = originalRequest?.url || "";
+      const isSignInRequest =
+        requestUrl.includes(businessEndpoints.login) ||
+        requestUrl.includes(businessEndpoints.socialLogin);
+      if (!isSignInRequest && !isLoggingOut) {
+        await signOutSuspendedAccount(suspendedMessage);
+      }
+      const suspendedError = new Error(suspendedMessage);
+      (suspendedError as any).status = 403;
+      (suspendedError as any).data = error.response?.data;
+      (suspendedError as any).isAccountSuspended = true;
+      return Promise.reject(suspendedError);
     }
 
     // Handle 401 Unauthorized - Try to refresh token (COMMENTED OUT)

@@ -753,6 +753,7 @@
   "failedToGetUserFromGoogle": "Échec de la récupération des informations Google",
   "failedToGetIdTokenFromGoogle": "Échec de l'obtention du jeton Google",
   "loginFailed": "Échec de connexion",
+  "accountSuspendedTitle": "Compte suspendu",
   "socialLoginFailedTryAgain": "Connexion sociale échouée. Veuillez réessayer.",
   "googlePlayServicesNotAvailable": "Google Play Services non disponible. Mettez à jour.",
   "googleSignInFailed": "Échec de la connexion Google",

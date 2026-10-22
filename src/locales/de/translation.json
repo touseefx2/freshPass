@@ -753,6 +753,7 @@
   "failedToGetUserFromGoogle": "Google-Benutzerdaten konnten nicht abgerufen werden",
   "failedToGetIdTokenFromGoogle": "Google ID-Token konnte nicht abgerufen werden",
   "loginFailed": "Anmeldung fehlgeschlagen",
+  "accountSuspendedTitle": "Konto gesperrt",
   "socialLoginFailedTryAgain": "Social Login fehlgeschlagen. Bitte erneut versuchen.",
   "googlePlayServicesNotAvailable": "Google Play Services nicht verfügbar.",
   "googleSignInFailed": "Google-Anmeldung fehlgeschlagen",

@@ -729,14 +729,10 @@ export async function reportReelComment(
   return { already: response?.data?.already ?? false };
 }
 
-let cachedReportReasons: ReportReason[] | null = null;
-
-/** Report reasons change rarely — cached for the session. */
+/** Fetched every time the report sheet opens — the server owns the list and labels. */
 export async function fetchReportReasons(): Promise<ReportReason[]> {
-  if (cachedReportReasons) return cachedReportReasons;
   const response = await ApiService.get<Envelope<ReportReason[]>>(
     reportsEndpoints.reasons,
   );
-  cachedReportReasons = response?.data ?? [];
-  return cachedReportReasons;
+  return response?.data ?? [];
 }

@@ -753,6 +753,7 @@
   "failedToGetUserFromGoogle": "فشل في جلب بيانات المستخدم من Google",
   "failedToGetIdTokenFromGoogle": "فشل في جلب رمز الهوية من Google",
   "loginFailed": "فشل تسجيل الدخول",
+  "accountSuspendedTitle": "تم تعليق الحساب",
   "socialLoginFailedTryAgain": "فشل تسجيل الدخول عبر الشبكات الاجتماعية. يرجى المحاولة مرة أخرى.",
   "googlePlayServicesNotAvailable": "خدمات Google Play غير متاحة. يرجى تحديثها.",
   "googleSignInFailed": "فشل تسجيل الدخول عبر Google",

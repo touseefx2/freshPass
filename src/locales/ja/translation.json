@@ -753,6 +753,7 @@
   "failedToGetUserFromGoogle": "Googleからユーザー情報を取得できませんでした",
   "failedToGetIdTokenFromGoogle": "Google IDトークンを取得できませんでした",
   "loginFailed": "ログインに失敗しました",
+  "accountSuspendedTitle": "アカウントが停止されました",
   "socialLoginFailedTryAgain": "ソーシャルログインに失敗しました。もう一度お試しください。",
   "googlePlayServicesNotAvailable": "Google Playサービスが利用できません。",
   "googleSignInFailed": "Googleログインに失敗しました",

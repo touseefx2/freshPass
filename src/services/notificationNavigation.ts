@@ -11,6 +11,8 @@ import { switchActiveMode } from "@/src/state/thunks/userModeThunks";
 import { resetToDashboardHome } from "@/src/utils/navigation";
 import { fetchProductById } from "@/src/services/productService";
 import { addProduct, updateProduct } from "@/src/state/slices/inventorySlice";
+import { getPublicReel } from "@/src/services/reelsService";
+import { signOutSuspendedAccount } from "@/src/services/api";
 
 export type NotificationSubType =
   | "appointment_scheduled"
@@ -60,7 +62,36 @@ export type NotificationSubType =
   | "business_order_paid"
   | "business_order_refunded"
   | "product_low_stock"
-  | "product_out_of_stock";
+  | "product_out_of_stock"
+  | "moderation_warning"
+  | "posting_suspended"
+  | "posting_restored"
+  | "account_suspended"
+  | "account_restored";
+
+/** sub_types of `type: "moderation"` (FreshPass warnings / suspensions). */
+const MODERATION_SUB_TYPES: string[] = [
+  "moderation_warning",
+  "posting_suspended",
+  "posting_restored",
+  "account_suspended",
+  "account_restored",
+];
+
+/**
+ * Moderation pushes carry no `type` (only `subType`) — fill it in so the push
+ * tap / cold-start paths, which key on `type`, route them like list rows.
+ */
+export function withPushNotificationType<
+  T extends NotificationNavigationData | undefined,
+>(data: T): T {
+  if (!data || data.type) return data;
+  const subType = data.subType ?? data.sub_type;
+  if (typeof subType === "string" && MODERATION_SUB_TYPES.includes(subType)) {
+    return { ...data, type: "moderation" };
+  }
+  return data;
+}
 
 export type NotificationNavigationData = {
   type?: string | null;
@@ -153,6 +184,21 @@ function openBusinessProfile(
   router.push(path as any);
 }
 
+/** Moderation alert → that reel; if an admin removed it (404), stay put. */
+async function openModeratedReel(
+  router: Router,
+  reelId: number,
+  fromInAppList?: boolean,
+): Promise<void> {
+  try {
+    await getPublicReel(reelId);
+  } catch (error) {
+    Logger.log("Moderated reel not available, staying put:", reelId, error);
+    return;
+  }
+  openReelPlayer(router, reelId, { fromInAppList });
+}
+
 function openOwnerReelsList(
   router: Router,
   options?: { fromInAppList?: boolean; highlightReelId?: number },
@@ -207,6 +253,8 @@ function openOwnerReelsList(
  * - type "order" + order_id / model_id (customer role) → shop order screen (every order_* subType)
  * - type "business_order" (owner: new paid order / auto refund) → owner order screen
  * - type "business_product" (owner: low / out of stock) → edit product; products list if deleted
+ * - type "moderation" (push: subType only): warning / posting_suspended + reel_id → reelsFeed (404 → stay);
+ *   account_suspended → sign out if still signed in; restored → nothing
  * - otherwise → notification screen (unless options.skipNotificationScreen is true, e.g. when already on that screen)
  */
 const AI_MEMORY_CHAIN_STEP_MS = 15;
@@ -332,6 +380,12 @@ export async function navigateFromPushNotification(
 ): Promise<void> {
   if (!data?.type) return;
 
+  // Already signed out by the server — no mode switch (it needs a token)
+  if (getNotificationSubType(data) === "account_suspended") {
+    navigateFromNotificationData(router, data);
+    return;
+  }
+
   const targetMode = normalizeUserMode(data.mode);
   const user = store.getState().user;
   const currentMode: UserMode = user.active_mode ?? "business";
@@ -370,6 +424,26 @@ export function navigateFromNotificationData(
 
   const type = data.type as string | undefined;
   const subType = getNotificationSubType(data);
+
+  if (type === "moderation") {
+    if (subType === "account_suspended") {
+      // The server deleted the token; if this device still holds it, sign
+      // out now (no API call) and land on the sign-in screen.
+      if (store.getState().user.accessToken) {
+        void signOutSuspendedAccount();
+      }
+      return;
+    }
+    const reelId = pickNumber(data, "reel_id");
+    if (
+      (subType === "moderation_warning" || subType === "posting_suspended") &&
+      reelId != null
+    ) {
+      void openModeratedReel(router, reelId, options?.fromInAppList);
+    }
+    // posting_restored / account_restored: nothing to open (row is marked read)
+    return;
+  }
 
   if (type === "update_location") {
     navigateFromNotificationList(

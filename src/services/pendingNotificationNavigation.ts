@@ -4,6 +4,7 @@ import { InteractionManager } from "react-native";
 import Logger from "@/src/services/logger";
 import {
   navigateFromPushNotification,
+  withPushNotificationType,
   type NotificationNavigationData,
 } from "@/src/services/notificationNavigation";
 
@@ -41,9 +42,11 @@ export async function queueColdStartNotificationIfNeeded(): Promise<boolean> {
   const response = await Notifications.getLastNotificationResponseAsync();
   if (!response) return false;
 
-  const data = response.notification.request.content.data as
-    | NotificationNavigationData
-    | undefined;
+  const data = withPushNotificationType(
+    response.notification.request.content.data as
+      | NotificationNavigationData
+      | undefined,
+  );
   if (!data?.type) return false;
 
   setPendingNotificationData(data);

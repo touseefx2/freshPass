@@ -1155,6 +1155,7 @@
   "failedToGetUserFromGoogle": "Failed to get user information from Google",
   "failedToGetIdTokenFromGoogle": "Failed to get ID token from Google",
   "loginFailed": "Login Failed",
+  "accountSuspendedTitle": "Account suspended",
   "socialLoginFailedTryAgain": "Social login failed. Please try again.",
   "googlePlayServicesNotAvailable": "Google Play Services is not available. Please update Google Play Services.",
   "googleSignInFailed": "Google Sign-In Failed",

@@ -37,7 +37,7 @@ import {
   resetToDashboardHome,
   resetToRoute,
 } from "@/src/utils/navigation";
-import { ApiService } from "@/src/services/api";
+import { ApiService, getAccountSuspendedMessage } from "@/src/services/api";
 import { businessEndpoints } from "@/src/services/endpoints";
 import {
   normalizeUserMode,
@@ -371,6 +371,12 @@ export default function Login() {
         Alert.alert(t("error"), response.message || t("loginFailedMessage"));
       }
     } catch (error: any) {
+      // Suspended by FreshPass: no token comes back, just say why
+      const suspendedMessage = getAccountSuspendedMessage(error);
+      if (suspendedMessage) {
+        Alert.alert(t("accountSuspendedTitle"), suspendedMessage);
+        return;
+      }
       // Error message is already formatted by ApiService
       Alert.alert(t("loginFailed"), error.message || t("anErrorOccurred"));
     } finally {

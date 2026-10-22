@@ -753,6 +753,7 @@
   "failedToGetUserFromGoogle": "Error al obtener datos de Google",
   "failedToGetIdTokenFromGoogle": "Error al obtener token de Google",
   "loginFailed": "Error al iniciar sesión",
+  "accountSuspendedTitle": "Cuenta suspendida",
   "socialLoginFailedTryAgain": "Error en inicio con red social. Inténtalo de nuevo.",
   "googlePlayServicesNotAvailable": "Google Play Services no disponible. Actualízalo.",
   "googleSignInFailed": "Error con Google",

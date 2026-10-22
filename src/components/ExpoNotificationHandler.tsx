@@ -7,7 +7,10 @@ import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { fetchNotificationUnreadCount } from "../state/thunks/notificationThunks";
 import { useAppDispatch, useAppSelector } from "../hooks/hooks";
 import { useTranslation } from "react-i18next";
-import { navigateFromPushNotification } from "@/src/services/notificationNavigation";
+import {
+  navigateFromPushNotification,
+  withPushNotificationType,
+} from "@/src/services/notificationNavigation";
 import { syncExpoPushTokenToBackend } from "@/src/services/pushTokenService";
 
 /**
@@ -87,9 +90,12 @@ export default function ExpoNotificationHandler() {
     // Killed-app cold start is handled in app/index.tsx via pendingNotificationNavigation.
     responseListenerRef.current =
       Notifications.addNotificationResponseReceivedListener((response) => {
-        const data = response.notification.request.content.data as
-          | Record<string, unknown>
-          | undefined;
+        // Moderation pushes have no `type` — filled in from subType
+        const data = withPushNotificationType(
+          response.notification.request.content.data as
+            | Record<string, unknown>
+            | undefined,
+        );
         Logger.log(
           "------>Notification tapped (background/foreground), data:",
           data,
