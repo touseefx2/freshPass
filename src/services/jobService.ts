@@ -76,10 +76,10 @@ export async function fetchBusinessJobPosts(
 }
 
 // Last post seen on the detail screen, so Apply opens without a second load
-const viewedJobPosts = new Map<number, JobPost>();
+let lastViewedJobPost: JobPost | null = null;
 
 export function peekJobPost(id: string | number): JobPost | null {
-  return viewedJobPosts.get(Number(id)) ?? null;
+  return lastViewedJobPost?.id === Number(id) ? lastViewedJobPost : null;
 }
 
 /** GET /api/job-posts/{id} — 404 once the post isn't open any more. */
@@ -88,7 +88,7 @@ export async function fetchJobPost(id: string | number): Promise<JobPost> {
     jobEndpoints.byId(id),
   );
   const post = normalizeJobPost(unwrap(response, "Failed to load job"));
-  viewedJobPosts.set(post.id, post);
+  lastViewedJobPost = post;
   return post;
 }
 
