@@ -19,16 +19,21 @@ const EMPTY_RETRY_DELAYS_MS = [3000, 8000, 20000];
 // DashboardHeader mounts on every business tab — share one fetch between them
 let cache: { key: string; at: number; trialEndsAt: string | null } | null =
   null;
-let inFlight: { key: string; promise: Promise<string | null> } | null = null;
+type TrialFetch = { trialEndsAt: string | null; pending: boolean };
+let inFlight: { key: string; promise: Promise<TrialFetch> } | null = null;
 
-const fetchTrialEndsAt = async (): Promise<string | null> => {
+// pending = no resolvable plan yet (just bought) — only then is it worth retrying
+const fetchTrialEndsAt = async (): Promise<TrialFetch> => {
   const response = await ApiService.get<{
     success: boolean;
     data: { data: SubscriptionAccessFields[] };
   }>(businessEndpoints.subscriptions("active", "business"));
   const rows = Array.isArray(response?.data?.data) ? response.data.data : [];
   const sub = pickAccessibleSubscription(rows);
-  return sub && isSubscriptionTrialing(sub) ? sub.trialEndsAt ?? null : null;
+  if (!sub) return { trialEndsAt: null, pending: true };
+  if (!isSubscriptionTrialing(sub)) return { trialEndsAt: null, pending: false };
+  const trialEndsAt = sub.trialEndsAt ?? null;
+  return { trialEndsAt, pending: !trialEndsAt };
 };
 
 /**
@@ -62,14 +67,14 @@ export function useBusinessTrialDaysLeft(
       }
       const request = inFlight;
       request.promise
-        .then((endsAt) => {
+        .then(({ trialEndsAt: endsAt, pending }) => {
           if (endsAt) {
             cache = { key, at: Date.now(), trialEndsAt: endsAt };
           }
           if (cancelled) return;
           setTrialEndsAt(endsAt);
           const delay = EMPTY_RETRY_DELAYS_MS[attempt];
-          if (!endsAt && delay !== undefined) {
+          if (!endsAt && pending && delay !== undefined) {
             retryTimer = setTimeout(() => load(attempt + 1), delay);
           } else if (!endsAt) {
             cache = { key, at: Date.now(), trialEndsAt: null };
