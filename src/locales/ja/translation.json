@@ -3274,5 +3274,8 @@
   "stripeNeedsDetailsByDate": "{{date}}までにStripeで追加情報が必要です",
   "stripeReviewingDetails": "支払い情報を確認しています",
   "finishSetupCta": "完了する",
-  "viewCta": "表示"
+  "viewCta": "表示",
+  "publicProfileNotLiveTitle": "バーバープロフィールはまだ公開されていません",
+  "publicProfileNotLiveMessage": "「予約を受け付ける」をオンにすると、お客様があなたを見つけて予約できるようになります。",
+  "turnOnAcceptAppointments": "「予約を受け付ける」をオンにする"
 }

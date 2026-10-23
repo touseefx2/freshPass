@@ -7,7 +7,7 @@ import {
   Pressable,
   Platform,
 } from "react-native";
-import { useTheme, useAppSelector } from "@/src/hooks/hooks";
+import { useTheme, useAppDispatch, useAppSelector } from "@/src/hooks/hooks";
 import { useTranslation } from "react-i18next";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
@@ -18,7 +18,16 @@ import {
 import StackHeader from "@/src/components/StackHeader";
 import { MaterialIcons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { usesSoloProfileLayout } from "@/src/state/slices/userSlice";
+import {
+  isBusinessSubscriptionActive,
+  usesSoloProfileLayout,
+} from "@/src/state/slices/userSlice";
+import { setBusinessPlansModalVisible } from "@/src/state/slices/generalSlice";
+import { enableOwnerAsStaff } from "@/src/services/ownerAsStaffService";
+import { useNotificationContext } from "@/src/contexts/NotificationContext";
+import Logger from "@/src/services/logger";
+import { store } from "@/src/state/store";
+import EnableOwnerAsStaffModal from "@/src/components/enableOwnerAsStaffModal";
 
 const CARD_WIDTH_PERCENT = "48%";
 
@@ -312,6 +321,45 @@ export default function BarberProfileScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const user = useAppSelector((state) => state.user);
+  const dispatch = useAppDispatch();
+  const { showBanner } = useNotificationContext();
+  const [enableVisible, setEnableVisible] = useState(false);
+  const [enabling, setEnabling] = useState(false);
+
+  const openPublicProfile = (staffId: number) => {
+    router.push({
+      pathname: "/(main)/staffDetail",
+      params: { id: staffId.toString(), viewMode: "true" },
+    } as any);
+  };
+
+  // Same call as the home "Accept appointments" toggle, then open the profile
+  const handleEnableOwnerAsStaff = async () => {
+    if (enabling) return;
+    if (!isBusinessSubscriptionActive(user.businessStatus)) {
+      setEnableVisible(false);
+      dispatch(setBusinessPlansModalVisible(true));
+      return;
+    }
+    setEnabling(true);
+    try {
+      const response = await enableOwnerAsStaff();
+      if (!response.success) {
+        showBanner(t("error"), response.message || t("ownerAsStaffFailed"), "error", 3000);
+        return;
+      }
+      setEnableVisible(false);
+      const staffId =
+        response.data?.staff?.id ??
+        store.getState().user.businessStatus?.owner_as_staff?.staff_id;
+      if (staffId) openPublicProfile(staffId);
+    } catch (error: any) {
+      Logger.error("enableOwnerAsStaff failed:", error);
+      showBanner(t("error"), error?.message || t("ownerAsStaffFailed"), "error", 3000);
+    } finally {
+      setEnabling(false);
+    }
+  };
 
   const handlePress = (key: BarberSettingKey) => {
     switch (key) {
@@ -337,12 +385,12 @@ export default function BarberProfileScreen() {
         router.push("./followers");
         break;
       case "viewPublicProfile": {
-        const staffId = user.businessStatus?.owner_as_staff?.staff_id;
-        if (staffId) {
-          router.push({
-            pathname: "/(main)/staffDetail",
-            params: { id: staffId.toString(), viewMode: "true" },
-          } as any);
+        // No public barber profile until the owner accepts appointments
+        const ownerAsStaff = user.businessStatus?.owner_as_staff;
+        if (ownerAsStaff?.enabled && ownerAsStaff.staff_id) {
+          openPublicProfile(ownerAsStaff.staff_id);
+        } else {
+          setEnableVisible(true);
         }
         break;
       }
@@ -442,6 +490,12 @@ export default function BarberProfileScreen() {
           })}
         </View>
       </ScrollView>
+      <EnableOwnerAsStaffModal
+        visible={enableVisible}
+        loading={enabling}
+        onClose={() => setEnableVisible(false)}
+        onConfirm={() => void handleEnableOwnerAsStaff()}
+      />
     </View>
   );
 }

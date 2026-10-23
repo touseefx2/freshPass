@@ -3604,5 +3604,8 @@
   "stripeNeedsDetailsByDate": "Stripe needs more details by {{date}}",
   "stripeReviewingDetails": "We're reviewing your payment details",
   "finishSetupCta": "Finish setup",
-  "viewCta": "View"
+  "viewCta": "View",
+  "publicProfileNotLiveTitle": "Your barber profile isn't public yet",
+  "publicProfileNotLiveMessage": "Turn on Accept appointments so customers can see and book you.",
+  "turnOnAcceptAppointments": "Turn on Accept appointments"
 }

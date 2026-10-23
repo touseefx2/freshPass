@@ -3280,5 +3280,8 @@
   "stripeNeedsDetailsByDate": "Stripe necesita más datos antes del {{date}}",
   "stripeReviewingDetails": "Estamos revisando tus datos de pago",
   "finishSetupCta": "Terminar",
-  "viewCta": "Ver"
+  "viewCta": "Ver",
+  "publicProfileNotLiveTitle": "Tu perfil de barbero aún no es público",
+  "publicProfileNotLiveMessage": "Activa «Aceptar citas» para que los clientes puedan verte y reservar contigo.",
+  "turnOnAcceptAppointments": "Activar «Aceptar citas»"
 }

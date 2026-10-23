@@ -3277,5 +3277,8 @@
   "stripeNeedsDetailsByDate": "Stripe braucht bis {{date}} mehr Angaben",
   "stripeReviewingDetails": "Wir prüfen deine Zahlungsangaben",
   "finishSetupCta": "Abschließen",
-  "viewCta": "Ansehen"
+  "viewCta": "Ansehen",
+  "publicProfileNotLiveTitle": "Dein Barber-Profil ist noch nicht öffentlich",
+  "publicProfileNotLiveMessage": "Aktiviere „Termine annehmen“, damit Kunden dich sehen und buchen können.",
+  "turnOnAcceptAppointments": "„Termine annehmen“ aktivieren"
 }

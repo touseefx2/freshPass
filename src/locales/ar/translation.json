@@ -3289,5 +3289,8 @@
   "stripeNeedsDetailsByDate": "يحتاج Stripe إلى مزيد من التفاصيل قبل {{date}}",
   "stripeReviewingDetails": "نحن نراجع بيانات الدفع الخاصة بك",
   "finishSetupCta": "إكمال",
-  "viewCta": "عرض"
+  "viewCta": "عرض",
+  "publicProfileNotLiveTitle": "ملفك الشخصي كحلاق ليس عامًا بعد",
+  "publicProfileNotLiveMessage": "فعّل «قبول المواعيد» حتى يتمكن العملاء من رؤيتك والحجز معك.",
+  "turnOnAcceptAppointments": "تفعيل «قبول المواعيد»"
 }

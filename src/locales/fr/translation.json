@@ -3280,5 +3280,8 @@
   "stripeNeedsDetailsByDate": "Stripe a besoin d'informations avant le {{date}}",
   "stripeReviewingDetails": "Nous vérifions vos informations de paiement",
   "finishSetupCta": "Terminer",
-  "viewCta": "Voir"
+  "viewCta": "Voir",
+  "publicProfileNotLiveTitle": "Votre profil de barbier n'est pas encore public",
+  "publicProfileNotLiveMessage": "Activez « Accepter les rendez-vous » pour que les clients puissent vous voir et vous réserver.",
+  "turnOnAcceptAppointments": "Activer « Accepter les rendez-vous »"
 }

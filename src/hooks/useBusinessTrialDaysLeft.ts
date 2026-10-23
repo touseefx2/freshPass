@@ -10,6 +10,11 @@ import {
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const CACHE_MS = 10 * 60 * 1000;
+/**
+ * Right after buying a plan the server may not have the trial yet (Stripe /
+ * Apple confirm a moment later) — re-check instead of caching "no trial".
+ */
+const EMPTY_RETRY_DELAYS_MS = [3000, 8000, 20000];
 
 // DashboardHeader mounts on every business tab — share one fetch between them
 let cache: { key: string; at: number; trialEndsAt: string | null } | null =
@@ -49,24 +54,39 @@ export function useBusinessTrialDaysLeft(
     }
 
     let cancelled = false;
-    if (inFlight?.key !== key) {
-      inFlight = { key, promise: fetchTrialEndsAt() };
-    }
-    const request = inFlight;
-    request.promise
-      .then((endsAt) => {
-        cache = { key, at: Date.now(), trialEndsAt: endsAt };
-        if (!cancelled) setTrialEndsAt(endsAt);
-      })
-      .catch(() => {
-        // Banner is optional — keep the last value on failure
-      })
-      .finally(() => {
-        if (inFlight === request) inFlight = null;
-      });
+    let retryTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const load = (attempt: number) => {
+      if (inFlight?.key !== key) {
+        inFlight = { key, promise: fetchTrialEndsAt() };
+      }
+      const request = inFlight;
+      request.promise
+        .then((endsAt) => {
+          if (endsAt) {
+            cache = { key, at: Date.now(), trialEndsAt: endsAt };
+          }
+          if (cancelled) return;
+          setTrialEndsAt(endsAt);
+          const delay = EMPTY_RETRY_DELAYS_MS[attempt];
+          if (!endsAt && delay !== undefined) {
+            retryTimer = setTimeout(() => load(attempt + 1), delay);
+          } else if (!endsAt) {
+            cache = { key, at: Date.now(), trialEndsAt: null };
+          }
+        })
+        .catch(() => {
+          // Banner is optional — keep the last value on failure
+        })
+        .finally(() => {
+          if (inFlight === request) inFlight = null;
+        });
+    };
+    load(0);
 
     return () => {
       cancelled = true;
+      if (retryTimer) clearTimeout(retryTimer);
     };
   }, [enabled, key]);
 
