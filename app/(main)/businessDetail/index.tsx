@@ -98,6 +98,7 @@ import { JobListRow, JobRowsCard } from "@/src/components/jobs/jobCards";
 import { fetchBusinessJobPosts } from "@/src/services/jobService";
 import type { JobPost } from "@/src/types/jobs";
 import { hasMoreJobPages } from "@/src/utils/jobHelpers";
+import { isPaymentsEnabled } from "@/src/utils/paymentsEnabled";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 const VIEWER_BANNER_CONTENT_HEIGHT = moderateHeightScale(28);
@@ -848,6 +849,22 @@ const createStyles = (theme: Theme) =>
     },
     disabledAction: {
       opacity: 0.4,
+    },
+    paymentsOffNote: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(8),
+      paddingHorizontal: moderateWidthScale(16),
+      paddingVertical: moderateHeightScale(12),
+      borderBottomWidth: 1,
+      borderBottomColor: theme.borderLight,
+    },
+    paymentsOffNoteText: {
+      flex: 1,
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+      lineHeight: moderateHeightScale(18),
     },
     loadingContent: {
       flex: 1,
@@ -1737,6 +1754,8 @@ export default function BusinessDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [businessData, setBusinessData] = useState<any>(null);
+  // No Stripe Connect yet: memberships can't be bought in the app
+  const canPayInApp = isPaymentsEnabled(businessData?.payments_enabled);
   const [ownerWorkImages, setOwnerWorkImages] =
     useState<OwnerWorkImagesPreview | null>(null);
   const [subscriptionPlanType, setSubscriptionPlanType] = useState<
@@ -2679,6 +2698,7 @@ export default function BusinessDetailScreen() {
       price: parseFloat(plan.price),
       // Original/striked price should be higher than current price.
       originalPrice: parseFloat(plan.price) * 1.1,
+      paymentsEnabled: isPaymentsEnabled(plan.paymentsEnabled),
       inclusions:
         plan.services?.map(
           (service: any, index: number) =>
@@ -3559,6 +3579,7 @@ export default function BusinessDetailScreen() {
       businessHours: businessHoursData,
       subscriptionPlanType,
       subscriptionStatus,
+      paymentsEnabled: canPayInApp,
     };
     dispatch(
       setBusinessDataAction(businessPayload),
@@ -3708,9 +3729,25 @@ export default function BusinessDetailScreen() {
           <View style={[styles.serviceSection, styles.cardShadow]}>
             {hasMemberships ? (
               <>
+                {!canPayInApp && (
+                  <View style={styles.paymentsOffNote}>
+                    <MaterialIcons
+                      name="storefront"
+                      size={moderateWidthScale(18)}
+                      color={theme.orangeBrownText}
+                    />
+                    <Text style={styles.paymentsOffNoteText}>
+                      {t("peMembershipsOffNote")}
+                    </Text>
+                  </View>
+                )}
                 {displayedMembershipSubscriptions.map(
                   (subscription: any, index: number) => {
                     const inclusions: string[] = subscription.inclusions;
+                    const joinDisabled =
+                      isBusinessOwnerView ||
+                      !canPayInApp ||
+                      !subscription.paymentsEnabled;
                     const visibleInclusions = inclusions.slice(0, 2);
                     const hiddenCount = inclusions.length - 2;
                     return (
@@ -3776,12 +3813,13 @@ export default function BusinessDetailScreen() {
                               <TouchableOpacity
                                 style={[
                                   styles.bookNowButton,
-                                  isBusinessOwnerView && styles.disabledAction,
+                                  joinDisabled && styles.disabledAction,
                                 ]}
                                 activeOpacity={0.8}
-                                disabled={isBusinessOwnerView}
+                                disabled={joinDisabled}
+                                accessibilityState={{ disabled: joinDisabled }}
                                 onPress={() => {
-                                  if (isBusinessOwnerView) return;
+                                  if (joinDisabled) return;
                                   router.push({
                                     pathname:
                                       "/(main)/bookingNow/checkoutSubscription",

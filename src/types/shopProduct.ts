@@ -44,6 +44,8 @@ export interface ShopProduct {
   lowStockThreshold: number;
   trackInventory: boolean;
   delivery?: ShopDeliveryOptions | null;
+  /** false = the business has no Stripe Connect, so it can't sell in the app */
+  paymentsEnabled?: boolean;
   published: boolean;
   createdAt: string;
   updatedAt: string;

@@ -23,9 +23,9 @@ import CustomToggle from "@/src/components/customToggle";
 import RemoveOwnerAsStaffModal from "@/src/components/removeOwnerAsStaffModal";
 import {
   canUseOwnerAsStaff,
-  isStripeOnboardingCompleted,
+  isBusinessSubscriptionActive,
 } from "@/src/state/slices/userSlice";
-import { setStripeConnectModalVisible } from "@/src/state/slices/generalSlice";
+import { setBusinessPlansModalVisible } from "@/src/state/slices/generalSlice";
 import {
   disableOwnerAsStaff,
   enableOwnerAsStaff,
@@ -213,8 +213,8 @@ export default function BookingProfileCard({
   const handleToggle = (next: boolean) => {
     if (busy) return;
     if (next) {
-      if (!isStripeOnboardingCompleted(businessStatus)) {
-        dispatch(setStripeConnectModalVisible(true));
+      if (!isBusinessSubscriptionActive(businessStatus)) {
+        dispatch(setBusinessPlansModalVisible(true));
         return;
       }
       void runEnable();

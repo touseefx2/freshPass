@@ -33,6 +33,7 @@ import {
   startAppointmentCheckout,
   useStripeAccount,
 } from "@/src/services/stripeService";
+import { isPaymentsEnabled } from "@/src/utils/paymentsEnabled";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import {
@@ -533,7 +534,10 @@ function CheckoutContent() {
     selectedPaymentMethod: reduxPaymentMethod,
     selectedNote: reduxNote,
     subscriptionPlanType,
+    paymentsEnabled,
   } = businessData;
+  // No Stripe Connect yet: Pay at Salon only, no card setup, no policy sheet
+  const canPayInApp = isPaymentsEnabled(paymentsEnabled);
   // Solo plans have no staff — backend assigns the owner, so skip staff checks
   const isSoloPlan =
     typeof subscriptionPlanType === "string" &&
@@ -656,7 +660,9 @@ function CheckoutContent() {
   const selectedServices = reduxSelectedServices || [];
   const selectedStaffId = reduxSelectedStaff || "anyone";
   const assignedStaffId = reduxAssignedStaffId ?? null;
-  const paymentMethod = reduxPaymentMethod || "payNow";
+  const paymentMethod = canPayInApp
+    ? reduxPaymentMethod || "payNow"
+    : "payLater";
   const note = reduxNote || "";
   const [selectedStaffMember, setSelectedStaffMember] =
     useState<StaffMember | null>(null);
@@ -1000,6 +1006,7 @@ function CheckoutContent() {
       }
 
       dispatch(setActionLoader(true));
+      let skipPolicySheet = false;
       try {
         const quoteResponse = await ApiService.get<{
           success: boolean;
@@ -1025,12 +1032,16 @@ function CheckoutContent() {
           return;
         }
 
-        setPolicyQuote({
-          ...quoteResponse.data,
-          appointmentType:
-            quoteResponse.data.appointmentType || "subscription",
-        });
-        setPolicySheetVisible(true);
+        if (quoteResponse.data.policyActive === false) {
+          skipPolicySheet = true;
+        } else {
+          setPolicyQuote({
+            ...quoteResponse.data,
+            appointmentType:
+              quoteResponse.data.appointmentType || "subscription",
+          });
+          setPolicySheetVisible(true);
+        }
       } catch (error: any) {
         Logger.error("Membership cancellation policy quote error:", error);
         showBanner(
@@ -1043,6 +1054,9 @@ function CheckoutContent() {
         );
       } finally {
         dispatch(setActionLoader(false));
+      }
+      if (skipPolicySheet) {
+        await completeSubscriptionBooking();
       }
       return;
     }
@@ -1071,7 +1085,13 @@ function CheckoutContent() {
       return;
     }
 
+    if (!canPayInApp) {
+      await completeServiceBooking(undefined, false);
+      return;
+    }
+
     dispatch(setActionLoader(true));
+    let skipPolicySheet = false;
     try {
       const quoteResponse = await ApiService.get<{
         success: boolean;
@@ -1097,8 +1117,12 @@ function CheckoutContent() {
         return;
       }
 
-      setPolicyQuote(quoteResponse.data);
-      setPolicySheetVisible(true);
+      if (quoteResponse.data.policyActive === false) {
+        skipPolicySheet = true;
+      } else {
+        setPolicyQuote(quoteResponse.data);
+        setPolicySheetVisible(true);
+      }
     } catch (error: any) {
       Logger.error("Cancellation policy quote error:", error);
       showBanner(
@@ -1112,9 +1136,16 @@ function CheckoutContent() {
     } finally {
       dispatch(setActionLoader(false));
     }
+    // Fees are inactive for this business — book without the sheet or a saved card
+    if (skipPolicySheet) {
+      await completeServiceBooking(undefined, false);
+    }
   };
 
-  const completeServiceBooking = async (setupIntentId?: string) => {
+  const completeServiceBooking = async (
+    setupIntentId?: string,
+    policyAccepted = true,
+  ) => {
     if (!resolvedCheckoutBusinessId) {
       showBanner(
         "Booking Failed",
@@ -1166,7 +1197,7 @@ function CheckoutContent() {
       staff_id?: number;
       subscription_id?: number;
       image_urls?: string[];
-      policy_accepted: boolean;
+      policy_accepted?: boolean;
       setup_intent_id?: string;
       reel_id?: number;
       saved_look_id?: number;
@@ -1177,8 +1208,11 @@ function CheckoutContent() {
       service_ids: selectedServices.map((service) => service.id),
       appointment_date: reduxSelectedDate || "",
       appointment_time: reduxSelectedTimeSlot || "",
-      policy_accepted: true,
     };
+
+    if (policyAccepted) {
+      requestBody.policy_accepted = true;
+    }
 
     if (note && note.trim()) {
       requestBody.notes = note.trim();

@@ -84,6 +84,7 @@ import {
   formatTipRecipientName,
 } from "@/src/services/tipService";
 import type { ViewAndPay, VisitReceipt } from "@/src/types/afterVisit";
+import { isPaymentsEnabled } from "@/src/utils/paymentsEnabled";
 
 /**
  * View & Pay — one step at a time after a completed visit:
@@ -303,7 +304,11 @@ export default function ViewAndPayScreen() {
       }
       setEntryStep(first);
       setStep(first);
-      if (!next.payment.canPayOnline && next.payment.canClaimPaidInPerson) {
+      if (
+        (!next.payment.canPayOnline ||
+          !isPaymentsEnabled(next.payment.paymentsEnabled)) &&
+        next.payment.canClaimPaidInPerson
+      ) {
         setRoute("salon");
       }
     });
@@ -339,11 +344,14 @@ export default function ViewAndPayScreen() {
   );
 
   // ── Paths ──────────────────────────────────────────────────────────────
-  const canOnline = !!data?.payment.canPayOnline;
+  // No Stripe Connect yet: no card pay or in-app tip, only the salon claim
+  const paymentsOff = !!data && !isPaymentsEnabled(data.payment.paymentsEnabled);
+  const canOnline = !!data?.payment.canPayOnline && !paymentsOff;
   const canSalon = !!data?.payment.canClaimPaidInPerson;
   const tipWithPayment =
-    !!data?.tip.canTip && data?.tip.payWith === "with_payment";
-  const tipSeparate = !!data?.tip.canTip && data?.tip.payWith === "separate";
+    !paymentsOff && !!data?.tip.canTip && data?.tip.payWith === "with_payment";
+  const tipSeparate =
+    !paymentsOff && !!data?.tip.canTip && data?.tip.payWith === "separate";
   // Cash tip can be named with a salon claim while tipping is still open.
   const cashTipAllowed = !!data?.tip.canTip && data?.tip.payWith !== "none";
 
@@ -477,7 +485,7 @@ export default function ViewAndPayScreen() {
   };
 
   const payOnline = async () => {
-    if (!data || busyRef.current) return;
+    if (!data || busyRef.current || paymentsOff) return;
     if (tipWithPayment && !validateTip(true)) return;
     setActionError(null);
     setBusyState(true);
@@ -782,6 +790,11 @@ export default function ViewAndPayScreen() {
           {renderVisitCard(true)}
           {nothingToPayHere ? (
             <InfoNote text={t("avCantPayHere", { business: businessName })} />
+          ) : paymentsOff ? (
+            <InfoNote
+              icon="storefront"
+              text={t("peViewPaySalonOnlyNote", { business: businessName })}
+            />
           ) : null}
           {errorNote}
         </ScrollView>

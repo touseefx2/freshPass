@@ -13,11 +13,6 @@ export default function BusinessProfileMenuScreen() {
   const router = useRouter();
   const user = useAppSelector((state) => state.user);
   const businessStatus = user.businessStatus;
-  const isBusinessOwner = user.userRole === "business";
-  const showStripeBanner =
-    isBusinessOwner &&
-    businessStatus?.onboarding_completed === true &&
-    businessStatus?.stripe_onboarding_status === "pending";
   // Solo profile already shows these as My Schedule / My Portfolio
   const isSoloLayout = usesSoloProfileLayout(businessStatus);
 
@@ -63,19 +58,18 @@ export default function BusinessProfileMenuScreen() {
         )
       : allItems;
 
-    if (!showStripeBanner) {
-      baseItems.push({
-        key: "freshpassSubscription",
-        title: t("freshpassSubscription"),
-        iconName: "crown",
-        iconFamily: "community",
-        onPress: () =>
-          router.push("/(main)/dashboard/(account)/subscription"),
-      });
-    }
+    // The FreshPass plan (free trial) no longer waits for Stripe Connect
+    baseItems.push({
+      key: "freshpassSubscription",
+      title: t("freshpassSubscription"),
+      iconName: "crown",
+      iconFamily: "community",
+      onPress: () =>
+        router.push("/(main)/dashboard/(account)/subscription"),
+    });
 
     return baseItems;
-  }, [t, router, showStripeBanner, isSoloLayout]);
+  }, [t, router, isSoloLayout]);
 
   return (
     <BusinessSettingsHub

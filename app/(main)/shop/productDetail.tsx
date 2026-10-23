@@ -36,6 +36,7 @@ import {
 import { fetchProduct } from "@/src/services/productService";
 import Logger from "@/src/services/logger";
 import { describeDelivery } from "@/src/utils/shopProductHelpers";
+import { isPaymentsEnabled } from "@/src/utils/paymentsEnabled";
 
 const MAX_QTY_PER_ITEM = 10;
 /** Show "Only N left" at or below this stock. */
@@ -283,7 +284,10 @@ export default function ProductDetailScreen() {
 
   const outOfStock = product.trackInventory && product.inventoryCount <= 0;
   const takingOrders = !!product.delivery?.configured;
-  const canBuy = takingOrders && !outOfStock && !unavailable && !isOwnProduct;
+  // No Stripe Connect yet: the salon can't take product payments in the app
+  const paymentsOff = !isPaymentsEnabled(product.paymentsEnabled);
+  const canBuy =
+    takingOrders && !outOfStock && !unavailable && !isOwnProduct && !paymentsOff;
   const lowStock =
     product.trackInventory &&
     product.inventoryCount > 0 &&
@@ -410,7 +414,9 @@ export default function ProductDetailScreen() {
                 </Text>
               </View>
             </FlowCard>
-            {lowStock ? (
+            {paymentsOff ? (
+              <InfoNote icon="storefront" text={t("peShopOffNote")} />
+            ) : lowStock ? (
               <InfoNote
                 tone="warm"
                 icon="inventory-2"
@@ -427,7 +433,9 @@ export default function ProductDetailScreen() {
             ? t("ownBusinessBlockedTitle")
             : unavailable
               ? t("productUnavailableTitle")
-              : outOfStock
+              : paymentsOff
+                ? t("peShopOffTitle")
+                : outOfStock
                 ? t("outOfStock")
                 : t("shopNextDelivery"),
           disabled: !canBuy,

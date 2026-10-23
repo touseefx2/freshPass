@@ -29,11 +29,9 @@ import DashboardHeaderClient from "@/src/components/DashboardHeaderClient";
 import { openNotificationSettings } from "@/src/services/notificationPermissionService";
 import {
   setBusinessPlansModalVisible,
-  setStripeConnectModalVisible,
 } from "@/src/state/slices/generalSlice";
 import {
   isBusinessSubscriptionActive,
-  isStripeOnboardingCompleted,
   usesSoloProfileLayout,
 } from "@/src/state/slices/userSlice";
 import SoloProfileView from "@/src/components/SoloProfileView";
@@ -870,10 +868,6 @@ export default function AccountScreen() {
   }, [isStaff, user.business_id]);
   const isBusiness = userRole === "business" && !isGuest;
   const businessStatus = useAppSelector((state) => state.user.businessStatus);
-  const showStripeBanner =
-    userRole === "business" &&
-    businessStatus?.onboarding_completed === true &&
-    businessStatus?.stripe_onboarding_status === "pending";
 
   const handleViewPlans = useCallback(() => {
     setBuyPlanModalVisible(false);
@@ -882,10 +876,6 @@ export default function AccountScreen() {
 
   const ensureCanUploadWork = useCallback((): boolean => {
     if (userRole !== "business") return true;
-    if (!isStripeOnboardingCompleted(businessStatus)) {
-      dispatch(setStripeConnectModalVisible(true));
-      return false;
-    }
     if (!isBusinessSubscriptionActive(businessStatus)) {
       setBuyPlanModalVisible(true);
       return false;

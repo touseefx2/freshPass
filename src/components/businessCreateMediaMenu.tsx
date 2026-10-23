@@ -39,12 +39,10 @@ import { useUploadReel } from "@/src/hooks/useUploadReel";
 import {
   setBusinessPlansModalBusinessOnly,
   setBusinessPlansModalVisible,
-  setStripeConnectModalVisible,
 } from "@/src/state/slices/generalSlice";
 import {
   canAddStaffMembers,
   isSoloSubscription,
-  isStripeOnboardingCompleted,
 } from "@/src/state/slices/userSlice";
 import { getReelUploadGate } from "@/src/utils/reelUploadGate";
 
@@ -336,11 +334,6 @@ export default function BusinessCreateMediaMenu({
 
   const ensureCanUploadReel = useCallback((): boolean => {
     const gate = getReelUploadGate(businessStatus, userRole);
-    if (gate === "stripe") {
-      closeAll();
-      dispatch(setStripeConnectModalVisible(true));
-      return false;
-    }
     if (gate === "plan") {
       closeAll();
       setBuyPlanModalVisible(true);
@@ -363,10 +356,6 @@ export default function BusinessCreateMediaMenu({
 
   const handleAddEmployee = useCallback(() => {
     closeAll();
-    if (!isStripeOnboardingCompleted(businessStatus)) {
-      dispatch(setStripeConnectModalVisible(true));
-      return;
-    }
     if (isSoloPlan) {
       setUpgradeModalVisible(true);
       return;
@@ -406,11 +395,6 @@ export default function BusinessCreateMediaMenu({
 
   const openReelPicker = useCallback(() => {
     const gate = getReelUploadGate(businessStatus, userRole);
-    if (gate === "stripe") {
-      closeAll();
-      dispatch(setStripeConnectModalVisible(true));
-      return;
-    }
     if (gate === "plan") {
       closeAll();
       setBuyPlanModalVisible(true);

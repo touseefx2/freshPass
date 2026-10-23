@@ -4,9 +4,11 @@ import Logger from "@/src/services/logger";
 import { store } from "@/src/state/store";
 import {
   canUseModeSwitch,
+  isStripeOnboardingCompleted,
   normalizeUserMode,
   type UserMode,
 } from "@/src/state/slices/userSlice";
+import { setStripeConnectModalVisible } from "@/src/state/slices/generalSlice";
 import { switchActiveMode } from "@/src/state/thunks/userModeThunks";
 import { resetToDashboardHome } from "@/src/utils/navigation";
 import { fetchProductById } from "@/src/services/productService";
@@ -257,6 +259,8 @@ function openOwnerReelsList(
  * - type "business_job" (owner: new job application) → that post's manage screen with its applicants
  * - type "moderation" (push: subType only): warning / posting_suspended + reel_id → reelsFeed (404 → stay);
  *   account_suspended → sign out if still signed in; restored → nothing
+ * - type "stripe_connect_reminder" (owner, not connected yet) → Stripe Connect setup modal; already connected → nothing
+ * - type "stripe_connect_action_required" (owner, Stripe needs more details) → Stripe Connect onboarding screen (no local status check)
  * - otherwise → notification screen (unless options.skipNotificationScreen is true, e.g. when already on that screen)
  */
 const AI_MEMORY_CHAIN_STEP_MS = 15;
@@ -444,6 +448,31 @@ export function navigateFromNotificationData(
       void openModeratedReel(router, reelId, options?.fromInAppList);
     }
     // posting_restored / account_restored: nothing to open (row is marked read)
+    return;
+  }
+
+  if (type === "stripe_connect_reminder") {
+    const { userRole, businessStatus } = store.getState().user;
+    if (
+      userRole === "business" &&
+      !isStripeOnboardingCompleted(businessStatus)
+    ) {
+      store.dispatch(setStripeConnectModalVisible(true));
+    }
+    Logger.log(
+      "------>navigateFromNotificationData (stripe_connect_reminder) -> Stripe Connect modal",
+    );
+    return;
+  }
+
+  if (type === "stripe_connect_action_required") {
+    // Local status may still say "completed" — the push is the newer truth
+    if (store.getState().user.userRole === "business") {
+      router.push("/(main)/stripeConnectOnboarding" as any);
+    }
+    Logger.log(
+      "------>navigateFromNotificationData (stripe_connect_action_required) -> Stripe Connect onboarding",
+    );
     return;
   }
 

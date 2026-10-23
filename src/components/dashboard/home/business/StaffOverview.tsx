@@ -24,12 +24,10 @@ import BuyBusinessPlanModal from "@/src/components/BuyBusinessPlanModal";
 import StaffActionMenuModal from "@/src/components/staffActionMenuModal";
 import {
   canAddStaffMembers,
-  isStripeOnboardingCompleted,
 } from "@/src/state/slices/userSlice";
 import {
   setActionLoader,
   setBusinessPlansModalVisible,
-  setStripeConnectModalVisible,
 } from "@/src/state/slices/generalSlice";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { ApiService } from "@/src/services/api";
@@ -228,10 +226,6 @@ export default function StaffOverview({ staff, statsFor, onStaffChanged }: Props
   };
 
   const handleAddStaff = () => {
-    if (!isStripeOnboardingCompleted(businessStatus)) {
-      dispatch(setStripeConnectModalVisible(true));
-      return;
-    }
     if (!canAddStaffMembers(businessStatus)) {
       setBuyPlanVisible(true);
       return;

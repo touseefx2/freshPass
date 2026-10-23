@@ -47,6 +47,8 @@ import {
   getDefaultBusinessLogo,
 } from "@/src/services/remoteConfigService";
 import { reportReelEvent } from "@/src/services/reelsService";
+import { isPaymentsEnabled } from "@/src/utils/paymentsEnabled";
+import { useTranslation } from "react-i18next";
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -273,6 +275,13 @@ const createStyles = (theme: Theme) =>
     subscribeButton: {
       marginTop: moderateHeightScale(8),
     },
+    paymentsOffNote: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+      textAlign: "center",
+      lineHeight: moderateHeightScale(18),
+    },
     successContainer: {
       flex: 1,
       justifyContent: "center",
@@ -394,6 +403,7 @@ function CheckoutSubscriptionContent() {
   const { colors } = useTheme();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
+  const { t } = useTranslation();
   const router = useRouter();
   const dispatch = useAppDispatch();
   const { showBanner } = useNotificationContext();
@@ -433,6 +443,10 @@ function CheckoutSubscriptionContent() {
   const [error, setError] = useState<string | null>(null);
   const [businessData, setBusinessData] = useState<any>(null);
   const [subscriptionData, setSubscriptionData] = useState<any>(null);
+  // No Stripe Connect yet: the salon can't sell memberships in the app
+  const canJoin =
+    isPaymentsEnabled(businessData?.payments_enabled) &&
+    subscriptionData?.paymentsEnabled !== false;
   const [subscriptionPickerVisible, setSubscriptionPickerVisible] =
     useState(false);
   const [availableSubscriptions, setAvailableSubscriptions] = useState<any[]>(
@@ -482,6 +496,7 @@ function CheckoutSubscriptionContent() {
             originalPrice: subscriptionPlan.original_price
               ? parseFloat(subscriptionPlan.original_price)
               : parseFloat(subscriptionPlan.price) * 1.25, // Fallback calculation if not provided
+            paymentsEnabled: isPaymentsEnabled(subscriptionPlan.paymentsEnabled),
             inclusions:
               subscriptionPlan.services?.map(
                 (service: any, index: number) =>
@@ -596,6 +611,8 @@ function CheckoutSubscriptionContent() {
       dispatch(setGuestModeModalVisible(true));
       return;
     }
+
+    if (!canJoin) return;
 
     setIsSubscribing(true);
 
@@ -738,6 +755,7 @@ function CheckoutSubscriptionContent() {
       originalPrice: subscription.original_price
         ? parseFloat(subscription.original_price)
         : parseFloat(subscription.price) * 1.25,
+      paymentsEnabled: isPaymentsEnabled(subscription.paymentsEnabled),
       inclusions:
         subscription.services?.map(
           (service: any, index: number) =>
@@ -963,13 +981,18 @@ function CheckoutSubscriptionContent() {
             {/* Bottom Button */}
 
             <View style={styles.bottomContainer}>
+              {!canJoin && !paymentSuccess ? (
+                <Text style={styles.paymentsOffNote}>
+                  {t("peMembershipsOffNote")}
+                </Text>
+              ) : null}
               <Button
                 title={paymentSuccess ? "View Memberships" : "Join Now"}
                 onPress={
                   paymentSuccess ? handleViewSubscriptions : handleSubscribe
                 }
                 loading={isSubscribing}
-                disabled={isSubscribing}
+                disabled={isSubscribing || (!canJoin && !paymentSuccess)}
                 containerStyle={styles.subscribeButton}
               />
             </View>

@@ -37,7 +37,6 @@ import { Skeleton } from "@/src/components/skeletons";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import {
   isBusinessSubscriptionActive,
-  isStripeOnboardingCompleted,
 } from "@/src/state/slices/userSlice";
 import { prepareImagesForUpload } from "@/src/utils/prepareImageForUpload";
 import { resolveApiImageUrl } from "@/src/utils/media";
@@ -186,11 +185,9 @@ export default function StaffWorkImagesManageScreen() {
   const businessStatus = useAppSelector(
     (state) => state.user.businessStatus,
   );
-  /** Owners need Stripe + active plan to add photos; staff are unchanged */
+  /** Owners need an active plan (trial counts) to add photos; staff are unchanged */
   const canUploadWork =
-    userRole !== "business" ||
-    (isStripeOnboardingCompleted(businessStatus) &&
-      isBusinessSubscriptionActive(businessStatus));
+    userRole !== "business" || isBusinessSubscriptionActive(businessStatus);
 
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);

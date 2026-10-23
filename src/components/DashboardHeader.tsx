@@ -31,6 +31,9 @@ import { IMAGES } from "../constant/images";
 import { Feather } from "@expo/vector-icons";
 import { resolveApiImageUrl } from "@/src/utils/media";
 import ModeSwitchLogo from "@/src/components/ModeSwitchLogo";
+import { isStripeOnboardingCompleted } from "@/src/state/slices/userSlice";
+import dayjs from "dayjs";
+import { useBusinessTrialDaysLeft } from "@/src/hooks/useBusinessTrialDaysLeft";
 
 const AVATAR_SIZE = 36;
 
@@ -120,6 +123,10 @@ const createStyles = (theme: Theme) =>
       paddingVertical: moderateHeightScale(10),
       gap: moderateWidthScale(10),
     },
+    actionBannerDivider: {
+      borderTopWidth: 1,
+      borderTopColor: theme.orangeBrown30,
+    },
     actionIconWrap: {
       width: moderateWidthScale(32),
       height: moderateWidthScale(32),
@@ -196,33 +203,96 @@ function DashboardHeader({
     dispatch(setBusinessPlansModalVisible(true));
   };
 
+  const handleTrialPress = () => {
+    router.push("/(main)/dashboard/(account)/subscription" as any);
+  };
+
   // Only apply restrictions for business users
   // Staff and client can activate anytime
-  const showStripeBanner =
-    userRole === "business" &&
-    businessStatus?.onboarding_completed === true &&
-    businessStatus?.stripe_onboarding_status === "pending";
+  const isOnboardedOwner =
+    userRole === "business" && businessStatus?.onboarding_completed === true;
 
+  // A plan (trial or paid) is all an owner needs to go online
   const showBusinessSubscriptipn =
-    userRole === "business" &&
-    businessStatus?.onboarding_completed === true &&
-    businessStatus?.stripe_onboarding_status === "completed" &&
-    businessStatus?.has_subscription === false;
+    isOnboardedOwner && businessStatus?.has_subscription === false;
+
+  // Stripe Connect is optional — it only turns on customer payments
+  const showStripeBanner =
+    isOnboardedOwner && !isStripeOnboardingCompleted(businessStatus);
+  const stripeStatus = businessStatus?.stripe_onboarding_status;
+  const stripeDeadline = businessStatus?.requirements_deadline
+    ? dayjs(businessStatus.requirements_deadline)
+    : null;
+  const stripeBannerTitle =
+    stripeStatus === "action_required"
+      ? stripeDeadline?.isValid()
+        ? t("stripeNeedsDetailsByDate", { date: stripeDeadline.format("MMM D") })
+        : t("stripeNeedsDetails")
+      : stripeStatus === "under_review"
+        ? t("stripeReviewingDetails")
+        : t("getPaidFromCustomers");
+  const stripeBannerCta =
+    stripeStatus === "action_required"
+      ? t("finishSetupCta")
+      : stripeStatus === "under_review"
+        ? t("viewCta")
+        : t("setUpAccountCta");
+
+  const trialDaysLeft = useBusinessTrialDaysLeft(
+    isOnboardedOwner && businessStatus?.has_subscription === true,
+    `${businessStatus?.business_id ?? ""}:${businessStatus?.subscription_status ?? ""}:${businessStatus?.subscription_plan_name ?? ""}`,
+  );
 
   // For staff and client, always allow going online
-  const actualCanGoOnline =
-    userRole !== "business" || (!showStripeBanner && !showBusinessSubscriptipn);
+  const actualCanGoOnline = userRole !== "business" || !showBusinessSubscriptipn;
 
   const handleBlockedActiveToggle = useCallback(() => {
-    if (showStripeBanner) {
-      dispatch(setStripeConnectModalVisible(true));
-      return;
-    }
-
     if (showBusinessSubscriptipn) {
       dispatch(setBusinessPlansModalVisible(true));
     }
-  }, [dispatch, showStripeBanner, showBusinessSubscriptipn]);
+  }, [dispatch, showBusinessSubscriptipn]);
+
+  const actionBanners = [
+    showBusinessSubscriptipn && {
+      key: "plan",
+      icon: "briefcase" as const,
+      title: t("pleaseBuyBusinessPlan"),
+      cta: t("viewBusinessPlans"),
+      onPress: handleBusinessSubscriptionPress,
+    },
+    trialDaysLeft !== null && {
+      key: "trial",
+      icon: "clock" as const,
+      title:
+        trialDaysLeft === 0
+          ? t("freeTrialEndsToday")
+          : t("freeTrialEndsInDays", { count: trialDaysLeft }),
+      cta: t("managePlanCta"),
+      onPress: handleTrialPress,
+    },
+    showStripeBanner && {
+      key: "stripe",
+      icon:
+        stripeStatus === "action_required"
+          ? ("alert-circle" as const)
+          : stripeStatus === "under_review"
+            ? ("clock" as const)
+            : ("credit-card" as const),
+      title: stripeBannerTitle,
+      cta: stripeBannerCta,
+      // Already submitted → straight back into Stripe's form (it shows only what's left)
+      onPress:
+        stripeStatus === "action_required" || stripeStatus === "under_review"
+          ? () => router.push("/(main)/stripeConnectOnboarding" as any)
+          : handleStripeOnboardingPress,
+    },
+  ].filter(Boolean) as {
+    key: string;
+    icon: "briefcase" | "clock" | "credit-card" | "alert-circle";
+    title: string;
+    cta: string;
+    onPress: () => void;
+  }[];
 
   const handleToggleChange = useCallback(
     async (value: boolean) => {
@@ -337,34 +407,32 @@ function DashboardHeader({
       <View style={styles.line} />
 
       {userRole === "business" &&
-        (showStripeBanner || showBusinessSubscriptipn) && (
+        actionBanners.map((banner, index) => (
           <TouchableOpacity
-            onPress={
-              showStripeBanner
-                ? handleStripeOnboardingPress
-                : handleBusinessSubscriptionPress
-            }
+            key={banner.key}
+            onPress={banner.onPress}
             activeOpacity={0.85}
+            accessibilityRole="button"
+            accessibilityLabel={`${banner.title}. ${banner.cta}`}
           >
-            <View style={styles.actionBanner}>
+            <View
+              style={[
+                styles.actionBanner,
+                index > 0 && styles.actionBannerDivider,
+              ]}
+            >
               <View style={styles.actionIconWrap}>
                 <Feather
-                  name={showStripeBanner ? "credit-card" : "briefcase"}
+                  name={banner.icon}
                   size={moderateWidthScale(15)}
                   color={theme.white}
                 />
               </View>
-              <Text style={styles.actionTitle} numberOfLines={1}>
-                {showStripeBanner
-                  ? t("pleaseCompleteStripe")
-                  : t("pleaseBuyBusinessPlan")}
+              <Text style={styles.actionTitle} numberOfLines={2}>
+                {banner.title}
               </Text>
               <View style={styles.actionCta}>
-                <Text style={styles.actionCtaText}>
-                  {showStripeBanner
-                    ? t("setupPayoutsCta")
-                    : t("viewBusinessPlans")}
-                </Text>
+                <Text style={styles.actionCtaText}>{banner.cta}</Text>
                 <Feather
                   name="chevron-right"
                   size={moderateWidthScale(14)}
@@ -373,7 +441,7 @@ function DashboardHeader({
               </View>
             </View>
           </TouchableOpacity>
-        )}
+        ))}
     </View>
   );
 }

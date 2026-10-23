@@ -50,6 +50,7 @@ import {
   startProductCheckout,
 } from "@/src/services/stripeService";
 import { useStripe } from "@stripe/stripe-react-native";
+import { isPaymentsEnabled } from "@/src/utils/paymentsEnabled";
 
 /** Shop flow: 1 product (productDetail) → 2 delivery → 3 review & pay. */
 const SHOP_STEP_TOTAL = 3;
@@ -351,7 +352,9 @@ export default function ShopCheckoutScreen() {
     />
   );
 
-  if (!product || !delivery?.configured) {
+  // No Stripe Connect yet: the salon can't take product payments in the app
+  const paymentsOff = !!product && !isPaymentsEnabled(product.paymentsEnabled);
+  if (!product || !delivery?.configured || paymentsOff) {
     return (
       <View style={styles.container}>
         {header}
@@ -359,7 +362,13 @@ export default function ShopCheckoutScreen() {
           <InfoNote
             tone="warm"
             icon="storefront"
-            text={product ? t("salonNotTakingOrders") : t("productNotFound")}
+            text={
+              !product
+                ? t("productNotFound")
+                : paymentsOff
+                  ? t("peShopOffNote")
+                  : t("salonNotTakingOrders")
+            }
           />
         </View>
       </View>

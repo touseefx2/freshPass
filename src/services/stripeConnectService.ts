@@ -12,7 +12,16 @@ export class StripeConnectApiError extends Error {
   }
 }
 
-export type StripeOnboardingStatus = "pending" | "completed" | string;
+/**
+ * pending = not submitted · action_required = Stripe needs more details ·
+ * under_review = submitted, Stripe is checking · completed = charges + payouts on.
+ */
+export type StripeOnboardingStatus =
+  | "pending"
+  | "action_required"
+  | "under_review"
+  | "completed"
+  | string;
 
 export interface AccountSessionData {
   client_secret: string;
@@ -27,6 +36,8 @@ export interface ConnectStatusData {
   charges_enabled?: boolean;
   payouts_enabled?: boolean;
   details_submitted?: boolean;
+  /** Stripe's deadline for the details still due (ISO), with action_required */
+  requirements_deadline?: string | null;
 }
 
 interface AccountSessionApiResponse {

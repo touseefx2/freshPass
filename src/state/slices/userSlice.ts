@@ -61,7 +61,10 @@ export interface BusinessStatus {
     id: number;
     name: string;
   } | null;
+  /** pending | action_required | under_review | completed */
   stripe_onboarding_status: string;
+  /** Stripe's deadline for the details still due (ISO), with action_required */
+  requirements_deadline?: string | null;
   stripe_onboarding_link: string | null;
   /** Server: business already dismissed Stripe-connected congrats (any device) */
   has_seen_stripe_connect_congrats: boolean;

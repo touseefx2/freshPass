@@ -57,6 +57,8 @@ export interface BusinessState {
   subscriptionPlanType: "Solo" | "Business" | null;
   /** From GET /api/business/details — "active" | "inactive" */
   subscriptionStatus: "active" | "inactive";
+  /** From GET /api/business/details `payments_enabled` — false = Pay at Salon only */
+  paymentsEnabled: boolean;
 }
 
 const initialState: BusinessState = {
@@ -74,6 +76,7 @@ const initialState: BusinessState = {
   selectedNote: "",
   subscriptionPlanType: null,
   subscriptionStatus: "inactive",
+  paymentsEnabled: true,
 };
 
 const bsnsSlice = createSlice({
@@ -91,6 +94,7 @@ const bsnsSlice = createSlice({
         businessHours?: BusinessHours | null;
         subscriptionPlanType?: "Solo" | "Business" | null;
         subscriptionStatus?: "active" | "inactive";
+        paymentsEnabled?: boolean;
       }>,
     ) {
       if (action.payload.selectedService !== undefined) {
@@ -121,6 +125,9 @@ const bsnsSlice = createSlice({
       }
       if (action.payload.subscriptionStatus !== undefined) {
         state.subscriptionStatus = action.payload.subscriptionStatus;
+      }
+      if (action.payload.paymentsEnabled !== undefined) {
+        state.paymentsEnabled = action.payload.paymentsEnabled;
       }
     },
     setSelectedServices(state, action: PayloadAction<Service[]>) {

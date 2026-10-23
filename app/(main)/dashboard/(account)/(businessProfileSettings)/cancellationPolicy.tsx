@@ -6,12 +6,15 @@ import {
   Switch,
   Text,
   TextInput,
+  TouchableOpacity,
   View,
 } from "react-native";
 import { useTranslation } from "react-i18next";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
-import { useTheme } from "@/src/hooks/hooks";
+import { Feather } from "@expo/vector-icons";
+import { useAppDispatch, useTheme } from "@/src/hooks/hooks";
+import { setStripeConnectModalVisible } from "@/src/state/slices/generalSlice";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import {
@@ -41,6 +44,38 @@ const createStyles = (theme: Theme) =>
     },
     titleSection: {
       marginBottom: moderateHeightScale(24),
+    },
+    inactiveCard: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: moderateWidthScale(12),
+      borderRadius: moderateWidthScale(12),
+      borderWidth: 1,
+      borderColor: theme.orangeBrown30,
+      backgroundColor: theme.tilePeach,
+      padding: moderateWidthScale(14),
+      marginBottom: moderateHeightScale(24),
+    },
+    inactiveTextWrap: {
+      flex: 1,
+      gap: moderateHeightScale(4),
+    },
+    inactiveTitle: {
+      fontSize: fontSize.size15,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    inactiveText: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+      lineHeight: fontSize.size18,
+    },
+    inactiveLink: {
+      marginTop: moderateHeightScale(6),
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontBold,
+      color: theme.orangeBrownText,
     },
     title: {
       fontSize: fontSize.size28,
@@ -197,6 +232,7 @@ export default function CancellationPolicyScreen() {
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
   const { showBanner } = useNotificationContext();
+  const dispatch = useAppDispatch();
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -212,6 +248,8 @@ export default function CancellationPolicyScreen() {
   const [lateCancelUsesVisit, setLateCancelUsesVisit] = useState(true);
   const [noShowUsesVisit, setNoShowUsesVisit] = useState(true);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  // false until Stripe Connect is set up: the policy saves but charges nothing
+  const [policyActive, setPolicyActive] = useState(true);
 
   const loadPolicy = useCallback(async () => {
     setLoading(true);
@@ -232,6 +270,7 @@ export default function CancellationPolicyScreen() {
           data.membership_late_cancel_forfeits_visit ?? true,
         );
         setNoShowUsesVisit(data.membership_no_show_forfeits_visit ?? true);
+        setPolicyActive(data.policy_active !== false);
         if (Array.isArray(data.cutoff_options) && data.cutoff_options.length) {
           setCutoffOptions(data.cutoff_options.map(String));
         }
@@ -362,6 +401,32 @@ export default function CancellationPolicyScreen() {
                 {t("cancellationPolicyNewBookingsOnly")}
               </Text>
             </View>
+
+            {!policyActive && (
+              <TouchableOpacity
+                style={styles.inactiveCard}
+                activeOpacity={0.85}
+                onPress={() => dispatch(setStripeConnectModalVisible(true))}
+                accessibilityRole="button"
+              >
+                <Feather
+                  name="info"
+                  size={moderateWidthScale(18)}
+                  color={theme.orangeBrownText}
+                />
+                <View style={styles.inactiveTextWrap}>
+                  <Text style={styles.inactiveTitle}>
+                    {t("policyInactiveTitle")}
+                  </Text>
+                  <Text style={styles.inactiveText}>
+                    {t("policyInactiveMessage")}
+                  </Text>
+                  <Text style={styles.inactiveLink}>
+                    {t("setUpPaymentsCta")}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            )}
 
             <Text style={styles.sectionLabel}>
               {t("freeCancellationCutoff")}

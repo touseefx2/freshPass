@@ -39,13 +39,12 @@ import {
   canAddStaffMembers,
   canUseOwnerAsStaff,
   isSoloSubscription,
-  isStripeOnboardingCompleted,
+  isBusinessSubscriptionActive,
 } from "@/src/state/slices/userSlice";
 import {
   setActionLoader,
   setBusinessPlansModalVisible,
   setBusinessPlansModalBusinessOnly,
-  setStripeConnectModalVisible,
 } from "@/src/state/slices/generalSlice";
 import BuyBusinessPlanModal from "@/src/components/BuyBusinessPlanModal";
 import UpgradeToBusinessModal from "@/src/components/UpgradeToBusinessModal";
@@ -634,10 +633,6 @@ export default function StaffOnDuty({ data, callApi }: StaffOnDutyProps) {
   }, []);
 
   const handleAddStaffPress = () => {
-    if (!isStripeOnboardingCompleted(businessStatus)) {
-      dispatch(setStripeConnectModalVisible(true));
-      return;
-    }
     if (isSoloPlan) {
       setUpgradeModalVisible(true);
       return;
@@ -818,8 +813,8 @@ export default function StaffOnDuty({ data, callApi }: StaffOnDutyProps) {
 
   const handleOwnerEnablePress = () => {
     if (ownerBusy) return;
-    if (!isStripeOnboardingCompleted(businessStatus)) {
-      dispatch(setStripeConnectModalVisible(true));
+    if (!isBusinessSubscriptionActive(businessStatus)) {
+      dispatch(setBusinessPlansModalVisible(true));
       return;
     }
     void runOwnerEnable();

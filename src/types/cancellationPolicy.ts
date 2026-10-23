@@ -12,6 +12,8 @@ export interface BusinessCancellationPolicy {
   cutoff_options: CancellationCutoffOption[] | string[];
   membership_late_cancel_forfeits_visit?: boolean;
   membership_no_show_forfeits_visit?: boolean;
+  /** false = no Stripe Connect yet: saved, but no fee is charged */
+  policy_active?: boolean;
 }
 
 export interface AppointmentCancellationPolicy {
@@ -49,6 +51,8 @@ export interface CancellationPolicyQuote {
   freeCancellationUntil: string | null;
   currency?: string;
   policyText: string;
+  /** false = business has no Stripe Connect: no fees, skip the policy sheet */
+  policyActive?: boolean;
 }
 
 export interface CancellationPreview {

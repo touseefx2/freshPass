@@ -41,7 +41,6 @@ import {
 } from "@/src/services/reelsService";
 import {
   setBusinessPlansModalVisible,
-  setStripeConnectModalVisible,
 } from "@/src/state/slices/generalSlice";
 import type { MediaLimits } from "@/src/types/media";
 import type { OwnerReel, ReelPerformanceStats } from "@/src/types/reels";
@@ -588,10 +587,6 @@ export default function MediaLibraryMyReelsTab({
 
   const ensureCanUploadReel = useCallback((): boolean => {
     const gate = getReelUploadGate(businessStatus, userRole);
-    if (gate === "stripe") {
-      dispatch(setStripeConnectModalVisible(true));
-      return false;
-    }
     if (gate === "plan") {
       setBuyPlanModalVisible(true);
       return false;

@@ -1,13 +1,15 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
 import { useAppDispatch, useAppSelector } from "@/src/hooks/hooks";
 import StripeConnectModal from "@/src/components/StripeConnectModal";
 import { setStripeConnectModalVisible } from "@/src/state/slices/generalSlice";
-import { useSegments } from "expo-router";
 
+/**
+ * Stripe Connect is optional (free trial + going online only need a plan), so
+ * the modal no longer opens by itself on Home. It opens from the "Get paid from
+ * customers" banner, the reminder push and the payment-feature gates.
+ */
 export default function StripeConnectModalHandler() {
   const dispatch = useAppDispatch();
-  const userRole = useAppSelector((state) => state.user.userRole);
-  const businessStatus = useAppSelector((state) => state.user.businessStatus);
   const stripeConnectModalVisible = useAppSelector(
     (state) => state.general.stripeConnectModalVisible,
   );
@@ -15,32 +17,10 @@ export default function StripeConnectModalHandler() {
     (state) =>
       state.general.maintenanceModeActive || state.general.forceUpdateActive,
   );
-  const [dismissed, setDismissed] = useState(false);
-  const segments = useSegments() as string[];
 
-  const isOnHomeTab = Array.isArray(segments) && segments.includes("(home)");
-  const isOnConnectFlow =
-    Array.isArray(segments) && segments.includes("stripeConnectOnboarding");
-
-  const showStripeBanner =
-    !appGateBlocked &&
-    isOnHomeTab &&
-    userRole === "business" &&
-    businessStatus?.onboarding_completed === true &&
-    businessStatus?.stripe_onboarding_status === "pending";
-
-  useEffect(() => {
-    if (!showStripeBanner && !isOnConnectFlow) {
-      setDismissed(false);
-    }
-  }, [showStripeBanner, isOnConnectFlow]);
-
-  const visible =
-    !appGateBlocked &&
-    (stripeConnectModalVisible || (showStripeBanner && !dismissed));
+  const visible = !appGateBlocked && stripeConnectModalVisible;
 
   const handleClose = () => {
-    setDismissed(true);
     dispatch(setStripeConnectModalVisible(false));
   };
 

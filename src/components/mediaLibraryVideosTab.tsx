@@ -34,7 +34,6 @@ import {
 import Logger from "@/src/services/logger";
 import {
   setBusinessPlansModalVisible,
-  setStripeConnectModalVisible,
 } from "@/src/state/slices/generalSlice";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
@@ -285,10 +284,6 @@ export default function MediaLibraryVideosTab() {
 
   const ensureCanUploadReel = useCallback((): boolean => {
     const gate = getReelUploadGate(businessStatus, userRole);
-    if (gate === "stripe") {
-      dispatch(setStripeConnectModalVisible(true));
-      return false;
-    }
     if (gate === "plan") {
       setBuyPlanModalVisible(true);
       return false;

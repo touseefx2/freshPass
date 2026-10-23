@@ -28,6 +28,7 @@ import {
   getLastAccountSessionError,
   isConnectOnboardingCompleted,
   StripeConnectApiError,
+  type ConnectStatusData,
 } from "@/src/services/stripeConnectService";
 import { resolveStripePublishableKey } from "@/src/services/stripeService";
 import { checkInternetConnection } from "@/src/services/api";
@@ -43,6 +44,7 @@ import {
   widthScale,
 } from "@/src/theme/dimensions";
 import { IMAGES } from "@/src/constant/images";
+import dayjs from "dayjs";
 
 const STRIPE_LOCALE: Record<string, string> = {
   en: "en-US",
@@ -104,6 +106,19 @@ const createStyles = (theme: Theme) =>
       alignItems: "center",
       marginBottom: moderateHeightScale(20),
     },
+    iconCircleWarning: {
+      backgroundColor: theme.orangeBrown,
+    },
+    laterLink: {
+      marginTop: moderateHeightScale(14),
+      paddingVertical: moderateHeightScale(6),
+    },
+    laterLinkText: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontMedium,
+      color: theme.lightGreen,
+      textAlign: "center",
+    },
     title: {
       fontSize: fontSize.size22,
       fontFamily: fonts.fontBold,
@@ -142,7 +157,14 @@ const createStyles = (theme: Theme) =>
     },
   });
 
-type ScreenPhase = "loading" | "onboarding" | "checking" | "success" | "error";
+type ScreenPhase =
+  | "loading"
+  | "onboarding"
+  | "checking"
+  | "success"
+  | "actionRequired"
+  | "underReview"
+  | "error";
 
 function waitForUiIdle(delayMs: number): Promise<void> {
   return new Promise((resolve) => {
@@ -172,6 +194,9 @@ export default function StripeConnectOnboardingScreen() {
   const exitingRef = useRef(false);
   const [phase, setPhase] = useState<ScreenPhase>("loading");
   const [errorMessage, setErrorMessage] = useState("");
+  const [requirementsDeadline, setRequirementsDeadline] = useState<
+    string | null
+  >(null);
   const [retryToken, setRetryToken] = useState(0);
   const [showStripeModal, setShowStripeModal] = useState(false);
   const [connectUiReady, setConnectUiReady] = useState(false);
@@ -288,13 +313,14 @@ export default function StripeConnectOnboardingScreen() {
   }, [phase, showStripeModal, connectUiReady, t]);
 
   const applyConnectStatus = useCallback(
-    (stripeOnboardingStatus: string) => {
+    (status: ConnectStatusData) => {
       const current = businessStatusRef.current;
       if (!current) return;
       dispatch(
         setBusinessStatus({
           ...current,
-          stripe_onboarding_status: stripeOnboardingStatus,
+          stripe_onboarding_status: status.stripe_onboarding_status,
+          requirements_deadline: status.requirements_deadline ?? null,
         }),
       );
     },
@@ -309,10 +335,20 @@ export default function StripeConnectOnboardingScreen() {
 
     try {
       const status = await fetchConnectStatus();
-      applyConnectStatus(status.stripe_onboarding_status);
+      applyConnectStatus(status);
 
       if (isConnectOnboardingCompleted(status)) {
         setPhase("success");
+        return;
+      }
+      // Submitted in a hurry → tell the owner what's left instead of leaving silently
+      if (status.stripe_onboarding_status === "action_required") {
+        setRequirementsDeadline(status.requirements_deadline ?? null);
+        setPhase("actionRequired");
+        return;
+      }
+      if (status.stripe_onboarding_status === "under_review") {
+        setPhase("underReview");
         return;
       }
       if (router.canGoBack()) {
@@ -410,6 +446,63 @@ export default function StripeConnectOnboardingScreen() {
             <Text style={styles.title}>{t("stripeConnectSuccessTitle")}</Text>
             <Text style={styles.message}>
               {t("stripeConnectSuccessMessage")}
+            </Text>
+            <View style={styles.buttonWrap}>
+              <Button
+                title={t("stripeConnectContinue")}
+                onPress={() => {
+                  if (router.canGoBack()) router.back();
+                }}
+              />
+            </View>
+          </>
+        ) : phase === "actionRequired" ? (
+          <>
+            <View style={[styles.iconCircle, styles.iconCircleWarning]}>
+              <MaterialIcons
+                name="priority-high"
+                size={iconScale(32)}
+                color={theme.white}
+              />
+            </View>
+            <Text style={styles.title}>
+              {t("stripeConnectActionRequiredTitle")}
+            </Text>
+            <Text style={styles.message}>
+              {requirementsDeadline && dayjs(requirementsDeadline).isValid()
+                ? t("stripeConnectActionRequiredMessageDeadline", {
+                    date: dayjs(requirementsDeadline).format("MMM D"),
+                  })
+                : t("stripeConnectActionRequiredMessage")}
+            </Text>
+            <View style={styles.buttonWrap}>
+              <Button
+                title={t("stripeConnectFinishSetup")}
+                onPress={handleRetry}
+              />
+            </View>
+            <TouchableOpacity
+              onPress={handleClose}
+              style={styles.laterLink}
+              accessibilityRole="button"
+            >
+              <Text style={styles.laterLinkText}>
+                {t("stripeConnectDoThisLater")}
+              </Text>
+            </TouchableOpacity>
+          </>
+        ) : phase === "underReview" ? (
+          <>
+            <View style={styles.iconCircle}>
+              <MaterialIcons
+                name="hourglass-top"
+                size={iconScale(32)}
+                color={theme.buttonText}
+              />
+            </View>
+            <Text style={styles.title}>{t("stripeConnectUnderReviewTitle")}</Text>
+            <Text style={styles.message}>
+              {t("stripeConnectUnderReviewMessage")}
             </Text>
             <View style={styles.buttonWrap}>
               <Button

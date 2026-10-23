@@ -48,12 +48,12 @@ export default function BusinessPlansModalHandler() {
     businessStatus?.stripe_onboarding_status === "completed" &&
     businessStatus?.has_seen_stripe_connect_congrats !== true;
 
+  // Free trial no longer waits for Stripe Connect — open right after the profile
   const showBusinessSubscription =
     !appGateBlocked &&
     isOnHomeTab &&
     userRole === "business" &&
     businessStatus?.onboarding_completed === true &&
-    businessStatus?.stripe_onboarding_status === "completed" &&
     businessStatus?.has_subscription === false &&
     !waitingForStripeCongrats &&
     !suppressBusinessPlansAutoOpen &&

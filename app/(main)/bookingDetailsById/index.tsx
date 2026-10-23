@@ -71,6 +71,7 @@ import {
   type PendingTip,
 } from "@/src/services/tipService";
 import { resolveApiImageUrl } from "@/src/utils/media";
+import { isPaymentsEnabled } from "@/src/utils/paymentsEnabled";
 import type { AffiliatedBusiness } from "@/src/types/affiliation";
 import type {
   AppointmentCancellationPolicy,
@@ -328,6 +329,8 @@ interface BookingItem {
   tipRecipientType?: "staff" | "business";
   tipRecipientName?: string;
   canTip?: boolean;
+  /** false = business has no Stripe Connect: no in-app pay or tip */
+  businessPaymentsEnabled?: boolean;
   /** Customer chose No Tip on the pay-and-tip sheet; never ask again. */
   tipDeclined?: boolean;
   tip?: PaidTip | null;
@@ -464,6 +467,7 @@ interface ApiBookingResponse {
   tipRecipientStaffId?: number | null;
   tipRecipientName?: string;
   canTip?: boolean;
+  businessPaymentsEnabled?: boolean;
   tipDeclined?: boolean;
   tip?: PaidTip | null;
   pendingTip?: PendingTip | null;
@@ -901,6 +905,9 @@ export default function BookingDetailsById() {
       tipRecipientType: apiData.tipRecipientType,
       tipRecipientName: apiData.tipRecipientName,
       canTip: apiData.canTip ?? false,
+      businessPaymentsEnabled: isPaymentsEnabled(
+        apiData.businessPaymentsEnabled,
+      ),
       tipDeclined: apiData.tipDeclined ?? false,
       tip: apiData.tip ?? null,
       pendingTip: apiData.pendingTip ?? null,
@@ -1499,10 +1506,13 @@ export default function BookingDetailsById() {
   const canShowBottomBar =
     canShowOutcomeActions || canShowCorrectOutcome || canShowRestoreVisit;
 
+  // No Stripe Connect yet: the salon takes payment and tips in person
+  const canPayInApp = booking?.businessPaymentsEnabled !== false;
   // Pay Now sits beside chat at the top while the customer still owes.
   const canShowPayNow =
     !isCancelled &&
     !canShowViewAndPay &&
+    canPayInApp &&
     userRole === "customer" &&
     booking?.type === "service" &&
     !!booking?.owesPayment;
@@ -2131,6 +2141,8 @@ export default function BookingDetailsById() {
       openViewAndPay();
       return;
     }
+
+    if (!canPayInApp) return;
 
     if (booking.paymentDueNow) {
       const hasBookingPendingTip =
@@ -3264,6 +3276,7 @@ export default function BookingDetailsById() {
           {/* Standalone tip */}
           {userRole === "customer" &&
             !canShowViewAndPay &&
+            canPayInApp &&
             booking.canTip &&
             !(booking.tipDeclined ?? false) &&
             !booking.paymentDueNow && (

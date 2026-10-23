@@ -105,6 +105,8 @@ export interface ViewAndPayPayment {
   amountPaid: number | null;
   canPayOnline: boolean;
   canClaimPaidInPerson: boolean;
+  /** false = business has no Stripe Connect: no in-app card pay or tip */
+  paymentsEnabled?: boolean;
   claimPaidInPersonReason: string | null;
   inPersonPayment: InPersonPayment | null;
 }

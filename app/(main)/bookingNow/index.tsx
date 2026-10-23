@@ -113,6 +113,7 @@ import {
   type SalonClock,
 } from "@/src/utils/salonTimezone";
 import { RatingBadge } from "@/src/components/reviews/reviewMedia";
+import { isPaymentsEnabled } from "@/src/utils/paymentsEnabled";
 import weekOfYear from "dayjs/plugin/weekOfYear";
 import isoWeek from "dayjs/plugin/isoWeek";
 import {
@@ -1376,6 +1377,7 @@ export default function BookingNow() {
     businessHours,
     selectedPaymentMethod: reduxPaymentMethod,
     subscriptionPlanType,
+    paymentsEnabled,
   } = businessData || {
     selectedService: null,
     allServices: [],
@@ -1386,11 +1388,20 @@ export default function BookingNow() {
     businessHours: null,
     selectedPaymentMethod: "payNow",
     subscriptionPlanType: null,
+    paymentsEnabled: true,
   };
 
   const isSoloPlan =
     typeof subscriptionPlanType === "string" &&
     subscriptionPlanType.toLowerCase() === "solo";
+
+  // No Stripe Connect yet → the salon only takes payment in person
+  const canPayInApp = isPaymentsEnabled(paymentsEnabled);
+  useEffect(() => {
+    if (!canPayInApp && reduxPaymentMethod !== "payLater") {
+      dispatch(setSelectedPaymentMethod("payLater"));
+    }
+  }, [canPayInApp, reduxPaymentMethod, dispatch]);
 
   // Use Redux directly - no local state needed
   const selectedServices = useMemo(() => {
@@ -1552,6 +1563,7 @@ export default function BookingNow() {
           business: any;
           subscription_plan_type?: "Solo" | "Business" | null;
           subscription_status?: "active" | "inactive";
+          payments_enabled?: boolean;
         };
       }>(businessEndpoints.businessDetails(businessId));
 
@@ -1796,6 +1808,9 @@ export default function BookingNow() {
           businessHours: businessHoursData,
           subscriptionPlanType: subscriptionPlanTypeFromApi,
           subscriptionStatus: subscriptionStatusFromApi,
+          paymentsEnabled: isPaymentsEnabled(
+            businessData?.payments_enabled ?? response.data.payments_enabled,
+          ),
         };
 
         dispatch(setBusinessDataAction(businessPayload));
@@ -3426,7 +3441,7 @@ export default function BookingNow() {
   );
 
   const renderPayment = () => {
-    const options = [
+    const allOptions = [
       {
         key: "payNow" as const,
         icon: "credit-card" as const,
@@ -3440,9 +3455,15 @@ export default function BookingNow() {
         sub: t("bkFlowPayLaterSub"),
       },
     ];
+    const options = canPayInApp
+      ? allOptions
+      : allOptions.filter((option) => option.key === "payLater");
     return (
       <>
         <FlowTitle title={t("bkFlowPaymentTitle")} />
+        {!canPayInApp ? (
+          <InfoNote icon="storefront" text={t("peSalonOnlyNote")} />
+        ) : null}
         <View style={styles.list} accessibilityRole="radiogroup">
           {options.map((option) => {
             const isSelected = reduxPaymentMethod === option.key;

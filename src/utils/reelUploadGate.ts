@@ -1,13 +1,12 @@
 import {
   isBusinessSubscriptionActive,
-  isStripeOnboardingCompleted,
   type BusinessStatus,
 } from "@/src/state/slices/userSlice";
 
-export type ReelUploadGateResult = "ok" | "stripe" | "plan";
+export type ReelUploadGateResult = "ok" | "plan";
 
 /**
- * Stripe first, then any active Solo/Pro plan — same order as other business gates.
+ * Any active Solo/Pro plan (trial counts). Stripe Connect is not needed to post.
  * Staff post on the owner's business: they have no Stripe/plan of their own, and
  * their limit is the monthly number the owner gives them (enforced by the server).
  */
@@ -16,7 +15,6 @@ export function getReelUploadGate(
   userRole?: string | null,
 ): ReelUploadGateResult {
   if (userRole === "staff") return "ok";
-  if (!isStripeOnboardingCompleted(businessStatus)) return "stripe";
   if (!isBusinessSubscriptionActive(businessStatus)) return "plan";
   return "ok";
 }
