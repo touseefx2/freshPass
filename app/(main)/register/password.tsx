@@ -113,7 +113,22 @@ const createStyles = (theme: Theme) =>
       marginTop: moderateHeightScale(-16),
       marginBottom: moderateHeightScale(4),
     },
+    agentStatusText: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+      marginTop: moderateHeightScale(-14),
+    },
+    agentLinkedText: {
+      color: theme.darkGreen,
+      fontFamily: fonts.fontMedium,
+    },
+    agentNotFoundText: {
+      color: theme.link,
+    },
   });
+
+type AgentCodeStatus = "idle" | "checking" | "valid" | "notFound" | "unknown";
 
 export default function RegisterPassword() {
   const { colors } = useTheme();
@@ -143,6 +158,48 @@ export default function RegisterPassword() {
   const [data, setData] = useState<any>(null);
 
   const selectedRole = useAppSelector((state) => state.general.role);
+  const isBusiness = selectedRole?.toLowerCase() === "business";
+
+  // Sales rep agent code (business signup only, optional)
+  const [agentCode, setAgentCode] = useState("");
+  const [agentStatus, setAgentStatus] = useState<AgentCodeStatus>("idle");
+  const [agentRepName, setAgentRepName] = useState("");
+
+  useEffect(() => {
+    setAgentRepName("");
+    if (agentCode.length !== 4) {
+      setAgentStatus("idle");
+      return;
+    }
+    setAgentStatus("checking");
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      try {
+        const response = await ApiService.get<any>(
+          businessEndpoints.agentCode(agentCode),
+        );
+        if (cancelled) return;
+        if (response?.success) {
+          setAgentRepName(response.data?.rep_first_name || "");
+          setAgentStatus("valid");
+        } else {
+          setAgentStatus("notFound");
+        }
+      } catch (error: any) {
+        if (cancelled) return;
+        // 404 = unknown code; anything else (network, 429) the register call validates.
+        setAgentStatus(error?.status === 404 ? "notFound" : "unknown");
+      }
+    }, 400);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [agentCode]);
+
+  const handleAgentCodeChange = useCallback((text: string) => {
+    setAgentCode(text.replace(/\D/g, "").slice(0, 4));
+  }, []);
 
   useEffect(() => {
     if (password.length > 0) {
@@ -224,6 +281,11 @@ export default function RegisterPassword() {
         isSubscribed: isSubscribed,
         name: "",
         ...(expo_push_token ? { expo_push_token } : {}),
+        ...(isBusiness &&
+        agentCode.length === 4 &&
+        (agentStatus === "valid" || agentStatus === "unknown")
+          ? { agent_code: agentCode }
+          : {}),
       };
 
       Logger.log("---->body", body);
@@ -288,7 +350,8 @@ export default function RegisterPassword() {
     password.length > 0 &&
     confirmPassword.length > 0 &&
     passwordValidation.isValid &&
-    matchValidation.isValid;
+    matchValidation.isValid &&
+    agentStatus !== "checking";
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -364,6 +427,41 @@ export default function RegisterPassword() {
 
               {passwordError && (
                 <Text style={styles.errorText}>{passwordError}</Text>
+              )}
+
+              {isBusiness && (
+                <>
+                  <FloatingInput
+                    label={t("agentCodeLabel")}
+                    value={agentCode}
+                    onChangeText={handleAgentCodeChange}
+                    placeholder={t("agentCodeHint")}
+                    keyboardType="number-pad"
+                    maxLength={4}
+                    onClear={() => setAgentCode("")}
+                  />
+                  {agentStatus === "checking" ? (
+                    <Text style={styles.agentStatusText}>
+                      {t("agentCodeChecking")}
+                    </Text>
+                  ) : agentStatus === "valid" ? (
+                    <Text
+                      style={[styles.agentStatusText, styles.agentLinkedText]}
+                    >
+                      ✓ {t("agentCodeLinked", { name: agentRepName })}
+                    </Text>
+                  ) : agentStatus === "notFound" ? (
+                    <Text
+                      style={[styles.agentStatusText, styles.agentNotFoundText]}
+                    >
+                      ✗ {t("agentCodeNotFound")}
+                    </Text>
+                  ) : (
+                    <Text style={styles.agentStatusText}>
+                      {t("agentCodeHint")}
+                    </Text>
+                  )}
+                </>
               )}
 
               <Pressable

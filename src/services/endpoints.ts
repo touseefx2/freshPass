@@ -70,6 +70,8 @@ export const customerEndpoints = {
  */
 export const businessEndpoints = {
   register: `/api/register`,
+  /** Sales rep code check at business signup (public) */
+  agentCode: (code: string) => `/api/agent-codes/${encodeURIComponent(code)}`,
   login: `/api/login`,
   logout: `/api/logout`,
   businessSearch: (search?: string, page = 1, perPage = 20) => {

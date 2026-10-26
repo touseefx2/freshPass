@@ -734,9 +734,20 @@ export default function Tools() {
         return;
       }
 
-      // 422 = category/gender not accepted (app-side bug): don't show the raw
-      // detail; refresh the list and ask the customer to pick again.
-      if (error.status === 422) {
+      // 422 naming category/gender = choice not accepted (app-side bug): don't
+      // show the raw detail; refresh the list and ask to pick again. Other
+      // 422s (bad image etc.) fall through to the backend message.
+      const detail = error.data?.detail;
+      const rejectsChoice =
+        typeof detail === "string"
+          ? /\b(category|gender)\b/i.test(detail)
+          : Array.isArray(detail) &&
+            detail.some(
+              (d: any) =>
+                Array.isArray(d?.loc) &&
+                (d.loc.includes("category") || d.loc.includes("gender")),
+            );
+      if (error.status === 422 && tryOnChoice && rejectsChoice) {
         Logger.error("Try-on choice rejected (422):", error.data);
         setTryOnCategorySlug(null);
         setTryOnGender(null);
