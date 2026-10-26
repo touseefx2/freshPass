@@ -292,6 +292,18 @@ export const normalizeGenerateSubscriptionResponse = (
     : [],
 });
 
+/** Category (+ gender for hair categories) chosen before a try-on */
+export type TryOnChoice = {
+  category?: string | null;
+  gender?: "male" | "female" | null;
+};
+
+const appendTryOnChoice = (formData: FormData, choice?: TryOnChoice) => {
+  if (!choice?.category) return;
+  formData.append("category", choice.category);
+  if (choice.gender) formData.append("gender", choice.gender);
+};
+
 /**
  * AI Tools Service
  * Handles API calls for AI tools (Hair Tryon, Generate Post, Collage, Reel)
@@ -306,6 +318,7 @@ export class AiToolsService {
   static async startHairPipeline(
     sourceImageUri: string,
     userId: number,
+    choice?: TryOnChoice,
   ): Promise<{
     status: string;
     job_id: string;
@@ -330,6 +343,7 @@ export class AiToolsService {
     formData.append("source_image", prepared as any);
 
     formData.append("user_id", userId.toString());
+    appendTryOnChoice(formData, choice);
 
     logAiToolRequest("POST", endpoint, formData);
 
@@ -395,6 +409,7 @@ export class AiToolsService {
     prompt: string,
     generateAllViews: boolean = true,
     userId: number,
+    choice?: TryOnChoice,
   ): Promise<any> {
     // Check internet connection
     const hasInternet = await checkInternetConnection();
@@ -422,6 +437,7 @@ export class AiToolsService {
     formData.append("generate_all_views", generateAllViews.toString());
 
     formData.append("user_id", userId.toString());
+    appendTryOnChoice(formData, choice);
 
     logAiToolRequest("POST", endpoint, formData);
 

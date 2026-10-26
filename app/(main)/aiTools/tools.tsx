@@ -50,6 +50,10 @@ import {
 } from "@/src/state/slices/generalSlice";
 import type { AdditionalServiceItem } from "@/src/state/slices/generalSlice";
 import AiHairTryOnConsentModal from "@/src/components/aiHairTryOnConsentModal";
+import TryOnCategoryPicker, {
+  type TryOnCategory,
+  type TryOnGender,
+} from "@/src/components/tryOnCategoryPicker";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { AiToolsService } from "@/src/services/aiToolsService";
 import Logger from "@/src/services/logger";
@@ -81,7 +85,7 @@ export default function Tools() {
   const router = useRouter();
   const dispatch = useAppDispatch();
   const { colors } = useTheme();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { showBanner } = useNotificationContext();
   const user = useAppSelector((state) => state.user);
   const aiQuota = useAppSelector((state) => state.user.ai_quota);
@@ -166,6 +170,56 @@ export default function Tools() {
   const [hairTryonPrompt, setHairTryonPrompt] = useState<string>("");
   const [hairTryonSelectedType, setHairTryonSelectedType] =
     useState<HairTryonType | null>(null);
+
+  // Try-on category (+ Men / Women for hair categories), sent with both flows
+  const [tryOnCategories, setTryOnCategories] = useState<TryOnCategory[]>([]);
+  const [tryOnCategoriesLoading, setTryOnCategoriesLoading] = useState(false);
+  const [tryOnCategoriesFailed, setTryOnCategoriesFailed] = useState(false);
+  const [tryOnCategorySlug, setTryOnCategorySlug] = useState<string | null>(
+    null,
+  );
+  const [tryOnGender, setTryOnGender] = useState<TryOnGender | null>(null);
+  const selectedTryOnCategory =
+    tryOnCategories.find((c) => c.slug === tryOnCategorySlug) ?? null;
+  // No list (load failed) → old behaviour: no category sent
+  const tryOnChoiceReady =
+    tryOnCategories.length === 0 ||
+    (!!selectedTryOnCategory &&
+      (!selectedTryOnCategory.asksGender || !!tryOnGender));
+
+  const fetchTryOnCategories = useCallback(async () => {
+    setTryOnCategoriesLoading(true);
+    setTryOnCategoriesFailed(false);
+    try {
+      const response = await ApiService.get<{
+        success: boolean;
+        data?: TryOnCategory[];
+      }>(businessEndpoints.tryOnCategories(i18n.language));
+      const list = Array.isArray(response?.data) ? response.data : [];
+      setTryOnCategories(list);
+      setTryOnCategorySlug((prev) =>
+        prev && list.some((c) => c.slug === prev) ? prev : null,
+      );
+      if (list.length === 0) setTryOnCategoriesFailed(true);
+    } catch (error) {
+      Logger.error("Fetch try-on categories error:", error);
+      setTryOnCategoriesFailed(true);
+    } finally {
+      setTryOnCategoriesLoading(false);
+    }
+  }, [i18n.language]);
+
+  useEffect(() => {
+    if (toolType === "Hair Tryon") void fetchTryOnCategories();
+  }, [toolType, fetchTryOnCategories]);
+
+  const handleSelectTryOnCategory = useCallback(
+    (slug: string) => {
+      if (slug !== tryOnCategorySlug) setTryOnGender(null);
+      setTryOnCategorySlug(slug);
+    },
+    [tryOnCategorySlug],
+  );
 
   // Processing = 3 credits, With Prompt = 1 credit. Show unlock when quota < required.
   const hairTryonCreditsRequired =
@@ -617,6 +671,13 @@ export default function Tools() {
       return;
     }
 
+    const tryOnChoice = selectedTryOnCategory
+      ? {
+          category: selectedTryOnCategory.slug,
+          gender: selectedTryOnCategory.asksGender ? tryOnGender : null,
+        }
+      : undefined;
+
     setIsGenerating(true);
     dispatch(setActionLoader(true));
 
@@ -625,6 +686,7 @@ export default function Tools() {
         const pipelineResponse = await AiToolsService.startHairPipeline(
           hairTryonSourceImage!,
           userId,
+          tryOnChoice,
         );
         hairPipelineStartTimeRef.current = Date.now();
         setHairPipelineState({
@@ -645,6 +707,7 @@ export default function Tools() {
         prompt,
         true,
         userId,
+        tryOnChoice,
       );
       if (pipelineResponse?.job_id) {
         hairPipelineStartTimeRef.current = Date.now();
@@ -671,6 +734,17 @@ export default function Tools() {
         return;
       }
 
+      // 422 = category/gender not accepted (app-side bug): don't show the raw
+      // detail; refresh the list and ask the customer to pick again.
+      if (error.status === 422) {
+        Logger.error("Try-on choice rejected (422):", error.data);
+        setTryOnCategorySlug(null);
+        setTryOnGender(null);
+        void fetchTryOnCategories();
+        showBanner(t("error"), t("tryOnChoiceInvalid"), "error", 4000);
+        return;
+      }
+
       const errorMessage = error.message || t("failedToGenerate");
       showBanner(t("error"), errorMessage, "error", 4000);
     } finally {
@@ -679,6 +753,9 @@ export default function Tools() {
     }
   }, [
     dispatch,
+    fetchTryOnCategories,
+    selectedTryOnCategory,
+    tryOnGender,
     hairTryonPrompt,
     hairTryonSelectedType,
     hairTryonSourceImage,
@@ -732,6 +809,14 @@ export default function Tools() {
           "warning",
           3000,
         );
+        return;
+      }
+      if (tryOnCategories.length > 0 && !selectedTryOnCategory) {
+        showBanner(t("validationError"), t("tryOnPickCategory"), "warning", 3000);
+        return;
+      }
+      if (selectedTryOnCategory?.asksGender && !tryOnGender) {
+        showBanner(t("validationError"), t("tryOnPickGender"), "warning", 3000);
         return;
       }
       if (!hairTryonSourceImage) {
@@ -1324,6 +1409,17 @@ export default function Tools() {
           </TouchableOpacity>
         </View>
 
+        <TryOnCategoryPicker
+          categories={tryOnCategories}
+          loading={tryOnCategoriesLoading}
+          loadFailed={tryOnCategoriesFailed}
+          onRetry={() => void fetchTryOnCategories()}
+          selectedSlug={tryOnCategorySlug}
+          onSelectCategory={handleSelectTryOnCategory}
+          gender={tryOnGender}
+          onSelectGender={setTryOnGender}
+        />
+
         <View style={styles.fieldContainer}>
           <Text style={styles.label}>
             {t("sourceImage")} <Text style={styles.required}>*</Text>
@@ -1446,7 +1542,9 @@ export default function Tools() {
               onPress={handleGenerate}
               disabled={
                 isGenerating ||
-                (toolType === "Hair Tryon" ? !hairTryonSelectedType : false) ||
+                (toolType === "Hair Tryon"
+                  ? !hairTryonSelectedType || !tryOnChoiceReady
+                  : false) ||
                 (toolType === "Generate Reel" &&
                   (reelMedia.length < 3 ||
                     reelMedia.length > reelAiMaxItems))

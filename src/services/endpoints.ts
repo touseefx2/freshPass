@@ -82,6 +82,9 @@ export const businessEndpoints = {
   forgotPassword: `/api/forgot-password`,
   socialLogin: `/api/social-login`,
   categories: `/api/categories`,
+  /** Categories offered in AI try-on (slug + asksGender) */
+  tryOnCategories: (locale?: string) =>
+    `/api/categories/try-on${locale ? `?locale=${encodeURIComponent(locale)}` : ""}`,
   onboarding: `/api/business/onboarding`,
   serviceTemplates: (categoryId: number) =>
     `/api/service-templates?category_id=${categoryId}`,

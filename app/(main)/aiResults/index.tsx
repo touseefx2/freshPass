@@ -155,6 +155,8 @@ interface HairPipelineImages {
 interface HairPipelineImageSet {
   name: string;
   description: string;
+  /** Set when this one look failed (views is then empty) */
+  error?: string;
   views: {
     front?: string;
     left?: string;
@@ -167,6 +169,10 @@ interface HairPipelineImageSet {
 interface NormalizedSection {
   name: string;
   description?: string;
+  /** Non-hair try-on: classic / trending / creative tag (translation key) */
+  tagKey?: string;
+  /** This look failed; shown in place of its images */
+  error?: string;
   views: Array<{
     key: "front" | "left" | "right" | "back";
     labelKey: string;
@@ -295,6 +301,21 @@ const HAIR_PIPELINE_SECTION_KEYS: (keyof HairPipelineImages)[] = [
   "ai_suggested",
 ];
 
+/** Outside hair the same keys mean classic / trending / creative */
+const NON_HAIR_SECTION_TAG_KEYS: Record<keyof HairPipelineImages, string> = {
+  face_match: "tryOnLookClassic",
+  trending_celebrity: "tryOnLookTrending",
+  ai_suggested: "tryOnLookCreative",
+};
+
+/** Try-on categories that return hair results (4 views); null = old hair job */
+const HAIR_TRYON_CATEGORIES = ["barbershop", "beauty-salon", "braids-locs"];
+
+const isHairTryOnCategory = (category: unknown) =>
+  typeof category !== "string" ||
+  !category ||
+  HAIR_TRYON_CATEGORIES.includes(category);
+
 function getUrl(
   value: { url?: string } | string | undefined,
 ): string | undefined {
@@ -336,10 +357,18 @@ function normalizeAiRequestResponse(
   // Support both { data: payload } and { data: { data: payload } } (double-wrapped), or payload at top level
   const d = (raw as any)?.data?.data ?? (raw as any)?.data ?? raw;
   const status = d?.status ?? "failed";
+  // On failed jobs both message and error hold a customer-facing sentence
   const message =
     typeof d?.message === "string" && d.message.trim()
       ? d.message.trim()
-      : undefined;
+      : typeof d?.error === "string" && d.error.trim()
+        ? d.error.trim()
+        : undefined;
+  const isHair = isHairTryOnCategory(
+    d?.category ?? d?.request_payload?.category ?? d?.response?.category,
+  );
+  // Non-hair results are a single photo, not a "Front" view
+  const viewLabelKey = (labelKey: string) => (isHair ? labelKey : "image");
   const sections: NormalizedSection[] = [];
   const rp = d?.request_payload;
   const requestPayload: NormalizedResult["requestPayload"] =
@@ -398,7 +427,7 @@ function normalizeAiRequestResponse(
   if (isReplicateImages(imgs)) {
     const views = VIEW_KEYS.map(({ key, labelKey }) => ({
       key,
-      labelKey,
+      labelKey: viewLabelKey(labelKey),
       url: getUrl(imgs[key]),
     })).filter((v): v is typeof v & { url: string } => Boolean(v.url));
     if (views.length > 0) {
@@ -409,16 +438,22 @@ function normalizeAiRequestResponse(
 
   for (const key of HAIR_PIPELINE_SECTION_KEYS) {
     const section = (imgs as HairPipelineImages)[key];
-    if (!section?.views) continue;
+    if (!section) continue;
     const views = VIEW_KEYS.map(({ key: viewKey, labelKey }) => ({
       key: viewKey,
-      labelKey,
-      url: section.views[viewKey],
+      labelKey: viewLabelKey(labelKey),
+      url: section.views?.[viewKey],
     })).filter((v): v is typeof v & { url: string } => Boolean(v.url));
-    if (views.length > 0) {
+    const sectionError =
+      views.length === 0 && typeof section.error === "string"
+        ? section.error.trim()
+        : "";
+    if (views.length > 0 || sectionError) {
       sections.push({
         name: section.name,
         description: section.description,
+        tagKey: isHair ? undefined : NON_HAIR_SECTION_TAG_KEYS[key],
+        error: sectionError || undefined,
         views,
       });
     }
@@ -1225,7 +1260,9 @@ export default function AiResults() {
         if (normalized.requestPayload?.originalImageUrl) {
           message += `${t("sourceImage")}: ${normalized.requestPayload.originalImageUrl}\n\n`;
         }
-        normalized.sections.forEach((section, sectionIndex) => {
+        normalized.sections
+          .filter((section) => section.views.length > 0)
+          .forEach((section, sectionIndex) => {
           message += `${section.name}\n`;
           if (section.description) {
             message += `${section.description}\n`;
@@ -1237,7 +1274,8 @@ export default function AiResults() {
             message += "\n";
           }
         });
-        url = normalized.sections[0]?.views?.[0]?.url;
+        url = normalized.sections.find((s) => s.views.length > 0)?.views[0]
+          ?.url;
       }
 
       if (!message.trim()) return;
@@ -2284,11 +2322,16 @@ export default function AiResults() {
         )}
         {normalized.sections.map((section, idx) => (
           <View key={idx} style={styles.section}>
+            {section.tagKey ? (
+              <View style={styles.sectionTag}>
+                <Text style={styles.sectionTagText}>{t(section.tagKey)}</Text>
+              </View>
+            ) : null}
             <View style={styles.sectionTitleRow}>
               <Text style={styles.sectionTitleFlex} numberOfLines={1}>
                 {section.name}
               </Text>
-              {!isSelectionMode && (
+              {!isSelectionMode && section.views.length > 0 && (
                 <TouchableOpacity
                   style={styles.sectionShareButton}
                   onPress={() => openShareSheetForSection(section)}
@@ -2333,9 +2376,25 @@ export default function AiResults() {
                 {section.description}
               </Text>
             ) : null}
+            {section.error ? (
+              <View style={styles.sectionErrorCard}>
+                <MaterialIcons
+                  name="error-outline"
+                  size={moderateWidthScale(20)}
+                  color={theme.red}
+                />
+                <Text style={styles.sectionErrorText}>{section.error}</Text>
+              </View>
+            ) : null}
             <View style={styles.imageGrid}>
               {section.views.map(({ key: viewKey, labelKey, url }) => (
-                <View key={viewKey} style={styles.imageCard}>
+                <View
+                  key={viewKey}
+                  style={[
+                    styles.imageCard,
+                    section.views.length === 1 && styles.imageCardSingle,
+                  ]}
+                >
                   <View style={styles.imageCardInner}>
                     <TouchableOpacity
                       style={StyleSheet.absoluteFill}
