@@ -18,6 +18,7 @@ import {
 } from "@/src/theme/dimensions";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import Button from "@/src/components/button";
+import { resetToDashboardHome } from "@/src/utils/navigation";
 
 export type PipelineJobType =
   | "Hair Tryon"
@@ -149,6 +150,7 @@ const createStyles = (theme: Theme) =>
     },
     buttonContainer: {
       width: "100%",
+      gap: moderateHeightScale(12),
     },
   });
 
@@ -229,6 +231,19 @@ export default function HairPipelineProcessingModal({
 
           <View style={styles.buttonContainer}>
             <Button title={t("ok")} onPress={onClose} />
+            <Button
+              title={t("goToHome")}
+              onPress={() => {
+                // onClose first: it clears the job state and any leave guard.
+                onClose();
+                resetToDashboardHome();
+              }}
+              backgroundColor={theme.lightGreen05}
+              textColor={theme.darkGreen}
+              leftIcon={
+                <Feather name="home" size={iconScale(18)} color={theme.darkGreen} />
+              }
+            />
           </View>
         </Pressable>
       </View>

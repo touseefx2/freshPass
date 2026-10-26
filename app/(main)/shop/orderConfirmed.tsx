@@ -14,6 +14,7 @@ import {
 } from "@/src/theme/dimensions";
 import FlowHeader from "@/src/components/reelFlow/flowHeader";
 import FlowFooter from "@/src/components/reelFlow/flowFooter";
+import { resetToDashboardHome } from "@/src/utils/navigation";
 import { InfoNote } from "@/src/components/reelFlow/flowParts";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { fetchCustomerOrder } from "@/src/services/orderService";
@@ -105,7 +106,7 @@ export default function OrderConfirmedScreen() {
     };
   }, [paramOrderId]);
 
-  const goHome = () => router.replace("/(main)/dashboard/(home)" as any);
+  const goHome = () => resetToDashboardHome();
 
   return (
     <View style={styles.container}>

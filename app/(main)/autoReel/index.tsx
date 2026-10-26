@@ -65,6 +65,7 @@ import FlowFooter, {
   flowFooterBottomPad,
 } from "@/src/components/reelFlow/flowFooter";
 import FlowButton from "@/src/components/reelFlow/flowButton";
+import { resetToDashboardHome } from "@/src/utils/navigation";
 import ProgressTracker, {
   type TrackerStep,
   type TrackerStepState,
@@ -1496,6 +1497,12 @@ export default function AutoReelScreen() {
             <Text style={styles.publishedText}>{t("published")}</Text>
           </View>
         )}
+        <FlowButton
+          variant="light"
+          icon="home"
+          label={t("goToHome")}
+          onPress={resetToDashboardHome}
+        />
       </View>
     );
   };
@@ -1822,14 +1829,22 @@ export default function AutoReelScreen() {
             />
           </>
         ) : isPublished ? (
-          <View style={styles.publishedPill} accessibilityRole="text">
-            <MaterialIcons
-              name="check-circle"
-              size={moderateWidthScale(24)}
-              color={theme.buttonBack}
+          <>
+            <View style={styles.publishedPill} accessibilityRole="text">
+              <MaterialIcons
+                name="check-circle"
+                size={moderateWidthScale(24)}
+                color={theme.buttonBack}
+              />
+              <Text style={styles.publishedText}>{t("published")}</Text>
+            </View>
+            <FlowButton
+              variant="light"
+              icon="home"
+              label={t("goToHome")}
+              onPress={resetToDashboardHome}
             />
-            <Text style={styles.publishedText}>{t("published")}</Text>
-          </View>
+          </>
         ) : null}
 
       </KeyboardAwareScrollView>

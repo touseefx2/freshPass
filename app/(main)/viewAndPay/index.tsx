@@ -28,6 +28,7 @@ import {
 } from "@/src/theme/dimensions";
 import FlowHeader from "@/src/components/reelFlow/flowHeader";
 import FlowFooter from "@/src/components/reelFlow/flowFooter";
+import { resetToDashboardHome } from "@/src/utils/navigation";
 import FlowButton from "@/src/components/reelFlow/flowButton";
 import {
   FlowCard,
@@ -1140,6 +1141,12 @@ export default function ViewAndPayScreen() {
         onPress: openBookAgain,
       });
     }
+    actions.push({
+      key: "home",
+      label: t("goToHome"),
+      icon: "home",
+      onPress: resetToDashboardHome,
+    });
 
     return (
       <ScrollView
@@ -1251,7 +1258,9 @@ export default function ViewAndPayScreen() {
                 key={action.key}
                 label={action.label}
                 icon={action.icon}
-                variant={index === 0 ? "primary" : "outline"}
+                variant={
+                  index === 0 ? "primary" : action.key === "home" ? "light" : "outline"
+                }
                 onPress={action.onPress}
               />
             ))}

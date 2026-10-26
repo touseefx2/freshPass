@@ -37,6 +37,7 @@ import EmptyState from "@/src/components/emptyState";
 import AppImage from "@/src/components/AppImage";
 import FlowFooter from "@/src/components/reelFlow/flowFooter";
 import FlowButton from "@/src/components/reelFlow/flowButton";
+import { resetToDashboardHome } from "@/src/utils/navigation";
 import {
   FlowCard,
   InfoNote,
@@ -678,6 +679,12 @@ export default function JobApplyScreen() {
                 label={t("done")}
                 variant="outline"
                 onPress={() => router.back()}
+              />
+              <FlowButton
+                label={t("goToHome")}
+                variant="light"
+                icon="home"
+                onPress={resetToDashboardHome}
               />
             </View>
           </Animated.View>

@@ -20,6 +20,7 @@ import {
 } from "@stripe/stripe-react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import Button from "@/src/components/button";
+import { resetToDashboardHome } from "@/src/utils/navigation";
 import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { setBusinessStatus } from "@/src/state/slices/userSlice";
 import {
@@ -154,6 +155,7 @@ const createStyles = (theme: Theme) =>
     buttonWrap: {
       width: "100%",
       marginTop: moderateHeightScale(8),
+      gap: moderateHeightScale(12),
     },
   });
 
@@ -453,6 +455,15 @@ export default function StripeConnectOnboardingScreen() {
                 onPress={() => {
                   if (router.canGoBack()) router.back();
                 }}
+              />
+              <Button
+                title={t("goToHome")}
+                onPress={resetToDashboardHome}
+                backgroundColor={theme.lightGreen05}
+                textColor={theme.darkGreen}
+                leftIcon={
+                  <MaterialIcons name="home" size={iconScale(18)} color={theme.darkGreen} />
+                }
               />
             </View>
           </>

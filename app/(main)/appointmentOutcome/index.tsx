@@ -23,6 +23,7 @@ import FlowHeader from "@/src/components/reelFlow/flowHeader";
 import FlowFooter, {
   flowFooterBottomPad,
 } from "@/src/components/reelFlow/flowFooter";
+import { resetToDashboardHome } from "@/src/utils/navigation";
 import FlowButton from "@/src/components/reelFlow/flowButton";
 import {
   FlowCard,
@@ -662,8 +663,7 @@ export default function AppointmentOutcomeScreen() {
     }
   };
 
-  const openDashboard = () =>
-    router.navigate("/(main)/dashboard/(home)" as any);
+  const openDashboard = () => resetToDashboardHome();
   const openAppointment = () => {
     if (params.from === "details" && router.canGoBack()) {
       router.back();

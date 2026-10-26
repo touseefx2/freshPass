@@ -30,6 +30,8 @@ import AppImage from "@/src/components/AppImage";
 import { createStyles } from "./styles";
 import StackHeader from "@/src/components/StackHeader";
 import Button from "@/src/components/button";
+import { MaterialIcons } from "@expo/vector-icons";
+import { resetToDashboardHome } from "@/src/utils/navigation";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import FloatingInput from "@/src/components/floatingInput";
@@ -464,6 +466,16 @@ export default function LeaveReview() {
       </ScrollView>
       <View style={styles.sendFeedbackButtonContainer}>
         <Button title={t("exploreMore")} onPress={handleExploreMore} />
+        <Button
+          title={t("goToHome")}
+          onPress={resetToDashboardHome}
+          backgroundColor={theme.lightGreen05}
+          textColor={theme.darkGreen}
+          leftIcon={
+            <MaterialIcons name="home" size={moderateWidthScale(18)} color={theme.darkGreen} />
+          }
+          containerStyle={{ marginTop: heightScale(12) }}
+        />
       </View>
     </>
   );

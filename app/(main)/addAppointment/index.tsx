@@ -21,6 +21,7 @@ import {
 import FlowHeader from "@/src/components/reelFlow/flowHeader";
 import FlowFooter from "@/src/components/reelFlow/flowFooter";
 import FlowButton from "@/src/components/reelFlow/flowButton";
+import { resetToDashboardHome } from "@/src/utils/navigation";
 import {
   FlowCard,
   FlowTitle,
@@ -1182,6 +1183,12 @@ export default function AddAppointmentScreen() {
             label={t("oaBackToCalendar")}
             icon="calendar-month"
             onPress={leave}
+          />
+          <FlowButton
+            variant="light"
+            label={t("goToHome")}
+            icon="home"
+            onPress={resetToDashboardHome}
           />
         </View>
       </ScrollView>

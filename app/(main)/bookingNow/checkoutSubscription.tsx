@@ -27,8 +27,9 @@ import {
   widthScale,
 } from "@/src/theme/dimensions";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Feather, Octicons } from "@expo/vector-icons";
+import { Feather, MaterialIcons, Octicons } from "@expo/vector-icons";
 import Button from "@/src/components/button";
+import { resetToDashboardHome } from "@/src/utils/navigation";
 import StackHeader from "@/src/components/StackHeader";
 import { useStripe } from "@stripe/stripe-react-native";
 import {
@@ -809,6 +810,16 @@ function CheckoutSubscriptionContent() {
               onPress={handleViewSubscriptions}
               loading={isSubscribing}
               disabled={isSubscribing}
+              containerStyle={styles.subscribeButton}
+            />
+            <Button
+              title={t("goToHome")}
+              onPress={resetToDashboardHome}
+              backgroundColor={theme.lightGreen05}
+              textColor={theme.darkGreen}
+              leftIcon={
+                <MaterialIcons name="home" size={moderateWidthScale(18)} color={theme.darkGreen} />
+              }
               containerStyle={styles.subscribeButton}
             />
           </View>

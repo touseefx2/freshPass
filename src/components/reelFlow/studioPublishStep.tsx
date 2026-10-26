@@ -78,6 +78,8 @@ type Props = {
   onPublished: () => void;
   /** Close the whole flow. */
   onFinished: () => void;
+  /** Published: leave everything and land on Home. */
+  onGoHome?: () => void;
 };
 
 const CAPTION_MAX = 2200;
@@ -191,6 +193,7 @@ export default function StudioPublishStep({
   registerAbort,
   onPublished,
   onFinished,
+  onGoHome,
 }: Props) {
   const { colors } = useTheme();
   const theme = colors as Theme;
@@ -631,6 +634,12 @@ export default function StudioPublishStep({
           </View>
         </KeyboardAwareScrollView>
         <FlowFooter
+          row
+          secondary={
+            onGoHome
+              ? { label: t("goToHome"), onPress: onGoHome, icon: "home" }
+              : null
+          }
           primary={{
             label: t("done"),
             onPress: onFinished,

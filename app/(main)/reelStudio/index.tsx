@@ -141,6 +141,7 @@ import {
 } from "@/src/components/videoEditor/editorModel";
 import FlowHeader from "@/src/components/reelFlow/flowHeader";
 import FlowFooter from "@/src/components/reelFlow/flowFooter";
+import { resetToDashboardHome } from "@/src/utils/navigation";
 import ExportOverlay from "@/src/components/reelFlow/exportOverlay";
 import StudioTrimPanel from "@/src/components/reelFlow/studioTrimPanel";
 import ReelStrip from "@/src/components/reelFlow/reelStrip";
@@ -3123,6 +3124,11 @@ export default function ReelStudioScreen() {
     else router.replace("/(main)/dashboard/(home)" as any);
   }, [router]);
 
+  const goHomeFromStudio = useCallback(() => {
+    allowLeaveRef.current = true;
+    resetToDashboardHome();
+  }, []);
+
   const goToTrim = useCallback(() => {
     if (clipsRef.current.length === 0) return;
     // Undo covers the editing steps only — picks on "Add video" can't be undone away
@@ -4667,6 +4673,7 @@ export default function ReelStudioScreen() {
           registerAbort={registerPublishAbort}
           onPublished={() => setPublished(true)}
           onFinished={leaveStudio}
+          onGoHome={goHomeFromStudio}
         />
       ) : null}
 

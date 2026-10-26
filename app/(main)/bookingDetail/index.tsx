@@ -15,7 +15,7 @@ import {
   Platform,
   Share,
 } from "react-native";
-import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
+import { useLocalSearchParams, useFocusEffect } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "@/src/hooks/hooks";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
@@ -41,6 +41,7 @@ import {
 } from "@/src/components/afterVisit/afterVisitParts";
 import { resolveApiImageUrl } from "@/src/utils/media";
 import { getDefaultBusinessLogo } from "@/src/services/remoteConfigService";
+import { resetToDashboardHome, resetToRoute } from "@/src/utils/navigation";
 
 interface Service {
   id: number;
@@ -251,7 +252,6 @@ export default function BookingDetail() {
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
   const { showBanner } = useNotificationContext();
-  const router = useRouter();
   const params = useLocalSearchParams<{
     appointmentId?: string;
     bookingId?: string;
@@ -321,9 +321,10 @@ export default function BookingDetail() {
     }
   };
 
+  // The booking is done: leave the whole flow, not one step back.
   const handleBackNavigation = useCallback(() => {
-    router.navigate("/(main)/dashboard/(home)" as any);
-  }, [router]);
+    resetToDashboardHome();
+  }, []);
 
   // Handle Android hardware back button
   useFocusEffect(
@@ -343,8 +344,7 @@ export default function BookingDetail() {
   );
 
   const handleViewBooking = () => {
-    // Navigate to booking tab
-    router.navigate("/(main)/dashboard/(calendar)" as any);
+    resetToRoute("/(main)/dashboard/(calendar)" as any);
   };
 
   // Fetch business details by business_id (same as businessDetail) for modal and display
@@ -708,6 +708,12 @@ export default function BookingDetail() {
       </ScrollView>
 
       <FlowFooter
+        row
+        secondary={{
+          label: t("goToHome"),
+          onPress: handleBackNavigation,
+          icon: "home",
+        }}
         primary={{
           label: t("viewBookings"),
           onPress: handleViewBooking,
