@@ -10,7 +10,7 @@ import {
 import { useVideoPlayer, VideoView } from "expo-video";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
@@ -65,20 +65,6 @@ const createStyles = (theme: Theme) =>
       alignItems: "center",
       justifyContent: "center",
     },
-    playOverlay: {
-      ...StyleSheet.absoluteFillObject,
-      alignItems: "center",
-      justifyContent: "center",
-      zIndex: 3,
-    },
-    playCircle: {
-      width: widthScale(64),
-      height: widthScale(64),
-      borderRadius: widthScale(32),
-      backgroundColor: theme.lightGreen4,
-      alignItems: "center",
-      justifyContent: "center",
-    },
   });
 
 function PreviewPlayer({
@@ -92,11 +78,12 @@ function PreviewPlayer({
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [theme]);
   const { t } = useTranslation();
+  const insets = useSafeAreaInsets();
   const [isReady, setIsReady] = useState(false);
-  const [isPlaying, setIsPlaying] = useState(true);
 
+  // Same player as chat / AI results: expo-video with native controls.
   const player = useVideoPlayer(uri, (p) => {
-    p.loop = true;
+    p.loop = false;
     p.play();
   });
 
@@ -109,61 +96,42 @@ function PreviewPlayer({
     return () => sub.remove();
   }, [player]);
 
-  const togglePlay = () => {
-    if (player.playing) {
-      player.pause();
-      setIsPlaying(false);
-    } else {
-      player.play();
-      setIsPlaying(true);
-    }
-  };
-
   return (
-    <SafeAreaView style={styles.overlay} edges={["top", "bottom"]}>
-      <View style={styles.videoWrap}>
+    <View style={styles.overlay}>
+      <View
+        style={[
+          styles.videoWrap,
+          // Keep the video (and its native controls) below the close button.
+          {
+            paddingTop: insets.top + widthScale(40) + moderateHeightScale(24),
+            paddingBottom: insets.bottom,
+          },
+        ]}
+      >
         <VideoView
           player={player}
           style={styles.video}
           contentFit="contain"
-          nativeControls={false}
+          nativeControls={true}
           onFirstFrameRender={() => {
             if (!isReady) setIsReady(true);
           }}
         />
         {!isReady && (
-          <View style={styles.loader}>
+          <View style={styles.loader} pointerEvents="none">
             <ActivityIndicator size="large" color={theme.white} />
             <Text style={styles.loaderText}>{t("loading")}</Text>
           </View>
         )}
-        {isReady && !isPlaying && (
-          <TouchableOpacity
-            style={styles.playOverlay}
-            onPress={togglePlay}
-            activeOpacity={0.9}
-          >
-            <View style={styles.playCircle}>
-              <MaterialIcons
-                name="play-arrow"
-                size={moderateWidthScale(36)}
-                color={theme.white}
-              />
-            </View>
-          </TouchableOpacity>
-        )}
-        {isReady && isPlaying && (
-          <TouchableOpacity
-            style={styles.playOverlay}
-            onPress={togglePlay}
-            activeOpacity={1}
-          />
-        )}
       </View>
       <TouchableOpacity
-        style={styles.closeButton}
+        style={[
+          styles.closeButton,
+          { top: insets.top + moderateHeightScale(12) },
+        ]}
         onPress={onClose}
         activeOpacity={0.8}
+        hitSlop={12}
         accessibilityRole="button"
         accessibilityLabel={t("close")}
       >
@@ -173,7 +141,7 @@ function PreviewPlayer({
           color={theme.white}
         />
       </TouchableOpacity>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -189,6 +157,7 @@ export default function LocalVideoPreviewModal({
       visible={visible}
       animationType="fade"
       presentationStyle="fullScreen"
+      statusBarTranslucent
       onRequestClose={onClose}
     >
       <PreviewPlayer uri={uri} onClose={onClose} />
