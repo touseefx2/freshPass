@@ -256,7 +256,7 @@
   "notificationsEmptySubtitle": "Updates zu Buchungen, Nachrichten oder Angeboten erscheinen hier.",
   "savePassword": "Passwort speichern",
   "agentCodeLabel": "Agent-Code (optional)",
-  "agentCodeHint": "4-stelliger Code von Ihrem FreshPass-Vertreter",
+  "agentCodeHint": "Code von einem FreshPass-Vertriebsmitarbeiter erhalten? Geben Sie ihn ein, damit er gutgeschrieben wird. Kein Code? Feld leer lassen.",
   "agentCodeLinked": "Verknüpft mit {{name}}",
   "agentCodeNotFound": "Code nicht gefunden",
   "agentCodeChecking": "Code wird geprüft…",

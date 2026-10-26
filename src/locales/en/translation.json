@@ -259,7 +259,7 @@
   "notificationsEmptySubtitle": "When you get updates about bookings, messages, or offers, they will show up here.",
   "savePassword": "Save password",
   "agentCodeLabel": "Agent code (optional)",
-  "agentCodeHint": "4-digit code from your FreshPass rep",
+  "agentCodeHint": "Got a code from a FreshPass sales rep? Enter it so they get credit. No code? Leave this blank.",
   "agentCodeLinked": "Linked to {{name}}",
   "agentCodeNotFound": "Code not found",
   "agentCodeChecking": "Checking code…",

@@ -256,7 +256,7 @@
   "notificationsEmptySubtitle": "عند وصول تحديثات حول الحجوزات أو الرسائل أو العروض، ستظهر هنا.",
   "savePassword": "حفظ كلمة المرور",
   "agentCodeLabel": "رمز الوكيل (اختياري)",
-  "agentCodeHint": "رمز من 4 أرقام من مندوب FreshPass الخاص بك",
+  "agentCodeHint": "هل حصلت على رمز من مندوب مبيعات FreshPass؟ أدخله ليُحتسب له. لا يوجد رمز؟ اترك الحقل فارغًا.",
   "agentCodeLinked": "مرتبط بـ {{name}}",
   "agentCodeNotFound": "الرمز غير موجود",
   "agentCodeChecking": "جارٍ التحقق من الرمز…",

@@ -113,10 +113,14 @@ const createStyles = (theme: Theme) =>
       marginTop: moderateHeightScale(-16),
       marginBottom: moderateHeightScale(4),
     },
+    agentInput: {
+      fontSize: fontSize.size13,
+    },
     agentStatusText: {
-      fontSize: fontSize.size12,
+      fontSize: fontSize.size11,
       fontFamily: fonts.fontRegular,
       color: theme.lightGreen,
+      lineHeight: fontSize.size16,
       marginTop: moderateHeightScale(-14),
     },
     agentLinkedText: {
@@ -435,7 +439,7 @@ export default function RegisterPassword() {
                     label={t("agentCodeLabel")}
                     value={agentCode}
                     onChangeText={handleAgentCodeChange}
-                    placeholder={t("agentCodeHint")}
+                    inputStyle={styles.agentInput}
                     keyboardType="number-pad"
                     maxLength={4}
                     onClear={() => setAgentCode("")}

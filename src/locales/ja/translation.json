@@ -256,7 +256,7 @@
   "notificationsEmptySubtitle": "予約、メッセージ、お得情報などの更新がここに表示されます。",
   "savePassword": "パスワードを保存",
   "agentCodeLabel": "エージェントコード（任意）",
-  "agentCodeHint": "FreshPass担当者から受け取った4桁のコード",
+  "agentCodeHint": "FreshPassの営業担当からコードを受け取りましたか？担当者の実績になるよう入力してください。コードがなければ空欄のままで構いません。",
   "agentCodeLinked": "{{name}} とリンク済み",
   "agentCodeNotFound": "コードが見つかりません",
   "agentCodeChecking": "コードを確認中…",
