@@ -2128,11 +2128,13 @@ export default function ChatBoxScreen() {
   }, [userId]);
 
   // Track which chat is open so foreground push notifications can be suppressed
-  useEffect(() => {
-    if (!userId) return;
-    setActiveChatUserId(userId);
-    return () => setActiveChatUserId(null);
-  }, [userId]);
+  useFocusEffect(
+    useCallback(() => {
+      if (!userId) return;
+      setActiveChatUserId(userId);
+      return () => setActiveChatUserId(null);
+    }, [userId]),
+  );
 
   // When app returns from background: refetch messages so any missed (throttled) socket events are synced
   useEffect(() => {
