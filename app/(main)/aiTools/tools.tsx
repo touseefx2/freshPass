@@ -667,6 +667,18 @@ export default function Tools() {
     });
   }, [dispatch, hairTryOnService, router]);
 
+  // Not enough credits for the chosen style → buy first, then fill the form
+  const handleSelectHairTryonType = useCallback(
+    (type: HairTryonType) => {
+      setHairTryonSelectedType(type);
+      const required = type === "withPromptAndImage" ? 1 : 3;
+      if (isCustomerOrGuest && (aiQuota == null || aiQuota < required)) {
+        openTryOnPurchase();
+      }
+    },
+    [aiQuota, isCustomerOrGuest, openTryOnPurchase],
+  );
+
   const executeHairTryonGeneration = useCallback(async () => {
     if (needsTryOnPurchase) {
       openTryOnPurchase();
@@ -1308,6 +1320,32 @@ export default function Tools() {
     if (!hasSelection) {
       return (
         <View style={styles.hairTryonOptionsContainer}>
+          {showCreditBanner && (
+            <View style={[styles.hairTryonTopRow, { marginTop: 0 }]}>
+              <View style={styles.hairTryonCreditsPill}>
+                <MaterialCommunityIcons
+                  name="database"
+                  size={moderateWidthScale(16)}
+                  color={theme.darkGreen}
+                />
+                <Text style={styles.hairTryonCreditsText}>
+                  {creditBannerMessage}
+                </Text>
+              </View>
+              {isCustomerOrGuest && (
+                <TouchableOpacity
+                  onPress={openTryOnPurchase}
+                  activeOpacity={0.7}
+                  hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}
+                  accessibilityRole="button"
+                >
+                  <Text style={styles.hairTryonChangeSelectionText}>
+                    {t("tryOnBuyCredits")}
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
           <TouchableOpacity
             style={[
               styles.hairTryonOptionCard,
@@ -1316,7 +1354,7 @@ export default function Tools() {
             ]}
             onPress={() => {
               if (!isProcessingDisabled) {
-                setHairTryonSelectedType("processing");
+                handleSelectHairTryonType("processing");
               }
             }}
             activeOpacity={0.8}
@@ -1365,7 +1403,7 @@ export default function Tools() {
             ]}
             onPress={() => {
               if (!isWithPromptDisabled) {
-                setHairTryonSelectedType("withPromptAndImage");
+                handleSelectHairTryonType("withPromptAndImage");
               }
             }}
             activeOpacity={0.8}
@@ -1415,7 +1453,14 @@ export default function Tools() {
       <>
         <View style={styles.hairTryonTopRow}>
           {showCreditBanner ? (
-            <View style={styles.hairTryonCreditsPill}>
+            <TouchableOpacity
+              style={styles.hairTryonCreditsPill}
+              onPress={openTryOnPurchase}
+              disabled={!isCustomerOrGuest}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel={`${creditBannerMessage}, ${t("tryOnBuyCredits")}`}
+            >
               <MaterialCommunityIcons
                 name="database"
                 size={moderateWidthScale(16)}
@@ -1424,7 +1469,14 @@ export default function Tools() {
               <Text style={styles.hairTryonCreditsText}>
                 {creditBannerMessage}
               </Text>
-            </View>
+              {isCustomerOrGuest && (
+                <MaterialIcons
+                  name="add-circle"
+                  size={moderateWidthScale(16)}
+                  color={theme.darkGreen}
+                />
+              )}
+            </TouchableOpacity>
           ) : (
             <View />
           )}
