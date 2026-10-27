@@ -68,8 +68,22 @@ import PotentialContactsModal, {
 } from "@/src/components/PotentialContactsModal";
 import MediaImage from "@/src/components/mediaImage";
 import { isLegacyAiMediaUrl } from "@/src/utils/media";
+import Logger from "@/src/services/logger";
+import SharePreparingModal from "@/src/components/SharePreparingModal";
+import {
+  canShareFiles,
+  downloadFilesForShare,
+  shareLocalFiles,
+  ShareFilesCancelledError,
+  type ShareFilesProgress,
+  type ShareFilesTask,
+  type ShareMediaItem,
+} from "@/src/services/shareMediaFilesService";
 
 const SEND_MESSAGE_URL = "/api/chat/messages";
+const SHARE_SHEET_DELAY_MS = Platform.OS === "ios" ? 450 : 0;
+const wait = (ms: number) =>
+  new Promise<void>((resolve) => setTimeout(resolve, ms));
 
 type SendMessageResponse = {
   success: boolean;
@@ -1177,7 +1191,8 @@ export default function AiResults() {
     );
   };
 
-  const handleShareAiResult = useCallback(async () => {
+  /** Text + links share (old builds without react-native-share, or as fallback) */
+  const shareAsLinks = useCallback(async () => {
     try {
       if (shareContext) {
         if ("section" in shareContext && shareContext.section) {
@@ -1288,6 +1303,132 @@ export default function AiResults() {
       // Silently ignore share errors
     }
   }, [normalized, t, editableCaption, editableCompletePost, shareContext]);
+
+  /** Files + caption for "Share via phone app" (real photos/video, no links) */
+  const getShareFilesPayload = useCallback((): {
+    items: ShareMediaItem[];
+    message: string;
+  } | null => {
+    if (shareContext) {
+      if ("section" in shareContext && shareContext.section) {
+        const section = shareContext.section;
+        return {
+          items: section.views.map((v) => ({ url: v.url })),
+          message: [section.name, section.description]
+            .filter(Boolean)
+            .join("\n"),
+        };
+      }
+      if ("url" in shareContext) {
+        return {
+          items: [
+            {
+              url: shareContext.url,
+              isVideo:
+                !!shareContext.simpleReelShare ||
+                shareContext.labelKey === "video",
+            },
+          ],
+          message: "",
+        };
+      }
+      return null;
+    }
+    if (!normalized || normalized.status !== "completed") return null;
+
+    if (normalized.socialMedia) {
+      const sm = normalized.socialMedia;
+      const isReel = sm.jobType === "generate_reel";
+      const mediaUrl = isReel ? sm.video?.url : sm.images?.processed;
+      if (!mediaUrl) return null;
+      const message = [
+        editableCaption,
+        sm.content?.hashtags?.length ? sm.content.hashtags.join(" ") : "",
+        editableCompletePost,
+      ]
+        .filter((part) => part && part.trim())
+        .join("\n\n");
+      return { items: [{ url: mediaUrl, isVideo: isReel }], message };
+    }
+
+    const sections = normalized.sections.filter((s) => s.views.length > 0);
+    if (sections.length === 0) return null;
+    const items: ShareMediaItem[] = [];
+    const sourceUrl = normalized.requestPayload?.originalImageUrl;
+    if (sourceUrl) items.push({ url: sourceUrl });
+    sections.forEach((section) =>
+      section.views.forEach((v) => items.push({ url: v.url })),
+    );
+    const message = sections
+      .map((section) =>
+        [section.name, section.description].filter(Boolean).join("\n"),
+      )
+      .join("\n\n");
+    return { items, message };
+  }, [normalized, editableCaption, editableCompletePost, shareContext]);
+
+  const [sharePreparing, setSharePreparing] = useState<{
+    hasVideo: boolean;
+    progress: ShareFilesProgress;
+  } | null>(null);
+  const shareTaskRef = useRef<ShareFilesTask | null>(null);
+
+  useEffect(() => () => shareTaskRef.current?.cancel(), []);
+
+  const cancelSharePreparing = useCallback(() => {
+    shareTaskRef.current?.cancel();
+    shareTaskRef.current = null;
+    setSharePreparing(null);
+  }, []);
+
+  const handleShareAiResult = useCallback(async () => {
+    const payload = getShareFilesPayload();
+    if (!payload || payload.items.length === 0 || !canShareFiles()) {
+      await shareAsLinks();
+      return;
+    }
+
+    const hasVideo = payload.items.some((item) => item.isVideo);
+    setSharePreparing({
+      hasVideo,
+      progress: { done: 0, total: payload.items.length, fraction: 0 },
+    });
+    const task = downloadFilesForShare(payload.items, (progress) =>
+      setSharePreparing((prev) => (prev ? { ...prev, progress } : prev)),
+    );
+    shareTaskRef.current = task;
+
+    let uris: string[] | null = null;
+    try {
+      uris = await task.promise;
+    } catch (error) {
+      task.cancel();
+      if (shareTaskRef.current !== task) return; // cancelled by the user
+      shareTaskRef.current = null;
+      setSharePreparing(null);
+      if (error instanceof ShareFilesCancelledError) return;
+      Logger.error("Share files download error:", error);
+      showBanner(t("error"), t("sharePreparingFailed"), "error", 3000);
+      await wait(SHARE_SHEET_DELAY_MS);
+      await shareAsLinks();
+      return;
+    }
+    if (shareTaskRef.current !== task) return;
+    shareTaskRef.current = null;
+    setSharePreparing(null);
+
+    // iOS can't present the share sheet while our loader is still closing
+    await wait(SHARE_SHEET_DELAY_MS);
+    try {
+      await shareLocalFiles(uris, {
+        message: payload.message,
+        title: t("aiResults"),
+      });
+    } catch (error) {
+      Logger.error("Share files error:", error);
+      await shareAsLinks();
+    }
+  }, [getShareFilesPayload, shareAsLinks, showBanner, t]);
 
   /** Build the same message text used for native share / send to user */
   const getShareMessageText = useCallback((): string => {
@@ -2548,6 +2689,15 @@ export default function AiResults() {
         onClose={() => setShareSheetVisible(false)}
         onSelectInAppUser={openShareToUserModal}
         onSelectNativeShare={handleShareAiResult}
+      />
+
+      <SharePreparingModal
+        visible={!!sharePreparing}
+        hasVideo={!!sharePreparing?.hasVideo}
+        progress={
+          sharePreparing?.progress ?? { done: 0, total: 0, fraction: 0 }
+        }
+        onCancel={cancelSharePreparing}
       />
 
       <PotentialContactsModal
