@@ -1309,6 +1309,34 @@ export default function Tools() {
     );
   };
 
+  // Credits left; customers tap it (+) to buy more any time
+  const renderCreditsPill = () => (
+    <TouchableOpacity
+      style={styles.hairTryonCreditsPill}
+      onPress={openTryOnPurchase}
+      disabled={!isCustomerOrGuest}
+      activeOpacity={0.7}
+      accessibilityRole="button"
+      accessibilityLabel={`${creditBannerMessage}, ${t("tryOnBuyCredits")}`}
+    >
+      <MaterialCommunityIcons
+        name="database"
+        size={moderateWidthScale(16)}
+        color={theme.darkGreen}
+      />
+      <Text style={styles.hairTryonCreditsText}>
+        {creditBannerMessage}
+      </Text>
+      {isCustomerOrGuest && (
+        <MaterialIcons
+          name="add-circle"
+          size={moderateWidthScale(16)}
+          color={theme.darkGreen}
+        />
+      )}
+    </TouchableOpacity>
+  );
+
   const renderHairTryonContent = () => {
     const isProcessing = hairTryonSelectedType === "processing";
     const isWithPrompt = hairTryonSelectedType === "withPromptAndImage";
@@ -1322,28 +1350,7 @@ export default function Tools() {
         <View style={styles.hairTryonOptionsContainer}>
           {showCreditBanner && (
             <View style={[styles.hairTryonTopRow, { marginTop: 0 }]}>
-              <View style={styles.hairTryonCreditsPill}>
-                <MaterialCommunityIcons
-                  name="database"
-                  size={moderateWidthScale(16)}
-                  color={theme.darkGreen}
-                />
-                <Text style={styles.hairTryonCreditsText}>
-                  {creditBannerMessage}
-                </Text>
-              </View>
-              {isCustomerOrGuest && (
-                <TouchableOpacity
-                  onPress={openTryOnPurchase}
-                  activeOpacity={0.7}
-                  hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}
-                  accessibilityRole="button"
-                >
-                  <Text style={styles.hairTryonChangeSelectionText}>
-                    {t("tryOnBuyCredits")}
-                  </Text>
-                </TouchableOpacity>
-              )}
+              {renderCreditsPill()}
             </View>
           )}
           <TouchableOpacity
@@ -1453,30 +1460,7 @@ export default function Tools() {
       <>
         <View style={styles.hairTryonTopRow}>
           {showCreditBanner ? (
-            <TouchableOpacity
-              style={styles.hairTryonCreditsPill}
-              onPress={openTryOnPurchase}
-              disabled={!isCustomerOrGuest}
-              activeOpacity={0.7}
-              accessibilityRole="button"
-              accessibilityLabel={`${creditBannerMessage}, ${t("tryOnBuyCredits")}`}
-            >
-              <MaterialCommunityIcons
-                name="database"
-                size={moderateWidthScale(16)}
-                color={theme.darkGreen}
-              />
-              <Text style={styles.hairTryonCreditsText}>
-                {creditBannerMessage}
-              </Text>
-              {isCustomerOrGuest && (
-                <MaterialIcons
-                  name="add-circle"
-                  size={moderateWidthScale(16)}
-                  color={theme.darkGreen}
-                />
-              )}
-            </TouchableOpacity>
+            renderCreditsPill()
           ) : (
             <View />
           )}
