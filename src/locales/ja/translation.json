@@ -3321,5 +3321,11 @@
   "viewCta": "表示",
   "publicProfileNotLiveTitle": "バーバープロフィールはまだ公開されていません",
   "publicProfileNotLiveMessage": "「予約を受け付ける」をオンにすると、お客様があなたを見つけて予約できるようになります。",
-  "turnOnAcceptAppointments": "「予約を受け付ける」をオンにする"
+  "turnOnAcceptAppointments": "「予約を受け付ける」をオンにする",
+  "freshyAiTryOnLabel": "FRESHY AI TRY-ON",
+  "freshyTryOnTitle": "See your look\nbefore you book",
+  "freshyTryOnButton": "Try It On",
+  "freshyTryOnBookingHint": "任意：ヘアスタイルを試して、結果を下に添付してください。",
+  "before": "ビフォー",
+  "after": "アフター"
 }

@@ -45,7 +45,9 @@ import ShowAppointments from "./ShowAppointments";
 import ShowProTips from "./ShowProTips";
 import HomeReelsSection from "@/src/components/homeReelsSection";
 import HomeAvailableNowSection from "@/src/components/homeAvailableNowSection";
+import FreshyTryOnBanner from "@/src/components/FreshyTryOnBanner";
 import { fetchFollowing } from "@/src/services/followService";
+import { setGuestModeModalVisible } from "@/src/state/slices/generalSlice";
 import {
   getDefaultAvatarImage,
   getDefaultBusinessImage,
@@ -1078,6 +1080,23 @@ export default function DashboardContent() {
         categoriesError={categoriesError}
         onRetry={fetchCategories}
       />
+
+      {isCusotmerandGuest && (
+        <View style={{ marginTop: moderateHeightScale(14) }}>
+          <FreshyTryOnBanner
+            onPress={() => {
+              if (isGuest) {
+                dispatch(setGuestModeModalVisible(true));
+                return;
+              }
+              router.push({
+                pathname: "/(main)/aiTools/toolList",
+                params: { mode: "aiTools" },
+              } as any);
+            }}
+          />
+        </View>
+      )}
 
       {userRole === "customer" && appointments.length > 0 && (
         <View style={styles.section}>

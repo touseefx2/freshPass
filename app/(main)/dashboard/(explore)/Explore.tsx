@@ -36,7 +36,6 @@ import type {
 } from "@/src/components/businessList";
 import {
   setIsFirstShowTryOn,
-  setTryOnBannerDismissed,
   setSearchState,
   clearSearchState,
   setCurrentLocation,
@@ -45,7 +44,7 @@ import {
   setGuestModeModalVisible,
 } from "@/src/state/slices/generalSlice";
 import type { AdditionalServiceItem } from "@/src/state/slices/generalSlice";
-import TryOnBanner from "./TryOnBanner";
+import FreshyTryOnBanner from "@/src/components/FreshyTryOnBanner";
 import * as Location from "expo-location";
 import { tryGetPosition } from "@/src/constant/functions";
 import { handleLocationPermission } from "@/src/services/locationPermissionService";
@@ -116,9 +115,6 @@ export default function ExploreScreen() {
   const hasSearchId = search.serviceId ?? null;
   const aiQuota = useAppSelector((state) => state.user.ai_quota);
   const aiService = useAppSelector((state) => state.general.aiService);
-  const tryOnBannerDismissed = useAppSelector(
-    (state) => state.general.tryOnBannerDismissed,
-  );
   const isFirstTryon = useAppSelector(
     (state) => state.general.isFirstShowTryOn,
   );
@@ -134,12 +130,6 @@ export default function ExploreScreen() {
     aiService?.find((s) => s.name === "AI Hair Try-On") ??
     aiService?.find((s) => /hair\s*try/i.test(s.name ?? "")) ??
     null;
-  const showTryOnBanner =
-    (aiQuota === 0 || aiQuota == null) &&
-    !!hairTryOnService &&
-    isCusotmerandGuest &&
-    isFirstTryon &&
-    !tryOnBannerDismissed;
   const showTryOnModal =
     !isFirstTryon &&
     !!hairTryOnService &&
@@ -692,6 +682,23 @@ export default function ExploreScreen() {
           keyExtractor={(item) => item.id.toString()}
           ListHeaderComponent={
             <>
+              {isCusotmerandGuest && (
+                <View style={{ marginTop: moderateHeightScale(14) }}>
+                  <FreshyTryOnBanner
+                    onPress={() => {
+                      if (user.isGuest) {
+                        dispatch(setGuestModeModalVisible(true));
+                        return;
+                      }
+                      router.push({
+                        pathname: "/(main)/aiTools/toolList",
+                        params: { mode: "aiTools" },
+                      });
+                    }}
+                  />
+                </View>
+              )}
+
               {(verifiedSalonsDeals.length > 0 || dealsLoading) && (
                 <View style={styles.section}>
                   <Text style={styles.sectionTitle}>{t("freshPassDeals")}</Text>
@@ -767,22 +774,6 @@ export default function ExploreScreen() {
           }
         />
 
-        {showTryOnBanner && (
-          <TryOnBanner
-            service={hairTryOnService}
-            onPress={() => {
-              if (user.isGuest) {
-                dispatch(setGuestModeModalVisible(true));
-                return;
-              }
-              router.push({
-                pathname: "/(main)/aiTools/toolList",
-                params: { mode: "aiTools" },
-              });
-            }}
-            onDismiss={() => dispatch(setTryOnBannerDismissed(true))}
-          />
-        )}
       </View>
 
       <SortByBottomSheet

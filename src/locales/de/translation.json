@@ -3324,5 +3324,11 @@
   "viewCta": "Ansehen",
   "publicProfileNotLiveTitle": "Dein Barber-Profil ist noch nicht öffentlich",
   "publicProfileNotLiveMessage": "Aktiviere „Termine annehmen“, damit Kunden dich sehen und buchen können.",
-  "turnOnAcceptAppointments": "„Termine annehmen“ aktivieren"
+  "turnOnAcceptAppointments": "„Termine annehmen” aktivieren",
+  "freshyAiTryOnLabel": "FRESHY AI TRY-ON",
+  "freshyTryOnTitle": "See your look\nbefore you book",
+  "freshyTryOnButton": "Try It On",
+  "freshyTryOnBookingHint": "Optional: Probiere einen Look aus und hänge dein Ergebnis unten an.",
+  "before": "Vorher",
+  "after": "Nachher"
 }

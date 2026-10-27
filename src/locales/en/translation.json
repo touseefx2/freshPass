@@ -3651,5 +3651,11 @@
   "viewCta": "View",
   "publicProfileNotLiveTitle": "Your barber profile isn't public yet",
   "publicProfileNotLiveMessage": "Turn on Accept appointments so customers can see and book you.",
-  "turnOnAcceptAppointments": "Turn on Accept appointments"
+  "turnOnAcceptAppointments": "Turn on Accept appointments",
+  "freshyAiTryOnLabel": "FRESHY AI TRY-ON",
+  "freshyTryOnTitle": "See your look\nbefore you book",
+  "freshyTryOnButton": "Try It On",
+  "freshyTryOnBookingHint": "Optional: try a look and attach your result below.",
+  "before": "Before",
+  "after": "After"
 }

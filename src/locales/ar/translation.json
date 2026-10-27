@@ -3336,5 +3336,11 @@
   "viewCta": "عرض",
   "publicProfileNotLiveTitle": "ملفك الشخصي كحلاق ليس عامًا بعد",
   "publicProfileNotLiveMessage": "فعّل «قبول المواعيد» حتى يتمكن العملاء من رؤيتك والحجز معك.",
-  "turnOnAcceptAppointments": "تفعيل «قبول المواعيد»"
+  "turnOnAcceptAppointments": "تفعيل «قبول المواعيد»",
+  "freshyAiTryOnLabel": "FRESHY AI TRY-ON",
+  "freshyTryOnTitle": "See your look\nbefore you book",
+  "freshyTryOnButton": "Try It On",
+  "freshyTryOnBookingHint": "اختياري: جرّب إطلالة وأرفق النتيجة أدناه.",
+  "before": "قبل",
+  "after": "بعد"
 }

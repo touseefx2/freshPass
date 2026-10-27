@@ -92,6 +92,7 @@ import Animated, {
 import AddServiceBottomSheet from "@/src/components/AddServiceBottomSheet";
 import OutcomeConfirmSheet from "@/src/components/OutcomeConfirmSheet";
 import ImagePickerModal from "@/src/components/imagePickerModal";
+import FreshyTryOnBanner from "@/src/components/FreshyTryOnBanner";
 import { takeReviewEdit } from "@/src/components/booking/reviewEdit";
 import FlowHeader from "@/src/components/reelFlow/flowHeader";
 import FlowFooter from "@/src/components/reelFlow/flowFooter";
@@ -3578,6 +3579,27 @@ export default function BookingNow() {
         title={t("bkFlowExtrasTitle")}
         subtitle={t("bkFlowExtrasSubtitle")}
       />
+      <View style={{ marginBottom: moderateHeightScale(16) }}>
+        <FreshyTryOnBanner
+          onPress={() => {
+            router.push({
+              pathname: "/(main)/aiTools/toolList",
+              params: { mode: "aiTools" },
+            });
+          }}
+        />
+      </View>
+      <Text
+        style={{
+          fontSize: fontSize.size13,
+          fontFamily: fonts.fontRegular,
+          color: theme.lightGreen,
+          paddingHorizontal: moderateWidthScale(4),
+          marginBottom: moderateHeightScale(12),
+        }}
+      >
+        {t("freshyTryOnBookingHint")}
+      </Text>
       <View style={styles.section}>
         <SectionLabel label={t("bkFlowPhotos")} meta={t("optional")} />
         <View style={styles.photoGrid}>

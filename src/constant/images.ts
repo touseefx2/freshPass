@@ -17,4 +17,6 @@ export const IMAGES = {
   femaleAgent: require("@/assets/images/female-agent.png"),
   payoutWallet: require("@/assets/images/payoutWallet.png"),
   anyoneStaff: require("@/assets/images/anyone-staff.png"),
+  tryOnBefore: require("@/assets/images/tryOnBefore.png"),
+  tryOnAfter: require("@/assets/images/tryOnAfter.png"),
 };

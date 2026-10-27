@@ -3327,5 +3327,11 @@
   "viewCta": "Ver",
   "publicProfileNotLiveTitle": "Tu perfil de barbero aún no es público",
   "publicProfileNotLiveMessage": "Activa «Aceptar citas» para que los clientes puedan verte y reservar contigo.",
-  "turnOnAcceptAppointments": "Activar «Aceptar citas»"
+  "turnOnAcceptAppointments": "Activar «Aceptar citas»",
+  "freshyAiTryOnLabel": "FRESHY AI TRY-ON",
+  "freshyTryOnTitle": "See your look\nbefore you book",
+  "freshyTryOnButton": "Try It On",
+  "freshyTryOnBookingHint": "Opcional: prueba un look y adjunta el resultado a continuación.",
+  "before": "Antes",
+  "after": "Después"
 }

@@ -3327,5 +3327,11 @@
   "viewCta": "Voir",
   "publicProfileNotLiveTitle": "Votre profil de barbier n'est pas encore public",
   "publicProfileNotLiveMessage": "Activez « Accepter les rendez-vous » pour que les clients puissent vous voir et vous réserver.",
-  "turnOnAcceptAppointments": "Activer « Accepter les rendez-vous »"
+  "turnOnAcceptAppointments": "Activer « Accepter les rendez-vous »",
+  "freshyAiTryOnLabel": "FRESHY AI TRY-ON",
+  "freshyTryOnTitle": "See your look\nbefore you book",
+  "freshyTryOnButton": "Try It On",
+  "freshyTryOnBookingHint": "Facultatif : essayez un look et joignez votre résultat ci-dessous.",
+  "before": "Avant",
+  "after": "Après"
 }
