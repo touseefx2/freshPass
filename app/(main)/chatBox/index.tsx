@@ -28,6 +28,7 @@ import {
 } from "react-native";
 import { useTheme, useAppSelector } from "@/src/hooks/hooks";
 import { getActingSide } from "@/src/state/slices/userSlice";
+import { setActiveChatUserId } from "@/src/services/activeChatTracker";
 import AppImage from "@/src/components/AppImage";
 import { useDownloadMedia } from "@/src/hooks/useDownloadMedia";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
@@ -2124,6 +2125,13 @@ export default function ChatBoxScreen() {
   useEffect(() => {
     if (!userId) return;
     ApiService.post(MARK_READ_URL(userId), {}).catch(() => {});
+  }, [userId]);
+
+  // Track which chat is open so foreground push notifications can be suppressed
+  useEffect(() => {
+    if (!userId) return;
+    setActiveChatUserId(userId);
+    return () => setActiveChatUserId(null);
   }, [userId]);
 
   // When app returns from background: refetch messages so any missed (throttled) socket events are synced

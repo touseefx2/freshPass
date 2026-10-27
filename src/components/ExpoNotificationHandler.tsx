@@ -12,6 +12,7 @@ import {
   withPushNotificationType,
 } from "@/src/services/notificationNavigation";
 import { syncExpoPushTokenToBackend } from "@/src/services/pushTokenService";
+import { getActiveChatUserId } from "@/src/services/activeChatTracker";
 
 /**
  * Configure how notifications are presented when app is in foreground,
@@ -58,15 +59,33 @@ export default function ExpoNotificationHandler() {
   }, [accessToken, isGuest]);
 
   useEffect(() => {
-    // Show notification when app is in foreground (banner + sound)
+    // Show notification when app is in foreground (banner + sound),
+    // but suppress chat message notifications when already viewing that chat
     Notifications.setNotificationHandler({
-      handleNotification: async () => ({
-        shouldPlaySound: true,
-        shouldSetBadge: true,
-        shouldShowBanner: true,
-        shouldShowList: true,
-        shouldAnimate: true,
-      }),
+      handleNotification: async (notification) => {
+        const data = notification.request.content.data as
+          | Record<string, unknown>
+          | undefined;
+        if (data?.type === "message") {
+          const senderId = String(data.model_id ?? data.sender_id ?? "");
+          if (senderId && senderId === getActiveChatUserId()) {
+            return {
+              shouldPlaySound: false,
+              shouldSetBadge: false,
+              shouldShowBanner: false,
+              shouldShowList: false,
+              shouldAnimate: false,
+            };
+          }
+        }
+        return {
+          shouldPlaySound: true,
+          shouldSetBadge: true,
+          shouldShowBanner: true,
+          shouldShowList: true,
+          shouldAnimate: true,
+        };
+      },
     });
 
     // Fired when notification is received while app is open
