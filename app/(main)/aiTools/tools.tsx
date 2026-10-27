@@ -28,7 +28,7 @@ import ReelMediaTile, {
   type ReelMediaItem,
 } from "@/src/components/reelMediaTile";
 import LocalVideoPreviewModal from "@/src/components/localVideoPreviewModal";
-import { MaterialIcons } from "@expo/vector-icons";
+import { MaterialCommunityIcons, MaterialIcons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import * as DocumentPicker from "expo-document-picker";
 import {
@@ -97,7 +97,8 @@ export default function Tools() {
   const styles = useMemo(() => createStyles(colors as Theme), [colors]);
   const theme = colors as Theme;
   const toolType = params.toolType || "";
-  const headerTitle = toolType || t("aiTools");
+  const headerTitle =
+    toolType === "Hair Tryon" ? t("aiTryOnTitle") : toolType || t("aiTools");
   const businessId = user?.business_id ?? "";
   const userId = Number(user?.id);
 
@@ -252,21 +253,27 @@ export default function Tools() {
   const showCreditBanner =
     // !!hairTryOnService &&
     aiQuota >= 0 && toolType === "Hair Tryon";
+  // Generate stays disabled until every required field is filled
+  const hairTryonFormReady =
+    !!hairTryonSelectedType &&
+    tryOnChoiceReady &&
+    !!hairTryonSourceImage &&
+    (hairTryonSelectedType !== "withPromptAndImage" ||
+      !!hairTryonPrompt.trim());
 
   Logger.log("------>aiQuota", aiQuota);
   Logger.log("------>toolType", toolType);
   Logger.log("------>hairTryOnService", hairTryOnService);
 
-  const creditBannerMessage =
-    aiQuota === 0
-      ? "You have no credits."
-      : `You have ${aiQuota} credit remaining`;
+  const creditBannerMessage = aiQuota
+    ? t("tryOnCreditsRemaining", { count: aiQuota })
+    : t("tryOnNoCredits");
 
-  // Has selection: show selected type name (left) + "Change selection" (right), then form
+  // Has selection: show selected type name + "Change" (top right), then form
   const selectedTypeLabel =
     hairTryonSelectedType === "processing"
-      ? t("processing")
-      : t("withPromptAndImage");
+      ? t("tryOnModeRecommendations")
+      : t("tryOnModeCustom");
 
   const generateId = () => {
     return `file_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -1406,18 +1413,37 @@ export default function Tools() {
 
     return (
       <>
-        <View style={styles.hairTryonChangeSelectionRow}>
-          <Text style={styles.hairTryonSelectedTypeLabel}>
-            {selectedTypeLabel}
-          </Text>
-          <TouchableOpacity
-            onPress={() => setHairTryonSelectedType(null)}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.hairTryonChangeSelectionText}>
-              {t("changeSelection")}
+        <View style={styles.hairTryonTopRow}>
+          {showCreditBanner ? (
+            <View style={styles.hairTryonCreditsPill}>
+              <MaterialCommunityIcons
+                name="database"
+                size={moderateWidthScale(16)}
+                color={theme.darkGreen}
+              />
+              <Text style={styles.hairTryonCreditsText}>
+                {creditBannerMessage}
+              </Text>
+            </View>
+          ) : (
+            <View />
+          )}
+          <View style={styles.hairTryonModeRow}>
+            <Text style={styles.hairTryonSelectedTypeLabel} numberOfLines={1}>
+              {selectedTypeLabel}
             </Text>
-          </TouchableOpacity>
+            <View style={styles.hairTryonModeDivider} />
+            <TouchableOpacity
+              onPress={() => setHairTryonSelectedType(null)}
+              activeOpacity={0.7}
+              hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}
+              accessibilityRole="button"
+            >
+              <Text style={styles.hairTryonChangeSelectionText}>
+                {t("tryOnChange")}
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         <TryOnCategoryPicker
@@ -1432,76 +1458,95 @@ export default function Tools() {
         />
 
         <View style={styles.fieldContainer}>
-          <Text style={styles.label}>
-            {t("sourceImage")} <Text style={styles.required}>*</Text>
+          <Text style={styles.hairTryonLabel}>
+            {t("tryOnYourPhoto")} <Text style={styles.required}>*</Text>
           </Text>
           <TouchableOpacity
-            style={styles.fileInput}
+            style={styles.hairTryonPhotoCard}
             onPress={openImagePicker}
-            activeOpacity={0.7}
+            activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityLabel={
+              hairTryonSourceImage
+                ? t("tryOnPhotoChangeHint")
+                : t("tryOnUploadPhoto")
+            }
           >
-            <Text style={styles.fileInputText}>
-              {hairTryonSourceImage ? t("imageSelected") : t("chooseFile")}
-            </Text>
-            <MaterialIcons
-              name="arrow-drop-down"
-              size={moderateWidthScale(24)}
-              color={theme.text}
-            />
+            {hairTryonSourceImage ? (
+              <TouchableOpacity
+                onPress={() =>
+                  dispatch(
+                    openFullImageModal({ images: [hairTryonSourceImage] }),
+                  )
+                }
+                activeOpacity={0.9}
+              >
+                <AppImage
+                  uri={hairTryonSourceImage}
+                  style={styles.hairTryonPhotoThumb}
+                />
+              </TouchableOpacity>
+            ) : (
+              <View style={styles.hairTryonPhotoIcon}>
+                <MaterialIcons
+                  name="add-photo-alternate"
+                  size={moderateWidthScale(26)}
+                  color={theme.darkGreen}
+                />
+              </View>
+            )}
+            <View style={styles.hairTryonPhotoTextCol}>
+              <Text style={styles.hairTryonPhotoTitle}>
+                {hairTryonSourceImage
+                  ? t("tryOnPhotoAdded")
+                  : t("tryOnUploadPhoto")}
+              </Text>
+              <Text style={styles.hairTryonPhotoSubtitle}>
+                {hairTryonSourceImage
+                  ? t("tryOnPhotoChangeHint")
+                  : t("tryOnUploadPhotoHint")}
+              </Text>
+            </View>
+            {hairTryonSourceImage ? (
+              <TouchableOpacity
+                style={styles.hairTryonPhotoRemove}
+                onPress={handleDeleteHairTryonImage}
+                activeOpacity={0.7}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                accessibilityRole="button"
+                accessibilityLabel={t("tryOnRemovePhoto")}
+              >
+                <MaterialIcons
+                  name="delete-outline"
+                  size={moderateWidthScale(20)}
+                  color={theme.red}
+                />
+              </TouchableOpacity>
+            ) : (
+              <MaterialIcons
+                name="chevron-right"
+                size={moderateWidthScale(26)}
+                color={theme.darkGreen}
+              />
+            )}
           </TouchableOpacity>
         </View>
 
         {hairTryonSelectedType === "withPromptAndImage" && (
           <View style={styles.fieldContainer}>
-            <Text style={styles.label}>
-              {t("hairstyleDescription")} <Text style={styles.required}>*</Text>
+            <Text style={styles.hairTryonLabel}>
+              {t("tryOnDescribeLook")} <Text style={styles.required}>*</Text>
             </Text>
             <TextInput
-              style={[
-                styles.textArea,
-                {
-                  backgroundColor: theme.background,
-                  borderColor: theme.borderLine,
-                  color: theme.text,
-                },
-              ]}
-              placeholder={t("hairstylePlaceholder")}
+              style={styles.hairTryonPromptInput}
+              placeholder={t("tryOnDescribePlaceholder")}
               placeholderTextColor={theme.lightGreen4}
               value={hairTryonPrompt}
               onChangeText={setHairTryonPrompt}
               multiline
-              numberOfLines={6}
               textAlignVertical="top"
+              accessibilityLabel={t("tryOnDescribeLook")}
             />
-          </View>
-        )}
-
-        {hairTryonSourceImage && (
-          <View style={styles.imagePreviewContainer}>
-            <TouchableOpacity
-              onPress={() =>
-                hairTryonSourceImage &&
-                dispatch(openFullImageModal({ images: [hairTryonSourceImage] }))
-              }
-              activeOpacity={0.9}
-              style={{ width: "100%", height: "100%" }}
-            >
-              <AppImage
-                uri={hairTryonSourceImage}
-                style={styles.imagePreview}
-              />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.deleteButton}
-              onPress={handleDeleteHairTryonImage}
-              activeOpacity={0.7}
-            >
-              <MaterialIcons
-                name="delete"
-                size={moderateWidthScale(20)}
-                color={theme.white}
-              />
-            </TouchableOpacity>
           </View>
         )}
       </>
@@ -1510,13 +1555,18 @@ export default function Tools() {
 
   return (
     <SafeAreaView edges={["bottom"]} style={styles.safeArea}>
-      <StackHeader title={headerTitle} />
-
-      {showCreditBanner && hairTryonSelectedType && (
-        <View style={styles.creditBanner}>
-          <Text style={styles.creditBannerText}>{creditBannerMessage}</Text>
-        </View>
-      )}
+      <StackHeader
+        title={headerTitle}
+        rightIcon={
+          toolType === "Hair Tryon" ? (
+            <MaterialCommunityIcons
+              name="star-four-points-outline"
+              size={moderateWidthScale(24)}
+              color={theme.orangeBrown}
+            />
+          ) : undefined
+        }
+      />
 
       <View style={styles.contentContainer}>
         <KeyboardAwareScrollView
@@ -1534,7 +1584,14 @@ export default function Tools() {
         </KeyboardAwareScrollView>
       </View>
 
-      <View style={styles.buttonContainer}>
+      <View
+        style={[
+          styles.buttonContainer,
+          toolType === "Hair Tryon" &&
+            hairTryonSelectedType &&
+            styles.hairTryonButtonContainer,
+        ]}
+      >
         {/* For Hair Tryon: show button area only after user selects a type */}
         {!(toolType === "Hair Tryon" && !hairTryonSelectedType) && (
           <>
@@ -1547,20 +1604,25 @@ export default function Tools() {
                     : toolType === "Generate Reel"
                       ? t("generateReel")
                       : toolType === "Hair Tryon"
-                        ? t("generateHairTryon")
+                        ? t("tryOnGenerate")
                         : `Generate ${toolType.replace("Generate ", "")}`
               }
               onPress={handleGenerate}
               disabled={
                 isGenerating ||
-                (toolType === "Hair Tryon"
-                  ? !hairTryonSelectedType || !tryOnChoiceReady
-                  : false) ||
+                (toolType === "Hair Tryon" ? !hairTryonFormReady : false) ||
                 (toolType === "Generate Reel" &&
                   (reelMedia.length < 3 ||
                     reelMedia.length > reelAiMaxItems))
               }
             />
+            {toolType === "Hair Tryon" && !hairTryonFormReady && (
+              <Text style={styles.hairTryonHelperText}>
+                {hairTryonSelectedType === "withPromptAndImage"
+                  ? t("tryOnHelperCustom")
+                  : t("tryOnHelperPhoto")}
+              </Text>
+            )}
           </>
         )}
       </View>

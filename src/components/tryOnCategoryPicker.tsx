@@ -4,6 +4,7 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
+  useWindowDimensions,
   View,
 } from "react-native";
 import { MaterialCommunityIcons, MaterialIcons } from "@expo/vector-icons";
@@ -34,13 +35,40 @@ export const formatTryOnCategoryName = (name: string) =>
     .toLocaleLowerCase()
     .replace(/(^|[\s&/-])(\S)/g, (_, sep, ch) => sep + ch.toLocaleUpperCase());
 
-const createStyles = (theme: Theme) =>
+const GRID_GAP = moderateWidthScale(10);
+
+/** Hint under the grid: what Freshy edits for this category */
+const focusKeyForSlug = (slug: string) => {
+  if (["barbershop", "beauty-salon", "braids-locs"].includes(slug) || slug.includes("hair"))
+    return "tryOnFocusHair";
+  if (slug.includes("nail")) return "tryOnFocusNails";
+  if (slug.includes("pet")) return "tryOnFocusPet";
+  if (slug.includes("brow") || slug.includes("lash")) return "tryOnFocusBrows";
+  if (slug.includes("makeup")) return "tryOnFocusMakeup";
+  if (slug.includes("tattoo")) return "tryOnFocusTattoo";
+  if (slug.includes("pierc")) return "tryOnFocusPiercings";
+  return null;
+};
+
+const createStyles = (theme: Theme, tileWidth: number) =>
   StyleSheet.create({
     fieldContainer: {
-      marginTop: moderateHeightScale(24),
+      marginTop: moderateHeightScale(20),
+    },
+    title: {
+      fontSize: fontSize.size22,
+      fontFamily: fonts.fontBold,
+      color: theme.text,
+    },
+    subtitle: {
+      marginTop: moderateHeightScale(4),
+      marginBottom: moderateHeightScale(14),
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
     },
     label: {
-      fontSize: fontSize.size15,
+      fontSize: fontSize.size16,
       fontFamily: fonts.fontMedium,
       color: theme.text,
       marginBottom: moderateHeightScale(10),
@@ -51,39 +79,48 @@ const createStyles = (theme: Theme) =>
     grid: {
       flexDirection: "row",
       flexWrap: "wrap",
-      gap: moderateWidthScale(8),
+      gap: GRID_GAP,
     },
-    chip: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: moderateWidthScale(8),
-      minHeight: moderateHeightScale(48),
-      paddingLeft: moderateWidthScale(4),
-      paddingRight: moderateWidthScale(14),
-      paddingVertical: moderateHeightScale(4),
-      borderRadius: moderateWidthScale(999),
+    tile: {
+      width: tileWidth,
+      padding: moderateWidthScale(6),
+      paddingBottom: moderateHeightScale(10),
+      borderRadius: moderateWidthScale(14),
       borderWidth: 1,
       borderColor: theme.borderNormal,
       backgroundColor: theme.white,
+      alignItems: "center",
     },
-    chipSelected: {
+    tileSelected: {
+      borderWidth: 1.5,
       borderColor: theme.darkGreen,
-      backgroundColor: theme.darkGreen,
-    },
-    chipThumb: {
-      width: moderateWidthScale(40),
-      height: moderateWidthScale(40),
-      borderRadius: moderateWidthScale(20),
       backgroundColor: theme.lightGreen07,
     },
-    chipText: {
-      fontSize: fontSize.size13,
-      fontFamily: fonts.fontMedium,
-      color: theme.darkGreen,
+    tileImage: {
+      width: "100%",
+      aspectRatio: 1.6,
+      borderRadius: moderateWidthScale(10),
+      backgroundColor: theme.lightGreen07,
     },
-    chipTextSelected: {
-      color: theme.white,
-      fontFamily: fonts.fontBold,
+    checkBadge: {
+      position: "absolute",
+      top: moderateWidthScale(10),
+      right: moderateWidthScale(10),
+      width: moderateWidthScale(24),
+      height: moderateWidthScale(24),
+      borderRadius: moderateWidthScale(12),
+      backgroundColor: theme.darkGreen,
+      borderWidth: 1.5,
+      borderColor: theme.white,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    tileText: {
+      marginTop: moderateHeightScale(8),
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontMedium,
+      color: theme.text,
+      textAlign: "center",
     },
     stateBox: {
       minHeight: moderateHeightScale(96),
@@ -109,6 +146,22 @@ const createStyles = (theme: Theme) =>
       textDecorationLine: "underline",
       paddingVertical: moderateHeightScale(6),
       paddingHorizontal: moderateWidthScale(12),
+    },
+    focusHint: {
+      marginTop: moderateHeightScale(16),
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(12),
+      paddingHorizontal: moderateWidthScale(16),
+      paddingVertical: moderateHeightScale(14),
+      borderRadius: moderateWidthScale(12),
+      backgroundColor: theme.lightGreen1,
+    },
+    focusHintText: {
+      flex: 1,
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontRegular,
+      color: theme.darkGreen,
     },
     genderRow: {
       flexDirection: "row",
@@ -177,9 +230,25 @@ export default function TryOnCategoryPicker({
 }: Props) {
   const { colors } = useTheme();
   const theme = colors as Theme;
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const { width: screenWidth } = useWindowDimensions();
+  // 3 columns inside the screen's 20px side padding
+  const tileWidth = Math.floor(
+    (screenWidth - moderateWidthScale(40) - GRID_GAP * 2) / 3,
+  );
+  const styles = useMemo(
+    () => createStyles(theme, tileWidth),
+    [theme, tileWidth],
+  );
   const { t } = useTranslation();
   const selected = categories.find((c) => c.slug === selectedSlug) ?? null;
+  const focusKey = selected ? focusKeyForSlug(selected.slug) : null;
+  const focusText = selected
+    ? focusKey
+      ? t(focusKey)
+      : t("tryOnFocusGeneric", {
+          category: formatTryOnCategoryName(selected.name),
+        })
+    : null;
 
   const genderOptions: {
     key: TryOnGender;
@@ -193,9 +262,10 @@ export default function TryOnCategoryPicker({
   return (
     <>
       <View style={styles.fieldContainer}>
-        <Text style={styles.label}>
-          {t("tryOnCategoryLabel")} <Text style={styles.required}>*</Text>
+        <Text style={styles.title} accessibilityRole="header">
+          {t("tryOnPickTitle")}
         </Text>
+        <Text style={styles.subtitle}>{t("tryOnPickSubtitle")}</Text>
 
         {categories.length > 0 ? (
           <View style={styles.grid} accessibilityRole="radiogroup">
@@ -205,22 +275,28 @@ export default function TryOnCategoryPicker({
               return (
                 <TouchableOpacity
                   key={cat.slug}
-                  style={[styles.chip, isSelected && styles.chipSelected]}
+                  style={[styles.tile, isSelected && styles.tileSelected]}
                   onPress={() => onSelectCategory(cat.slug)}
                   activeOpacity={0.8}
-                  hitSlop={{ top: 4, bottom: 4 }}
                   accessibilityRole="radio"
                   accessibilityState={{ checked: isSelected }}
                   accessibilityLabel={name}
                 >
                   <AppImage
                     uri={cat.imageUrl}
-                    style={styles.chipThumb}
+                    style={styles.tileImage}
                     contentFit="cover"
                   />
-                  <Text
-                    style={[styles.chipText, isSelected && styles.chipTextSelected]}
-                  >
+                  {isSelected && (
+                    <View style={styles.checkBadge}>
+                      <MaterialIcons
+                        name="check"
+                        size={moderateWidthScale(15)}
+                        color={theme.white}
+                      />
+                    </View>
+                  )}
+                  <Text style={styles.tileText} numberOfLines={1}>
                     {name}
                   </Text>
                 </TouchableOpacity>
@@ -244,6 +320,17 @@ export default function TryOnCategoryPicker({
           </View>
         )}
       </View>
+
+      {focusText && (
+        <View style={styles.focusHint}>
+          <MaterialCommunityIcons
+            name="star-four-points"
+            size={moderateWidthScale(20)}
+            color={theme.darkGreen}
+          />
+          <Text style={styles.focusHintText}>{focusText}</Text>
+        </View>
+      )}
 
       {selected?.asksGender && (
         <View style={styles.fieldContainer}>
