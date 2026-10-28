@@ -370,7 +370,7 @@ export default function PostDealScreen() {
   );
   const [selectedTime, setSelectedTime] = useState<string | null>(params.time ?? null);
   const [offerPriceText, setOfferPriceText] = useState("");
-  const [closesAtText, setClosesAtText] = useState("");
+  const [closesBeforeMinutes, setClosesBeforeMinutes] = useState<number | null>(null);
   const [posting, setPosting] = useState(false);
   const [done, setDone] = useState(false);
   const [postError, setPostError] = useState<string | null>(null);
@@ -408,7 +408,7 @@ export default function PostDealScreen() {
   // Load free times when service + staff + date are set
   useEffect(() => {
     if (!selectedService || !selectedDate || !businessId) return;
-    if (!isSolo && !selectedStaff) return;
+    if (staffList.length > 0 && !selectedStaff) return;
     let active = true;
     setTimesLoading(true);
     fetchOwnerFreeTimes({
@@ -428,7 +428,7 @@ export default function PostDealScreen() {
         if (active) setTimesLoading(false);
       });
     return () => { active = false; };
-  }, [businessId, isSolo, selectedDate, selectedService, selectedStaff]);
+  }, [businessId, staffList.length, selectedDate, selectedService, selectedStaff]);
 
   const steps = useMemo<StepKey[]>(() => {
     const s: StepKey[] = ["service"];
@@ -439,6 +439,17 @@ export default function PostDealScreen() {
 
   const stepIndex = steps.indexOf(step);
   const stepNumber = stepIndex + 1;
+
+  const closesAtTime = useMemo(() => {
+    if (!selectedTime || closesBeforeMinutes == null) return "";
+    const [h, m] = selectedTime.split(":").map(Number);
+    const startMinutes = h * 60 + m;
+    const closeMinutes = startMinutes - closesBeforeMinutes;
+    if (closeMinutes < 0) return "";
+    const ch = Math.floor(closeMinutes / 60);
+    const cm = closeMinutes % 60;
+    return `${String(ch).padStart(2, "0")}:${String(cm).padStart(2, "0")}`;
+  }, [selectedTime, closesBeforeMinutes]);
 
   const normalPrice = selectedService?.price ?? 0;
   const offerPrice = offerPriceText.trim() === "" ? normalPrice : Number(offerPriceText);
@@ -458,14 +469,17 @@ export default function PostDealScreen() {
         return !!selectedStaff;
       case "time":
         return !!selectedTime;
-      case "price":
-        return closesAtText.trim().length > 0;
+      case "price": {
+        if (!closesAtTime) return false;
+        if (offerPriceText.trim() !== "" && !Number.isFinite(Number(offerPriceText))) return false;
+        return true;
+      }
       case "preview":
         return true;
       default:
         return false;
     }
-  }, [step, selectedService, selectedStaff, selectedTime, closesAtText]);
+  }, [step, selectedService, selectedStaff, selectedTime, closesAtTime, offerPriceText]);
 
   const goNext = () => {
     const next = steps[stepIndex + 1];
@@ -487,7 +501,9 @@ export default function PostDealScreen() {
         ...(selectedStaff ? { staff_id: selectedStaff.id } : {}),
         date: selectedDate,
         start_time: selectedTime,
-        ...(offerPriceText.trim() !== "" ? { offer_price: Number(offerPriceText) } : {}),
+        ...(offerPriceText.trim() !== "" && Number.isFinite(Number(offerPriceText))
+          ? { offer_price: Number(offerPriceText) }
+          : {}),
         closes_at: closesAtFull,
       });
       setDone(true);
