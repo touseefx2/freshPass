@@ -29,6 +29,7 @@ import {
 import { ApiService } from "@/src/services/api";
 import { userEndpoints } from "@/src/services/endpoints";
 import { setUserDetails } from "@/src/state/slices/userSlice";
+import { setTryOnPurchaseSuccessSource } from "@/src/state/slices/generalSlice";
 import {
   getTutorialVideoTryonUri,
 } from "@/src/services/remoteConfigService";
@@ -186,17 +187,30 @@ export default function ToolList() {
         {heroCopy.title}
       </Text>
       <Text style={styles.heroSubtitle}>{heroCopy.sub}</Text>
-      {/* Try-on credits are a customer thing */}
       {isCustomer && aiQuota != null ? (
-        <View style={styles.creditChip}>
-          <MaterialIcons
-            name="bolt"
-            size={moderateWidthScale(15)}
-            color={theme.selectCard}
-          />
-          <Text style={styles.creditChipText}>
-            {t("aiCreditsLeft", { count: aiQuota })}
-          </Text>
+        <View style={styles.creditRow}>
+          <View style={styles.creditChip}>
+            <MaterialIcons
+              name="bolt"
+              size={moderateWidthScale(15)}
+              color={theme.selectCard}
+            />
+            <Text style={styles.creditChipText}>
+              {t("aiCreditsLeft", { count: aiQuota })}
+            </Text>
+          </View>
+          <TouchableOpacity
+            style={styles.buyCreditsButton}
+            onPress={() => {
+              dispatch(setTryOnPurchaseSuccessSource("toolList"));
+              router.push("/(main)/tryOnPurchase" as any);
+            }}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel={t("tryOnBuyCredits")}
+          >
+            <Text style={styles.buyCreditsText}>{t("tryOnBuyCredits")}</Text>
+          </TouchableOpacity>
         </View>
       ) : null}
     </LinearGradient>

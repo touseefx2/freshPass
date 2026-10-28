@@ -1309,32 +1309,33 @@ export default function Tools() {
     );
   };
 
-  // Credits left; customers tap it (+) to buy more any time
+  // Credits left + separate Buy Credits button
   const renderCreditsPill = () => (
-    <TouchableOpacity
-      style={styles.hairTryonCreditsPill}
-      onPress={openTryOnPurchase}
-      disabled={!isCustomerOrGuest}
-      activeOpacity={0.7}
-      accessibilityRole="button"
-      accessibilityLabel={`${creditBannerMessage}, ${t("tryOnBuyCredits")}`}
-    >
-      <MaterialCommunityIcons
-        name="database"
-        size={moderateWidthScale(16)}
-        color={theme.darkGreen}
-      />
-      <Text style={styles.hairTryonCreditsText}>
-        {creditBannerMessage}
-      </Text>
-      {isCustomerOrGuest && (
-        <MaterialIcons
-          name="add-circle"
+    <View style={styles.hairTryonCreditsRow}>
+      <View style={styles.hairTryonCreditsPill}>
+        <MaterialCommunityIcons
+          name="database"
           size={moderateWidthScale(16)}
           color={theme.darkGreen}
         />
+        <Text style={styles.hairTryonCreditsText}>
+          {creditBannerMessage}
+        </Text>
+      </View>
+      {isCustomerOrGuest && (
+        <TouchableOpacity
+          style={styles.hairTryonBuyCreditsButton}
+          onPress={openTryOnPurchase}
+          activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel={t("tryOnBuyCredits")}
+        >
+          <Text style={styles.hairTryonBuyCreditsText}>
+            {t("tryOnBuyCredits")}
+          </Text>
+        </TouchableOpacity>
       )}
-    </TouchableOpacity>
+    </View>
   );
 
   const renderHairTryonContent = () => {
@@ -1381,22 +1382,8 @@ export default function Tools() {
             <Text style={[styles.hairTryonOptionDesc, { marginBottom: 0 }]}>
               • {t("hairTryonImageRequirement")}
             </Text>
-            <View
-              style={[
-                styles.hairTryonOptionButton,
-                isProcessing
-                  ? styles.hairTryonOptionButtonActive
-                  : styles.hairTryonOptionButtonInactive,
-              ]}
-            >
-              <Text
-                style={[
-                  styles.hairTryonOptionButtonText,
-                  isProcessing
-                    ? styles.hairTryonOptionButtonTextActive
-                    : styles.hairTryonOptionButtonTextInactive,
-                ]}
-              >
+            <View style={[styles.hairTryonOptionButton, styles.hairTryonOptionButtonActive]}>
+              <Text style={[styles.hairTryonOptionButtonText, styles.hairTryonOptionButtonTextActive]}>
                 {t("tryHairTryOn")}
               </Text>
             </View>
@@ -1432,22 +1419,8 @@ export default function Tools() {
             <Text style={[styles.hairTryonOptionDesc, { marginBottom: 0 }]}>
               • {t("hairTryonImageRequirement")}
             </Text>
-            <View
-              style={[
-                styles.hairTryonOptionButton,
-                isWithPrompt
-                  ? styles.hairTryonOptionButtonActive
-                  : styles.hairTryonOptionButtonInactive,
-              ]}
-            >
-              <Text
-                style={[
-                  styles.hairTryonOptionButtonText,
-                  isWithPrompt
-                    ? styles.hairTryonOptionButtonTextActive
-                    : styles.hairTryonOptionButtonTextInactive,
-                ]}
-              >
+            <View style={[styles.hairTryonOptionButton, styles.hairTryonOptionButtonActive]}>
+              <Text style={[styles.hairTryonOptionButtonText, styles.hairTryonOptionButtonTextActive]}>
                 {t("withPromptTryon")}
               </Text>
             </View>

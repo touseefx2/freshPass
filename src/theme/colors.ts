@@ -32,6 +32,7 @@ export const themes = {
     borderMedium: "#2836184D",
     borderDark: "#28361880",
     darkGreen15: "rgba(40, 54, 24, 0.15)",
+    goldenBuy: "#E5C872",
     orangeBrown: "#DDA15E",
     orangeBrown30: "rgba(221, 161, 94, 0.3)",
     orangeBrown015: "rgba(175, 138, 37, 0.15)",

@@ -90,12 +90,16 @@ export const createStyles = (theme: Theme) =>
       lineHeight: fontSize.size20,
       maxWidth: "90%",
     },
+    creditRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(10),
+      marginTop: moderateHeightScale(16),
+    },
     creditChip: {
-      alignSelf: "flex-start",
       flexDirection: "row",
       alignItems: "center",
       gap: moderateWidthScale(6),
-      marginTop: moderateHeightScale(16),
       paddingHorizontal: moderateWidthScale(12),
       paddingVertical: moderateHeightScale(7),
       borderRadius: moderateWidthScale(999),
@@ -106,6 +110,17 @@ export const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
       fontVariant: ["tabular-nums"],
+    },
+    buyCreditsButton: {
+      paddingHorizontal: moderateWidthScale(16),
+      paddingVertical: moderateHeightScale(7),
+      borderRadius: moderateWidthScale(999),
+      backgroundColor: theme.goldenBuy,
+    },
+    buyCreditsText: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
     },
 
     // ── Sections ────────────────────────────────────────────────────
