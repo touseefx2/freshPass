@@ -34,6 +34,7 @@ import {
 } from "@/src/theme/dimensions";
 import StackHeader from "@/src/components/StackHeader";
 import AppImage from "@/src/components/AppImage";
+import RetryButton from "@/src/components/retryButton";
 import Logger from "@/src/services/logger";
 import {
   fetchOwnerBookingStaff,
@@ -178,6 +179,36 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontMedium,
       color: theme.darkGreen,
       marginBottom: moderateHeightScale(16),
+    },
+    chipsRow: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: moderateWidthScale(8),
+      marginBottom: moderateHeightScale(12),
+    },
+    chip: {
+      paddingHorizontal: moderateWidthScale(14),
+      paddingVertical: moderateHeightScale(9),
+      borderRadius: moderateWidthScale(10),
+      borderWidth: 1,
+      borderColor: theme.lightGreen2,
+      backgroundColor: theme.white,
+    },
+    chipSelected: {
+      borderColor: theme.darkGreen,
+      backgroundColor: theme.darkGreen,
+    },
+    chipText: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
+    },
+    chipTextSelected: { color: theme.white },
+    closesPreview: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontMedium,
+      color: theme.lightGreen5,
+      marginBottom: moderateHeightScale(8),
     },
     // Preview card
     previewCard: {
@@ -359,6 +390,7 @@ export default function PostDealScreen() {
 
   const [step, setStep] = useState<StepKey>("service");
   const [loadingData, setLoadingData] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [staffList, setStaffList] = useState<OwnerBookingStaff[]>([]);
   const [serviceList, setServiceList] = useState<OwnerBookingService[]>([]);
 
@@ -379,31 +411,40 @@ export default function PostDealScreen() {
   const [freeTimes, setFreeTimes] = useState<string[]>([]);
   const [timesLoading, setTimesLoading] = useState(false);
 
-  // Load staff & services
-  useEffect(() => {
-    if (!businessId) return;
-    let active = true;
-    (async () => {
-      try {
-        const [staff, services] = await Promise.all([
-          isSolo ? Promise.resolve([]) : fetchOwnerBookingStaff(businessId),
-          fetchOwnerBookingServices(businessId),
+  const loadInitial = useCallback(async () => {
+    if (!businessId) {
+      setLoadingData(false);
+      return;
+    }
+    setLoadingData(true);
+    setLoadError(false);
+    try {
+      const withTimeout = <T,>(p: Promise<T>): Promise<T> =>
+        Promise.race([
+          p,
+          new Promise<never>((_, rej) =>
+            setTimeout(() => rej(new Error("timeout")), 10_000),
+          ),
         ]);
-        if (!active) return;
-        setStaffList(staff);
-        setServiceList(services);
-        if (params.staff_id) {
-          const pre = staff.find((s) => s.id === Number(params.staff_id));
-          if (pre) setSelectedStaff(pre);
-        }
-      } catch (err) {
-        Logger.error("PostDeal: load data failed", err);
-      } finally {
-        if (active) setLoadingData(false);
+      const [staff, services] = await Promise.all([
+        isSolo ? Promise.resolve([]) : withTimeout(fetchOwnerBookingStaff(businessId)),
+        withTimeout(fetchOwnerBookingServices(businessId)),
+      ]);
+      setStaffList(staff);
+      setServiceList(services);
+      if (params.staff_id) {
+        const pre = staff.find((s) => s.id === Number(params.staff_id));
+        if (pre) setSelectedStaff(pre);
       }
-    })();
-    return () => { active = false; };
+    } catch (err) {
+      Logger.error("PostDeal: load data failed", err);
+      setLoadError(true);
+    } finally {
+      setLoadingData(false);
+    }
   }, [businessId, isSolo, params.staff_id]);
+
+  useEffect(() => { loadInitial(); }, [loadInitial]);
 
   // Load free times when service + staff + date are set
   useEffect(() => {
@@ -495,7 +536,7 @@ export default function PostDealScreen() {
     setPosting(true);
     setPostError(null);
     try {
-      const closesAtFull = `${selectedDate} ${closesAtText.trim()}`;
+      const closesAtFull = `${selectedDate} ${closesAtTime}`;
       await createSlotOffer({
         service_id: selectedService.id,
         ...(selectedStaff ? { staff_id: selectedStaff.id } : {}),
@@ -552,6 +593,17 @@ export default function PostDealScreen() {
         <StackHeader title={t("sdPostADeal")} />
         <View style={styles.center}>
           <ActivityIndicator size="large" color={theme.darkGreen} />
+        </View>
+      </View>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <View style={styles.container}>
+        <StackHeader title={t("sdPostADeal")} />
+        <View style={styles.center}>
+          <RetryButton onPress={loadInitial} />
         </View>
       </View>
     );
@@ -771,15 +823,36 @@ export default function PostDealScreen() {
               <Text style={styles.inputHint}>
                 {t("sdClosesAtHint")}
               </Text>
-              <TextInput
-                style={styles.input}
-                value={closesAtText}
-                onChangeText={setClosesAtText}
-                placeholder="13:00"
-                placeholderTextColor={theme.lightGreen2}
-                keyboardType="numbers-and-punctuation"
-                accessibilityLabel={t("sdClosesAt")}
-              />
+              <View style={styles.chipsRow}>
+                {[
+                  { min: 30, label: "30 min before" },
+                  { min: 60, label: "1 hr before" },
+                  { min: 120, label: "2 hrs before" },
+                  { min: 180, label: "3 hrs before" },
+                ].map((opt) => {
+                  const [h, m] = (selectedTime ?? "00:00").split(":").map(Number);
+                  const valid = h * 60 + m - opt.min >= 0;
+                  if (!valid) return null;
+                  const selected = closesBeforeMinutes === opt.min;
+                  return (
+                    <TouchableOpacity
+                      key={opt.min}
+                      style={[styles.chip, selected && styles.chipSelected]}
+                      activeOpacity={0.75}
+                      onPress={() => setClosesBeforeMinutes(opt.min)}
+                    >
+                      <Text style={[styles.chipText, selected && styles.chipTextSelected]}>
+                        {opt.label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+              {closesAtTime ? (
+                <Text style={styles.closesPreview}>
+                  {t("sdBookingCloses")} {closesAtTime} on {selectedDate}
+                </Text>
+              ) : null}
             </>
           )}
 
@@ -850,7 +923,7 @@ export default function PostDealScreen() {
                 <View style={styles.previewRow}>
                   <Text style={styles.previewLabel}>{t("sdBookingCloses")}</Text>
                   <Text style={styles.previewValue}>
-                    {selectedDate} {closesAtText}
+                    {selectedDate} {closesAtTime}
                   </Text>
                 </View>
               </View>
