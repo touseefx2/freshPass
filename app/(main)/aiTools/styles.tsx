@@ -468,6 +468,7 @@ export const createStyles = (theme: Theme) =>
       marginTop: moderateHeightScale(16),
     },
     hairTryonCreditsRow: {
+      flex: 1,
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",

@@ -1431,12 +1431,12 @@ export default function Tools() {
 
     return (
       <>
+        {showCreditBanner && (
+          <View style={styles.hairTryonTopRow}>
+            {renderCreditsPill()}
+          </View>
+        )}
         <View style={styles.hairTryonTopRow}>
-          {showCreditBanner ? (
-            renderCreditsPill()
-          ) : (
-            <View />
-          )}
           <View style={styles.hairTryonModeRow}>
             <Text style={styles.hairTryonSelectedTypeLabel} numberOfLines={1}>
               {selectedTypeLabel}
