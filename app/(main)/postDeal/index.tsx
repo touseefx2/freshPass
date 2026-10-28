@@ -492,6 +492,13 @@ export default function PostDealScreen() {
     return `${String(ch).padStart(2, "0")}:${String(cm).padStart(2, "0")}`;
   }, [selectedTime, closesBeforeMinutes]);
 
+  useEffect(() => {
+    if (selectedTime && closesBeforeMinutes != null) {
+      const [h, m] = selectedTime.split(":").map(Number);
+      if (h * 60 + m - closesBeforeMinutes < 0) setClosesBeforeMinutes(null);
+    }
+  }, [selectedTime, closesBeforeMinutes]);
+
   const normalPrice = selectedService?.price ?? 0;
   const offerPrice = offerPriceText.trim() === "" ? normalPrice : Number(offerPriceText);
   const savings = normalPrice - (Number.isFinite(offerPrice) ? offerPrice : normalPrice);

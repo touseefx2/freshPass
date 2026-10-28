@@ -196,6 +196,9 @@ export const VoiceReceptionistContent = forwardRef<
   const checkoutFallbackTimeoutRef = useRef<ReturnType<
     typeof setTimeout
   > | null>(null);
+  const executeCheckoutHandoffRef = useRef<
+    ((payload: OpenBookingCheckoutPayload) => void) | null
+  >(null);
 
   useEffect(() => {
     if (conversation.length > 0) {
@@ -296,6 +299,11 @@ export const VoiceReceptionistContent = forwardRef<
     lastAgentContentRef.current = null;
     lastUserTranscriptRef.current = null;
     userMicUnblockAfterRef.current = 0;
+    pendingCheckoutRef.current = null;
+    if (checkoutFallbackTimeoutRef.current) {
+      clearTimeout(checkoutFallbackTimeoutRef.current);
+      checkoutFallbackTimeoutRef.current = null;
+    }
     if (agentDoneFallbackTimeoutRef.current) {
       clearTimeout(agentDoneFallbackTimeoutRef.current);
       agentDoneFallbackTimeoutRef.current = null;
@@ -328,6 +336,7 @@ export const VoiceReceptionistContent = forwardRef<
   }, []);
 
   const cleanup = useCallback(() => {
+    const hadPendingCheckout = pendingCheckoutRef.current;
     isClosedRef.current = true;
     setIsListening(false);
     setIsConnected(false);
@@ -367,6 +376,11 @@ export const VoiceReceptionistContent = forwardRef<
     lastAgentContentRef.current = null;
     lastUserTranscriptRef.current = null;
     userMicUnblockAfterRef.current = 0;
+    pendingCheckoutRef.current = null;
+    if (checkoutFallbackTimeoutRef.current) {
+      clearTimeout(checkoutFallbackTimeoutRef.current);
+      checkoutFallbackTimeoutRef.current = null;
+    }
     if (agentDoneFallbackTimeoutRef.current) {
       clearTimeout(agentDoneFallbackTimeoutRef.current);
       agentDoneFallbackTimeoutRef.current = null;
@@ -396,6 +410,13 @@ export const VoiceReceptionistContent = forwardRef<
     audioQueueRef.current = [];
     sendQueueRef.current = [];
     drainScheduledRef.current = false;
+
+    // Customer hung up while a checkout handoff was pending — still open booking.
+    // Use setTimeout(0) so it runs after cleanup finishes (avoids circular ref).
+    if (hadPendingCheckout) {
+      const p = hadPendingCheckout;
+      setTimeout(() => executeCheckoutHandoffRef.current?.(p), 0);
+    }
   }, []);
 
   useEffect(() => {
@@ -693,6 +714,182 @@ export const VoiceReceptionistContent = forwardRef<
     flushPendingAgentTextRef.current = flushPendingAgentText;
   }, [flushPendingAgentText]);
 
+  /**
+   * Load business data into the bsns Redux slice and navigate to checkout.
+   * Mirrors the bookingNow flow: fetch details → populate slice → push checkout.
+   */
+  const executeCheckoutHandoff = useCallback(
+    async (payload: OpenBookingCheckoutPayload) => {
+      try {
+        cleanup();
+
+        const response = await ApiService.get<{
+          success: boolean;
+          message: string;
+          data: {
+            business: any;
+            subscription_plan_type?: "Solo" | "Business" | null;
+            subscription_status?: "active" | "inactive";
+            payments_enabled?: boolean;
+          };
+        }>(businessEndpoints.businessDetails(payload.business_id));
+
+        if (!response.success || !response.data?.business) {
+          Logger.error("[VoiceReceptionist] Failed to fetch business details for checkout handoff");
+          return;
+        }
+
+        const businessData = response.data.business;
+        const planType = response.data.subscription_plan_type ?? null;
+        const subscriptionPlanType: "Solo" | "Business" | null =
+          planType === "Solo" || planType === "Business" ? planType : null;
+
+        const parseTime = (t: string | null | undefined) => {
+          if (!t || typeof t !== "string") return { hours: 0, minutes: 0 };
+          const [h, m] = t.split(":").map(Number);
+          return { hours: h || 0, minutes: m || 0 };
+        };
+
+        const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+        const dayMap: Record<string, string> = {
+          monday: "Monday", tuesday: "Tuesday", wednesday: "Wednesday",
+          thursday: "Thursday", friday: "Friday", saturday: "Saturday", sunday: "Sunday",
+        };
+
+        const parseBusinessHours = (hoursArray: any[] | null | undefined) => {
+          if (!hoursArray || !Array.isArray(hoursArray) || hoursArray.length === 0) return null;
+          const bh: Record<string, any> = {};
+          DAYS.forEach((d) => { bh[d] = { isOpen: false, fromHours: 0, fromMinutes: 0, tillHours: 0, tillMinutes: 0, breaks: [] }; });
+          hoursArray.forEach((dd: any) => {
+            const dn = dayMap[(dd.day || "").toLowerCase()] || dd.day;
+            if (!DAYS.includes(dn)) return;
+            const from = parseTime(dd.opening_time);
+            const till = parseTime(dd.closing_time);
+            const breaks = (dd.break_hours || []).map((b: any) => {
+              const bf = parseTime(b.start || "00:00");
+              const bt = parseTime(b.end || "00:00");
+              return { fromHours: bf.hours, fromMinutes: bf.minutes, tillHours: bt.hours, tillMinutes: bt.minutes };
+            });
+            bh[dn] = { isOpen: !dd.closed, fromHours: from.hours, fromMinutes: from.minutes, tillHours: till.hours, tillMinutes: till.minutes, breaks };
+          });
+          return bh;
+        };
+
+        const individualServices = businessData.services || [];
+        const allServicesData: Service[] = individualServices.map((s: any) => {
+          const price = parseFloat(s.price) || 0;
+          const originalPrice = s.originalPrice ? parseFloat(s.originalPrice) : parseFloat((price * 1.1).toFixed(2));
+          const dh = s.duration_hours || 0;
+          const dm = s.duration_minutes || 0;
+          let dur = "N/A";
+          if (dh > 0 && dm > 0) dur = `${dh} hr ${dm} min`;
+          else if (dh > 0) dur = `${dh} hr`;
+          else if (dm > 0) dur = `${dm} min`;
+          return { id: s.id, name: s.name, description: s.description || "", price, originalPrice, duration: dur, label: s.label || null };
+        });
+
+        const staffMembersData = (businessData?.staff || [])
+          .filter((s: any) => s.invitation_status === "accepted")
+          .map((s: any) => ({
+            id: s.id || s.user_id || 0,
+            name: s.name || "Staff Member",
+            experience: s?.description ?? null,
+            image: s.avatar
+              ? (typeof s.avatar === "string" && (s.avatar.startsWith("http://") || s.avatar.startsWith("https://"))
+                ? s.avatar
+                : `${process.env.EXPO_PUBLIC_API_BASE_URL}${s.avatar}`)
+              : null,
+            working_hours: parseBusinessHours(s.working_hours),
+            active: s.active,
+            is_owner: s.is_owner === true,
+            average_rating: s.average_rating ?? 0,
+            ratings_count: s.ratings_count ?? 0,
+          }));
+
+        dispatch(resetBusiness());
+        dispatch(
+          setBusinessData({
+            allServices: allServicesData,
+            staffMembers: staffMembersData,
+            businessId: String(payload.business_id),
+            businessHours: parseBusinessHours(businessData?.hours),
+            subscriptionPlanType,
+            subscriptionStatus: response.data.subscription_status === "active" ? "active" : "inactive",
+            paymentsEnabled: isPaymentsEnabled(
+              businessData?.payments_enabled ?? response.data.payments_enabled,
+            ),
+          }),
+        );
+
+        const selectedSvcs = payload.service_ids
+          .map((id) => allServicesData.find((s) => s.id === id))
+          .filter(Boolean) as Service[];
+        dispatch(setSelectedServices(selectedSvcs));
+
+        if (payload.staff_id != null) {
+          dispatch(setSelectedStaff(String(payload.staff_id)));
+          dispatch(setAssignedStaffId(null));
+        } else if (subscriptionPlanType === "Solo") {
+          dispatch(setSelectedStaff("anyone"));
+          dispatch(setAssignedStaffId(null));
+        } else {
+          dispatch(setSelectedStaff("anyone"));
+          try {
+            const assigned = await assignAnyoneStaff({
+              business_id: payload.business_id,
+              service_ids: payload.service_ids,
+              date: payload.appointment_date,
+              start_time: normalizeStartTime(payload.appointment_time),
+            });
+            dispatch(setAssignedStaffId(assigned.staff_id));
+          } catch (err: any) {
+            Logger.error("[VoiceReceptionist] assign-anyone-staff failed:", err?.message);
+            return;
+          }
+        }
+
+        dispatch(setSelectedDate(payload.appointment_date));
+        dispatch(setSelectedTimeSlot(normalizeStartTime(payload.appointment_time)));
+        dispatch(setSelectedPaymentMethod("payLater"));
+
+        router.push({
+          pathname: "/(main)/bookingNow/checkout",
+          params: {
+            business_id: String(payload.business_id),
+            auto_open_policy: "1",
+          },
+        });
+      } catch (err) {
+        Logger.error("[VoiceReceptionist] Checkout handoff error:", err);
+      }
+    },
+    [cleanup, dispatch, router],
+  );
+
+  /** Trigger handoff: wait for queued audio to finish, then navigate. */
+  const initiateCheckoutHandoff = useCallback(() => {
+    const payload = pendingCheckoutRef.current;
+    if (!payload) return;
+    pendingCheckoutRef.current = null;
+    if (checkoutFallbackTimeoutRef.current) {
+      clearTimeout(checkoutFallbackTimeoutRef.current);
+      checkoutFallbackTimeoutRef.current = null;
+    }
+
+    const waitForAudioThenNavigate = () => {
+      if (isPlayingRef.current || audioQueueRef.current.length > 0) {
+        setTimeout(waitForAudioThenNavigate, 300);
+        return;
+      }
+      executeCheckoutHandoff(payload);
+    };
+    waitForAudioThenNavigate();
+  }, [executeCheckoutHandoff]);
+
+  useEffect(() => {
+    executeCheckoutHandoffRef.current = executeCheckoutHandoff;
+  }, [executeCheckoutHandoff]);
+
   const handleServerMessage = useCallback(
     (event: any) => {
       if (isClosedRef.current) return;
@@ -831,6 +1028,28 @@ export const VoiceReceptionistContent = forwardRef<
                 }
               }
               break;
+            case "OpenBookingCheckout":
+              if (
+                parsed.business_id != null &&
+                Array.isArray(parsed.service_ids) &&
+                parsed.appointment_date &&
+                parsed.appointment_time
+              ) {
+                pendingCheckoutRef.current = {
+                  business_id: parsed.business_id,
+                  service_ids: parsed.service_ids,
+                  staff_id: parsed.staff_id ?? null,
+                  appointment_date: parsed.appointment_date,
+                  appointment_time: parsed.appointment_time,
+                };
+                if (checkoutFallbackTimeoutRef.current)
+                  clearTimeout(checkoutFallbackTimeoutRef.current);
+                checkoutFallbackTimeoutRef.current = setTimeout(() => {
+                  checkoutFallbackTimeoutRef.current = null;
+                  if (pendingCheckoutRef.current) initiateCheckoutHandoff();
+                }, 15000);
+              }
+              break;
             case "AgentAudioDone":
               if (pendingThinkingTimeoutRef.current) {
                 clearTimeout(pendingThinkingTimeoutRef.current);
@@ -851,9 +1070,13 @@ export const VoiceReceptionistContent = forwardRef<
                 Date.now() + VOICE_RECEPTIONIST_CONFIG.echoGuardMs;
               flushPendingAgentTextRef.current();
               flushPendingAudio().catch(() => {});
-              setTimeout(() => {
-                setAgentStatus(isListeningRef.current ? "listening" : "idle");
-              }, 800);
+              if (pendingCheckoutRef.current) {
+                initiateCheckoutHandoff();
+              } else {
+                setTimeout(() => {
+                  setAgentStatus(isListeningRef.current ? "listening" : "idle");
+                }, 800);
+              }
               break;
             case "Error": {
               const errorMsg =
@@ -913,7 +1136,7 @@ export const VoiceReceptionistContent = forwardRef<
         }
       }
     },
-    [enqueuePcmChunk, flushChunksToWavAndQueue, flushPendingAudio],
+    [enqueuePcmChunk, flushChunksToWavAndQueue, flushPendingAudio, initiateCheckoutHandoff],
   );
 
   const connectWebSocket = useCallback(async () => {
@@ -953,6 +1176,29 @@ export const VoiceReceptionistContent = forwardRef<
             agentDoneFallbackTimeoutRef.current = null;
           }
           audioQueueRef.current = [];
+
+          // Send caller's location (if permission already granted) so the
+          // receptionist knows the customer's state for town disambiguation.
+          (async () => {
+            try {
+              const perm = await (Location as any).getForegroundPermissionsAsync();
+              if (perm.status !== "granted") return;
+              const pos = await Location.getLastKnownPositionAsync({ maxAge: 600_000 });
+              if (pos && ws.readyState === WebSocket.OPEN) {
+                ws.send(
+                  JSON.stringify({
+                    type: "CallerLocation",
+                    latitude: pos.coords.latitude,
+                    longitude: pos.coords.longitude,
+                  }),
+                );
+                Logger.log("[VoiceReceptionist] Sent CallerLocation");
+              }
+            } catch (err) {
+              Logger.error("[VoiceReceptionist] CallerLocation send failed", err);
+            }
+          })();
+
           resolve();
         };
         ws.onerror = (event: any) => {
@@ -1033,7 +1279,7 @@ export const VoiceReceptionistContent = forwardRef<
           sampleRate: 16000,
           channels: 1,
           bitsPerSample: 16,
-          audioSource: 6,
+          audioSource: 7,
           wavFile: "freshpass_voice_agent.wav",
         });
         AudioRecord.on("data", (data: string) => {

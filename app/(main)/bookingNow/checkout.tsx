@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect, useCallback } from "react";
+import React, { useMemo, useState, useEffect, useCallback, useRef } from "react";
 import {
   StyleSheet,
   View,
@@ -556,6 +556,7 @@ function CheckoutContent() {
     reel_id?: string;
     saved_look_id?: string;
     slot_offer_id?: string;
+    auto_open_policy?: string;
   }>();
 
   const attributionReelId = params.reel_id ? Number(params.reel_id) : null;
@@ -772,6 +773,42 @@ function CheckoutContent() {
   const isSubscriptionMode = Boolean(
     subscriptionId != null && subscriptionData,
   );
+
+  // AI Receptionist handoff: auto-open the cancellation policy sheet on mount
+  const autoOpenPolicyHandled = useRef(false);
+  useEffect(() => {
+    if (autoOpenPolicyHandled.current) return;
+    if (params.auto_open_policy !== "1") return;
+    if (!resolvedCheckoutBusinessId || !reduxSelectedDate || !reduxSelectedTimeSlot) return;
+    if (selectedServices.length === 0) return;
+    autoOpenPolicyHandled.current = true;
+
+    (async () => {
+      dispatch(setActionLoader(true));
+      try {
+        const quoteResponse = await ApiService.get<{
+          success: boolean;
+          message?: string;
+          data: CancellationPolicyQuote;
+        }>(
+          appointmentsEndpoints.cancellationPolicyQuote({
+            business_id: parseInt(resolvedCheckoutBusinessId, 10),
+            appointment_date: reduxSelectedDate || "",
+            appointment_time: reduxSelectedTimeSlot || "",
+            service_ids: selectedServices.map((service) => service.id),
+          }),
+        );
+        if (quoteResponse?.success && quoteResponse.data && quoteResponse.data.policyActive !== false) {
+          setPolicyQuote(quoteResponse.data);
+          setPolicySheetVisible(true);
+        }
+      } catch (error: any) {
+        Logger.error("Auto-open cancellation policy quote error:", error);
+      } finally {
+        dispatch(setActionLoader(false));
+      }
+    })();
+  }, [resolvedCheckoutBusinessId, reduxSelectedDate, reduxSelectedTimeSlot, selectedServices, dispatch, params.auto_open_policy]);
   const selectedSubscriptionServiceIds = useMemo(() => {
     const raw = resolveRouteParam(params.selected_subscription_service_ids);
     if (!raw || typeof raw !== "string") {

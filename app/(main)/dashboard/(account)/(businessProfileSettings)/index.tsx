@@ -41,6 +41,7 @@ type SettingKey =
   | "mediaLibrary"
   | "aiTools"
   | "allAppointments"
+  | "myDeals"
   | "viewBusinessProfile";
 
 type SettingItem = {
@@ -329,6 +330,8 @@ export default function BusinessProfileSettingsScreen() {
       router.push("./orders" as any);
     } else if (key === "hiring") {
       router.push("./jobPosts" as any);
+    } else if (key === "myDeals") {
+      router.push("/(main)/myDeals" as any);
     } else if (key === "allAppointments") {
       router.push("/(main)/dashboard/(account)/allAppointments" as any);
     } else if (key === "affiliationRequests") {
@@ -373,6 +376,9 @@ export default function BusinessProfileSettingsScreen() {
     ...(isBusinessOwner
       ? [{ key: "hiring" as const, title: t("jobHiringTitle") }]
       : []),
+    ...(isBusinessOwner
+      ? [{ key: "myDeals" as const, title: t("sdMyDeals") }]
+      : []),
     ...(isBusinessOwner &&
     businessStatus?.subscription_status === "active" &&
     businessStatus?.subscription_is_single === false
@@ -411,6 +417,8 @@ export default function BusinessProfileSettingsScreen() {
         return { name: "receipt-long", family: "material", variant: "accent" };
       case "hiring":
         return { name: "work-outline", family: "material", variant: "dark" };
+      case "myDeals":
+        return { name: "local-offer", family: "material", variant: "accent" };
       case "affiliationRequests":
         return { name: "handshake", family: "community", variant: "accent" };
       case "mediaLibrary":
