@@ -27,6 +27,35 @@ import { Ionicons } from "@expo/vector-icons";
 import AudioRecord from "react-native-audio-record";
 import { Buffer } from "buffer";
 import Logger from "@/src/services/logger";
+import { useRouter } from "expo-router";
+import { useAppDispatch } from "@/src/hooks/hooks";
+import {
+  resetBusiness,
+  setBusinessData,
+  setSelectedServices,
+  setSelectedStaff,
+  setSelectedDate,
+  setSelectedTimeSlot,
+  setAssignedStaffId,
+  setSelectedPaymentMethod,
+  type Service,
+} from "@/src/state/slices/bsnsSlice";
+import { ApiService } from "@/src/services/api";
+import { businessEndpoints } from "@/src/services/endpoints";
+import {
+  assignAnyoneStaff,
+  normalizeStartTime,
+} from "@/src/services/anyoneStaffService";
+import { isPaymentsEnabled } from "@/src/utils/paymentsEnabled";
+import * as Location from "expo-location";
+
+type OpenBookingCheckoutPayload = {
+  business_id: number;
+  service_ids: number[];
+  staff_id: number | null;
+  appointment_date: string;
+  appointment_time: string;
+};
 
 /** Tag so keep-awake is scoped to Freshy voice and released on end call / unmount. */
 const FRESHY_VOICE_KEEP_AWAKE_TAG = "FreshyVoiceSession";
@@ -156,6 +185,15 @@ export const VoiceReceptionistContent = forwardRef<
   > | null>(null);
   /** If agent text arrived but no audio after this long, clear "Agent is speaking" (reconnect fallback). */
   const noAudioFallbackTimeoutRef = useRef<ReturnType<
+    typeof setTimeout
+  > | null>(null);
+
+  // ── Booking checkout handoff ──
+  const router = useRouter();
+  const dispatch = useAppDispatch();
+  const pendingCheckoutRef = useRef<OpenBookingCheckoutPayload | null>(null);
+  /** Fallback: hand over even if AgentAudioDone never arrives (15 s). */
+  const checkoutFallbackTimeoutRef = useRef<ReturnType<
     typeof setTimeout
   > | null>(null);
 
