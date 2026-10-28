@@ -412,7 +412,7 @@ export const createStyles = (theme: Theme) =>
       paddingRight: moderateWidthScale(8),
     },
     hairTryonOptionBadge: {
-      backgroundColor: theme.orangeBrown015,
+      backgroundColor: theme.darkGreen,
       paddingHorizontal: moderateWidthScale(12),
       paddingVertical: moderateHeightScale(6),
       borderRadius: moderateWidthScale(20),
@@ -420,7 +420,7 @@ export const createStyles = (theme: Theme) =>
     hairTryonOptionBadgeText: {
       fontSize: fontSize.size12,
       fontFamily: fonts.fontBold,
-      color: theme.orangeBrownText,
+      color: theme.white,
     },
     hairTryonOptionSubtitle: {
       fontSize: fontSize.size12,
@@ -445,7 +445,7 @@ export const createStyles = (theme: Theme) =>
       justifyContent: "center",
     },
     hairTryonOptionButtonActive: {
-      backgroundColor: theme.darkGreen,
+      backgroundColor: theme.buttonBack,
     },
     hairTryonOptionButtonInactive: {
       backgroundColor: theme.grey15,
