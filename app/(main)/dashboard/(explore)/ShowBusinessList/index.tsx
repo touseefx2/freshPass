@@ -22,7 +22,7 @@ import { PlatformVerifiedStarIcon, StarIconSmall } from "@/assets/icons";
 import RetryButton from "@/src/components/retryButton";
 import Button from "@/src/components/button";
 import InclusionsModal from "@/src/components/inclusionsModal";
-import { HiringTag } from "@/src/components/jobs/jobBadges";
+import { HiringTag, HiringBadgeIcon } from "@/src/components/jobs/jobBadges";
 import { createStyles } from "./styles";
 import type {
   ServiceItem,
@@ -68,23 +68,22 @@ export function BusinessCard({
       activeOpacity={0.9}
       style={styles.verifiedSalonCardNew}
     >
-      <View>
-        <AppImage
-          uri={salon.image}
-          style={styles.verifiedSalonImage}
-          iconSize={widthScale(36)}
-          iconColor={theme.white50}
+      {salon.isHiring ? (
+        <HiringBadgeIcon
+          style={{
+            position: "absolute",
+            top: moderateHeightScale(4),
+            right: moderateWidthScale(4),
+            zIndex: 2,
+          }}
         />
-        {salon.isHiring ? (
-          <HiringTag
-            style={{
-              position: "absolute",
-              top: moderateHeightScale(6),
-              left: moderateWidthScale(6),
-            }}
-          />
-        ) : null}
-      </View>
+      ) : null}
+      <AppImage
+        uri={salon.image}
+        style={styles.verifiedSalonImage}
+        iconSize={widthScale(36)}
+        iconColor={theme.white50}
+      />
       <View style={styles.verifiedSalonContent}>
         <View style={styles.platformVerifiedBadge}>
           <PlatformVerifiedStarIcon

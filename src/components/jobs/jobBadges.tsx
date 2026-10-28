@@ -86,6 +86,47 @@ const createStyles = (theme: Theme) =>
       letterSpacing: 0.8,
       includeFontPadding: false,
     },
+    // ── Golden "We're Hiring" banner
+    banner: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingHorizontal: moderateWidthScale(14),
+      paddingVertical: moderateHeightScale(10),
+      borderRadius: moderateWidthScale(12),
+      backgroundColor: theme.orangeBrown,
+    },
+    bannerLeft: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(8),
+    },
+    bannerRight: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(2),
+    },
+    bannerText: {
+      fontSize: fontSize.size15,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+      includeFontPadding: false,
+    },
+    bannerLink: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+      includeFontPadding: false,
+    },
+    // ── Golden briefcase circle badge
+    badgeIcon: {
+      width: moderateWidthScale(28),
+      height: moderateWidthScale(28),
+      borderRadius: moderateWidthScale(14),
+      backgroundColor: theme.orangeBrown,
+      alignItems: "center",
+      justifyContent: "center",
+    },
     // ── Status badge
     status: {
       flexDirection: "row",
@@ -199,6 +240,62 @@ export function HiringTag({ style }: { style?: StyleProp<ViewStyle> }) {
         color={theme.white}
       />
       <Text style={styles.tagText}>{t("jobHiringBadge")}</Text>
+    </View>
+  );
+}
+
+/** Golden "We're Hiring · View Jobs ›" banner for business detail / cards. */
+export function HiringBanner({
+  onPress,
+  style,
+}: {
+  onPress?: () => void;
+  style?: StyleProp<ViewStyle>;
+}) {
+  const { t } = useTranslation();
+  const { theme, styles } = useJobBadgeStyles();
+  return (
+    <TouchableOpacity
+      style={[styles.banner, style]}
+      onPress={onPress}
+      activeOpacity={0.85}
+      accessibilityRole="button"
+      accessibilityLabel={t("jobHiringBadgeA11y")}
+    >
+      <View style={styles.bannerLeft}>
+        <MaterialIcons
+          name="work"
+          size={moderateWidthScale(16)}
+          color={theme.darkGreen}
+        />
+        <Text style={styles.bannerText}>{t("jobWeAreHiring")}</Text>
+      </View>
+      <View style={styles.bannerRight}>
+        <Text style={styles.bannerLink}>{t("jobViewJobs")}</Text>
+        <MaterialIcons
+          name="chevron-right"
+          size={moderateWidthScale(18)}
+          color={theme.darkGreen}
+        />
+      </View>
+    </TouchableOpacity>
+  );
+}
+
+/** Small golden briefcase circle badge for card corners. */
+export function HiringBadgeIcon({ style }: { style?: StyleProp<ViewStyle> }) {
+  const { theme, styles } = useJobBadgeStyles();
+  return (
+    <View
+      style={[styles.badgeIcon, style]}
+      accessible
+      accessibilityLabel="Hiring"
+    >
+      <MaterialIcons
+        name="work"
+        size={moderateWidthScale(14)}
+        color={theme.darkGreen}
+      />
     </View>
   );
 }

@@ -3358,6 +3358,8 @@
   "rvStaffReviewsTitle": "Reviews for {{name}}",
   "rvStaffReviewsEmpty": "Reviews from this pro's visits will show up here.",
   "tabJobs": "Jobs",
+  "jobWeAreHiring": "We're Hiring",
+  "jobViewJobs": "View Jobs",
   "jobHiringBadge": "HIRING",
   "jobHiringBadgeA11y": "Hiring. See open positions",
   "jobHiringBadgeShortA11y": "Hiring",

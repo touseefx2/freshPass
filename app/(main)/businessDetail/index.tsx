@@ -93,7 +93,7 @@ import {
   getDefaultBusinessImage,
   getDefaultBusinessLogo,
 } from "@/src/services/remoteConfigService";
-import { HiringRing } from "@/src/components/jobs/jobBadges";
+import { HiringRing, HiringBanner } from "@/src/components/jobs/jobBadges";
 import { JobListRow, JobRowsCard } from "@/src/components/jobs/jobCards";
 import { fetchBusinessJobPosts } from "@/src/services/jobService";
 import type { JobPost } from "@/src/types/jobs";
@@ -4681,21 +4681,11 @@ export default function BusinessDetailScreen() {
             style={styles.infoSheet}
           >
             <View style={styles.identityRow}>
-              {isHiring ? (
-                <HiringRing onPress={() => handleTabPress("Jobs")}>
-                  <AppImage
-                    uri={getBusinessLogoUrl()}
-                    style={styles.businessLogo}
-                    resizeMode="cover"
-                  />
-                </HiringRing>
-              ) : (
-                <AppImage
-                  uri={getBusinessLogoUrl()}
-                  style={styles.businessLogo}
-                  resizeMode="cover"
-                />
-              )}
+              <AppImage
+                uri={getBusinessLogoUrl()}
+                style={styles.businessLogo}
+                resizeMode="cover"
+              />
               <View style={styles.identityText}>
                 <View style={styles.nameRow}>
                   <Text style={styles.businessName} numberOfLines={2}>
@@ -4767,6 +4757,13 @@ export default function BusinessDetailScreen() {
                 </Text>
               </View>
             </View>
+
+            {isHiring ? (
+              <HiringBanner
+                onPress={() => handleTabPress("Jobs")}
+                style={{ marginTop: moderateHeightScale(16) }}
+              />
+            ) : null}
 
             <View style={styles.actionRow}>
               {!isBusinessOwnerView && (

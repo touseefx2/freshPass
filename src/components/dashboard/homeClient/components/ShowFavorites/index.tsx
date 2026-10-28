@@ -30,6 +30,7 @@ export interface FavoriteBusiness {
   categoryName?: string | null;
   ownerName?: string | null;
   isOfficial?: boolean;
+  isHiring?: boolean;
 }
 
 interface ShowFavoritesProps {

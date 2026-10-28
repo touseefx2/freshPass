@@ -534,6 +534,7 @@ interface VerifiedSalon {
   reviewCount: number;
   image: string | null;
   ownerName?: string | null;
+  isHiring?: boolean;
 }
 
 export default function DashboardContent() {
@@ -708,6 +709,7 @@ export default function DashboardContent() {
           ratings_count: number;
           image_url: string | null;
           logo_url: string | null;
+          is_hiring?: boolean;
           owner?: { id?: number; name?: string | null } | null;
           owner_name?: string | null;
           portfolio_photos?: Array<{
@@ -727,6 +729,7 @@ export default function DashboardContent() {
           reviewCount: item.ratings_count || 0,
           image: buildBusinessImageUrl(item),
           ownerName: getOwnerName(item),
+          isHiring: item.is_hiring === true,
         }));
 
         setVerifiedSalonsDeals(mappedSalons);
@@ -765,6 +768,7 @@ export default function DashboardContent() {
           ratings_count: number;
           image_url: string | null;
           logo_url: string | null;
+          is_hiring?: boolean;
           owner?: { id?: number; name?: string | null } | null;
           owner_name?: string | null;
           portfolio_photos?: Array<{
@@ -784,6 +788,7 @@ export default function DashboardContent() {
           reviewCount: item.ratings_count || 0,
           image: buildBusinessImageUrl(item),
           ownerName: getOwnerName(item),
+          isHiring: item.is_hiring === true,
         }));
 
         setVerifiedSalons(mappedSalons);

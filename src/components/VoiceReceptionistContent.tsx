@@ -199,6 +199,8 @@ export const VoiceReceptionistContent = forwardRef<
   const executeCheckoutHandoffRef = useRef<
     ((payload: OpenBookingCheckoutPayload) => void) | null
   >(null);
+  /** Timer id for the audio-drain polling loop so cleanup can cancel it. */
+  const audioDrainTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (conversation.length > 0) {
@@ -304,6 +306,10 @@ export const VoiceReceptionistContent = forwardRef<
       clearTimeout(checkoutFallbackTimeoutRef.current);
       checkoutFallbackTimeoutRef.current = null;
     }
+    if (audioDrainTimerRef.current) {
+      clearTimeout(audioDrainTimerRef.current);
+      audioDrainTimerRef.current = null;
+    }
     if (agentDoneFallbackTimeoutRef.current) {
       clearTimeout(agentDoneFallbackTimeoutRef.current);
       agentDoneFallbackTimeoutRef.current = null;
@@ -335,7 +341,7 @@ export const VoiceReceptionistContent = forwardRef<
     drainScheduledRef.current = false;
   }, []);
 
-  const cleanup = useCallback(() => {
+  const cleanup = useCallback((reason?: "hangup" | "retry" | "unmount") => {
     const hadPendingCheckout = pendingCheckoutRef.current;
     isClosedRef.current = true;
     setIsListening(false);
@@ -381,6 +387,10 @@ export const VoiceReceptionistContent = forwardRef<
       clearTimeout(checkoutFallbackTimeoutRef.current);
       checkoutFallbackTimeoutRef.current = null;
     }
+    if (audioDrainTimerRef.current) {
+      clearTimeout(audioDrainTimerRef.current);
+      audioDrainTimerRef.current = null;
+    }
     if (agentDoneFallbackTimeoutRef.current) {
       clearTimeout(agentDoneFallbackTimeoutRef.current);
       agentDoneFallbackTimeoutRef.current = null;
@@ -412,8 +422,8 @@ export const VoiceReceptionistContent = forwardRef<
     drainScheduledRef.current = false;
 
     // Customer hung up while a checkout handoff was pending — still open booking.
-    // Use setTimeout(0) so it runs after cleanup finishes (avoids circular ref).
-    if (hadPendingCheckout) {
+    // Only for user-initiated hangup; retry and unmount should not navigate.
+    if (hadPendingCheckout && reason === "hangup") {
       const p = hadPendingCheckout;
       setTimeout(() => executeCheckoutHandoffRef.current?.(p), 0);
     }
@@ -441,12 +451,12 @@ export const VoiceReceptionistContent = forwardRef<
     // agent's turn continues in background so status stays "Agent is speaking..." until done.
   }, [isSpeakerMuted]);
 
-  useEffect(() => () => cleanup(), [cleanup]);
+  useEffect(() => () => cleanup("unmount"), [cleanup]);
 
   useImperativeHandle(
     ref,
     () => ({
-      disconnect: cleanup,
+      disconnect: () => cleanup("hangup"),
     }),
     [cleanup],
   );
@@ -877,10 +887,12 @@ export const VoiceReceptionistContent = forwardRef<
     }
 
     const waitForAudioThenNavigate = () => {
+      if (isClosedRef.current) return;
       if (isPlayingRef.current || audioQueueRef.current.length > 0) {
-        setTimeout(waitForAudioThenNavigate, 300);
+        audioDrainTimerRef.current = setTimeout(waitForAudioThenNavigate, 300);
         return;
       }
+      audioDrainTimerRef.current = null;
       executeCheckoutHandoff(payload);
     };
     waitForAudioThenNavigate();
@@ -1338,7 +1350,7 @@ export const VoiceReceptionistContent = forwardRef<
       setError(
         "Unable to access the microphone. Please check app microphone permissions in your device settings.",
       );
-      cleanup();
+      cleanup("retry");
     }
   }, [cleanup]);
 
@@ -1367,7 +1379,7 @@ export const VoiceReceptionistContent = forwardRef<
   ]);
 
   const handleStop = useCallback(() => {
-    cleanup();
+    cleanup("hangup");
   }, [cleanup]);
 
   const handleRetry = useCallback(async () => {
@@ -1377,7 +1389,7 @@ export const VoiceReceptionistContent = forwardRef<
       return;
     }
     // End current call first (disconnect, stop recorder, reset state)
-    cleanup();
+    cleanup("retry");
     setError(null);
     setConversation([]);
     setHasReceivedFirstAgentResponse(false);

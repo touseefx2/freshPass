@@ -12,9 +12,15 @@ import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
-import { heightScale, widthScale } from "@/src/theme/dimensions";
+import {
+  heightScale,
+  moderateHeightScale,
+  moderateWidthScale,
+  widthScale,
+} from "@/src/theme/dimensions";
 import { PlatformVerifiedStarIcon, StarIconSmall } from "@/assets/icons";
 import RetryButton from "@/src/components/retryButton";
+import { HiringBadgeIcon } from "@/src/components/jobs/jobBadges";
 import { createStyles } from "./styles";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -27,6 +33,7 @@ interface VerifiedSalon {
   reviewCount: number;
   image: string | null;
   ownerName?: string | null;
+  isHiring?: boolean;
 }
 
 interface ShowBusinessProps {
@@ -93,6 +100,16 @@ export default function ShowDeals({
             key={salon.id}
             style={styles.verifiedSalonCardNew}
           >
+            {salon.isHiring ? (
+              <HiringBadgeIcon
+                style={{
+                  position: "absolute",
+                  top: moderateHeightScale(4),
+                  right: moderateWidthScale(4),
+                  zIndex: 2,
+                }}
+              />
+            ) : null}
             <AppImage
               uri={salon.image}
               style={styles.verifiedSalonImage}
