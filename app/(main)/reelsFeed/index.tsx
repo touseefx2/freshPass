@@ -864,9 +864,11 @@ function ReelFeedItemBase({
   const showAsCustomer = !showAsOwner;
   const socialLocked = isPreview;
   const { t } = useTranslation();
-  const playbackUrl = resolveApiImageUrl(reel.video?.playback_url) || "";
+  const fullUrl = resolveApiImageUrl(reel.video?.playback_url) || "";
   const posterUrl = resolveApiImageUrl(reel.video?.thumbnail_url);
   const [showPoster, setShowPoster] = useState(true);
+  const [playerLoaded, setPlayerLoaded] = useState(isActive);
+  const playbackUrl = playerLoaded ? fullUrl : "";
   const [isPaused, setIsPaused] = useState(false);
   const [isScrubbing, setIsScrubbing] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -892,6 +894,19 @@ function ReelFeedItemBase({
 
   useEffect(() => {
     isActiveRef.current = isActive;
+  }, [isActive]);
+
+  // Load player when active, release 1s after leaving to free native decoders.
+  useEffect(() => {
+    if (isActive) {
+      setPlayerLoaded(true);
+      return;
+    }
+    const timer = setTimeout(() => {
+      setPlayerLoaded(false);
+      setShowPoster(true);
+    }, 1000);
+    return () => clearTimeout(timer);
   }, [isActive]);
 
   useEffect(() => {
@@ -1262,7 +1277,7 @@ function ReelFeedItemBase({
 
   return (
     <View style={[styles.item, { height: itemHeight }]}>
-      {playbackUrl ? (
+      {playbackUrl && playerLoaded ? (
         <VideoView
           player={player}
           style={styles.video}
