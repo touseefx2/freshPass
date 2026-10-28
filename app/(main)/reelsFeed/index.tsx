@@ -551,11 +551,11 @@ const createStyles = (theme: Theme) =>
       borderColor: theme.white15,
     },
     // Padding keeps the overhanging close button inside a touchable parent (Android).
-    productCardWrap: { paddingTop: moderateWidthScale(10) },
+    productCardWrap: { paddingTop: moderateWidthScale(4) },
     productClose: {
       position: "absolute",
-      top: 0,
-      right: 0,
+      top: moderateWidthScale(2),
+      left: moderateWidthScale(-4),
       zIndex: 2,
       width: moderateWidthScale(26),
       height: moderateWidthScale(26),
