@@ -62,6 +62,8 @@ const generalPersistConfig = {
     "aiVoiceDataConsentAccepted",
     "recentLocations",
     "recentSearches",
+    "dismissedSetupReminders",
+    "lastGrowthReminderIndex",
   ], // Only persist these fields
 };
 

@@ -126,6 +126,10 @@ export interface GeneralState {
   chatAttachmentUrls: string[];
   /** When opening AI Results from chat, pre-select these URLs (current chat attachments) */
   chatTryOnPreselectedUrls: string[];
+  /** Setup/growth reminder keys the user has dismissed (persisted) */
+  dismissedSetupReminders: string[];
+  /** Rotating index for growth reminders (persisted) */
+  lastGrowthReminderIndex: number;
 }
 
 export interface ChatContactItem {
@@ -199,6 +203,8 @@ const initialState: GeneralState = {
   bookingTryOnSelectionByJobId: {},
   chatAttachmentUrls: [],
   chatTryOnPreselectedUrls: [],
+  dismissedSetupReminders: [],
+  lastGrowthReminderIndex: 0,
 };
 
 const generalSlice = createSlice({
@@ -424,6 +430,21 @@ const generalSlice = createSlice({
     clearChatTryOnPreselectedUrls(state) {
       state.chatTryOnPreselectedUrls = [];
     },
+    dismissSetupReminder(state, action: PayloadAction<string>) {
+      if (!state.dismissedSetupReminders.includes(action.payload)) {
+        state.dismissedSetupReminders = [
+          ...state.dismissedSetupReminders,
+          action.payload,
+        ];
+      }
+    },
+    advanceGrowthReminder(state) {
+      state.lastGrowthReminderIndex += 1;
+    },
+    resetSetupReminders(state) {
+      state.dismissedSetupReminders = [];
+      state.lastGrowthReminderIndex = 0;
+    },
     setBookingTryOnSelectionForJob(
       state,
       action: PayloadAction<{ jobId: string; urls: string[] }>,
@@ -560,6 +581,8 @@ const generalSlice = createSlice({
       state.bookingTryOnSelectionByJobId = {};
       state.chatAttachmentUrls = [];
       state.chatTryOnPreselectedUrls = [];
+      state.dismissedSetupReminders = [];
+      state.lastGrowthReminderIndex = 0;
     },
   },
 });
@@ -606,6 +629,9 @@ export const {
   setChatTryOnPreselectedUrls,
   clearChatTryOnPreselectedUrls,
   setBookingTryOnSelectionForJob,
+  dismissSetupReminder,
+  advanceGrowthReminder,
+  resetSetupReminders,
   setIsFirstShowTryOn,
   setHasSeenReelsSwipeGuide,
   setAiHairTryOnConsentAccepted,

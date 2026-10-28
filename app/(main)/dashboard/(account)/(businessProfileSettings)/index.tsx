@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import Logger from "@/src/services/logger";
 import {
   StyleSheet,
@@ -22,6 +22,7 @@ import { useRouter } from "expo-router";
 import {
   canShowStaffManagement,
 } from "@/src/state/slices/userSlice";
+import { fetchBusinessOrderStats } from "@/src/services/orderService";
 
 const CARD_WIDTH_PERCENT = "49%";
 
@@ -57,6 +58,7 @@ function SettingCard({
   theme,
   styles,
   iconVariant,
+  badge,
 }: {
   title: string;
   iconName: string;
@@ -65,6 +67,7 @@ function SettingCard({
   theme: Theme;
   styles: ReturnType<typeof createStyles>;
   iconVariant: IconVariant;
+  badge?: number;
 }) {
   const iconSize = moderateWidthScale(28);
   const thickness = moderateHeightScale(2.5);
@@ -128,8 +131,6 @@ function SettingCard({
             </View>
 
             <View style={styles.cardTextBlock}>
-              {/* 2 lines + shrink-to-fit so long words ("Memberships") shrink
-                  instead of breaking mid-word on narrow phones */}
               <Text
                 style={styles.cardTitle}
                 numberOfLines={2}
@@ -141,6 +142,13 @@ function SettingCard({
             </View>
           </View>
         </View>
+        {badge != null && badge > 0 && (
+          <View style={styles.badge}>
+            <Text style={styles.badgeText}>
+              {badge > 9 ? "9+" : badge}
+            </Text>
+          </View>
+        )}
       </View>
     </TouchableOpacity>
   );
@@ -295,8 +303,27 @@ const createStyles = (theme: Theme) =>
       color: theme.darkGreen,
       lineHeight: fontSize.size20,
       textAlign: "left",
-      // Android: a title shrunk to one line keeps its 2-line box — center it
       textAlignVertical: "center",
+    },
+    badge: {
+      position: "absolute",
+      top: -moderateHeightScale(4),
+      right: -moderateWidthScale(4),
+      minWidth: moderateWidthScale(22),
+      height: moderateWidthScale(22),
+      borderRadius: moderateWidthScale(11),
+      backgroundColor: theme.red,
+      alignItems: "center",
+      justifyContent: "center",
+      paddingHorizontal: moderateWidthScale(5),
+      borderWidth: 2,
+      borderColor: theme.background,
+    },
+    badgeText: {
+      fontSize: fontSize.size11,
+      fontFamily: fonts.fontBold,
+      color: theme.white,
+      lineHeight: fontSize.size13,
     },
   });
 
@@ -312,6 +339,27 @@ export default function BusinessProfileSettingsScreen() {
   const businessId = user.business_id;
   const showManageTeam = canShowStaffManagement(businessStatus);
   const isBusinessOwner = userRole === "business";
+
+  const [pendingOrdersCount, setPendingOrdersCount] = useState(0);
+
+  useEffect(() => {
+    if (!isBusinessOwner) return;
+    let cancelled = false;
+    fetchBusinessOrderStats()
+      .then((stats) => {
+        if (!cancelled) {
+          setPendingOrdersCount(
+            (stats.pending ?? 0) +
+              (stats.paid ?? 0) +
+              (stats.ready_for_pickup ?? 0),
+          );
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [isBusinessOwner]);
 
   const handleRowPress = (key: SettingKey) => {
     if (key === "businessProfile") {
@@ -457,6 +505,9 @@ export default function BusinessProfileSettingsScreen() {
                 theme={theme}
                 styles={styles}
                 iconVariant={iconMeta.variant}
+                badge={
+                  setting.key === "orders" ? pendingOrdersCount : undefined
+                }
               />
             );
           })}

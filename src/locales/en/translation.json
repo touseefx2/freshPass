@@ -3721,5 +3721,11 @@
   "sdWithdrawMsg": "This deal will be permanently taken down. You can post a new one anytime.",
   "sdActionError": "Could not update the deal. Please try again.",
   "sdMyDealsEmpty": "No deals yet",
-  "sdMyDealsEmptySub": "Post your first deal to fill an empty slot and attract more customers."
+  "sdMyDealsEmptySub": "Post your first deal to fill an empty slot and attract more customers.",
+  "setupFinishSetup": "Finish Setup",
+  "setupCreateMembership": "Create a monthly membership plan",
+  "setupCreateMembershipCta": "Set up",
+  "setupCancellationPolicy": "Set your cancellation policy",
+  "setupCancellationPolicyCta": "Set up",
+  "setupGrowthHint": "Try this"
 }

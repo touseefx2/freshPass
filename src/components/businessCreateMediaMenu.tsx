@@ -45,6 +45,12 @@ import {
   isSoloSubscription,
 } from "@/src/state/slices/userSlice";
 import { getReelUploadGate } from "@/src/utils/reelUploadGate";
+import PulseGlow from "@/src/components/PulseGlow";
+import {
+  useSetupReminder,
+  GROWTH_TO_FAB,
+  type GrowthReminderKey,
+} from "@/src/hooks/useSetupReminder";
 
 const androidBlurMethod =
   Platform.OS === "android" ? ("dimezisBlurView" as const) : ("none" as const);
@@ -306,6 +312,14 @@ export default function BusinessCreateMediaMenu({
   const canAddStaff = canAddStaffMembers(businessStatus);
   const isSoloPlan = isSoloSubscription(businessStatus);
 
+  const { currentReminder, isSetupStep } = useSetupReminder();
+  const glowFabId =
+    currentReminder != null &&
+    !isSetupStep &&
+    (currentReminder as string) in GROWTH_TO_FAB
+      ? GROWTH_TO_FAB[currentReminder as GrowthReminderKey]
+      : null;
+
   /** Blur ends exactly at tab bar top — no clear gap strip. */
   const tabBarClearance = tabBarHeight;
   const menuBottom = tabBarClearance + moderateHeightScale(10);
@@ -536,18 +550,29 @@ export default function BusinessCreateMediaMenu({
             pointerEvents="box-none"
           >
             <View style={styles.menu}>
-              {MENU_ITEMS.map((item, i) => (
-                <MenuPill
-                  key={item.id}
-                  item={item}
-                  fromBottom={MENU_ITEMS.length - 1 - i}
-                  label={t(item.labelKey)}
-                  icon={renderMenuIcon(item)}
-                  styles={styles}
-                  theme={theme}
-                  onPress={() => handleMenuAction(item.id)}
-                />
-              ))}
+              {MENU_ITEMS.map((item, i) => {
+                const pill = (
+                  <MenuPill
+                    item={item}
+                    fromBottom={MENU_ITEMS.length - 1 - i}
+                    label={t(item.labelKey)}
+                    icon={renderMenuIcon(item)}
+                    styles={styles}
+                    theme={theme}
+                    onPress={() => handleMenuAction(item.id)}
+                  />
+                );
+                if (glowFabId === item.id) {
+                  return (
+                    <PulseGlow key={item.id} borderRadius={999}>
+                      {pill}
+                    </PulseGlow>
+                  );
+                }
+                return (
+                  <React.Fragment key={item.id}>{pill}</React.Fragment>
+                );
+              })}
             </View>
           </View>
         </Animated.View>

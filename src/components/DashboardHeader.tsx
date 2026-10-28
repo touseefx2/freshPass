@@ -34,6 +34,8 @@ import ModeSwitchLogo from "@/src/components/ModeSwitchLogo";
 import { isStripeOnboardingCompleted } from "@/src/state/slices/userSlice";
 import dayjs from "dayjs";
 import { useBusinessTrialDaysLeft } from "@/src/hooks/useBusinessTrialDaysLeft";
+import PulseGlow from "@/src/components/PulseGlow";
+import { useSetupReminder } from "@/src/hooks/useSetupReminder";
 
 const AVATAR_SIZE = 36;
 
@@ -160,6 +162,17 @@ const createStyles = (theme: Theme) =>
       height: heightScale(36),
       resizeMode: "contain",
     },
+    setupTag: {
+      fontSize: fontSize.size10,
+      fontFamily: fonts.fontBold,
+      color: theme.orangeBrownText,
+      letterSpacing: 0.3,
+      marginRight: moderateWidthScale(4),
+    },
+    dismissHit: {
+      paddingLeft: moderateWidthScale(8),
+      paddingVertical: moderateHeightScale(4),
+    },
   });
 
 interface DashboardHeaderProps {
@@ -238,6 +251,37 @@ function DashboardHeader({
         ? t("viewCta")
         : t("setUpAccountCta");
 
+  const { currentReminder, isSetupStep, dismiss: dismissReminder } =
+    useSetupReminder();
+
+  const handleMembershipSetup = useCallback(() => {
+    router.push("/(main)/dashboard/(account)" as any);
+    setTimeout(() => {
+      router.push(
+        "/(main)/dashboard/(account)/(businessProfileSettings)" as any,
+      );
+      setTimeout(() => {
+        router.push(
+          "/(main)/dashboard/(account)/(businessProfileSettings)/servicesAndMemberships" as any,
+        );
+      }, 5);
+    }, 5);
+  }, [router]);
+
+  const handleCancellationPolicySetup = useCallback(() => {
+    router.push("/(main)/dashboard/(account)" as any);
+    setTimeout(() => {
+      router.push(
+        "/(main)/dashboard/(account)/(businessProfileSettings)" as any,
+      );
+      setTimeout(() => {
+        router.push(
+          "/(main)/dashboard/(account)/(businessProfileSettings)/cancellationPolicy" as any,
+        );
+      }, 5);
+    }, 5);
+  }, [router]);
+
   const trialDaysLeft = useBusinessTrialDaysLeft(
     isOnboardedOwner && businessStatus?.has_subscription === true,
     `${businessStatus?.business_id ?? ""}:${businessStatus?.subscription_status ?? ""}:${businessStatus?.subscription_plan_name ?? ""}`,
@@ -255,6 +299,7 @@ function DashboardHeader({
   const actionBanners = [
     showBusinessSubscriptipn && {
       key: "plan",
+      reminderKey: null as string | null,
       icon: "briefcase" as const,
       title: t("pleaseBuyBusinessPlan"),
       cta: t("viewBusinessPlans"),
@@ -262,6 +307,7 @@ function DashboardHeader({
     },
     trialDaysLeft !== null && {
       key: "trial",
+      reminderKey: null as string | null,
       icon: "clock" as const,
       title:
         trialDaysLeft === 0
@@ -272,6 +318,7 @@ function DashboardHeader({
     },
     showStripeBanner && {
       key: "stripe",
+      reminderKey: "connectStripe" as string | null,
       icon:
         stripeStatus === "action_required"
           ? ("alert-circle" as const)
@@ -280,15 +327,33 @@ function DashboardHeader({
             : ("credit-card" as const),
       title: stripeBannerTitle,
       cta: stripeBannerCta,
-      // Already submitted → straight back into Stripe's form (it shows only what's left)
       onPress:
         stripeStatus === "action_required" || stripeStatus === "under_review"
           ? () => router.push("/(main)/stripeConnectOnboarding" as any)
           : handleStripeOnboardingPress,
     },
+    currentReminder === "createMembership" &&
+      isOnboardedOwner && {
+        key: "createMembership",
+        reminderKey: "createMembership" as string | null,
+        icon: "gift" as const,
+        title: t("setupCreateMembership"),
+        cta: t("setupCreateMembershipCta"),
+        onPress: handleMembershipSetup,
+      },
+    currentReminder === "cancellationPolicy" &&
+      isOnboardedOwner && {
+        key: "cancellationPolicy",
+        reminderKey: "cancellationPolicy" as string | null,
+        icon: "shield" as const,
+        title: t("setupCancellationPolicy"),
+        cta: t("setupCancellationPolicyCta"),
+        onPress: handleCancellationPolicySetup,
+      },
   ].filter(Boolean) as {
     key: string;
-    icon: "briefcase" | "clock" | "credit-card" | "alert-circle";
+    reminderKey: string | null;
+    icon: "briefcase" | "clock" | "credit-card" | "alert-circle" | "gift" | "shield";
     title: string;
     cta: string;
     onPress: () => void;
@@ -407,41 +472,76 @@ function DashboardHeader({
       <View style={styles.line} />
 
       {userRole === "business" &&
-        actionBanners.map((banner, index) => (
-          <TouchableOpacity
-            key={banner.key}
-            onPress={banner.onPress}
-            activeOpacity={0.85}
-            accessibilityRole="button"
-            accessibilityLabel={`${banner.title}. ${banner.cta}`}
-          >
-            <View
-              style={[
-                styles.actionBanner,
-                index > 0 && styles.actionBannerDivider,
-              ]}
+        actionBanners.map((banner, index) => {
+          const isGlowing =
+            currentReminder != null &&
+            banner.reminderKey === currentReminder;
+
+          const bannerContent = (
+            <TouchableOpacity
+              onPress={banner.onPress}
+              activeOpacity={0.85}
+              accessibilityRole="button"
+              accessibilityLabel={`${banner.title}. ${banner.cta}`}
             >
-              <View style={styles.actionIconWrap}>
-                <Feather
-                  name={banner.icon}
-                  size={moderateWidthScale(15)}
-                  color={theme.white}
-                />
+              <View
+                style={[
+                  styles.actionBanner,
+                  index > 0 && !isGlowing && styles.actionBannerDivider,
+                ]}
+              >
+                <View style={styles.actionIconWrap}>
+                  <Feather
+                    name={banner.icon}
+                    size={moderateWidthScale(15)}
+                    color={theme.white}
+                  />
+                </View>
+                {isGlowing && isSetupStep && (
+                  <Text style={styles.setupTag}>
+                    {t("setupFinishSetup")}
+                  </Text>
+                )}
+                <Text style={styles.actionTitle} numberOfLines={2}>
+                  {banner.title}
+                </Text>
+                <View style={styles.actionCta}>
+                  <Text style={styles.actionCtaText}>{banner.cta}</Text>
+                  <Feather
+                    name="chevron-right"
+                    size={moderateWidthScale(14)}
+                    color={theme.white}
+                  />
+                </View>
+                {isGlowing && (
+                  <TouchableOpacity
+                    onPress={dismissReminder}
+                    style={styles.dismissHit}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    accessibilityRole="button"
+                    accessibilityLabel={t("close")}
+                  >
+                    <Feather
+                      name="x"
+                      size={moderateWidthScale(14)}
+                      color={theme.darkGreen}
+                    />
+                  </TouchableOpacity>
+                )}
               </View>
-              <Text style={styles.actionTitle} numberOfLines={2}>
-                {banner.title}
-              </Text>
-              <View style={styles.actionCta}>
-                <Text style={styles.actionCtaText}>{banner.cta}</Text>
-                <Feather
-                  name="chevron-right"
-                  size={moderateWidthScale(14)}
-                  color={theme.white}
-                />
-              </View>
-            </View>
-          </TouchableOpacity>
-        ))}
+            </TouchableOpacity>
+          );
+
+          return isGlowing ? (
+            <PulseGlow key={banner.key} borderRadius={0}>
+              {bannerContent}
+            </PulseGlow>
+          ) : (
+            <React.Fragment key={banner.key}>
+              {bannerContent}
+            </React.Fragment>
+          );
+        })}
     </View>
   );
 }
