@@ -3304,6 +3304,35 @@ export default function CalendarScreen() {
                       {t("calBreakTimeOff")}
                     </Text>
                   </TouchableOpacity>
+                  {isOwner && (
+                    <TouchableOpacity
+                      style={styles.slotMenuRow}
+                      onPress={() => {
+                        if (!slotMenu) return;
+                        const { day, minutes } = slotMenu;
+                        setSlotMenu(null);
+                        router.push({
+                          pathname: "/(main)/postDeal" as any,
+                          params: {
+                            date: day.format("YYYY-MM-DD"),
+                            time: `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`,
+                            ...(staffFilterId !== "all" ? { staff_id: String(staffFilterId) } : {}),
+                          },
+                        });
+                      }}
+                      activeOpacity={0.75}
+                      accessibilityRole="button"
+                    >
+                      <MaterialIcons
+                        name="local-offer"
+                        size={iconScale(16)}
+                        color={theme.darkGreen}
+                      />
+                      <Text style={styles.slotMenuText} numberOfLines={1}>
+                        {t("sdPostADeal")}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
                 </Pressable>
               </Pressable>
             )}

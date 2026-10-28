@@ -555,6 +555,7 @@ function CheckoutContent() {
     selected_subscription_service_ids?: string;
     reel_id?: string;
     saved_look_id?: string;
+    slot_offer_id?: string;
   }>();
 
   const attributionReelId = params.reel_id ? Number(params.reel_id) : null;
@@ -1103,6 +1104,9 @@ function CheckoutContent() {
           appointment_date: reduxSelectedDate || "",
           appointment_time: reduxSelectedTimeSlot || "",
           service_ids: selectedServices.map((service) => service.id),
+          ...(params.slot_offer_id
+            ? { slot_offer_id: Number(params.slot_offer_id) }
+            : {}),
         }),
       );
 
@@ -1201,6 +1205,7 @@ function CheckoutContent() {
       setup_intent_id?: string;
       reel_id?: number;
       saved_look_id?: number;
+      slot_offer_id?: number;
     } = {
       business_id: parseInt(resolvedCheckoutBusinessId, 10),
       appointment_type: "service",
@@ -1232,6 +1237,10 @@ function CheckoutContent() {
 
     if (attributionSavedLookId) {
       requestBody.saved_look_id = attributionSavedLookId;
+    }
+
+    if (params.slot_offer_id) {
+      requestBody.slot_offer_id = Number(params.slot_offer_id);
     }
 
     Logger.log("requestBody", requestBody);

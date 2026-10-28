@@ -1304,6 +1304,8 @@ export default function BookingNow() {
     saved_look_id?: string;
     /** "1" when the customer already agreed to the late reschedule fee. */
     late_fee_accepted?: string;
+    /** Slot offer (Last-Minute Deal) id — locks service/staff/time to the deal. */
+    slot_offer_id?: string;
   }>();
 
   // Customer mode can't book the user's own business — leave before any call
@@ -2774,6 +2776,9 @@ export default function BookingNow() {
           ...(attributionSavedLookId
             ? { saved_look_id: String(attributionSavedLookId) }
             : {}),
+          ...(params.slot_offer_id
+            ? { slot_offer_id: params.slot_offer_id }
+            : {}),
         },
       });
       return;
@@ -2848,6 +2853,9 @@ export default function BookingNow() {
           : {}),
         ...(attributionSavedLookId
           ? { saved_look_id: String(attributionSavedLookId) }
+          : {}),
+        ...(params.slot_offer_id
+          ? { slot_offer_id: params.slot_offer_id }
           : {}),
       },
     });

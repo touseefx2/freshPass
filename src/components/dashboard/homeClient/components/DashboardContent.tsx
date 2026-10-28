@@ -45,6 +45,7 @@ import ShowAppointments from "./ShowAppointments";
 import ShowProTips from "./ShowProTips";
 import HomeReelsSection from "@/src/components/homeReelsSection";
 import HomeAvailableNowSection from "@/src/components/homeAvailableNowSection";
+import HomeSlotOffersSection from "@/src/components/homeSlotOffersSection";
 import FreshyTryOnBanner from "@/src/components/FreshyTryOnBanner";
 import { fetchFollowing } from "@/src/services/followService";
 import { setGuestModeModalVisible } from "@/src/state/slices/generalSlice";
@@ -1105,6 +1106,8 @@ export default function DashboardContent() {
       )}
 
       <HomeAvailableNowSection />
+
+      <HomeSlotOffersSection />
 
       {userRole === "customer" &&
         (favoriteBusinesses.length > 0 ||

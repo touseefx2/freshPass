@@ -425,6 +425,8 @@ export const appointmentsEndpoints = {
     appointment_time: string;
     service_ids?: number[];
     appointment_type?: "service" | "subscription";
+    slot_offer_id?: number;
+    staff_id?: number;
   }) => {
     const q = new URLSearchParams({
       business_id: String(params.business_id),
@@ -437,6 +439,12 @@ export const appointmentsEndpoints = {
     (params.service_ids ?? []).forEach((id) =>
       q.append("service_ids[]", String(id)),
     );
+    if (params.slot_offer_id != null) {
+      q.append("slot_offer_id", String(params.slot_offer_id));
+    }
+    if (params.staff_id != null) {
+      q.append("staff_id", String(params.staff_id));
+    }
     return `/api/appointments/cancellation-policy?${q.toString()}`;
   },
   cardSetup: `/api/appointments/card-setup`,
@@ -1183,4 +1191,50 @@ export const jobEndpoints = {
   create: `/api/job-posts`,
   update: (id: string | number) => `/api/job-posts/${id}`,
   delete: (id: string | number) => `/api/job-posts/${id}`,
+};
+
+/**
+ * Slot Offers (Last-Minute Deals) endpoints
+ */
+export const slotOfferEndpoints = {
+  create: `/api/slot-offers`,
+  patch: (id: number | string) => `/api/slot-offers/${id}`,
+  mine: (params?: {
+    status?: string;
+    per_page?: number;
+    page?: number;
+  }) => {
+    const q = new URLSearchParams();
+    if (params?.status) q.append("status", params.status);
+    if (params?.per_page != null) q.append("per_page", String(params.per_page));
+    if (params?.page != null) q.append("page", String(params.page));
+    const query = q.toString();
+    return `/api/slot-offers/mine${query ? `?${query}` : ""}`;
+  },
+  list: (params?: {
+    category_id?: number;
+    category_ids?: number[];
+    date?: string;
+    min_price?: number;
+    max_price?: number;
+    per_page?: number;
+    page?: number;
+  }) => {
+    const q = new URLSearchParams();
+    if (params?.category_id != null)
+      q.append("category_id", String(params.category_id));
+    (params?.category_ids ?? []).forEach((id) =>
+      q.append("category_ids[]", String(id)),
+    );
+    if (params?.date) q.append("date", params.date);
+    if (params?.min_price != null)
+      q.append("min_price", String(params.min_price));
+    if (params?.max_price != null)
+      q.append("max_price", String(params.max_price));
+    if (params?.per_page != null) q.append("per_page", String(params.per_page));
+    if (params?.page != null) q.append("page", String(params.page));
+    const query = q.toString();
+    return `/api/slot-offers${query ? `?${query}` : ""}`;
+  },
+  detail: (id: number | string) => `/api/slot-offers/${id}`,
 };
