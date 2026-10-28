@@ -157,6 +157,7 @@ export function useSetupReminder(): SetupReminderState {
   const growthIndex = useAppSelector(
     (s) => s.general.lastGrowthReminderIndex,
   );
+  const [visitGrowthIndex] = useState(() => growthIndex);
 
   const businessId = useAppSelector((s) => s.user.business_id);
 
@@ -178,6 +179,7 @@ export function useSetupReminder(): SetupReminderState {
       return;
     }
 
+    setLoading(true);
     let cancelled = false;
 
     fetchSetupData(businessId, stripeComplete)
@@ -225,7 +227,7 @@ export function useSetupReminder(): SetupReminderState {
     );
     if (eligible.length === 0) return null;
 
-    const idx = growthIndex % eligible.length;
+    const idx = visitGrowthIndex % eligible.length;
     return eligible[idx];
   }, [
     isOwner,
@@ -234,7 +236,7 @@ export function useSetupReminder(): SetupReminderState {
     hasMemberships,
     hasCancellationPolicy,
     dismissedReminders,
-    growthIndex,
+    visitGrowthIndex,
   ]);
 
   const isSetupStep =
