@@ -864,9 +864,12 @@ function ReelFeedItemBase({
   const showAsCustomer = !showAsOwner;
   const socialLocked = isPreview;
   const { t } = useTranslation();
-  const playbackUrl = resolveApiImageUrl(reel.video?.playback_url) || "";
+  const fullPlaybackUrl = resolveApiImageUrl(reel.video?.playback_url) || "";
   const posterUrl = resolveApiImageUrl(reel.video?.thumbnail_url);
   const [showPoster, setShowPoster] = useState(true);
+  const [wasActive, setWasActive] = useState(isActive);
+  if (isActive && !wasActive) setWasActive(true);
+  const playbackUrl = wasActive ? fullPlaybackUrl : "";
   const [isPaused, setIsPaused] = useState(false);
   const [isScrubbing, setIsScrubbing] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -892,6 +895,16 @@ function ReelFeedItemBase({
 
   useEffect(() => {
     isActiveRef.current = isActive;
+  }, [isActive]);
+
+  // Release the native player ~1s after leaving the viewport to free memory.
+  useEffect(() => {
+    if (isActive) return;
+    const timer = setTimeout(() => {
+      setWasActive(false);
+      setShowPoster(true);
+    }, 1000);
+    return () => clearTimeout(timer);
   }, [isActive]);
 
   useEffect(() => {
@@ -3472,7 +3485,7 @@ export default function ReelsFeedScreen() {
             windowSize={3}
             maxToRenderPerBatch={2}
             initialNumToRender={1}
-            removeClippedSubviews={false}
+            removeClippedSubviews={Platform.OS === "android"}
             contentInsetAdjustmentBehavior="never"
             automaticallyAdjustContentInsets={false}
             automaticallyAdjustsScrollIndicatorInsets={false}

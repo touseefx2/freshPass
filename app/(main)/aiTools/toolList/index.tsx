@@ -202,7 +202,7 @@ export default function ToolList() {
           <TouchableOpacity
             style={styles.buyCreditsButton}
             onPress={() => {
-              dispatch(setTryOnPurchaseSuccessSource("toolList"));
+              dispatch(setTryOnPurchaseSuccessSource("tools"));
               router.push("/(main)/tryOnPurchase" as any);
             }}
             activeOpacity={0.7}
