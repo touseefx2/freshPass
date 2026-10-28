@@ -103,11 +103,16 @@ export default function ShowFavorites({
               iconSize={widthScale(36)}
               iconColor={theme.white50}
             />
-            <View style={styles.heartBadge}>
+            <View
+              style={[
+                styles.heartBadge,
+                item.isHiring && { backgroundColor: theme.orangeBrown },
+              ]}
+            >
               <MaterialIcons
-                name={item.isOfficial ? "verified" : "person"}
+                name={item.isHiring ? "work" : item.isOfficial ? "verified" : "person"}
                 size={widthScale(16)}
-                color={theme.white}
+                color={item.isHiring ? theme.darkGreen : theme.white}
               />
             </View>
             {!!item.categoryName && (

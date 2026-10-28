@@ -673,6 +673,7 @@ export default function DashboardContent() {
           categoryName: item.category?.name ?? null,
           ownerName: getOwnerName(item),
           isOfficial: Boolean(item.is_official),
+          isHiring: item.is_hiring === true,
         }),
       );
       setFavoriteBusinesses(mappedFavorites);
