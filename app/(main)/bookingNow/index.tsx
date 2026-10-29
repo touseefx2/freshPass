@@ -1306,6 +1306,8 @@ export default function BookingNow() {
     late_fee_accepted?: string;
     /** Slot offer (Last-Minute Deal) id — locks service/staff/time to the deal. */
     slot_offer_id?: string;
+    deal_price?: string;
+    deal_normal_price?: string;
   }>();
 
   // Customer mode can't book the user's own business — leave before any call
@@ -1324,6 +1326,8 @@ export default function BookingNow() {
   }, [attributionReelId]);
 
   const isReschedule = params.is_reschedule === "1";
+  // Last-Minute Deal: service, staff, date and time are the deal's, not picked
+  const isDealBooking = Boolean(params.slot_offer_id);
   const hasAppliedStaffParam = useRef(false);
   const isSubscriptionBooking = Boolean(params.subscription_id && params.item);
   const subscriptionData: SubscriptionData | null = useMemo(() => {
@@ -1843,7 +1847,22 @@ export default function BookingNow() {
         if (params.subscription_id) {
           dispatch(setSelectedServices([]));
         } else if (servicesToSelect.length > 0) {
-          dispatch(setSelectedServices(servicesToSelect));
+          // Deal: charge the deal price, normal price struck through
+          const dealPrice = params.deal_price ? Number(params.deal_price) : NaN;
+          const normalPrice = Number(params.deal_normal_price);
+          dispatch(
+            setSelectedServices(
+              isDealBooking && Number.isFinite(dealPrice)
+                ? servicesToSelect.map((s) => ({
+                    ...s,
+                    price: dealPrice,
+                    originalPrice: Number.isFinite(normalPrice)
+                      ? normalPrice
+                      : s.price,
+                  }))
+                : servicesToSelect,
+            ),
+          );
         } else if (serviceToSelect) {
           if (hasReduxData && reduxSelectedServices.length > 0) {
             const existingService = allServicesData.find(
@@ -1925,6 +1944,45 @@ export default function BookingNow() {
     dispatch(setSelectedTimeSlot(null));
     dispatch(setAssignedStaffId(null));
   }, [selectedStaff, staffMembers, dispatch]);
+
+  // Deal: set its date and time once the business and the deal's staff are
+  // in. Must stay below the effect above, which clears the time on staff change.
+  const hasAppliedDealPreset = useRef(false);
+  useEffect(() => {
+    if (
+      !isDealBooking ||
+      hasAppliedDealPreset.current ||
+      !params.appointment_date ||
+      !params.appointment_time ||
+      allServices.length === 0
+    ) {
+      return;
+    }
+    const dealStaffId = params.staff_id?.trim();
+    // Same filter as the staff-param apply above: an inactive one is never picked
+    const staffListed = staffMembers.some(
+      (s) => String(s.id) === dealStaffId && s.active !== false,
+    );
+    if (!isSoloPlan && staffListed && selectedStaff !== dealStaffId) return;
+    hasAppliedDealPreset.current = true;
+    const day = dayjs(params.appointment_date.trim());
+    const time = params.appointment_time.trim();
+    setSelectedDateState(day);
+    dispatch(setSelectedDate(day.format("YYYY-MM-DD")));
+    setWeek(getWeekDays(day));
+    setSelectedTimeSlotState(time);
+    dispatch(setSelectedTimeSlot(time));
+  }, [
+    isDealBooking,
+    params.appointment_date,
+    params.appointment_time,
+    params.staff_id,
+    allServices.length,
+    staffMembers,
+    selectedStaff,
+    isSoloPlan,
+    dispatch,
+  ]);
 
   const getDayNameFromDate = (date: dayjs.Dayjs): string => {
     const dayNamesFull = [
@@ -2253,12 +2311,13 @@ export default function BookingNow() {
 
   const steps = useMemo<StepKey[]>(() => {
     const staffStep: StepKey[] = isSoloPlan ? [] : ["staff"];
+    if (isDealBooking) return ["payment", "extras"];
     if (isReschedule) return [...staffStep, "time", "confirm"];
     if (isSubscriptionBooking) {
       return ["planServices", ...staffStep, "time", "extras"];
     }
     return ["services", ...staffStep, "time", "payment", "extras"];
-  }, [isReschedule, isSubscriptionBooking, isSoloPlan]);
+  }, [isDealBooking, isReschedule, isSubscriptionBooking, isSoloPlan]);
 
   const [stepIndex, setStepIndex] = useState(0);
   const [direction, setDirection] = useState<1 | -1>(1);
@@ -2298,6 +2357,7 @@ export default function BookingNow() {
   const fetchSlotsRef = useRef(fetchAvailableSlots);
   fetchSlotsRef.current = fetchAvailableSlots;
   const focusedOnceRef = useRef(false);
+  const leaveRef = useRef<() => void>(() => {});
   const reduxTimeSlotRef = useRef(businessData.selectedTimeSlot);
   reduxTimeSlotRef.current = businessData.selectedTimeSlot;
   useFocusEffect(
@@ -2307,6 +2367,12 @@ export default function BookingNow() {
       // Checkout cleared a time the server refused: drop it here too.
       if (!firstFocus && !reduxTimeSlotRef.current) {
         setSelectedTimeSlotState(null);
+        // A deal's time can't be re-picked: the deal is gone (checkout said why)
+        if (isDealBooking) {
+          takeReviewEdit();
+          leaveRef.current();
+          return;
+        }
       }
       const target = takeReviewEdit();
       const index = target ? steps.indexOf(target) : -1;
@@ -2320,7 +2386,7 @@ export default function BookingNow() {
       if (!firstFocus && stepKeyRef.current === "time") {
         fetchSlotsRef.current();
       }
-    }, [goTo, steps]),
+    }, [goTo, steps, isDealBooking]),
   );
 
   const allowLeaveRef = useRef(false);
@@ -2329,6 +2395,7 @@ export default function BookingNow() {
     allowLeaveRef.current = true;
     router.back();
   }, [router]);
+  leaveRef.current = leave;
 
   /** One step back; false when the first step is showing. */
   const stepBack = useCallback((): boolean => {
@@ -3449,6 +3516,54 @@ export default function BookingNow() {
     </>
   );
 
+  // Deal booking skips services / staff / time: show what's locked in.
+  const renderDealSummary = () => {
+    const service = selectedServices[0];
+    if (!service) return null;
+    const when = [
+      selectedDate.format("ddd, MMM D"),
+      selectedTimeSlot ? convertTo12Hour(selectedTimeSlot) : null,
+    ]
+      .filter(Boolean)
+      .join(" · ");
+    return (
+      <>
+        <SectionLabel label={t("sdYourDeal")} />
+        <FlowCard style={styles.serviceCard}>
+          <View style={styles.serviceInfo}>
+            <Text style={styles.serviceName}>{service.name}</Text>
+            {selectedStaffMember ? (
+              <View style={styles.metaRow}>
+                <Feather
+                  name="user"
+                  size={moderateWidthScale(14)}
+                  color={theme.lightGreen}
+                />
+                <Text style={styles.metaText}>{selectedStaffMember.name}</Text>
+              </View>
+            ) : null}
+            <View style={styles.metaRow}>
+              <Feather
+                name="clock"
+                size={moderateWidthScale(14)}
+                color={theme.lightGreen}
+              />
+              <Text style={styles.metaText}>{when}</Text>
+            </View>
+            <View style={styles.priceRow}>
+              <Text style={styles.price}>{formatMoney(service.price)}</Text>
+              {service.originalPrice > service.price ? (
+                <Text style={styles.priceOriginal}>
+                  ${service.originalPrice.toFixed(2)}
+                </Text>
+              ) : null}
+            </View>
+          </View>
+        </FlowCard>
+      </>
+    );
+  };
+
   const renderPayment = () => {
     const allOptions = [
       {
@@ -3469,6 +3584,7 @@ export default function BookingNow() {
       : allOptions.filter((option) => option.key === "payLater");
     return (
       <>
+        {isDealBooking ? renderDealSummary() : null}
         <FlowTitle title={t("bkFlowPaymentTitle")} />
         {!canPayInApp ? (
           <InfoNote icon="storefront" text={t("peSalonOnlyNote")} />

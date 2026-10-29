@@ -1730,21 +1730,25 @@ function CheckoutContent() {
     handleBackNavigation();
   };
 
+  // A deal's time and staff are fixed: those rows show without edit.
+  const isDealBooking = Boolean(params.slot_offer_id);
+
   const summaryRow = (
     key: ReviewEditTarget,
     icon: React.ReactNode,
     title: string,
     sub: string | null,
     first: boolean,
+    editable = true,
   ) => (
     <TouchableOpacity
       key={key}
       style={[styles.ckRow, !first && styles.ckRowBorder]}
       onPress={() => editStep(key)}
-      disabled={processingPayment}
+      disabled={processingPayment || !editable}
       activeOpacity={0.7}
-      accessibilityRole="button"
-      accessibilityLabel={`${t("edit")} ${title}`}
+      accessibilityRole={editable ? "button" : undefined}
+      accessibilityLabel={editable ? `${t("edit")} ${title}` : title}
     >
       {icon}
       <View style={styles.ckRowText}>
@@ -1757,13 +1761,15 @@ function CheckoutContent() {
           </Text>
         ) : null}
       </View>
-      <View style={styles.ckEdit}>
-        <MaterialIcons
-          name="edit"
-          size={moderateWidthScale(14)}
-          color={theme.darkGreen}
-        />
-      </View>
+      {editable ? (
+        <View style={styles.ckEdit}>
+          <MaterialIcons
+            name="edit"
+            size={moderateWidthScale(14)}
+            color={theme.darkGreen}
+          />
+        </View>
+      ) : null}
     </TouchableOpacity>
   );
 
@@ -1786,6 +1792,7 @@ function CheckoutContent() {
         ? formatSlotTo12h(reduxSelectedTimeSlot)
         : t("bkCheckoutTimeMissing"),
       true,
+      !isDealBooking,
     ),
     ...(!isSoloPlan
       ? [
@@ -1805,6 +1812,7 @@ function CheckoutContent() {
             staffName,
             staffSub,
             false,
+            !isDealBooking,
           ),
         ]
       : []),

@@ -10,7 +10,6 @@ import {
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { MaterialIcons } from "@expo/vector-icons";
-import dayjs from "dayjs";
 import { useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
@@ -21,7 +20,10 @@ import {
 import StackHeader from "@/src/components/StackHeader";
 import AppImage from "@/src/components/AppImage";
 import RetryButton from "@/src/components/retryButton";
-import { bookSlotOffer } from "@/src/components/slotOffer/SlotOfferCard";
+import {
+  bookSlotOffer,
+  salonDayjs,
+} from "@/src/components/slotOffer/SlotOfferCard";
 import { fetchSlotOfferDetail } from "@/src/services/slotOfferService";
 import { resolveApiImageUrl } from "@/src/utils/media";
 import Logger from "@/src/services/logger";
@@ -290,11 +292,11 @@ export default function SlotOfferDetailScreen() {
 
   const imageUrl = resolveApiImageUrl(deal.business.image_url);
   const hasDiscount = deal.savings > 0;
-  const start = dayjs(deal.starts_at);
+  const start = salonDayjs(deal.starts_at);
   const end = start.add(deal.duration_minutes, "minute");
   const timeLabel = `${start.format("h:mm A")} – ${end.format("h:mm A")}`;
   const dateLabel = start.format("dddd, MMMM D, YYYY");
-  const closesLabel = dayjs(deal.closes_at).format("ddd, MMM D · h:mm A");
+  const closesLabel = salonDayjs(deal.closes_at).format("ddd, MMM D · h:mm A");
 
   return (
     <View style={styles.container}>

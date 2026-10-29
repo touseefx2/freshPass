@@ -15,6 +15,7 @@ import {
 } from "@/src/theme/dimensions";
 import type { SlotOffer } from "@/src/types/slotOffer";
 import { resolveApiImageUrl } from "@/src/utils/media";
+import { parseSalonTime } from "@/src/utils/availableNow";
 
 type AppRouter = ReturnType<typeof useRouter>;
 
@@ -38,6 +39,8 @@ export function bookSlotOffer(router: AppRouter, deal: SlotOffer) {
       appointment_date: deal.date,
       appointment_time: deal.start_time,
       slot_offer_id: String(deal.id),
+      deal_price: String(deal.offer_price),
+      deal_normal_price: String(deal.normal_price),
     },
   } as any);
 }
@@ -46,8 +49,13 @@ function formatDealPrice(price: number) {
   return Number.isInteger(price) ? `$${price}` : `$${price.toFixed(2)}`;
 }
 
-function formatDealTime(startsAt: string, durationMinutes: number, timezone: string) {
-  const start = dayjs(startsAt);
+/** Salon clock, not the phone's: read from the string's own offset. */
+export function salonDayjs(iso: string) {
+  return dayjs(parseSalonTime(iso)?.wall ?? iso);
+}
+
+function formatDealTime(startsAt: string, durationMinutes: number) {
+  const start = salonDayjs(startsAt);
   const end = start.add(durationMinutes, "minute");
   return `${start.format("h:mm A")} – ${end.format("h:mm A")}`;
 }
@@ -183,7 +191,7 @@ export default function SlotOfferCard({ deal, compact }: Props) {
 
   const imageUrl = resolveApiImageUrl(deal.business.image_url);
   const hasDiscount = deal.savings > 0;
-  const timeLabel = formatDealTime(deal.starts_at, deal.duration_minutes, deal.timezone);
+  const timeLabel = formatDealTime(deal.starts_at, deal.duration_minutes);
   const dateLabel = dayjs(deal.date).format("ddd, MMM D");
 
   return (

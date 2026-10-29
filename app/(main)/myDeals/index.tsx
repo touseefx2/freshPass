@@ -15,7 +15,6 @@ import {
 import { useFocusEffect, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { MaterialIcons } from "@expo/vector-icons";
-import dayjs from "dayjs";
 import { useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
@@ -31,6 +30,7 @@ import {
   fetchMySlotOffers,
   patchSlotOffer,
 } from "@/src/services/slotOfferService";
+import { salonDayjs } from "@/src/components/slotOffer/SlotOfferCard";
 import type {
   SlotOffer,
   SlotOfferMineSummary,
@@ -322,7 +322,7 @@ export default function MyDealsScreen() {
   const renderDeal = useCallback(
     ({ item: deal }: { item: SlotOffer }) => {
       const sc = STATUS_COLORS[deal.status] ?? STATUS_COLORS.expired;
-      const start = dayjs(deal.starts_at);
+      const start = salonDayjs(deal.starts_at);
       const dateLabel = start.format("ddd, MMM D · h:mm A");
       const isLive = deal.status === "live";
       const isPaused = deal.status === "paused";
