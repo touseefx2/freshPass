@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useMemo } from "react";
 import Logger from "@/src/services/logger";
 import {
   StyleSheet,
@@ -18,16 +18,12 @@ import {
 } from "@/src/theme/dimensions";
 import StackHeader from "@/src/components/StackHeader";
 import { MaterialIcons, MaterialCommunityIcons } from "@expo/vector-icons";
-import { useFocusEffect, useRouter } from "expo-router";
+import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   canShowStaffManagement,
 } from "@/src/state/slices/userSlice";
-import {
-  fetchBusinessOrderStats,
-  subscribeToBusinessOrderUpdates,
-} from "@/src/services/orderService";
-import { getOrdersNeedingActionCount } from "@/src/utils/shopOrderHelpers";
+import { useBusinessOrdersCount } from "@/src/hooks/useBusinessOrdersCount";
 
 const CARD_WIDTH_PERCENT = "49%";
 
@@ -346,27 +342,8 @@ export default function BusinessProfileSettingsScreen() {
   const showManageTeam = canShowStaffManagement(businessStatus);
   const isBusinessOwner = userRole === "business";
 
-  const [pendingOrdersCount, setPendingOrdersCount] = useState(0);
-
-  const loadOrdersCount = useCallback(() => {
-    if (!isBusinessOwner) return;
-    fetchBusinessOrderStats()
-      .then((stats) => setPendingOrdersCount(getOrdersNeedingActionCount(stats)))
-      .catch(() => {});
-  }, [isBusinessOwner]);
-
-  // Back from Orders / an order → fresh count (this screen stays mounted)
-  useFocusEffect(
-    useCallback(() => {
-      loadOrdersCount();
-    }, [loadOrdersCount]),
-  );
-
-  // An order moved to Ready / Shipped / Completed → recount right away
-  useEffect(
-    () => subscribeToBusinessOrderUpdates(() => loadOrdersCount()),
-    [loadOrdersCount],
-  );
+  // Same live count as the home Orders card
+  const pendingOrdersCount = useBusinessOrdersCount(isBusinessOwner) ?? 0;
 
   const handleRowPress = (key: SettingKey) => {
     if (key === "businessProfile") {

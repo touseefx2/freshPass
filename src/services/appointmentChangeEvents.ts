@@ -1,8 +1,8 @@
 // ── Appointment changes → live counts / lists ──────────────────────
 // ApiService calls notifyAppointmentsChanged() after any successful write to
 // /api/appointments (complete, checkout, cancel, reschedule, new booking), and
-// the push listener calls it when a notification arrives, so open screens
-// (home Orders count, appointments list) refresh without a reload.
+// the push listener calls it for appointment pushes, so an open appointments
+// list refreshes without a reload.
 
 type AppointmentsChangedListener = () => void;
 

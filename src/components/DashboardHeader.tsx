@@ -37,7 +37,7 @@ import dayjs from "dayjs";
 import { useBusinessTrialDaysLeft } from "@/src/hooks/useBusinessTrialDaysLeft";
 import PulseGlow from "@/src/components/PulseGlow";
 import { useSetupReminder } from "@/src/hooks/useSetupReminder";
-import { useUpcomingAppointmentsCount } from "@/src/hooks/useUpcomingAppointmentsCount";
+import { useBusinessOrdersCount } from "@/src/hooks/useBusinessOrdersCount";
 
 const AVATAR_SIZE = 36;
 
@@ -351,13 +351,12 @@ function DashboardHeader({
       ? () => router.push("/(main)/stripeConnectOnboarding" as any)
       : handleStripeOnboardingPress;
 
-  // "Orders" = upcoming appointments; drops live when one is completed
-  const upcomingCount = useUpcomingAppointmentsCount(isOnboardedOwner);
+  // "Orders" = product orders to act on (same count as Business Management)
+  const ordersCount = useBusinessOrdersCount(isOnboardedOwner);
   const handleOrdersPress = useCallback(() => {
-    router.push({
-      pathname: "/(main)/dashboard/(account)/allAppointments",
-      params: { status: "upcoming" },
-    } as any);
+    router.push(
+      "/(main)/dashboard/(account)/(businessProfileSettings)/orders" as any,
+    );
   }, [router]);
 
   const { currentReminder, isSetupStep, dismiss: dismissReminder } =
@@ -696,8 +695,8 @@ function DashboardHeader({
                   onPress={handleOrdersPress}
                   activeOpacity={0.8}
                   accessibilityRole="button"
-                  accessibilityLabel={t("ordersUpcomingA11y", {
-                    count: upcomingCount ?? 0,
+                  accessibilityLabel={t("ordersNeedActionA11y", {
+                    count: ordersCount ?? 0,
                   })}
                 >
                   <MaterialCommunityIcons
@@ -709,10 +708,10 @@ function DashboardHeader({
                     {t("ordersTitle")}
                   </Text>
                 </TouchableOpacity>
-                {upcomingCount != null && upcomingCount > 0 && (
+                {ordersCount != null && ordersCount > 0 && (
                   <View style={styles.ordersBadge} pointerEvents="none">
                     <Text style={styles.ordersBadgeText}>
-                      {upcomingCount > 99 ? "99+" : upcomingCount}
+                      {ordersCount > 99 ? "99+" : ordersCount}
                     </Text>
                   </View>
                 )}

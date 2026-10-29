@@ -49,6 +49,22 @@ function publishBusinessOrder(order: BusinessShopOrder): void {
   businessOrderListeners.forEach((listener) => listener(order));
 }
 
+// New order push (no order body) → open order counts reload
+const businessOrdersChangedListeners = new Set<() => void>();
+
+export function subscribeToBusinessOrdersChanged(
+  listener: () => void,
+): () => void {
+  businessOrdersChangedListeners.add(listener);
+  return () => {
+    businessOrdersChangedListeners.delete(listener);
+  };
+}
+
+export function notifyBusinessOrdersChanged(): void {
+  businessOrdersChangedListeners.forEach((listener) => listener());
+}
+
 // ── Owner ───────────────────────────────────────────────────────────
 
 /** GET /api/orders/business — rows include `nextStatuses`, never `history`. */

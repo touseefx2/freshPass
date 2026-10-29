@@ -14,6 +14,7 @@ import {
 import { syncExpoPushTokenToBackend } from "@/src/services/pushTokenService";
 import { getActiveChatUserId } from "@/src/services/activeChatTracker";
 import { notifyAppointmentsChanged } from "@/src/services/appointmentChangeEvents";
+import { notifyBusinessOrdersChanged } from "@/src/services/orderService";
 
 // Pushes that can change an appointment's status (see notificationNavigation)
 const APPOINTMENT_PUSH_TYPES = [
@@ -108,7 +109,7 @@ export default function ExpoNotificationHandler() {
 
         // Notification tab badge only — chat badge/list refresh via socket (users.{id}).
         dispatch(fetchNotificationUnreadCount());
-        // New / cancelled / completed booking → home Orders count + open lists reload
+        // New / cancelled / completed booking → open appointment lists reload
         const pushType = (
           notification.request.content.data as { type?: unknown } | undefined
         )?.type;
@@ -118,6 +119,8 @@ export default function ExpoNotificationHandler() {
         ) {
           notifyAppointmentsChanged();
         }
+        // New paid order / refund → home + Business Management Orders badge
+        if (pushType === "business_order") notifyBusinessOrdersChanged();
       },
     );
 
