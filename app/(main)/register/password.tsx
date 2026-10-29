@@ -250,8 +250,29 @@ export default function RegisterPassword() {
     setPasswordError(null);
   }, []);
 
+  const finishBusinessSignup = (registerData: any) => {
+    const { user, token, refreshToken } = registerData;
+    dispatch(
+      setUser({
+        id: user.id,
+        name: user?.name || "",
+        email: user.email || email.trim(), // Use email from API response
+        accessToken: token,
+        refreshToken: refreshToken || null,
+        userRole: user?.role?.toLowerCase() || null, // Set userRole from response or use current role
+      }),
+    );
+    // Clear auth stack so swipe-back cannot return to signup screens.
+    resetToRoute(`/${MAIN_ROUTES.REGISTER_NEXT_STEPS}`);
+  };
+
   const handleVerificationCodeComplete = () => {
     const { user, token, refreshToken } = data as any;
+    if (user?.role?.toLowerCase() === "business") {
+      handleCloseVerificationModal();
+      finishBusinessSignup(data);
+      return;
+    }
     dispatch(
       setUser({
         id: user.id,
@@ -313,18 +334,12 @@ export default function RegisterPassword() {
           }
 
           if (user?.role?.toLowerCase() == "business") {
-            dispatch(
-              setUser({
-                id: user.id,
-                name: user?.name || "",
-                email: user.email || email.trim(), // Use email from API response
-                accessToken: token,
-                refreshToken: refreshToken || null,
-                userRole: user?.role?.toLowerCase() || null, // Set userRole from response or use current role
-              }),
-            );
-            // Clear auth stack so swipe-back cannot return to signup screens.
-            resetToRoute(`/${MAIN_ROUTES.REGISTER_NEXT_STEPS}`);
+            // Owners verify the emailed code first (same popup as customers)
+            if (email_verification_required) {
+              setIsVerificationModalVisible(true);
+            } else {
+              finishBusinessSignup(response.data);
+            }
           } else {
             if (email_verification_required) {
               setIsVerificationModalVisible(true);

@@ -269,10 +269,11 @@ export default function Login() {
             dispatch(setSavedPassword(null));
           }
 
-          if (user?.role?.toLowerCase() === "business") {
-            setUserData(response.data);
-            resetToDashboardHome();
-          } else if (user?.role?.toLowerCase() === "customer") {
+          if (
+            user?.role?.toLowerCase() === "business" ||
+            user?.role?.toLowerCase() === "customer"
+          ) {
+            // Unverified owner/customer: code popup first (it sends a fresh code)
             if (email_verification_required) {
               setData(response.data);
               setIsVerificationModalVisible(true);
