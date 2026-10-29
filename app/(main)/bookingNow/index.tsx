@@ -2156,7 +2156,9 @@ export default function BookingNow() {
       "warning",
       4000,
     );
-    if (stepKey !== "time") goToStep("time");
+    // A deal has no Date & time step to go back to: the deal is gone
+    if (isDealBooking) leaveRef.current();
+    else if (stepKey !== "time") goToStep("time");
     return true;
   };
 
