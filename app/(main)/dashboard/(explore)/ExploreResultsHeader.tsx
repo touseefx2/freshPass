@@ -18,7 +18,8 @@ const createStyles = (theme: Theme) =>
       justifyContent: "space-between",
       paddingHorizontal: moderateWidthScale(20),
       paddingVertical: moderateHeightScale(12),
-      marginBottom: moderateHeightScale(12),
+      // Room for the hiring corner badge on the first card
+      marginBottom: moderateHeightScale(16),
       backgroundColor: theme.mapCircleFill,
       width: "100%",
     },

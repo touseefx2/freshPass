@@ -7,6 +7,10 @@ import {
   moderateWidthScale,
   widthScale,
 } from "@/src/theme/dimensions";
+import {
+  HIRING_CORNER_OVERHANG,
+  HIRING_FRAME_WIDTH,
+} from "@/src/components/jobs/jobBadges";
 
 export const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -20,15 +24,20 @@ export const createStyles = (theme: Theme) =>
     verifiedSalonCardNew: {
       backgroundColor: theme.darkGreen,
       borderRadius: moderateWidthScale(12),
-      paddingHorizontal: moderateWidthScale(10),
-      paddingVertical: moderateHeightScale(10),
+      // Transparent frame keeps hiring / non-hiring cards the same size
+      borderWidth: HIRING_FRAME_WIDTH,
+      borderColor: "transparent",
+      paddingHorizontal: moderateWidthScale(10) - HIRING_FRAME_WIDTH,
+      paddingVertical: moderateHeightScale(10) - HIRING_FRAME_WIDTH,
       height: heightScale(132),
       flexDirection: "row",
       alignItems: "center",
       gap: moderateWidthScale(12),
       width: "90%",
       alignSelf: "center",
-      overflow: "hidden",
+    },
+    verifiedSalonCardHiring: {
+      borderColor: theme.orangeBrown,
     },
     verifiedSalonImage: {
       width: widthScale(110),

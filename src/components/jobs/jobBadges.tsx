@@ -33,6 +33,11 @@ import {
 
 type IconName = keyof typeof MaterialIcons.glyphMap;
 
+/** How far the corner badge sticks out above a card (leave this much room). */
+export const HIRING_CORNER_OVERHANG = moderateWidthScale(14);
+/** Thin gold frame width on hiring business cards. */
+export const HIRING_FRAME_WIDTH = 2;
+
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
     // ── HIRING ring (business logo on the dark green profile sheet)
@@ -118,14 +123,28 @@ const createStyles = (theme: Theme) =>
       color: theme.darkGreen,
       includeFontPadding: false,
     },
-    // ── Golden briefcase circle badge
-    badgeIcon: {
-      width: moderateWidthScale(28),
-      height: moderateWidthScale(28),
-      borderRadius: moderateWidthScale(14),
+    // ── Golden briefcase badge on a hiring card's top-right corner
+    cornerBadge: {
+      position: "absolute",
+      zIndex: 2,
+      elevation: 2,
       backgroundColor: theme.orangeBrown,
       alignItems: "center",
       justifyContent: "center",
+    },
+    cornerBadgeMd: {
+      top: -HIRING_CORNER_OVERHANG,
+      right: -moderateWidthScale(4),
+      width: HIRING_CORNER_OVERHANG * 2,
+      height: HIRING_CORNER_OVERHANG * 2,
+      borderRadius: HIRING_CORNER_OVERHANG,
+    },
+    cornerBadgeSm: {
+      top: -moderateWidthScale(6),
+      right: -moderateWidthScale(6),
+      width: moderateWidthScale(20),
+      height: moderateWidthScale(20),
+      borderRadius: moderateWidthScale(10),
     },
     // ── Status badge
     status: {
@@ -282,18 +301,34 @@ export function HiringBanner({
   );
 }
 
-/** Small golden briefcase circle badge for card corners. */
-export function HiringBadgeIcon({ style }: { style?: StyleProp<ViewStyle> }) {
+/**
+ * Golden briefcase circle on a hiring card's top-right corner, half outside
+ * it (client sample). Pair with a gold `HIRING_FRAME_WIDTH` border on the
+ * card. The card must not clip (no overflow hidden) and its list needs
+ * `HIRING_CORNER_OVERHANG` of room above. `sm` sits on a small logo.
+ */
+export function HiringCornerBadge({
+  size = "md",
+  style,
+}: {
+  size?: "md" | "sm";
+  style?: StyleProp<ViewStyle>;
+}) {
+  const { t } = useTranslation();
   const { theme, styles } = useJobBadgeStyles();
   return (
     <View
-      style={[styles.badgeIcon, style]}
+      style={[
+        styles.cornerBadge,
+        size === "sm" ? styles.cornerBadgeSm : styles.cornerBadgeMd,
+        style,
+      ]}
       accessible
-      accessibilityLabel="Hiring"
+      accessibilityLabel={t("jobHiringBadgeShortA11y")}
     >
       <MaterialIcons
         name="work"
-        size={moderateWidthScale(14)}
+        size={moderateWidthScale(size === "sm" ? 11 : 15)}
         color={theme.darkGreen}
       />
     </View>

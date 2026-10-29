@@ -12,15 +12,10 @@ import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
-import {
-  heightScale,
-  moderateHeightScale,
-  moderateWidthScale,
-  widthScale,
-} from "@/src/theme/dimensions";
+import { heightScale, widthScale } from "@/src/theme/dimensions";
 import { PlatformVerifiedStarIcon, StarIconSmall } from "@/assets/icons";
 import RetryButton from "@/src/components/retryButton";
-import { HiringBadgeIcon } from "@/src/components/jobs/jobBadges";
+import { HiringCornerBadge } from "@/src/components/jobs/jobBadges";
 import { createStyles } from "./styles";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -54,14 +49,18 @@ export default function ShowDeals({
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
   const router = useRouter();
+  const hasHiring = verifiedSalons.some((salon) => salon.isHiring);
 
   return (
     <ScrollView
       decelerationRate={0.8}
       horizontal
       showsHorizontalScrollIndicator={false}
-      style={styles.appCard}
-      contentContainerStyle={styles.appointmentsScroll}
+      style={hasHiring ? styles.appCardHiring : styles.appCard}
+      contentContainerStyle={[
+        styles.appointmentsScroll,
+        hasHiring && styles.appointmentsScrollHiring,
+      ]}
       nestedScrollEnabled={true}
     >
       {businessesLoading && verifiedSalons.length <= 0 ? (
@@ -98,18 +97,12 @@ export default function ShowDeals({
               } as any);
             }}
             key={salon.id}
-            style={styles.verifiedSalonCardNew}
+            style={[
+              styles.verifiedSalonCardNew,
+              salon.isHiring && styles.verifiedSalonCardHiring,
+            ]}
           >
-            {salon.isHiring ? (
-              <HiringBadgeIcon
-                style={{
-                  position: "absolute",
-                  top: moderateHeightScale(4),
-                  right: moderateWidthScale(4),
-                  zIndex: 2,
-                }}
-              />
-            ) : null}
+            {salon.isHiring ? <HiringCornerBadge /> : null}
             <AppImage
               uri={salon.image}
               style={styles.verifiedSalonImage}

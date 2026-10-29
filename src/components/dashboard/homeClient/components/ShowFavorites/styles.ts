@@ -7,6 +7,10 @@ import {
   moderateWidthScale,
   widthScale,
 } from "@/src/theme/dimensions";
+import {
+  HIRING_CORNER_OVERHANG,
+  HIRING_FRAME_WIDTH,
+} from "@/src/components/jobs/jobBadges";
 
 export const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -17,17 +21,30 @@ export const createStyles = (theme: Theme) =>
       paddingHorizontal: moderateWidthScale(20),
       gap: moderateWidthScale(14),
     },
+    // Room above the cards for the hiring corner badge (only when needed)
+    scrollContentHiring: {
+      paddingTop: HIRING_CORNER_OVERHANG,
+    },
     card: {
       width: widthScale(168),
       borderRadius: moderateWidthScale(18),
       backgroundColor: theme.darkGreen,
-      overflow: "hidden",
+      // Transparent frame keeps hiring / non-hiring cards the same size
+      borderWidth: HIRING_FRAME_WIDTH,
+      borderColor: "transparent",
+    },
+    cardHiring: {
+      borderColor: theme.orangeBrown,
     },
     imageWrap: {
       width: "100%",
       height: heightScale(148),
       backgroundColor: theme.emptyProfileImage,
       position: "relative",
+      // Photo clips its own corners so the card can let the badge stick out
+      borderTopLeftRadius: moderateWidthScale(18) - HIRING_FRAME_WIDTH,
+      borderTopRightRadius: moderateWidthScale(18) - HIRING_FRAME_WIDTH,
+      overflow: "hidden",
     },
     image: {
       width: "100%",

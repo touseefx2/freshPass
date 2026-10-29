@@ -16,6 +16,7 @@ import { Theme } from "@/src/theme/colors";
 import { heightScale, widthScale } from "@/src/theme/dimensions";
 import { StarIconSmall } from "@/assets/icons";
 import RetryButton from "@/src/components/retryButton";
+import { HiringCornerBadge } from "@/src/components/jobs/jobBadges";
 import { createStyles } from "./styles";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -81,14 +82,17 @@ export default function ShowFavorites({
       decelerationRate={0.8}
       showsHorizontalScrollIndicator={false}
       style={styles.scroll}
-      contentContainerStyle={styles.scrollContent}
+      contentContainerStyle={[
+        styles.scrollContent,
+        favorites.some((item) => item.isHiring) && styles.scrollContentHiring,
+      ]}
       nestedScrollEnabled
     >
       {favorites.map((item) => (
         <TouchableOpacity
           key={item.id}
           activeOpacity={0.9}
-          style={styles.card}
+          style={[styles.card, item.isHiring && styles.cardHiring]}
           onPress={() => {
             router.push({
               pathname: "/(main)/businessDetail",
@@ -103,18 +107,15 @@ export default function ShowFavorites({
               iconSize={widthScale(36)}
               iconColor={theme.white50}
             />
-            <View
-              style={[
-                styles.heartBadge,
-                item.isHiring && { backgroundColor: theme.orangeBrown },
-              ]}
-            >
-              <MaterialIcons
-                name={item.isHiring ? "work" : item.isOfficial ? "verified" : "person"}
-                size={widthScale(16)}
-                color={item.isHiring ? theme.darkGreen : theme.white}
-              />
-            </View>
+            {!item.isHiring && (
+              <View style={styles.heartBadge}>
+                <MaterialIcons
+                  name={item.isOfficial ? "verified" : "person"}
+                  size={widthScale(16)}
+                  color={theme.white}
+                />
+              </View>
+            )}
             {!!item.categoryName && (
               <View style={styles.categoryBadge}>
                 <Text numberOfLines={1} style={styles.categoryText}>
@@ -123,6 +124,7 @@ export default function ShowFavorites({
               </View>
             )}
           </View>
+          {item.isHiring ? <HiringCornerBadge /> : null}
 
           <View style={styles.content}>
             <View

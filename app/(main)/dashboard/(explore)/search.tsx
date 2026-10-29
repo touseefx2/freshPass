@@ -45,6 +45,10 @@ import { SearchIcon, CloseIcon } from "@/assets/icons";
 import { ApiService } from "@/src/services/api";
 import { exploreEndpoints } from "@/src/services/endpoints";
 import {
+  HiringCornerBadge,
+  HIRING_FRAME_WIDTH,
+} from "@/src/components/jobs/jobBadges";
+import {
   getDefaultBusinessLogo,
 } from "@/src/services/remoteConfigService";
 
@@ -77,6 +81,8 @@ export type BusinessSearchItem = {
   country_code: string;
   category: { id: number; name: string };
   owner?: { id: number; name: string } | null;
+  /** Has at least one open job post */
+  is_hiring?: boolean;
   createdAt: string;
 };
 
@@ -291,6 +297,10 @@ const createStyles = (theme: Theme) =>
       height: heightScale(44),
       borderRadius: moderateWidthScale(8),
     },
+    businessPlaceholderHiring: {
+      borderWidth: HIRING_FRAME_WIDTH,
+      borderColor: theme.orangeBrown,
+    },
     businessContent: {
       flex: 1,
     },
@@ -375,34 +385,41 @@ function RecentBusinessLogo({
 
 function BusinessLogoImage({
   logo,
+  isHiring,
   theme,
   styles,
 }: {
   logo: string | null | undefined;
+  isHiring?: boolean;
   theme: Theme;
   styles: ReturnType<typeof createStyles>;
 }) {
   const uri = getBusinessLogoUrl(logo);
   const showPlaceholder = !uri;
 
-  if (showPlaceholder) {
-    return (
-      <View style={styles.businessPlaceholder}>
-        <Ionicons
-          name="person-outline"
-          size={moderateWidthScale(22)}
-          color={theme.lightGreen}
-        />
-      </View>
-    );
-  }
   return (
-    <View style={styles.businessPlaceholder}>
-      <AppImage
-        uri={uri}
-        style={styles.businessLogoImage}
-        resizeMode="cover"
-      />
+    <View>
+      <View
+        style={[
+          styles.businessPlaceholder,
+          isHiring && styles.businessPlaceholderHiring,
+        ]}
+      >
+        {showPlaceholder ? (
+          <Ionicons
+            name="person-outline"
+            size={moderateWidthScale(22)}
+            color={theme.lightGreen}
+          />
+        ) : (
+          <AppImage
+            uri={uri}
+            style={styles.businessLogoImage}
+            resizeMode="cover"
+          />
+        )}
+      </View>
+      {isHiring ? <HiringCornerBadge size="sm" /> : null}
     </View>
   );
 }
@@ -748,6 +765,7 @@ export default function SearchScreen() {
                   >
                     <BusinessLogoImage
                       logo={item.logo_url}
+                      isHiring={item.is_hiring === true}
                       theme={theme}
                       styles={styles}
                     />
