@@ -12,6 +12,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useStripe } from "@stripe/stripe-react-native";
+import { useTranslation } from "react-i18next";
+import { MaterialIcons } from "@expo/vector-icons";
 import { useTheme, useAppDispatch, useAppSelector } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
@@ -37,6 +39,7 @@ import {
   type TipDetails,
 } from "@/src/services/tipService";
 import { resolveApiImageUrl } from "@/src/utils/media";
+import { resetToDashboardHome } from "@/src/utils/navigation";
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -205,6 +208,7 @@ function resolveRecipientImage(image?: string | null): string | null {
 }
 
 export default function TipYourProScreen() {
+  const { t } = useTranslation();
   const { colors } = useTheme();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
@@ -489,13 +493,28 @@ export default function TipYourProScreen() {
 
     if (tipDetails?.tip) {
       return (
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
-          {renderRecipient()}
-          {renderReceipt()}
-        </ScrollView>
+        <>
+          <ScrollView
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+          >
+            {renderRecipient()}
+            {renderReceipt()}
+          </ScrollView>
+          <View style={styles.bottomButton}>
+            <Button
+              title={t("goToHome")}
+              onPress={resetToDashboardHome}
+              leftIcon={
+                <MaterialIcons
+                  name="home"
+                  size={moderateWidthScale(20)}
+                  color={theme.buttonText}
+                />
+              }
+            />
+          </View>
+        </>
       );
     }
 

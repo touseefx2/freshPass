@@ -158,10 +158,12 @@ export default function FlowFooter({
             disabled={secondary.disabled}
             loading={secondary.loading}
             icon={secondary.icon}
+            singleLine
             accessibilityHint={secondary.accessibilityHint}
           />
           <FlowButton
             compact
+            singleLine
             style={styles.rowPrimary}
             labelStyle={styles.rowLabel}
             label={primary.label}

@@ -792,7 +792,7 @@ export default function JobPostEditorScreen() {
         showBanner(t("jobPostedTitle"), t("jobPostedBody"), "success", 3500);
         router.replace({
           pathname: DETAIL_PATH as any,
-          params: { id: String(post.id) },
+          params: { id: String(post.id), posted: "1" },
         });
       }
     } catch (err: any) {

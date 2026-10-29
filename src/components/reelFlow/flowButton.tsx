@@ -36,6 +36,8 @@ type Props = {
   compact?: boolean;
   /** Red label / icon for a destructive action (e.g. "Cancel order"). */
   danger?: boolean;
+  /** Keep the label on one line (shrinks instead of wrapping), e.g. in a two-button row. */
+  singleLine?: boolean;
   accessibilityHint?: string;
 };
 
@@ -112,6 +114,7 @@ export default function FlowButton({
   labelStyle,
   compact = false,
   danger = false,
+  singleLine = false,
   accessibilityHint,
 }: Props) {
   const { colors } = useTheme();
@@ -170,9 +173,11 @@ export default function FlowButton({
                 labelStyle,
               ]}
               // Long translations wrap / shrink a little instead of clipping
-              numberOfLines={2}
+              // Android keeps the 2-line height after shrinking, so the label
+              // sat above the icon in a two-button row
+              numberOfLines={singleLine ? 1 : 2}
               adjustsFontSizeToFit
-              minimumFontScale={0.85}
+              minimumFontScale={singleLine ? 0.7 : 0.85}
             >
               {label}
             </Text>

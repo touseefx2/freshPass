@@ -45,6 +45,7 @@ import {
 } from "@/src/services/ownerBookingService";
 import { createSlotOffer } from "@/src/services/slotOfferService";
 import { resolveApiImageUrl } from "@/src/utils/media";
+import { resetToDashboardHome } from "@/src/utils/navigation";
 import { isSoloSubscription } from "@/src/state/slices/userSlice";
 
 type StepKey = "service" | "staff" | "time" | "price" | "preview";
@@ -319,6 +320,9 @@ const createStyles = (theme: Theme) =>
       paddingVertical: moderateHeightScale(14),
       borderRadius: moderateWidthScale(14),
       backgroundColor: theme.darkGreen,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(8),
     },
     doneBtnText: {
       fontSize: fontSize.size15,
@@ -585,8 +589,13 @@ export default function PostDealScreen() {
           <TouchableOpacity
             style={styles.doneBtn}
             activeOpacity={0.75}
-            onPress={() => router.back()}
+            onPress={resetToDashboardHome}
           >
+            <MaterialIcons
+              name="home"
+              size={iconScale(20)}
+              color={theme.white}
+            />
             <Text style={styles.doneBtnText}>{t("goToHome")}</Text>
           </TouchableOpacity>
         </View>

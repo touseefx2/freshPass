@@ -30,11 +30,13 @@ import {
 import StackHeader from "@/src/components/StackHeader";
 import EmptyState from "@/src/components/emptyState";
 import FlowButton from "@/src/components/reelFlow/flowButton";
+import FlowFooter from "@/src/components/reelFlow/flowFooter";
 import { InfoNote } from "@/src/components/reelFlow/flowParts";
 import { JobFactChips, JobStatusBadge } from "@/src/components/jobs/jobBadges";
 import { ApplicantCard } from "@/src/components/jobs/jobCards";
 import { ClosingDateSheet } from "@/src/components/jobs/closingDatePicker";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
+import { resetToDashboardHome } from "@/src/utils/navigation";
 import {
   deleteJobPost,
   fetchJobPostApplications,
@@ -193,8 +195,10 @@ export default function JobPostDetailScreen() {
   const styles = useMemo(() => createStyles(theme), [theme]);
   const insets = useSafeAreaInsets();
   const { showBanner } = useNotificationContext();
-  const params = useLocalSearchParams<{ id?: string }>();
+  const params = useLocalSearchParams<{ id?: string; posted?: string }>();
   const postId = params.id ?? "";
+  // Opened right after publishing: offer a one-tap way back to Home
+  const justPosted = params.posted === "1";
 
   const [post, setPost] = useState<JobPost | null>(null);
   const [loading, setLoading] = useState(true);
@@ -695,7 +699,10 @@ export default function JobPostDetailScreen() {
         ListFooterComponent={footer}
         contentContainerStyle={[
           styles.listContent,
-          { paddingBottom: insets.bottom + moderateHeightScale(24) },
+          {
+            paddingBottom:
+              (justPosted ? 0 : insets.bottom) + moderateHeightScale(24),
+          },
         ]}
         onEndReached={() => void loadMoreApplicants()}
         onEndReachedThreshold={0.4}
@@ -709,6 +716,16 @@ export default function JobPostDetailScreen() {
         }
         showsVerticalScrollIndicator={false}
       />
+
+      {justPosted ? (
+        <FlowFooter
+          primary={{
+            label: t("goToHome"),
+            icon: "home",
+            onPress: resetToDashboardHome,
+          }}
+        />
+      ) : null}
 
       <ClosingDateSheet
         visible={dateSheet != null}
