@@ -78,10 +78,12 @@ export function useBusinessOrdersCount(enabled: boolean): number | null {
       if (subscribers.size === 0 && teardown) {
         teardown();
         teardown = null;
-        // Last card gone (e.g. logout) → next account starts fresh
+        // Last card gone (e.g. logout) → next account starts fresh. Drop the
+        // pending request too, or a quick remount would wait on a discarded one.
         sharedCount = null;
         lastLoadedAt = 0;
         requestId++;
+        inFlight = null;
       }
     };
   }, [enabled]);
