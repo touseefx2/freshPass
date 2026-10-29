@@ -180,6 +180,14 @@ export function normalizeBusinessOrder(value: unknown): BusinessShopOrder {
   };
 }
 
+/**
+ * Orders the owner still has to act on (Paid / Ready for pickup tabs).
+ * "pending" = customer hasn't paid yet, so it isn't counted or listed.
+ */
+export function getOrdersNeedingActionCount(stats: ShopOrderStats): number {
+  return (stats.paid ?? 0) + (stats.ready_for_pickup ?? 0);
+}
+
 export function normalizeOrderStats(value: unknown): ShopOrderStats {
   const raw = asRecord(value) ?? {};
   return {

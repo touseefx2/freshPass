@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import Logger from "@/src/services/logger";
 import {
   StyleSheet,
@@ -18,12 +18,16 @@ import {
 } from "@/src/theme/dimensions";
 import StackHeader from "@/src/components/StackHeader";
 import { MaterialIcons, MaterialCommunityIcons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   canShowStaffManagement,
 } from "@/src/state/slices/userSlice";
-import { fetchBusinessOrderStats } from "@/src/services/orderService";
+import {
+  fetchBusinessOrderStats,
+  subscribeToBusinessOrderUpdates,
+} from "@/src/services/orderService";
+import { getOrdersNeedingActionCount } from "@/src/utils/shopOrderHelpers";
 
 const CARD_WIDTH_PERCENT = "49%";
 
@@ -344,24 +348,25 @@ export default function BusinessProfileSettingsScreen() {
 
   const [pendingOrdersCount, setPendingOrdersCount] = useState(0);
 
-  useEffect(() => {
+  const loadOrdersCount = useCallback(() => {
     if (!isBusinessOwner) return;
-    let cancelled = false;
     fetchBusinessOrderStats()
-      .then((stats) => {
-        if (!cancelled) {
-          setPendingOrdersCount(
-            (stats.pending ?? 0) +
-              (stats.paid ?? 0) +
-              (stats.ready_for_pickup ?? 0),
-          );
-        }
-      })
+      .then((stats) => setPendingOrdersCount(getOrdersNeedingActionCount(stats)))
       .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
   }, [isBusinessOwner]);
+
+  // Back from Orders / an order → fresh count (this screen stays mounted)
+  useFocusEffect(
+    useCallback(() => {
+      loadOrdersCount();
+    }, [loadOrdersCount]),
+  );
+
+  // An order moved to Ready / Shipped / Completed → recount right away
+  useEffect(
+    () => subscribeToBusinessOrderUpdates(() => loadOrdersCount()),
+    [loadOrdersCount],
+  );
 
   const handleRowPress = (key: SettingKey) => {
     if (key === "businessProfile") {

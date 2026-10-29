@@ -14,6 +14,7 @@ import {
   setToggleLoading,
   setBusinessPlansModalVisible,
   setStripeConnectModalVisible,
+  dismissSetupReminder,
 } from "@/src/state/slices/generalSlice";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
@@ -28,7 +29,7 @@ import StaffCustomerStatusControl from "@/src/components/staffCustomerStatusCont
 import { updateBusinessActiveStatus } from "@/src/state/thunks/businessThunks";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { IMAGES } from "../constant/images";
-import { Feather } from "@expo/vector-icons";
+import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { resolveApiImageUrl } from "@/src/utils/media";
 import ModeSwitchLogo from "@/src/components/ModeSwitchLogo";
 import { isStripeOnboardingCompleted } from "@/src/state/slices/userSlice";
@@ -36,6 +37,7 @@ import dayjs from "dayjs";
 import { useBusinessTrialDaysLeft } from "@/src/hooks/useBusinessTrialDaysLeft";
 import PulseGlow from "@/src/components/PulseGlow";
 import { useSetupReminder } from "@/src/hooks/useSetupReminder";
+import { useUpcomingAppointmentsCount } from "@/src/hooks/useUpcomingAppointmentsCount";
 
 const AVATAR_SIZE = 36;
 
@@ -173,6 +175,87 @@ const createStyles = (theme: Theme) =>
       paddingLeft: moderateWidthScale(8),
       paddingVertical: moderateHeightScale(4),
     },
+    quickCardsRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(14),
+      paddingHorizontal: moderateWidthScale(20),
+      paddingTop: moderateHeightScale(16),
+    },
+    ordersCardSlot: {
+      flex: 1,
+    },
+    // Sample: white pill, solid honey border + soft honey glow
+    quickCard: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      height: moderateHeightScale(52),
+      paddingHorizontal: moderateWidthScale(14),
+      gap: moderateWidthScale(12),
+      backgroundColor: theme.white,
+    },
+    stripeCard: {
+      flex: 1.55,
+      justifyContent: "flex-start",
+      paddingHorizontal: moderateWidthScale(18),
+      gap: moderateWidthScale(14),
+      borderRadius: moderateHeightScale(26),
+      borderWidth: 2,
+      borderColor: theme.orangeBrown,
+      shadowColor: theme.orangeBrown,
+      shadowOffset: { width: 0, height: 0 },
+      shadowOpacity: 0.55,
+      shadowRadius: 10,
+      elevation: 6,
+    },
+    // Done state: calm green outline instead of the "do this" honey glow
+    stripeCardConnected: {
+      borderColor: theme.buttonBack,
+      shadowOpacity: 0,
+      elevation: 2,
+    },
+    ordersCard: {
+      paddingHorizontal: moderateWidthScale(10),
+      gap: moderateWidthScale(10),
+      borderRadius: moderateWidthScale(14),
+      borderWidth: 1,
+      borderColor: theme.borderLight,
+      shadowColor: theme.shadow,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.06,
+      shadowRadius: 6,
+      elevation: 2,
+    },
+    quickCardText: {
+      flexShrink: 1,
+      fontSize: fontSize.size15,
+      fontFamily: fonts.fontMedium,
+      color: theme.text,
+    },
+    stripeCardText: {
+      flex: 1,
+    },
+    ordersBadge: {
+      position: "absolute",
+      top: -moderateWidthScale(8),
+      right: -moderateWidthScale(6),
+      minWidth: moderateWidthScale(22),
+      height: moderateWidthScale(22),
+      paddingHorizontal: moderateWidthScale(5),
+      borderRadius: moderateWidthScale(11),
+      backgroundColor: theme.red,
+      borderWidth: 2,
+      borderColor: theme.background,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    ordersBadgeText: {
+      fontSize: fontSize.size11,
+      fontFamily: fonts.fontBold,
+      color: theme.white,
+      fontVariant: ["tabular-nums"],
+    },
   });
 
 interface DashboardHeaderProps {
@@ -230,26 +313,52 @@ function DashboardHeader({
     isOnboardedOwner && businessStatus?.has_subscription === false;
 
   // Stripe Connect is optional — it only turns on customer payments
-  const showStripeBanner =
-    isOnboardedOwner && !isStripeOnboardingCompleted(businessStatus);
   const stripeStatus = businessStatus?.stripe_onboarding_status;
   const stripeDeadline = businessStatus?.requirements_deadline
     ? dayjs(businessStatus.requirements_deadline)
     : null;
-  const stripeBannerTitle =
-    stripeStatus === "action_required"
+  const isStripeConnected = isStripeOnboardingCompleted(businessStatus);
+  const stripeCardLabel = isStripeConnected
+    ? t("stripeCardConnected")
+    : stripeStatus === "action_required"
+      ? t("stripeCardFinishSetup")
+      : stripeStatus === "under_review"
+        ? t("stripeCardInReview")
+        : t("stripeCardConnect");
+  // Full sentence for screen readers (the card only fits a short label)
+  const stripeCardA11y = isStripeConnected
+    ? t("stripeCardConnectedA11y")
+    : stripeStatus === "action_required"
       ? stripeDeadline?.isValid()
         ? t("stripeNeedsDetailsByDate", { date: stripeDeadline.format("MMM D") })
         : t("stripeNeedsDetails")
       : stripeStatus === "under_review"
         ? t("stripeReviewingDetails")
         : t("getPaidFromCustomers");
-  const stripeBannerCta =
-    stripeStatus === "action_required"
-      ? t("finishSetupCta")
-      : stripeStatus === "under_review"
-        ? t("viewCta")
-        : t("setUpAccountCta");
+  // Guide banners clear once tapped (client 10-30); "Choose a plan" and the
+  // Stripe / Orders cards stay. Persisted in dismissedSetupReminders, reset on logout.
+  const dismissedReminders = useAppSelector(
+    (state) => state.general.dismissedSetupReminders,
+  );
+  const clearOnPress = (key: string, action: () => void) => () => {
+    dispatch(dismissSetupReminder(key));
+    action();
+  };
+  // Always shown; once connected it says so and opens earnings / payouts
+  const handleStripeCardPress = isStripeConnected
+    ? () => router.push("/(main)/businessEarnings" as any)
+    : stripeStatus === "action_required" || stripeStatus === "under_review"
+      ? () => router.push("/(main)/stripeConnectOnboarding" as any)
+      : handleStripeOnboardingPress;
+
+  // "Orders" = upcoming appointments; drops live when one is completed
+  const upcomingCount = useUpcomingAppointmentsCount(isOnboardedOwner);
+  const handleOrdersPress = useCallback(() => {
+    router.push({
+      pathname: "/(main)/dashboard/(account)/allAppointments",
+      params: { status: "upcoming" },
+    } as any);
+  }, [router]);
 
   const { currentReminder, isSetupStep, dismiss: dismissReminder } =
     useSetupReminder();
@@ -305,7 +414,8 @@ function DashboardHeader({
       cta: t("viewBusinessPlans"),
       onPress: handleBusinessSubscriptionPress,
     },
-    trialDaysLeft !== null && {
+    trialDaysLeft !== null &&
+      !dismissedReminders.includes("banner:trial") && {
       key: "trial",
       reminderKey: null as string | null,
       icon: "clock" as const,
@@ -314,23 +424,7 @@ function DashboardHeader({
           ? t("freeTrialEndsToday")
           : t("freeTrialEndsInDays", { count: trialDaysLeft }),
       cta: t("managePlanCta"),
-      onPress: handleTrialPress,
-    },
-    showStripeBanner && {
-      key: "stripe",
-      reminderKey: "connectStripe" as string | null,
-      icon:
-        stripeStatus === "action_required"
-          ? ("alert-circle" as const)
-          : stripeStatus === "under_review"
-            ? ("clock" as const)
-            : ("credit-card" as const),
-      title: stripeBannerTitle,
-      cta: stripeBannerCta,
-      onPress:
-        stripeStatus === "action_required" || stripeStatus === "under_review"
-          ? () => router.push("/(main)/stripeConnectOnboarding" as any)
-          : handleStripeOnboardingPress,
+      onPress: clearOnPress("banner:trial", handleTrialPress),
     },
     currentReminder === "createMembership" &&
       isOnboardedOwner && {
@@ -339,7 +433,7 @@ function DashboardHeader({
         icon: "gift" as const,
         title: t("setupCreateMembership"),
         cta: t("setupCreateMembershipCta"),
-        onPress: handleMembershipSetup,
+        onPress: clearOnPress("createMembership", handleMembershipSetup),
       },
     currentReminder === "cancellationPolicy" &&
       isOnboardedOwner && {
@@ -348,12 +442,15 @@ function DashboardHeader({
         icon: "shield" as const,
         title: t("setupCancellationPolicy"),
         cta: t("setupCancellationPolicyCta"),
-        onPress: handleCancellationPolicySetup,
+        onPress: clearOnPress(
+          "cancellationPolicy",
+          handleCancellationPolicySetup,
+        ),
       },
   ].filter(Boolean) as {
     key: string;
     reminderKey: string | null;
-    icon: "briefcase" | "clock" | "credit-card" | "alert-circle" | "gift" | "shield";
+    icon: "briefcase" | "clock" | "gift" | "shield";
     title: string;
     cta: string;
     onPress: () => void;
@@ -404,6 +501,88 @@ function DashboardHeader({
       t,
     ],
   );
+
+  // Plan / trial sit above the Stripe + Orders cards; setup steps below
+  const topBanners = actionBanners.filter(
+    (b) => b.key === "plan" || b.key === "trial",
+  );
+  const setupBanners = actionBanners.filter(
+    (b) => b.key !== "plan" && b.key !== "trial",
+  );
+
+  const renderBanner = (
+    banner: (typeof actionBanners)[number],
+    index: number,
+  ) => {
+    const isGlowing =
+      currentReminder != null &&
+      banner.reminderKey === currentReminder;
+
+    const bannerContent = (
+      <TouchableOpacity
+        onPress={banner.onPress}
+        activeOpacity={0.85}
+        accessibilityRole="button"
+        accessibilityLabel={`${banner.title}. ${banner.cta}`}
+      >
+        <View
+          style={[
+            styles.actionBanner,
+            index > 0 && !isGlowing && styles.actionBannerDivider,
+          ]}
+        >
+          <View style={styles.actionIconWrap}>
+            <Feather
+              name={banner.icon}
+              size={moderateWidthScale(15)}
+              color={theme.white}
+            />
+          </View>
+          {isGlowing && isSetupStep && (
+            <Text style={styles.setupTag}>
+              {t("setupFinishSetup")}
+            </Text>
+          )}
+          <Text style={styles.actionTitle} numberOfLines={2}>
+            {banner.title}
+          </Text>
+          <View style={styles.actionCta}>
+            <Text style={styles.actionCtaText}>{banner.cta}</Text>
+            <Feather
+              name="chevron-right"
+              size={moderateWidthScale(14)}
+              color={theme.white}
+            />
+          </View>
+          {isGlowing && (
+            <TouchableOpacity
+              onPress={dismissReminder}
+              style={styles.dismissHit}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              accessibilityRole="button"
+              accessibilityLabel={t("close")}
+            >
+              <Feather
+                name="x"
+                size={moderateWidthScale(14)}
+                color={theme.darkGreen}
+              />
+            </TouchableOpacity>
+          )}
+        </View>
+      </TouchableOpacity>
+    );
+
+    return isGlowing ? (
+      <PulseGlow key={banner.key} borderRadius={0}>
+        {bannerContent}
+      </PulseGlow>
+    ) : (
+      <React.Fragment key={banner.key}>
+        {bannerContent}
+      </React.Fragment>
+    );
+  };
 
   return (
     <View>
@@ -471,77 +650,78 @@ function DashboardHeader({
       </View>
       <View style={styles.line} />
 
-      {userRole === "business" &&
-        actionBanners.map((banner, index) => {
-          const isGlowing =
-            currentReminder != null &&
-            banner.reminderKey === currentReminder;
-
-          const bannerContent = (
-            <TouchableOpacity
-              onPress={banner.onPress}
-              activeOpacity={0.85}
-              accessibilityRole="button"
-              accessibilityLabel={`${banner.title}. ${banner.cta}`}
-            >
-              <View
+      {userRole === "business" && (
+        <>
+          {topBanners.map(renderBanner)}
+          {isOnboardedOwner && (
+            <View style={styles.quickCardsRow}>
+              <TouchableOpacity
                 style={[
-                  styles.actionBanner,
-                  index > 0 && !isGlowing && styles.actionBannerDivider,
+                  styles.quickCard,
+                  styles.stripeCard,
+                  isStripeConnected && styles.stripeCardConnected,
                 ]}
+                onPress={handleStripeCardPress}
+                activeOpacity={0.8}
+                accessibilityRole="button"
+                accessibilityLabel={`${stripeCardLabel}. ${stripeCardA11y}`}
               >
-                <View style={styles.actionIconWrap}>
-                  <Feather
-                    name={banner.icon}
-                    size={moderateWidthScale(15)}
-                    color={theme.white}
-                  />
-                </View>
-                {isGlowing && isSetupStep && (
-                  <Text style={styles.setupTag}>
-                    {t("setupFinishSetup")}
-                  </Text>
-                )}
-                <Text style={styles.actionTitle} numberOfLines={2}>
-                  {banner.title}
+                <MaterialCommunityIcons
+                  name={
+                    isStripeConnected
+                      ? "check-circle"
+                      : stripeStatus === "action_required"
+                        ? "alert-circle"
+                        : stripeStatus === "under_review"
+                          ? "clock"
+                          : "credit-card"
+                  }
+                  size={moderateWidthScale(26)}
+                  color={
+                    !isStripeConnected && stripeStatus === "action_required"
+                      ? theme.orangeBrownText
+                      : theme.buttonBack
+                  }
+                />
+                <Text
+                  style={[styles.quickCardText, styles.stripeCardText]}
+                  numberOfLines={1}
+                >
+                  {stripeCardLabel}
                 </Text>
-                <View style={styles.actionCta}>
-                  <Text style={styles.actionCtaText}>{banner.cta}</Text>
-                  <Feather
-                    name="chevron-right"
-                    size={moderateWidthScale(14)}
-                    color={theme.white}
+              </TouchableOpacity>
+              <View style={styles.ordersCardSlot}>
+                <TouchableOpacity
+                  style={[styles.quickCard, styles.ordersCard]}
+                  onPress={handleOrdersPress}
+                  activeOpacity={0.8}
+                  accessibilityRole="button"
+                  accessibilityLabel={t("ordersUpcomingA11y", {
+                    count: upcomingCount ?? 0,
+                  })}
+                >
+                  <MaterialCommunityIcons
+                    name="shopping"
+                    size={moderateWidthScale(22)}
+                    color={theme.red}
                   />
-                </View>
-                {isGlowing && (
-                  <TouchableOpacity
-                    onPress={dismissReminder}
-                    style={styles.dismissHit}
-                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                    accessibilityRole="button"
-                    accessibilityLabel={t("close")}
-                  >
-                    <Feather
-                      name="x"
-                      size={moderateWidthScale(14)}
-                      color={theme.darkGreen}
-                    />
-                  </TouchableOpacity>
+                  <Text style={styles.quickCardText} numberOfLines={1}>
+                    {t("ordersTitle")}
+                  </Text>
+                </TouchableOpacity>
+                {upcomingCount != null && upcomingCount > 0 && (
+                  <View style={styles.ordersBadge} pointerEvents="none">
+                    <Text style={styles.ordersBadgeText}>
+                      {upcomingCount > 99 ? "99+" : upcomingCount}
+                    </Text>
+                  </View>
                 )}
               </View>
-            </TouchableOpacity>
-          );
-
-          return isGlowing ? (
-            <PulseGlow key={banner.key} borderRadius={0}>
-              {bannerContent}
-            </PulseGlow>
-          ) : (
-            <React.Fragment key={banner.key}>
-              {bannerContent}
-            </React.Fragment>
-          );
-        })}
+            </View>
+          )}
+          {setupBanners.map(renderBanner)}
+        </>
+      )}
     </View>
   );
 }

@@ -1421,6 +1421,11 @@ export default function BookingDetailsById() {
   // ask the customer to agree before opening the picker.
   const handleReschedulePress = async () => {
     if (!booking || !bookingId) return;
+    // The late fee is the customer's; the salon moving the visit owes nothing.
+    if (userRole !== "customer") {
+      openReschedulePicker(false);
+      return;
+    }
 
     dispatch(setActionLoader(true));
     try {
@@ -1488,15 +1493,16 @@ export default function BookingDetailsById() {
     !isComplete &&
     !isAwaitingOutcome &&
     isBeforeAppointmentStart;
-  // Reschedule is customer-only (business/staff manage time via cancel + rebook).
-  // Hidden within 30 minutes of appointment start.
+  // Reschedule: customer (hidden within 30 minutes of start) and business
+  // owner (until start). Staff still cancel + rebook.
   const canShowBottomReschedule =
-    userRole === "customer" &&
+    (userRole === "customer"
+      ? isBeforeRescheduleCutoff
+      : userRole === "business" && isBeforeAppointmentStart) &&
     !isCancelled &&
     !isComplete &&
     !isAwaitingOutcome &&
-    booking?.status === "ongoing" &&
-    isBeforeRescheduleCutoff;
+    booking?.status === "ongoing";
   // Mark Completed / Mark No-Show only when backend allows (canMarkOutcome).
   const canShowOutcomeActions = !!booking?.canMarkOutcome;
   const canShowCorrectOutcome = !!booking?.canCorrectOutcome;

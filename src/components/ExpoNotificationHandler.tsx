@@ -13,6 +13,7 @@ import {
 } from "@/src/services/notificationNavigation";
 import { syncExpoPushTokenToBackend } from "@/src/services/pushTokenService";
 import { getActiveChatUserId } from "@/src/services/activeChatTracker";
+import { notifyAppointmentsChanged } from "@/src/services/appointmentChangeEvents";
 
 /**
  * Configure how notifications are presented when app is in foreground,
@@ -100,6 +101,8 @@ export default function ExpoNotificationHandler() {
 
         // Notification tab badge only — chat badge/list refresh via socket (users.{id}).
         dispatch(fetchNotificationUnreadCount());
+        // New / cancelled booking → home Orders count + open lists reload
+        notifyAppointmentsChanged();
       },
     );
 

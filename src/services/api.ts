@@ -29,6 +29,10 @@ import { businessEndpoints } from "./endpoints";
 import { resetCategories } from "../state/slices/categoriesSlice";
 import { resetBusiness } from "../state/slices/bsnsSlice";
 import { resetChat } from "../state/slices/chatSlice";
+import {
+  isAppointmentWriteUrl,
+  notifyAppointmentsChanged,
+} from "./appointmentChangeEvents";
 // Get base URL from environment
 const BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || "";
 
@@ -768,6 +772,7 @@ export class ApiService {
       const response = await apiClient.post<T>(url, data, requestConfig);
       logApiResponse("POST", url, url, response.status, response.data);
       removeAbortController(abortController);
+      if (isAppointmentWriteUrl(url)) notifyAppointmentsChanged();
       return response.data;
     } catch (error: any) {
       removeAbortController(abortController);
@@ -799,6 +804,7 @@ export class ApiService {
       const response = await apiClient.put<T>(url, data, requestConfig);
       logApiResponse("PUT", url, url, response.status, response.data);
       removeAbortController(abortController);
+      if (isAppointmentWriteUrl(url)) notifyAppointmentsChanged();
       return response.data;
     } catch (error: any) {
       removeAbortController(abortController);
@@ -830,6 +836,7 @@ export class ApiService {
       const response = await apiClient.patch<T>(url, data, requestConfig);
       logApiResponse("PATCH", url, url, response.status, response.data);
       removeAbortController(abortController);
+      if (isAppointmentWriteUrl(url)) notifyAppointmentsChanged();
       return response.data;
     } catch (error: any) {
       removeAbortController(abortController);
@@ -860,6 +867,7 @@ export class ApiService {
       const response = await apiClient.delete<T>(url, requestConfig);
       logApiResponse("DELETE", url, url, response.status, response.data);
       removeAbortController(abortController);
+      if (isAppointmentWriteUrl(url)) notifyAppointmentsChanged();
       return response.data;
     } catch (error: any) {
       removeAbortController(abortController);

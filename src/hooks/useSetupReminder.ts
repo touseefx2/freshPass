@@ -5,6 +5,7 @@ import { ApiService, isRequestCanceled } from "@/src/services/api";
 import { businessEndpoints } from "@/src/services/endpoints";
 import { fetchBusinessOrderStats } from "@/src/services/orderService";
 import type { ShopOrderStats } from "@/src/types/shopOrder";
+import { getOrdersNeedingActionCount } from "@/src/utils/shopOrderHelpers";
 import {
   dismissSetupReminder,
   advanceGrowthReminder,
@@ -113,10 +114,7 @@ function fetchSetupData(
 
     try {
       const stats: ShopOrderStats = await fetchBusinessOrderStats();
-      pendingOrdersCount =
-        (stats.pending ?? 0) +
-        (stats.paid ?? 0) +
-        (stats.ready_for_pickup ?? 0);
+      pendingOrdersCount = getOrdersNeedingActionCount(stats);
     } catch {
       // badge just won't show
     }

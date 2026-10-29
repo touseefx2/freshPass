@@ -25,6 +25,7 @@ import dayjs from "dayjs";
 import { Appointment } from "@/src/components/appointmentDetail";
 import { useRouter } from "expo-router";
 import { ApiService } from "@/src/services/api";
+import { subscribeToAppointmentChanges } from "@/src/services/appointmentChangeEvents";
 import Logger from "@/src/services/logger";
 import {
   appointmentsEndpoints,
@@ -524,10 +525,12 @@ export default function AppointmentsList({
   };
 
   const fetchAppointments = useCallback(
-    async (page: number, append: boolean = false) => {
+    async (page: number, append: boolean = false, silent: boolean = false) => {
       const requestId = ++requestIdRef.current;
       try {
-        if (page === 1) setLoading(true);
+        if (silent) {
+          // Background reload keeps the current rows on screen
+        } else if (page === 1) setLoading(true);
         else setLoadingMore(true);
 
         const params: Parameters<typeof appointmentsEndpoints.list>[0] = {
@@ -595,6 +598,19 @@ export default function AppointmentsList({
     setHasMore(true);
     setInitialLoadComplete(false);
     fetchAppointments(1);
+  }, [fetchAppointments]);
+
+  // Completed / cancelled / new appointment elsewhere → reload this tab quietly
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const unsubscribe = subscribeToAppointmentChanges(() => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => fetchAppointments(1, false, true), 400);
+    });
+    return () => {
+      if (timer) clearTimeout(timer);
+      unsubscribe();
+    };
   }, [fetchAppointments]);
 
   const handleLoadMore = useCallback(() => {
