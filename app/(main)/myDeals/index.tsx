@@ -227,6 +227,8 @@ export default function MyDealsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState(false);
+  // 403: this login is not the business owner (customer / staff account).
+  const [forbidden, setForbidden] = useState(false);
   const [actionLoading, setActionLoading] = useState<number | null>(null);
   const requestIdRef = useRef(0);
 
@@ -248,10 +250,15 @@ export default function MyDealsScreen() {
         setPage(res.meta.current_page);
         setLastPage(res.meta.last_page);
         setSummary(res.summary);
-      } catch (err) {
+        setForbidden(false);
+      } catch (err: any) {
         if (requestId !== requestIdRef.current) return;
         Logger.error("MyDeals: load failed", err);
-        if (nextPage === 1) setError(true);
+        if (err?.status === 403) {
+          setItems([]);
+          setSummary(null);
+          setForbidden(true);
+        } else if (nextPage === 1) setError(true);
       } finally {
         if (requestId === requestIdRef.current) {
           setLoading(false);
@@ -305,7 +312,7 @@ export default function MyDealsScreen() {
         prev.map((d) => (d.id === deal.id ? { ...d, ...updated } : d)),
       );
     } catch (err: any) {
-      const msg = err?.response?.data?.message || t("sdActionError");
+      const msg = err?.message || t("sdActionError");
       Alert.alert(t("sdError"), msg);
     } finally {
       setActionLoading(null);
@@ -451,6 +458,19 @@ export default function MyDealsScreen() {
 
   const renderEmpty = () => {
     if (loading) return null;
+    if (forbidden) {
+      return (
+        <View style={styles.center}>
+          <MaterialIcons
+            name="lock-outline"
+            size={moderateWidthScale(48)}
+            color={theme.lightGreen2}
+          />
+          <Text style={styles.emptyTitle}>{t("sdNotOwnerTitle")}</Text>
+          <Text style={styles.emptySub}>{t("sdNotOwnerSub")}</Text>
+        </View>
+      );
+    }
     if (error) {
       return (
         <View style={styles.center}>
@@ -483,9 +503,13 @@ export default function MyDealsScreen() {
       <StackHeader
         title={t("sdMyDeals")}
         rightIcon={
-          <MaterialIcons name="add" size={iconScale(22)} color={theme.white} />
+          forbidden ? undefined : (
+            <MaterialIcons name="add" size={iconScale(22)} color={theme.white} />
+          )
         }
-        onRightPress={() => router.push("/(main)/postDeal" as any)}
+        onRightPress={
+          forbidden ? undefined : () => router.push("/(main)/postDeal" as any)
+        }
         rightAccessibilityLabel={t("sdPostADeal")}
       />
       {loading && items.length === 0 ? (

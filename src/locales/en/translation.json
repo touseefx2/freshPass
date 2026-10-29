@@ -3722,6 +3722,8 @@
   "sdActionError": "Could not update the deal. Please try again.",
   "sdMyDealsEmpty": "No deals yet",
   "sdMyDealsEmptySub": "Post your first deal to fill an empty slot and attract more customers.",
+  "sdNotOwnerTitle": "Only the business owner can manage deals",
+  "sdNotOwnerSub": "This account can't post or manage deals. Log in with the owner account to see your deals.",
   "setupFinishSetup": "Finish Setup",
   "setupCreateMembership": "Create a monthly membership plan",
   "setupCreateMembershipCta": "Set up",

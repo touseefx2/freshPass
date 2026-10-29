@@ -10,6 +10,12 @@ import type {
 const EMPTY_META = { current_page: 1, per_page: 20, total: 0, last_page: 1 };
 const REQUEST_TIMEOUT = 10_000;
 
+// Lists come wrapped: { success, message, data: { data: [...], meta, summary? } }.
+// Accept the flat shape too in case the wrapper is ever dropped.
+function unwrapList<T extends object>(res: any): Partial<T> {
+  return Array.isArray(res?.data) ? res : (res?.data ?? {});
+}
+
 export async function fetchSlotOffers(params?: {
   category_id?: number;
   category_ids?: number[];
@@ -19,9 +25,10 @@ export async function fetchSlotOffers(params?: {
   per_page?: number;
   page?: number;
 }): Promise<{ items: SlotOffer[]; meta: SlotOfferListResponse["meta"] }> {
-  const res = await ApiService.get<SlotOfferListResponse>(
-    slotOfferEndpoints.list(params),
-    { timeout: REQUEST_TIMEOUT },
+  const res = unwrapList<SlotOfferListResponse>(
+    await ApiService.get(slotOfferEndpoints.list(params), {
+      timeout: REQUEST_TIMEOUT,
+    }),
   );
   const data = Array.isArray(res?.data) ? res.data : [];
   return { items: data, meta: res?.meta ?? EMPTY_META };
@@ -46,9 +53,10 @@ export async function fetchMySlotOffers(params?: {
   per_page?: number;
   page?: number;
 }): Promise<SlotOfferMineResponse> {
-  const res = await ApiService.get<SlotOfferMineResponse>(
-    slotOfferEndpoints.mine(params),
-    { timeout: REQUEST_TIMEOUT },
+  const res = unwrapList<SlotOfferMineResponse>(
+    await ApiService.get(slotOfferEndpoints.mine(params), {
+      timeout: REQUEST_TIMEOUT,
+    }),
   );
   return {
     data: Array.isArray(res?.data) ? res.data : [],
