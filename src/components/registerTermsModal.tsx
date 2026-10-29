@@ -25,7 +25,6 @@ import Button from "@/src/components/button";
 import { CrownIcon } from "@/assets/icons";
 import { setLocation } from "@/src/state/slices/userSlice";
 import * as Location from "expo-location";
-import { useNotificationContext } from "@/src/contexts/NotificationContext";
 
 interface AcceptTermsModalProps {
   visible: boolean;
@@ -174,7 +173,6 @@ export default function RegisterTermsModal({
   const theme = colors as Theme;
   const insets = useSafeAreaInsets();
   const dispatch = useAppDispatch();
-  const { showBanner } = useNotificationContext();
   const [isAgreed, setIsAgreed] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -202,9 +200,10 @@ export default function RegisterTermsModal({
     }, [visible, onClose, nonClosable]),
   );
 
-  const handleContinue = async () => {
-    if (!isAgreed) {
-      // If checkbox is not checked, set location to null and navigate to home
+  const handleContinue = () => {
+    // Location is optional: when unticked, or when phone location is off, sign-up
+    // goes on with no saved location. Explore / Available Now ask later.
+    const clearLocation = () =>
       dispatch(
         setLocation({
           lat: null,
@@ -216,29 +215,20 @@ export default function RegisterTermsModal({
           zipCode: null,
         }),
       );
+
+    if (!isAgreed) {
+      clearLocation();
       onContinue();
       return;
     }
 
     setErrorMessage(null);
-    try {
-      const servicesEnabled = await Location.hasServicesEnabledAsync();
-      if (!servicesEnabled) {
-        const errorMsg = "Please turn on your phone location";
-        // setErrorMessage(errorMsg);
-        showBanner(t("locationError"), errorMsg, "error");
-        return;
-      }
-      onContinue();
-    } catch (error) {
-      Logger.error("Error getting location:", error);
-      const errorMsg =
-        error instanceof Error
-          ? error.message
-          : "Unable to get your location. Please make sure location services are enabled and try again.";
-      // setErrorMessage(errorMsg);
-      showBanner(t("locationError"), errorMsg, "error");
-    }
+    Location.hasServicesEnabledAsync()
+      .then((servicesEnabled) => {
+        if (!servicesEnabled) clearLocation();
+      })
+      .catch((error) => Logger.error("Error checking location services:", error))
+      .finally(() => onContinue());
   };
 
   return (

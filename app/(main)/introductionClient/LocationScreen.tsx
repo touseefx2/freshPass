@@ -16,8 +16,7 @@ import {
   SafeAreaView,
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
-import * as Location from "expo-location";
-import { useNotificationContext } from "@/src/contexts/NotificationContext";
+import { requestLocationPermission } from "@/src/services/locationPermissionService";
 
 interface LocationScreenProps {
   onNext: () => void;
@@ -79,29 +78,22 @@ export default function LocationScreen({ onNext }: LocationScreenProps) {
   const { colors } = useTheme();
   const { t } = useTranslation();
   const styles = useMemo(() => createStyles(colors as Theme), [colors]);
-  const { showBanner } = useNotificationContext();
   const insets = useSafeAreaInsets();
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [errorMessage] = useState<string | null>(null);
+  const [asking, setAsking] = useState(false);
 
+  // Location is optional: ask if we can, but always move on
   const handleContinue = async () => {
-    setErrorMessage(null);
+    if (asking) return;
+    setAsking(true);
     try {
-      const servicesEnabled = await Location.hasServicesEnabledAsync();
-      if (!servicesEnabled) {
-        const errorMsg = t("turnOnLocationFindLocal");
-        // setErrorMessage(errorMsg);
-        showBanner(t("locationError"), errorMsg, "error");
-        return;
-      }
-      onNext();
+      // Skips the dialog by itself when services are off or already denied
+      await requestLocationPermission();
     } catch (error) {
-      Logger.error("Error getting location:", error);
-      const errorMsg =
-        error instanceof Error
-          ? error.message
-          : t("unableToGetCurrentLocation");
-      // setErrorMessage(errorMsg);
-      showBanner(t("locationError"), errorMsg, "error");
+      Logger.error("Location permission request failed:", error);
+    } finally {
+      setAsking(false);
+      onNext();
     }
   };
 

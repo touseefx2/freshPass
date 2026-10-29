@@ -21,6 +21,7 @@ import {
   moderateWidthScale,
 } from "@/src/theme/dimensions";
 import StackHeader from "@/src/components/StackHeader";
+import AskLocationOnce from "@/src/components/AskLocationOnce";
 import RetryButton from "@/src/components/retryButton";
 import AvailableNowCard, {
   bookAvailableNow,
@@ -534,6 +535,7 @@ export default function AvailableNowScreen() {
         }
         showsVerticalScrollIndicator={false}
       />
+      <AskLocationOnce feature="availableNow" />
     </SafeAreaView>
   );
 }
