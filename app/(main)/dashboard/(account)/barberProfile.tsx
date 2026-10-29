@@ -18,6 +18,7 @@ import {
 import StackHeader from "@/src/components/StackHeader";
 import { MaterialIcons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   isBusinessSubscriptionActive,
   usesSoloProfileLayout,
@@ -318,6 +319,7 @@ export default function BarberProfileScreen() {
   const { colors } = useTheme();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
+  const insets = useSafeAreaInsets();
   const { t } = useTranslation();
   const router = useRouter();
   const user = useAppSelector((state) => state.user);
@@ -460,7 +462,10 @@ export default function BarberProfileScreen() {
       <StackHeader title="" />
       <ScrollView
         style={styles.content}
-        contentContainerStyle={styles.contentContainer}
+        contentContainerStyle={[
+          styles.contentContainer,
+          { paddingBottom: moderateHeightScale(90) + insets.bottom },
+        ]}
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.headerBlock}>

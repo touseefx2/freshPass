@@ -516,7 +516,7 @@ const createStyles = (theme: Theme) =>
     contentContainer: {
       paddingTop: moderateHeightScale(12),
       paddingHorizontal: moderateWidthScale(16),
-      paddingBottom: moderateHeightScale(32),
+      paddingBottom: moderateHeightScale(56),
     },
     headerBlock: {
       marginBottom: moderateHeightScale(4),
