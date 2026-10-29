@@ -13,10 +13,8 @@ import {
 
 // ── Reminder identifiers ────────────────────────────────────────────
 
-export type SetupReminderKey =
-  | "connectStripe"
-  | "createMembership"
-  | "cancellationPolicy";
+// Stripe isn't a reminder: the home header always shows the Stripe card
+export type SetupReminderKey = "createMembership" | "cancellationPolicy";
 
 export type GrowthReminderKey =
   | "createReel"
@@ -34,7 +32,6 @@ export const GROWTH_TO_FAB: Record<GrowthReminderKey, string> = {
 
 // ── Ordered setup steps ─────────────────────────────────────────────
 const SETUP_STEPS: SetupReminderKey[] = [
-  "connectStripe",
   "createMembership",
   "cancellationPolicy",
 ];
@@ -206,7 +203,6 @@ export function useSetupReminder(): SetupReminderState {
     const stripeComplete = isStripeOnboardingCompleted(businessStatus);
 
     const stepStatus: Record<SetupReminderKey, boolean> = {
-      connectStripe: stripeComplete,
       createMembership: hasMemberships !== false,
       cancellationPolicy: hasCancellationPolicy !== false,
     };
@@ -214,7 +210,7 @@ export function useSetupReminder(): SetupReminderState {
     for (const step of SETUP_STEPS) {
       if (!stepStatus[step] && !dismissedReminders.includes(step)) {
         // Membership and cancellation policy only after Stripe
-        if (step !== "connectStripe" && !stripeComplete) continue;
+        if (!stripeComplete) continue;
         return step;
       }
     }

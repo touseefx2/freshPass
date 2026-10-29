@@ -15,6 +15,13 @@ import { syncExpoPushTokenToBackend } from "@/src/services/pushTokenService";
 import { getActiveChatUserId } from "@/src/services/activeChatTracker";
 import { notifyAppointmentsChanged } from "@/src/services/appointmentChangeEvents";
 
+// Pushes that can change an appointment's status (see notificationNavigation)
+const APPOINTMENT_PUSH_TYPES = [
+  "appointment",
+  "appointment_outcomes",
+  "appointment_checkout",
+];
+
 /**
  * Configure how notifications are presented when app is in foreground,
  * and handle when a notification is received or tapped.
@@ -101,8 +108,16 @@ export default function ExpoNotificationHandler() {
 
         // Notification tab badge only — chat badge/list refresh via socket (users.{id}).
         dispatch(fetchNotificationUnreadCount());
-        // New / cancelled booking → home Orders count + open lists reload
-        notifyAppointmentsChanged();
+        // New / cancelled / completed booking → home Orders count + open lists reload
+        const pushType = (
+          notification.request.content.data as { type?: unknown } | undefined
+        )?.type;
+        if (
+          typeof pushType === "string" &&
+          APPOINTMENT_PUSH_TYPES.includes(pushType)
+        ) {
+          notifyAppointmentsChanged();
+        }
       },
     );
 
