@@ -941,28 +941,11 @@ const createStyles = (theme: Theme) =>
       height: "100%",
       backgroundColor: theme.emptyProfileImage,
     },
-    staffStatusDot: {
-      position: "absolute",
-      top: moderateHeightScale(8),
-      right: moderateWidthScale(8),
-      width: moderateWidthScale(10),
-      height: moderateWidthScale(10),
-      borderRadius: moderateWidthScale(10) / 2,
-      borderWidth: 2,
-      borderColor: theme.white,
-      zIndex: 2,
-    },
-    staffStatusDotActive: {
-      backgroundColor: theme.toggleActive,
-    },
     staffRatingBadge: {
       position: "absolute",
       top: moderateHeightScale(6),
       left: moderateWidthScale(6),
       zIndex: 2,
-    },
-    staffStatusDotInactive: {
-      backgroundColor: theme.lightGreen5,
     },
     staffInfoStrip: {
       position: "absolute",
@@ -4193,14 +4176,6 @@ export default function BusinessDetailScreen() {
                   uri={staff.image}
                   style={styles.staffProfileImage}
                   resizeMode="cover"
-                />
-                <View
-                  style={[
-                    styles.staffStatusDot,
-                    staff.active
-                      ? styles.staffStatusDotActive
-                      : styles.staffStatusDotInactive,
-                  ]}
                 />
                 <RatingBadge
                   overlay

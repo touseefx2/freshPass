@@ -521,19 +521,6 @@ const createStyles = (theme: Theme) =>
       minHeight: moderateHeightScale(100),
       textAlignVertical: "top",
     },
-    toggleRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-      marginBottom: moderateHeightScale(20),
-    },
-    toggleTitle: {
-      flex: 1,
-      marginLeft: moderateWidthScale(12),
-      fontSize: fontSize.size14,
-      fontFamily: fonts.fontMedium,
-      color: theme.darkGreen,
-    },
     sectionTitle: {
       fontSize: fontSize.size16,
       fontFamily: fonts.fontBold,
@@ -663,7 +650,6 @@ type AddStaffParams = {
   country_code?: string;
   phone?: string;
   profile_image_url?: string;
-  active?: string;
   working_hours?: string;
   invitation_token?: string | null;
   /** "1" when editing the owner's own staff row (takes no reel number) */
@@ -692,18 +678,6 @@ export default function AddStaffScreen() {
   const isEditMode = !!params.id;
   const headerTitle = isEditMode ? "Edit Staff" : "New Staff Member";
 
-  const rawToken = params.invitation_token;
-  const invitationToken =
-    rawToken == null
-      ? undefined
-      : Array.isArray(rawToken)
-        ? rawToken[0]
-        : rawToken;
-  const hasPendingInvitation = !!(
-    invitationToken &&
-    invitationToken !== "" &&
-    invitationToken !== "null"
-  );
   const rawCountryCode = params.country_code;
   const editCountryCode =
     rawCountryCode == null
@@ -718,22 +692,6 @@ export default function AddStaffScreen() {
       : Array.isArray(rawPhone)
         ? rawPhone[0]
         : rawPhone;
-
-  const handleActiveToggle = useCallback(
-    (value: boolean) => {
-      if (value && hasPendingInvitation) {
-        showBanner(
-          "Cannot activate yet",
-          "You can turn this on only after the staff accepts the invitation. This is for online/offline status.",
-          "error",
-          3000,
-        );
-        return;
-      }
-      setIsActive(value);
-    },
-    [showBanner, hasPendingInvitation],
-  );
 
   const [staffEmail, setStaffEmail] = useState("");
   const [name, setName] = useState("");
@@ -754,7 +712,6 @@ export default function AddStaffScreen() {
   const [profileImageUri, setProfileImageUri] = useState<string | null>(null);
   const [showImagePickerModal, setShowImagePickerModal] = useState(false);
   const [description, setDescription] = useState("");
-  const [isActive, setIsActive] = useState(false);
 
   // Monthly reels — owner gives each staff member part of the business's 12
   const showMonthlyReels =
@@ -885,7 +842,6 @@ export default function AddStaffScreen() {
     if (params.description != null) setDescription(params.description);
     if (params.profile_image_url != null && params.profile_image_url !== "")
       setProfileImageUri(params.profile_image_url);
-    if (params.active != null) setIsActive(params.active === "1");
     const normalizedCountryCode = editCountryCode
       ? editCountryCode.startsWith("+")
         ? editCountryCode
@@ -1394,7 +1350,6 @@ export default function AddStaffScreen() {
         formData.append("country_code", countryCode || "");
         formData.append("phone", phoneNumber.replace(/\D/g, ""));
 
-        formData.append("active", isActive ? "true" : "false");
         formData.append(
           "working_hours",
           JSON.stringify(buildWorkingHoursArray()),
@@ -1519,7 +1474,6 @@ export default function AddStaffScreen() {
     description,
     businessHours,
     profileImageUri,
-    isActive,
     buildWorkingHoursArray,
     showBanner,
     t,
@@ -1718,13 +1672,6 @@ export default function AddStaffScreen() {
             <Text style={styles.errorText}>{formErrors.description}</Text>
           ) : null}
         </View>
-
-        {isEditMode && (
-          <View style={styles.toggleRow}>
-            <CustomToggle value={isActive} onValueChange={handleActiveToggle} />
-            <Text style={styles.toggleTitle}>Active</Text>
-          </View>
-        )}
 
         {showMonthlyReels ? (
           <View style={{ marginBottom: moderateHeightScale(24) }}>

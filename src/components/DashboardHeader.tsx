@@ -11,7 +11,6 @@ import { useRouter } from "expo-router";
 import { useTheme, useAppDispatch, useAppSelector } from "@/src/hooks/hooks";
 import { useTranslation } from "react-i18next";
 import {
-  setToggleLoading,
   setBusinessPlansModalVisible,
   dismissSetupReminder,
 } from "@/src/state/slices/generalSlice";
@@ -24,9 +23,6 @@ import {
   widthScale,
 } from "@/src/theme/dimensions";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import StaffCustomerStatusControl from "@/src/components/staffCustomerStatusControl";
-import { updateBusinessActiveStatus } from "@/src/state/thunks/businessThunks";
-import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { IMAGES } from "../constant/images";
 import { Feather } from "@expo/vector-icons";
 import { resolveApiImageUrl } from "@/src/utils/media";
@@ -173,22 +169,13 @@ const createStyles = (theme: Theme) =>
     },
   });
 
-interface DashboardHeaderProps {
-  canGoOnline?: boolean;
-  onToggleAttempt?: () => void;
-}
-
-function DashboardHeader({
-  canGoOnline = true,
-  onToggleAttempt,
-}: DashboardHeaderProps) {
+function DashboardHeader() {
   const { colors } = useTheme();
   const { t } = useTranslation();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
   const dispatch = useAppDispatch();
   const router = useRouter();
-  const { showBanner } = useNotificationContext();
   const businessStatus = useAppSelector((state) => state.user.businessStatus);
   const userRole = useAppSelector((state) => state.user.userRole);
   const isGuest = useAppSelector((state) => state.user.isGuest);
@@ -199,8 +186,6 @@ function DashboardHeader({
   const isOnline = businessStatus?.active ?? false;
   const insets = useSafeAreaInsets();
   const avatarUri = resolveApiImageUrl(profileImageUrl);
-
-  const toggleLoading = useAppSelector((state) => state.general.toggleLoading);
 
   const handleProfilePress = useCallback(() => {
     router.push("/(main)/dashboard/(account)" as any);
@@ -269,15 +254,6 @@ function DashboardHeader({
     `${businessStatus?.business_id ?? ""}:${businessStatus?.subscription_status ?? ""}:${businessStatus?.subscription_plan_name ?? ""}`,
   );
 
-  // For staff and client, always allow going online
-  const actualCanGoOnline = userRole !== "business" || !showBusinessSubscriptipn;
-
-  const handleBlockedActiveToggle = useCallback(() => {
-    if (showBusinessSubscriptipn) {
-      dispatch(setBusinessPlansModalVisible(true));
-    }
-  }, [dispatch, showBusinessSubscriptipn]);
-
   const actionBanners = [
     showBusinessSubscriptipn && {
       key: "plan",
@@ -328,52 +304,6 @@ function DashboardHeader({
     cta: string;
     onPress: () => void;
   }[];
-
-  const handleToggleChange = useCallback(
-    async (value: boolean) => {
-      // Only dispatch if the value is actually different from current state
-      // This prevents accidental toggles when component re-renders
-      if (value !== isOnline) {
-        if (value === true && !actualCanGoOnline) {
-          handleBlockedActiveToggle();
-          return;
-        }
-
-        // Show loader in toggle
-        dispatch(setToggleLoading(true));
-
-        // Call API to update active status
-        try {
-          await dispatch(
-            updateBusinessActiveStatus({ active: value }),
-          ).unwrap();
-          // Success - status already updated in Redux via thunk
-        } catch (error: any) {
-          // Check if it's a no internet error - don't show banner (toast already shown)
-          if (error?.isNoInternet) {
-            // Toast already shown by API service, no need to show banner
-            return;
-          }
-          // API failed - show error banner
-          const errorMessage =
-            error?.message || error || "Failed to update online status";
-          showBanner(t("error"), errorMessage, "error", 2500);
-          // Revert toggle to previous state on error
-          // The toggle will automatically revert since businessStatus wasn't updated
-        } finally {
-          dispatch(setToggleLoading(false));
-        }
-      }
-    },
-    [
-      dispatch,
-      isOnline,
-      actualCanGoOnline,
-      handleBlockedActiveToggle,
-      showBanner,
-      t,
-    ],
-  );
 
   const renderBanner = (
     banner: (typeof actionBanners)[number],
@@ -504,15 +434,9 @@ function DashboardHeader({
               {profileButton}
             </View>
           ) : (
-            <View style={styles.toggleContainer}>
-              <StaffCustomerStatusControl
-                value={isOnline}
-                onValueChange={handleToggleChange}
-                loading={toggleLoading}
-              />
-              {/* Staff have no Profile tab — the avatar opens it */}
-              {userRole === "staff" && profileButton}
-            </View>
+            // Staff have no Profile tab — the avatar opens it.
+            // No online/offline toggle (client 10-30: it only drove a dot).
+            <View style={styles.toggleContainer}>{profileButton}</View>
           )}
         </View>
       </View>

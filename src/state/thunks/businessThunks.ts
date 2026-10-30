@@ -10,7 +10,6 @@ import {
 import { ApiService } from "@/src/services/api";
 import {
   businessEndpoints,
-  staffEndpoints,
   userEndpoints,
 } from "@/src/services/endpoints";
 import { BusinessStatus, deriveHasAddStaff, DEFAULT_OWNER_AS_STAFF, normalizeOwnerAsStaff } from "../slices/userSlice";
@@ -184,56 +183,6 @@ export const fetchUserStatus = createAsyncThunk<
     dispatch(setBusinessStatusLoading(false));
   }
 });
-
-export const updateBusinessActiveStatus = createAsyncThunk<
-  boolean,
-  { active: boolean },
-  { dispatch: AppDispatch; state: RootState }
->(
-  "user/ActiveStatus",
-  async ({ active }, { dispatch, rejectWithValue, getState }) => {
-    try {
-      const state = getState();
-      const userRole = state.user.userRole;
-
-      // Use different endpoint based on user role
-      const endpoint =
-        userRole === "staff"
-          ? staffEndpoints.profile
-          : businessEndpoints.profile;
-
-      const response = await ApiService.post<{
-        success: boolean;
-        message: string;
-        data: {
-          active: boolean;
-        };
-      }>(endpoint, {
-        active,
-      });
-
-      if (response.success && response.data) {
-        // Only update active field in existing businessStatus, keep rest same
-        const currentBusinessStatus = getState().user.businessStatus;
-        if (currentBusinessStatus) {
-          dispatch(
-            setBusinessStatus({
-              ...currentBusinessStatus,
-              active: response.data.active ?? false,
-            }),
-          );
-        }
-        return response.data.active ?? false;
-      }
-      return rejectWithValue("Failed to update active status");
-    } catch (error: any) {
-      return rejectWithValue({
-        message: error.message || "Failed to update active status",
-        isNoInternet: error?.isNoInternet || false,
-      });
-    }
-  },
-);
 
 /** Mark Stripe-connected congrats as seen for this business (idempotent, server-persisted). */
 export const markStripeConnectCongratsSeen = createAsyncThunk<

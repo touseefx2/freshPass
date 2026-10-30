@@ -355,17 +355,6 @@ const createStyles = (theme: Theme) =>
       height: "100%",
       borderRadius: AVATAR_SIZE / 2,
     },
-    statusDot: {
-      position: "absolute",
-      right: moderateWidthScale(2),
-      bottom: moderateHeightScale(2),
-      width: widthScale(15),
-      height: widthScale(15),
-      borderRadius: widthScale(8),
-      borderWidth: 2.5,
-      borderColor: theme.darkGreen,
-      zIndex: 2,
-    },
     heroInfo: {
       flex: 1,
       justifyContent: "center",
@@ -382,28 +371,6 @@ const createStyles = (theme: Theme) =>
       flexWrap: "wrap",
       alignItems: "center",
       gap: moderateWidthScale(6),
-    },
-    statusPill: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: moderateWidthScale(5),
-      paddingHorizontal: moderateWidthScale(10),
-      paddingVertical: moderateHeightScale(5),
-      borderRadius: moderateWidthScale(999),
-      backgroundColor: theme.white15,
-    },
-    statusPillInactive: {
-      backgroundColor: theme.white15,
-    },
-    statusPillDot: {
-      width: widthScale(7),
-      height: widthScale(7),
-      borderRadius: widthScale(4),
-    },
-    statusPillText: {
-      fontSize: fontSize.size11,
-      fontFamily: fonts.fontMedium,
-      color: theme.white,
     },
     ownerPill: {
       paddingHorizontal: moderateWidthScale(10),
@@ -1104,7 +1071,6 @@ export default function StaffDetail() {
         country_code: data.user?.country_code || "",
         phone: data.user?.phone || "",
         profile_image_url: editProfileImageUrl,
-        active: data.active ? "1" : "0",
         working_hours: JSON.stringify(data.user?.working_hours ?? []),
         is_owner: isOwnerStaffRecord(data, ownerStaffId) ? "1" : "0",
         monthly_reel_limit:
@@ -1363,7 +1329,6 @@ export default function StaffDetail() {
     (a, b) => dayOrder.indexOf(a.day) - dayOrder.indexOf(b.day),
   );
 
-  const isActive = Boolean(data.active);
   const totalAppointments = data.completed_appointments_count ?? 0;
   const ratingValue = parseRating(data.average_rating);
   const ratingsCount = data.ratings_count ?? 0;
@@ -1538,16 +1503,6 @@ export default function StaffDetail() {
                     style={styles.avatarImage}
                     resizeMode="cover"
                   />
-                  <View
-                    style={[
-                      styles.statusDot,
-                      {
-                        backgroundColor: isActive
-                          ? theme.toggleActive
-                          : theme.lightGreen5,
-                      },
-                    ]}
-                  />
                 </View>
               </View>
 
@@ -1556,33 +1511,13 @@ export default function StaffDetail() {
                   {data.name}
                 </Text>
 
-                <View style={styles.badgesRow}>
-                  <View
-                    style={[
-                      styles.statusPill,
-                      !isActive && styles.statusPillInactive,
-                    ]}
-                  >
-                    <View
-                      style={[
-                        styles.statusPillDot,
-                        {
-                          backgroundColor: isActive
-                            ? theme.toggleActive
-                            : theme.lightGreen5,
-                        },
-                      ]}
-                    />
-                    <Text style={styles.statusPillText}>
-                      {isActive ? "Active" : "Inactive"}
-                    </Text>
-                  </View>
-                  {isOwnerStaff ? (
+                {isOwnerStaff ? (
+                  <View style={styles.badgesRow}>
                     <View style={styles.ownerPill}>
                       <Text style={styles.ownerPillText}>{t("owner")}</Text>
                     </View>
-                  ) : null}
-                </View>
+                  </View>
+                ) : null}
 
                 {data.description ? (
                   <Text style={styles.description} numberOfLines={2}>

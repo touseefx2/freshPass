@@ -87,16 +87,6 @@ const createStyles = (theme: Theme) =>
       borderRadius: AVATAR / 2,
       backgroundColor: theme.staffAvatarDisc,
     },
-    dot: {
-      position: "absolute",
-      top: moderateWidthScale(8),
-      right: moderateWidthScale(8),
-      width: moderateWidthScale(11),
-      height: moderateWidthScale(11),
-      borderRadius: moderateWidthScale(6),
-      borderWidth: 1.5,
-      borderColor: theme.white,
-    },
     body: {
       height: BODY_HEIGHT,
       justifyContent: "center",
@@ -247,7 +237,6 @@ export default function StaffOverview({ staff, statsFor, onStaffChanged }: Props
         profile_image_url: member.user?.profile_image_url
           ? resolveImageUri(member.user.profile_image_url)
           : "",
-        active: member.active ? "1" : "0",
         working_hours: JSON.stringify(member.user?.working_hours ?? []),
         is_owner: "0",
         monthly_reel_limit:
@@ -352,7 +341,6 @@ export default function StaffOverview({ staff, statsFor, onStaffChanged }: Props
       >
         {staff.map((member) => {
           const stats = statsFor(member);
-          const isActive = member.active === 1;
           return (
             <View key={member.id} style={styles.cardShadow}>
               <TouchableOpacity
@@ -381,16 +369,6 @@ export default function StaffOverview({ staff, statsFor, onStaffChanged }: Props
                     uri={resolveImageUri(member.user?.profile_image_url)}
                     style={styles.avatar}
                     resizeMode="cover"
-                  />
-                  <View
-                    style={[
-                      styles.dot,
-                      {
-                        backgroundColor: isActive
-                          ? theme.toggleActive
-                          : theme.lightGreen5,
-                      },
-                    ]}
                   />
                 </View>
                 <View style={styles.body}>
@@ -448,7 +426,6 @@ export default function StaffOverview({ staff, statsFor, onStaffChanged }: Props
         imageUri={
           menuStaff ? resolveImageUri(menuStaff.user?.profile_image_url) : undefined
         }
-        isActive={menuStaff?.active === 1}
         onClose={() => setMenuStaff(null)}
         onEdit={handleEdit}
         onDelete={handleDelete}

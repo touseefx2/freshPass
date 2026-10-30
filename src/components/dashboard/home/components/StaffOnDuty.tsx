@@ -148,17 +148,6 @@ const createStyles = (theme: Theme) =>
       borderRadius: OWNER_AVATAR_SIZE / 2,
       backgroundColor: theme.emptyProfileImage,
     },
-    ownerStatusDot: {
-      position: "absolute",
-      bottom: moderateHeightScale(2),
-      left: moderateWidthScale(2),
-      width: moderateWidthScale(12),
-      height: moderateWidthScale(12),
-      borderRadius: moderateWidthScale(6),
-      borderWidth: 2,
-      borderColor: theme.white,
-      zIndex: 2,
-    },
     ownerProfileName: {
       flex: 1,
       fontSize: fontSize.size17,
@@ -350,23 +339,6 @@ const createStyles = (theme: Theme) =>
       height: "100%",
       backgroundColor: theme.emptyProfileImage,
     },
-    staffStatusDot: {
-      position: "absolute",
-      top: moderateHeightScale(8),
-      right: moderateWidthScale(8),
-      width: moderateWidthScale(10),
-      height: moderateWidthScale(10),
-      borderRadius: moderateWidthScale(5),
-      borderWidth: 1.5,
-      borderColor: theme.white,
-      zIndex: 2,
-    },
-    staffStatusDotActive: {
-      backgroundColor: theme.toggleActive,
-    },
-    staffStatusDotInactive: {
-      backgroundColor: theme.lightGreen5,
-    },
     staffInfoStrip: {
       position: "absolute",
       left: 0,
@@ -512,7 +484,6 @@ function StaffMotionCard({
 }: StaffMotionCardProps) {
   const { colors } = useTheme();
   const theme = colors as Theme;
-  const isActive = staff.active === 1;
   const experience = staff.description?.trim() || null;
 
   const motionStyle = useAnimatedStyle(() => {
@@ -552,14 +523,6 @@ function StaffMotionCard({
             uri={getStaffImageUri(staff)}
             style={styles.staffImage}
             resizeMode="cover"
-          />
-          <View
-            style={[
-              styles.staffStatusDot,
-              isActive
-                ? styles.staffStatusDotActive
-                : styles.staffStatusDotInactive,
-            ]}
           />
           <LinearGradient
             colors={["transparent", theme.lightGreen2, theme.lightGreen]}
@@ -626,7 +589,6 @@ export default function StaffOnDuty({ data, callApi }: StaffOnDutyProps) {
   const ownerImageUri = ownerStaff
     ? getStaffImageUri(ownerStaff)
     : getImageUri(user.profile_image_url);
-  const ownerIsActive = ownerStaff ? ownerStaff.active === 1 : ownerEnabled;
 
   useEffect(() => {
     callApi();
@@ -673,7 +635,6 @@ export default function StaffOnDuty({ data, callApi }: StaffOnDutyProps) {
         email: staff.email || "",
         description: staff.description || "",
         profile_image_url: editProfileImageUrl,
-        active: staff.active ? "1" : "0",
         working_hours: JSON.stringify(staff.user?.working_hours ?? []),
         // The owner card can't be edited from here, so this is always a staff row
         is_owner: "0",
@@ -890,14 +851,6 @@ export default function StaffOnDuty({ data, callApi }: StaffOnDutyProps) {
                   style={styles.ownerAvatar}
                 />
               </View>
-              <View
-                style={[
-                  styles.ownerStatusDot,
-                  ownerIsActive
-                    ? styles.staffStatusDotActive
-                    : styles.staffStatusDotInactive,
-                ]}
-              />
               <View style={styles.ownerBadge}>
                 <View style={styles.ownerBadgePill}>
                   <Text style={styles.ownerBadgeText}>{t("owner")}</Text>
@@ -1081,7 +1034,6 @@ export default function StaffOnDuty({ data, callApi }: StaffOnDutyProps) {
         imageUri={
           actionMenuStaff ? getStaffImageUri(actionMenuStaff) : undefined
         }
-        isActive={actionMenuStaff?.active === 1}
         onClose={closeStaffActionMenu}
         onEdit={handleEditStaff}
         onDelete={confirmDeleteStaff}

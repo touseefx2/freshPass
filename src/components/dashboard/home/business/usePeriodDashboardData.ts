@@ -85,11 +85,7 @@ export function usePeriodDashboardData(period: DashboardPeriod, options: Options
         staffEndpoints.list(),
       );
       if (response.success && Array.isArray(response.data)) {
-        // Active first, like the old Employees strip
-        const sorted = [...response.data].sort(
-          (a, b) => Number(b.active === 1) - Number(a.active === 1),
-        );
-        setStaffList(sorted);
+        setStaffList(response.data);
       }
     } catch (error) {
       if (!isRequestCanceled(error)) {

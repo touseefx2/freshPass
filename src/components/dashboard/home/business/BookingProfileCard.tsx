@@ -61,16 +61,6 @@ const createStyles = (theme: Theme) =>
       borderRadius: AVATAR / 2,
       backgroundColor: theme.emptyProfileImage,
     },
-    statusDot: {
-      position: "absolute",
-      top: moderateHeightScale(2),
-      right: moderateWidthScale(2),
-      width: moderateWidthScale(12),
-      height: moderateWidthScale(12),
-      borderRadius: moderateWidthScale(6),
-      borderWidth: 2,
-      borderColor: theme.white,
-    },
     ownerPill: {
       position: "absolute",
       bottom: 0,
@@ -153,11 +143,6 @@ export default function BookingProfileCard({
   const imageUri = resolveImageUri(
     ownerStaff?.user?.profile_image_url ?? user.profile_image_url,
   );
-  const isActive = isSolo
-    ? businessStatus?.active !== false
-    : ownerStaff
-      ? ownerStaff.active === 1
-      : ownerEnabled;
 
   const openProfile = () => {
     router.push("/(main)/dashboard/(account)/barberProfile" as any);
@@ -236,16 +221,6 @@ export default function BookingProfileCard({
         >
           <View style={styles.avatarWrap}>
             <AppImage uri={imageUri} style={styles.avatar} />
-            <View
-              style={[
-                styles.statusDot,
-                {
-                  backgroundColor: isActive
-                    ? theme.toggleActive
-                    : theme.lightGreen5,
-                },
-              ]}
-            />
             {!isSolo ? (
               <View style={styles.ownerPill}>
                 <Text style={styles.ownerPillText}>{t("owner")}</Text>

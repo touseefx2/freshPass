@@ -85,23 +85,6 @@ const createStyles = (theme: Theme) =>
       alignItems: "center",
       justifyContent: "center",
     },
-    statusDot: {
-      position: "absolute",
-      bottom: moderateHeightScale(4),
-      right: moderateWidthScale(4),
-      width: moderateWidthScale(18),
-      height: moderateWidthScale(18),
-      borderRadius: moderateWidthScale(9),
-      borderWidth: 3,
-      borderColor: theme.white,
-      zIndex: 3,
-    },
-    statusActive: {
-      backgroundColor: theme.toggleActive,
-    },
-    statusInactive: {
-      backgroundColor: theme.lightGreen5,
-    },
     card: {
       width: "100%",
       backgroundColor: theme.white,
@@ -185,7 +168,6 @@ interface StaffActionMenuModalProps {
   visible: boolean;
   staffName?: string;
   imageUri?: string;
-  isActive?: boolean;
   onClose: () => void;
   onEdit: () => void;
   onDelete: () => void;
@@ -195,7 +177,6 @@ export default function StaffActionMenuModal({
   visible,
   staffName,
   imageUri,
-  isActive = false,
   onClose,
   onEdit,
   onDelete,
@@ -270,12 +251,6 @@ export default function StaffActionMenuModal({
                 </View>
               )}
             </View>
-            <View
-              style={[
-                styles.statusDot,
-                isActive ? styles.statusActive : styles.statusInactive,
-              ]}
-            />
           </View>
 
           <Pressable

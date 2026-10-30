@@ -78,20 +78,6 @@ const createStyles = (theme: Theme) =>
       borderColor: theme.borderLight,
       overflow: "hidden",
     },
-    staffStatusDot: {
-      position: "absolute",
-      bottom: 4,
-      right: 3,
-      width: moderateWidthScale(8),
-      height: moderateWidthScale(8),
-      borderRadius: moderateWidthScale(8) / 2,
-    },
-    staffStatusDotActive: {
-      backgroundColor: theme.toggleActive,
-    },
-    staffStatusDotInactive: {
-      backgroundColor: theme.lightGreen5,
-    },
     staffInfo: {
       flex: 1,
     },
@@ -162,7 +148,6 @@ export default function StaffSelectionBottomSheet({
       name: "Anyone who's available",
       experience: null,
       image: null,
-      active: null,
       is_owner: false,
     },
     ...staffMembers.map((staff) => ({
@@ -170,7 +155,6 @@ export default function StaffSelectionBottomSheet({
       name: staff.name,
       experience: staff.experience,
       image: staff.image,
-      active: staff.active,
       is_owner: staff.is_owner === true,
     })),
   ];
@@ -222,16 +206,6 @@ export default function StaffSelectionBottomSheet({
                     uri="https://www.w3schools.com/howto/img_avatar2.png"
                     style={styles.staffImage}
                     resizeMode="cover"
-                  />
-                )}
-                {staff.active !== null && (
-                  <View
-                    style={[
-                      styles.staffStatusDot,
-                      staff.active
-                        ? styles.staffStatusDotActive
-                        : styles.staffStatusDotInactive,
-                    ]}
                   />
                 )}
               </View>

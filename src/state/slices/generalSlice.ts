@@ -68,7 +68,6 @@ export interface GeneralState {
   actionLoader: boolean; // Global action loader state
   actionLoaderTitle: string; // Title to display with action loader
   locationLoading: boolean; // Location loading state
-  toggleLoading: boolean; // Toggle loading state (not persisted)
   role: UserRole; // Selected user role
   isVisitFirst: boolean; // Track if it's the first visit
   selectedDate: string | null; // Selected date for viewing appointments (ISO string format)
@@ -153,7 +152,6 @@ const initialState: GeneralState = {
   actionLoader: false,
   actionLoaderTitle: "",
   locationLoading: false,
-  toggleLoading: false,
   role: null,
   isVisitFirst: true,
   selectedDate: null,
@@ -236,9 +234,6 @@ const generalSlice = createSlice({
     },
     setLocationLoading(state, action: PayloadAction<boolean>) {
       state.locationLoading = action.payload;
-    },
-    setToggleLoading(state, action: PayloadAction<boolean>) {
-      state.toggleLoading = action.payload;
     },
     setRole(state, action: PayloadAction<UserRole>) {
       state.role = action.payload;
@@ -542,7 +537,6 @@ const generalSlice = createSlice({
       state.actionLoader = initialState.actionLoader;
       state.actionLoaderTitle = initialState.actionLoaderTitle;
       state.locationLoading = initialState.locationLoading;
-      state.toggleLoading = initialState.toggleLoading;
       state.role = initialState.role;
       // state.isVisitFirst = initialState.isVisitFirst;
       state.selectedDate = initialState.selectedDate;
@@ -595,7 +589,6 @@ export const {
   setActionLoader,
   setActionLoaderTitle,
   setLocationLoading,
-  setToggleLoading,
   setRole,
   setIsVisitFirst,
   setSelectedDate,

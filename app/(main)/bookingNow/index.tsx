@@ -1844,8 +1844,7 @@ export default function BookingNow() {
         ) {
           hasAppliedStaffParam.current = true;
           const sameStaff = staffMembersData.find(
-            (s: { id: number; active?: boolean }) =>
-              String(s.id) === params.staff_id && s.active !== false,
+            (s: { id: number }) => String(s.id) === params.staff_id,
           );
           if (sameStaff) {
             dispatch(setSelectedStaff(String(sameStaff.id)));
@@ -1975,10 +1974,7 @@ export default function BookingNow() {
       return;
     }
     const dealStaffId = params.staff_id?.trim();
-    // Same filter as the staff-param apply above: an inactive one is never picked
-    const staffListed = staffMembers.some(
-      (s) => String(s.id) === dealStaffId && s.active !== false,
-    );
+    const staffListed = staffMembers.some((s) => String(s.id) === dealStaffId);
     if (!isSoloPlan && staffListed && selectedStaff !== dealStaffId) return;
     hasAppliedDealPreset.current = true;
     const day = dayjs(params.appointment_date.trim());

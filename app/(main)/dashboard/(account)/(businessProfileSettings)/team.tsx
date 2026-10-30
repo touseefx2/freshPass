@@ -203,25 +203,6 @@ const createStyles = (theme: Theme) =>
       borderRadius: widthScale(46) / 2,
       backgroundColor: theme.emptyProfileImage,
     },
-    avatarDot: {
-      position: "absolute",
-      right: 0,
-      bottom: 0,
-      width: moderateWidthScale(13),
-      height: moderateWidthScale(13),
-      borderRadius: moderateWidthScale(7),
-      borderWidth: 2,
-      borderColor: theme.white,
-    },
-    dotActive: {
-      backgroundColor: theme.toggleActive,
-    },
-    dotPending: {
-      backgroundColor: theme.orangeBrown,
-    },
-    dotInactive: {
-      backgroundColor: theme.lightGreen4,
-    },
     memberInfo: {
       flex: 1,
       gap: moderateHeightScale(2),
@@ -513,12 +494,7 @@ export default function ManageTeamScreen() {
       }>(staffEndpoints.list());
 
       if (response.success && Array.isArray(response.data)) {
-        // Active members first, same as the home screen
-        setTeamMembers(
-          [...response.data].sort(
-            (a, b) => Number(b.active === 1) - Number(a.active === 1),
-          ),
-        );
+        setTeamMembers(response.data);
       } else {
         setTeamMembers([]);
       }
@@ -674,7 +650,6 @@ export default function ManageTeamScreen() {
         email: member.email || "",
         description: member.description || "",
         profile_image_url: profileImage ? getImageUri(profileImage) : "",
-        active: member.active ? "1" : "0",
         working_hours: JSON.stringify(member.user?.working_hours ?? []),
         is_owner: "0",
         monthly_reel_limit:
@@ -735,13 +710,12 @@ export default function ManageTeamScreen() {
 
   const getMemberStatus = (
     member: TeamMember,
-  ): { label: string; tone: "active" | "pending" | "inactive" } => {
+  ): { label: string; tone: "active" | "pending" } => {
     if (member.invitation_token && member.invitation_status !== "accepted") {
       return { label: t("invitationSent"), tone: "pending" };
     }
-    return member.active === 1
-      ? { label: t("active"), tone: "active" }
-      : { label: t("inactive"), tone: "inactive" };
+    // No online/offline any more (client 10-30): joined = active
+    return { label: t("active"), tone: "active" };
   };
 
   const isOwnerMember = (member: TeamMember) =>
@@ -854,7 +828,6 @@ export default function ManageTeamScreen() {
                   <View style={styles.ownerProfileRow}>
                     <View style={styles.ownerAvatarWrap}>
                       <AppImage uri={ownerImageUri} style={styles.ownerAvatar} />
-                      <View style={[styles.avatarDot, styles.dotActive]} />
                     </View>
                     <View style={styles.ownerInfo}>
                       <View style={styles.ownerNameRow}>
@@ -946,12 +919,6 @@ export default function ManageTeamScreen() {
                   {employees.map((member, index) => {
                     const reelRow = findStaffReelLimit(reelLimits, member.id);
                     const status = getMemberStatus(member);
-                    const dotStyle =
-                      status.tone === "active"
-                        ? styles.dotActive
-                        : status.tone === "pending"
-                          ? styles.dotPending
-                          : styles.dotInactive;
                     return (
                       <React.Fragment key={member.id}>
                         {index > 0 ? <View style={styles.rowDivider} /> : null}
@@ -968,7 +935,6 @@ export default function ManageTeamScreen() {
                               uri={getImageUri(member.user?.profile_image_url)}
                               style={styles.memberAvatar}
                             />
-                            <View style={[styles.avatarDot, dotStyle]} />
                           </View>
                           <View style={styles.memberInfo}>
                             <View style={styles.memberNameRow}>
@@ -1094,7 +1060,6 @@ export default function ManageTeamScreen() {
             ? getImageUri(actionMenuMember.user?.profile_image_url)
             : undefined
         }
-        isActive={actionMenuMember?.active === 1}
         onClose={() => setActionMenuMember(null)}
         onEdit={handleEditMember}
         onDelete={handleDeleteMember}
