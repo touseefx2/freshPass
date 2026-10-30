@@ -177,59 +177,43 @@ function pickNumber(
   return null;
 }
 
+/**
+ * Single-screen targets are pushed straight on top of the notification list
+ * (no back() first): on business the list is a tab, and back() would drop to
+ * Home, so the target's back button would land there instead of the list.
+ */
 function openReelPlayer(
   router: Router,
   reelId: number,
-  options?: { openComments?: boolean; fromInAppList?: boolean },
+  options?: { openComments?: boolean },
 ): void {
-  const path = {
-    pathname: "/(main)/reelsFeed" as const,
+  router.push({
+    pathname: "/(main)/reelsFeed",
     params: {
       first_reel_id: String(reelId),
       ...(options?.openComments ? { open_comments: "1" } : {}),
     },
-  };
-  if (options?.fromInAppList) {
-    if (router.canGoBack()) {
-      router.back();
-    }
-    setTimeout(() => {
-      router.push(path as any);
-    }, AI_MEMORY_BACK_DELAY_MS);
-    return;
-  }
-  router.push(path as any);
+  } as any);
 }
 
 function openBusinessProfile(
   router: Router,
   businessId: number,
-  options?: { fromInAppList?: boolean; scrollTo?: string },
+  options?: { scrollTo?: string },
 ): void {
-  const path = {
-    pathname: "/(main)/businessDetail" as const,
+  router.push({
+    pathname: "/(main)/businessDetail",
     params: {
       business_id: String(businessId),
       ...(options?.scrollTo ? { scroll_to: options.scrollTo } : {}),
     },
-  };
-  if (options?.fromInAppList) {
-    if (router.canGoBack()) {
-      router.back();
-    }
-    setTimeout(() => {
-      router.push(path as any);
-    }, AI_MEMORY_BACK_DELAY_MS);
-    return;
-  }
-  router.push(path as any);
+  } as any);
 }
 
 /** Moderation alert → that reel; if an admin removed it (404), stay put. */
 async function openModeratedReel(
   router: Router,
   reelId: number,
-  fromInAppList?: boolean,
 ): Promise<void> {
   try {
     await getPublicReel(reelId);
@@ -237,7 +221,7 @@ async function openModeratedReel(
     Logger.log("Moderated reel not available, staying put:", reelId, error);
     return;
   }
-  openReelPlayer(router, reelId, { fromInAppList });
+  openReelPlayer(router, reelId);
 }
 
 function openOwnerReelsList(
@@ -376,6 +360,8 @@ function navigateFromNotificationList(
   path: string,
   fromInAppList?: boolean,
 ): void {
+  // Fallback to the list itself while already on it — stay put
+  if (fromInAppList && path === "/(main)/notification") return;
   if (fromInAppList) {
     if (router.canGoBack()) {
       router.back();
@@ -578,7 +564,7 @@ export function navigateFromNotificationData(
       (subType === "moderation_warning" || subType === "posting_suspended") &&
       reelId != null
     ) {
-      void openModeratedReel(router, reelId, options?.fromInAppList);
+      void openModeratedReel(router, reelId);
     }
     // posting_restored / account_restored: nothing to open (row is marked read)
     return;
@@ -928,21 +914,10 @@ export function navigateFromNotificationData(
       return;
     }
 
-    const go = () => {
-      router.push({
-        pathname: "/aiResults",
-        params: { reelId: String(reelId), fromNotification: "1" },
-      });
-    };
-
-    if (options?.fromInAppList) {
-      if (router.canGoBack()) {
-        router.back();
-      }
-      setTimeout(go, AI_MEMORY_BACK_DELAY_MS);
-    } else {
-      go();
-    }
+    router.push({
+      pathname: "/aiResults",
+      params: { reelId: String(reelId), fromNotification: "1" },
+    });
     Logger.log(
       "------>navigateFromNotificationData (reel_generation) -> aiResults",
       { reel_id: reelId, status },
@@ -971,27 +946,16 @@ export function navigateFromNotificationData(
       return;
     }
 
-    const go = () => {
-      if (autoReelId != null) {
-        router.push({
-          pathname: "/(main)/autoReel" as any,
-          params: { autoReelId: String(autoReelId) },
-        });
-        return;
-      }
+    if (autoReelId != null) {
+      router.push({
+        pathname: "/(main)/autoReel" as any,
+        params: { autoReelId: String(autoReelId) },
+      });
+    } else {
       router.push({
         pathname: "/(main)/publishReel" as any,
         params: { reelId: String(reelId) },
       });
-    };
-
-    if (options?.fromInAppList) {
-      if (router.canGoBack()) {
-        router.back();
-      }
-      setTimeout(go, AI_MEMORY_BACK_DELAY_MS);
-    } else {
-      go();
     }
     Logger.log("------>navigateFromNotificationData (auto_reel) -> autoReel", {
       auto_reel_id: autoReelId,
@@ -1128,9 +1092,7 @@ export function navigateFromNotificationData(
     const reelId = pickNumber(data, "reel_id");
 
     if (subType === "follow_new_reel" && reelId != null) {
-      openReelPlayer(router, reelId, {
-        fromInAppList: options?.fromInAppList,
-      });
+      openReelPlayer(router, reelId);
       Logger.log(
         "------>navigateFromNotificationData (follow_new_reel) -> reelsFeed",
         { reel_id: reelId },
@@ -1139,10 +1101,7 @@ export function navigateFromNotificationData(
     }
 
     if (subType === "follow_new_membership" && businessId != null) {
-      openBusinessProfile(router, businessId, {
-        fromInAppList: options?.fromInAppList,
-        scrollTo: "memberships",
-      });
+      openBusinessProfile(router, businessId, { scrollTo: "memberships" });
       Logger.log(
         "------>navigateFromNotificationData (follow_new_membership) -> businessDetail memberships",
         { business_id: businessId },
@@ -1152,9 +1111,7 @@ export function navigateFromNotificationData(
 
     // follow_new_service + unknown follow subtypes → business profile
     if (businessId != null) {
-      openBusinessProfile(router, businessId, {
-        fromInAppList: options?.fromInAppList,
-      });
+      openBusinessProfile(router, businessId);
       Logger.log(
         `------>navigateFromNotificationData (follow/${subType ?? "unknown"}) -> businessDetail`,
         { business_id: businessId },
@@ -1167,9 +1124,7 @@ export function navigateFromNotificationData(
   if (type === "business_follower") {
     const ownBusinessId = store.getState().user.business_id;
     if (ownBusinessId != null) {
-      openBusinessProfile(router, Number(ownBusinessId), {
-        fromInAppList: options?.fromInAppList,
-      });
+      openBusinessProfile(router, Number(ownBusinessId));
       Logger.log(
         "------>navigateFromNotificationData (business_new_follower) -> own businessDetail",
         { business_id: ownBusinessId },
@@ -1234,10 +1189,7 @@ export function navigateFromNotificationData(
     if (subType === "business_reel_comment") {
       const reelId = pickNumber(data, "reel_id", "model_id");
       if (reelId != null) {
-        openReelPlayer(router, reelId, {
-          openComments: true,
-          fromInAppList: options?.fromInAppList,
-        });
+        openReelPlayer(router, reelId, { openComments: true });
         Logger.log(
           "------>navigateFromNotificationData (business_reel_comment) -> reelsFeed + comments",
           { reel_id: reelId, comment_id: data.comment_id },
@@ -1249,20 +1201,10 @@ export function navigateFromNotificationData(
     if (subType === "business_reel_booking") {
       const appointmentId = pickNumber(data, "appointment_id");
       if (appointmentId != null) {
-        const path = {
-          pathname: "/(main)/bookingDetailsById" as const,
+        router.push({
+          pathname: "/(main)/bookingDetailsById",
           params: { bookingId: String(appointmentId) },
-        };
-        if (options?.fromInAppList) {
-          if (router.canGoBack()) {
-            router.back();
-          }
-          setTimeout(() => {
-            router.push(path as any);
-          }, AI_MEMORY_BACK_DELAY_MS);
-        } else {
-          router.push(path as any);
-        }
+        });
         Logger.log(
           "------>navigateFromNotificationData (business_reel_booking) -> bookingDetailsById",
           { appointment_id: appointmentId },
@@ -1274,20 +1216,10 @@ export function navigateFromNotificationData(
     if (subType === "business_reel_likes") {
       const reelId = pickNumber(data, "top_reel_id", "model_id");
       if (reelId != null) {
-        const path = {
-          pathname: "/(main)/reelStats" as const,
+        router.push({
+          pathname: "/(main)/reelStats" as any,
           params: { id: String(reelId) },
-        };
-        if (options?.fromInAppList) {
-          if (router.canGoBack()) {
-            router.back();
-          }
-          setTimeout(() => {
-            router.push(path as any);
-          }, AI_MEMORY_BACK_DELAY_MS);
-        } else {
-          router.push(path as any);
-        }
+        });
         Logger.log(
           "------>navigateFromNotificationData (business_reel_likes) -> reelStats",
           { reel_id: reelId },
