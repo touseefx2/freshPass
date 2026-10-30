@@ -1,4 +1,4 @@
-/** Live Available Now status — same object on reels, `/available-now/me` and the customer list. */
+/** Live Available Now status of one business (customer list row). */
 export type AvailableNowState = "available" | "unavailable" | "off";
 
 export type AvailableNowMode = "calendar" | "manual";
@@ -35,30 +35,6 @@ export type AvailableNowStatus = {
   window_ends_at: string | null;
 };
 
-export type AvailableNowSettings = {
-  enabled: boolean;
-  mode: AvailableNowMode;
-  service_id: number | null;
-  manual_starts_at: string | null;
-  manual_ends_at: string | null;
-};
-
-/** GET / PUT /api/available-now/me */
-export type AvailableNowMe = {
-  settings: AvailableNowSettings;
-  status: AvailableNowStatus | null;
-};
-
-export type SaveAvailableNowPayload = {
-  enabled: boolean;
-  mode: AvailableNowMode;
-  service_id?: number | null;
-  /** Manual only. Salon clock "15:00" or "2026-10-19 15:00"; left out = now */
-  start_at?: string;
-  /** Manual only, 15–720 */
-  duration_minutes?: number;
-};
-
 export type AvailableNowBusiness = {
   id: number;
   title: string;
@@ -67,12 +43,27 @@ export type AvailableNowBusiness = {
   city?: string | null;
   state?: string | null;
   category_id?: number | null;
+  /** true: Solo, or no staff yet — booked against the business's own hours */
+  is_single_provider?: boolean;
+  /** Has an open job post — gold frame + HIRING corner badge, like other business cards */
+  is_hiring?: boolean;
 };
 
-/** One row of GET /api/available-now */
+export type AvailableNowStaff = {
+  /** Staff id used in booking */
+  id: number;
+  name: string | null;
+  is_owner: boolean;
+};
+
+/** One row of GET /api/available-now — one business */
 export type AvailableNowListItem = AvailableNowStatus & {
   distance_km?: number | null;
   business: AvailableNowBusiness;
+  /** Staff free at next_opening_at; [] for a single-provider business */
+  available_staff?: AvailableNowStaff[];
+  /** Last free start today */
+  last_opening_at?: string | null;
 };
 
 export type AvailableNowListParams = {
@@ -80,9 +71,7 @@ export type AvailableNowListParams = {
   latitude?: number;
   longitude?: number;
   radius_km?: number;
-  min_price?: number;
-  max_price?: number;
-  /** 0 = free right now only, 60 = next hour, 1440 = today */
+  /** left out = rest of today, 0 = now, 60 = next hour, 1440 = today */
   within_minutes?: number;
   page?: number;
   per_page?: number;

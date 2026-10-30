@@ -125,12 +125,17 @@ interface BuyBusinessPlanModalProps {
   visible: boolean;
   onClose: () => void;
   onViewPlans: () => void;
+  /** Override the staff wording (e.g. Hiring) */
+  subtitle?: string;
+  message?: string;
 }
 
 export default function BuyBusinessPlanModal({
   visible,
   onClose,
   onViewPlans,
+  subtitle,
+  message,
 }: BuyBusinessPlanModalProps) {
   const { colors } = useTheme();
   const theme = colors as Theme;
@@ -228,11 +233,11 @@ export default function BuyBusinessPlanModal({
           <Text style={styles.title}>{t("pleaseBuyBusinessPlan")}</Text>
 
           <Text style={styles.subtitle}>
-            {t("buyBusinessPlanModalSubtitle")}
+            {subtitle ?? t("buyBusinessPlanModalSubtitle")}
           </Text>
 
           <Text style={styles.message}>
-            {t("buyBusinessPlanBeforeAddingStaff")}
+            {message ?? t("buyBusinessPlanBeforeAddingStaff")}
           </Text>
 
           <View style={styles.buttonContainer}>

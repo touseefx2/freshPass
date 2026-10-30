@@ -19,6 +19,7 @@ import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "@/src/hooks/hooks";
+import { useHiringPlanGate } from "@/src/hooks/useHiringPlanGate";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import {
@@ -125,6 +126,7 @@ export default function JobPostsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { ensureCanHire, planModals } = useHiringPlanGate();
   // Answers for an older filter / refresh are dropped
   const requestRef = useRef(0);
   const postsRef = useRef(posts);
@@ -227,9 +229,11 @@ export default function JobPostsScreen() {
     [filter],
   );
 
+  // No plan yet (or Solo): ask for the Business plan first
   const openEditor = useCallback(() => {
+    if (!ensureCanHire()) return;
     router.push(EDITOR_PATH as any);
-  }, [router]);
+  }, [ensureCanHire, router]);
 
   const openPost = useCallback(
     (post: JobPost) => {
@@ -350,6 +354,7 @@ export default function JobPostsScreen() {
           showsVerticalScrollIndicator={false}
         />
       )}
+      {planModals}
     </View>
   );
 }

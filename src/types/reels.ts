@@ -1,6 +1,5 @@
 import type { MediaVideo } from "@/src/types/media";
 import type { ShopProduct } from "@/src/types/shopProduct";
-import type { AvailableNowStatus } from "@/src/types/availableNow";
 
 export type ReelStatus = "draft" | "published" | "removed";
 
@@ -64,10 +63,6 @@ export type OwnerReel = {
   product_tag: string | null;
   product_id?: number | null;
   product?: ShopProduct | null;
-  /** The creator chose to show the Available Now button */
-  available_now: boolean;
-  /** Live status from the creator's calendar; null when available_now is off (and on drafts) */
-  availability?: AvailableNowStatus | null;
   published_at: string | null;
   category: ReelCategory | null;
   service: ReelService | null;
@@ -93,10 +88,6 @@ export type FeedReel = {
   product_tag: string | null;
   product_id?: number | null;
   product?: ShopProduct | null;
-  /** The creator chose to show the Available Now button */
-  available_now: boolean;
-  /** Live status from the creator's calendar; null when available_now is off */
-  availability?: AvailableNowStatus | null;
   published_at: string | null;
   video: ReelVideo;
   category: ReelCategory | null;
@@ -225,7 +216,6 @@ export type CreateReelPayload = {
   promotion_text?: string;
   product_tag?: string;
   product_id?: number | null;
-  available_now?: boolean;
   publish?: boolean;
 };
 
@@ -238,7 +228,6 @@ export type UpdateReelPayload = {
   promotion_text?: string | null;
   product_tag?: string | null;
   product_id?: number | null;
-  available_now?: boolean;
 };
 
 export type FunnelWindow = {
@@ -746,7 +735,6 @@ export type PublishAutoReelPayload = {
   promotion_text?: string | null;
   product_tag?: string | null;
   product_id?: number | null;
-  available_now?: boolean;
 };
 
 /** Video to play/download: the auto reel's own video, else an older result's draft video */

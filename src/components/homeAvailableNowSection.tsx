@@ -4,7 +4,6 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
@@ -19,6 +18,7 @@ import {
 import Logger from "@/src/services/logger";
 import { fetchAvailableNow } from "@/src/services/availableNowService";
 import type { AvailableNowListItem } from "@/src/types/availableNow";
+import { HIRING_CORNER_OVERHANG } from "@/src/components/jobs/jobBadges";
 import AvailableNowCard, {
   bookAvailableNow,
   openAvailableNowProfile,
@@ -62,6 +62,11 @@ const createStyles = (theme: Theme) =>
     },
     listPad: {
       paddingHorizontal: moderateWidthScale(20),
+      gap: moderateWidthScale(12),
+    },
+    // Room above the cards for the hiring corner badge (only when needed)
+    listPadHiring: {
+      paddingTop: HIRING_CORNER_OVERHANG,
     },
     loader: {
       paddingVertical: moderateHeightScale(20),
@@ -69,9 +74,6 @@ const createStyles = (theme: Theme) =>
     },
     emptyCard: {
       marginHorizontal: moderateWidthScale(20),
-      flexDirection: "row",
-      alignItems: "center",
-      gap: moderateWidthScale(12),
       backgroundColor: theme.white,
       borderRadius: moderateWidthScale(14),
       borderWidth: 1,
@@ -80,25 +82,13 @@ const createStyles = (theme: Theme) =>
       paddingVertical: moderateHeightScale(14),
     },
     emptyText: {
-      flex: 1,
       fontSize: fontSize.size13,
       fontFamily: fonts.fontRegular,
       color: theme.lightGreen5,
     },
-    emptyBtn: {
-      paddingHorizontal: moderateWidthScale(14),
-      paddingVertical: moderateHeightScale(8),
-      borderRadius: moderateWidthScale(10),
-      backgroundColor: theme.buttonBack,
-    },
-    emptyBtnText: {
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontBold,
-      color: theme.buttonText,
-    },
   });
 
-/** Customer home strip: pros free right now, nearest first when location is set. */
+/** Customer home strip: businesses with free time left today, soonest then nearest. */
 export default function HomeAvailableNowSection() {
   const { colors } = useTheme();
   const theme = colors as Theme;
@@ -120,7 +110,6 @@ export default function HomeAvailableNowSection() {
       const { items: list } = await fetchAvailableNow({
         latitude: lat != null && lng != null ? Number(lat) : undefined,
         longitude: lat != null && lng != null ? Number(lng) : undefined,
-        within_minutes: 0,
         per_page: HOME_LIMIT,
       });
       setItems(list);
@@ -140,10 +129,11 @@ export default function HomeAvailableNowSection() {
     }, [load]),
   );
 
-  const openAll = (withinMinutes = 0) =>
+  // Same range as the strip: the rest of today
+  const openAll = () =>
     router.push({
       pathname: "/(main)/availableNow",
-      params: { within_minutes: String(withinMinutes) },
+      params: { within_minutes: "1440" },
     } as any);
 
   // Optional section — hide on error rather than show a broken strip
@@ -156,7 +146,7 @@ export default function HomeAvailableNowSection() {
           <View style={styles.liveDot} />
           <Text style={styles.title}>{t("availableNow")}</Text>
         </View>
-        <Text style={styles.seeAll} onPress={() => openAll(0)}>
+        <Text style={styles.seeAll} onPress={openAll}>
           {t("seeAll")}
         </Text>
       </View>
@@ -166,25 +156,22 @@ export default function HomeAvailableNowSection() {
           <ActivityIndicator size="small" color={theme.darkGreen} />
         </View>
       ) : items.length === 0 ? (
+        // Nothing left today, so a wider list would be empty too
         <View style={styles.emptyCard}>
-          <Text style={styles.emptyText}>{t("anEmptyTitle")}</Text>
-          <TouchableOpacity
-            style={styles.emptyBtn}
-            onPress={() => openAll(60)}
-            activeOpacity={0.85}
-          >
-            <Text style={styles.emptyBtnText}>{t("anWidenNextHour")}</Text>
-          </TouchableOpacity>
+          <Text style={styles.emptyText}>{t("anHomeEmpty")}</Text>
         </View>
       ) : (
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.listPad}
+          contentContainerStyle={[
+            styles.listPad,
+            items.some((i) => i.business?.is_hiring) && styles.listPadHiring,
+          ]}
         >
           {items.map((item) => (
             <AvailableNowCard
-              key={`${item.business.id}:${item.professional?.user_id ?? "biz"}`}
+              key={item.business.id}
               item={item}
               compact
               onPress={(i) => openAvailableNowProfile(router, i)}

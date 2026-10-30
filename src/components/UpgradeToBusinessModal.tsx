@@ -118,12 +118,15 @@ interface UpgradeToBusinessModalProps {
   visible: boolean;
   onClose: () => void;
   onUpgradePlan: () => void;
+  /** Override the staff wording (e.g. Hiring) */
+  message?: string;
 }
 
 export default function UpgradeToBusinessModal({
   visible,
   onClose,
   onUpgradePlan,
+  message,
 }: UpgradeToBusinessModalProps) {
   const { colors } = useTheme();
   const theme = colors as Theme;
@@ -221,7 +224,7 @@ export default function UpgradeToBusinessModal({
           <Text style={styles.title}>{t("upgradeToFreshPassBusiness")}</Text>
 
           <Text style={styles.message}>
-            {t("soloPlanCannotAddStaffMessage")}
+            {message ?? t("soloPlanCannotAddStaffMessage")}
           </Text>
 
           <View style={styles.buttonContainer}>

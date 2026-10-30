@@ -23,7 +23,6 @@ import {
   widthScale,
 } from "@/src/theme/dimensions";
 import StackHeader from "@/src/components/StackHeader";
-import CustomToggle from "@/src/components/customToggle";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { ApiService } from "@/src/services/api";
 import { fetchMyProducts } from "@/src/services/productService";
@@ -308,32 +307,6 @@ const createStyles = (theme: Theme) =>
     chipTextActive: {
       color: theme.buttonText,
     },
-    switchRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-      backgroundColor: theme.white,
-      borderRadius: moderateWidthScale(12),
-      borderWidth: 1,
-      borderColor: theme.lightGreen015,
-      paddingHorizontal: moderateWidthScale(14),
-      paddingVertical: moderateHeightScale(12),
-      gap: moderateWidthScale(12),
-    },
-    switchTextCol: {
-      flex: 1,
-      gap: moderateHeightScale(2),
-    },
-    switchLabel: {
-      fontSize: fontSize.size14,
-      fontFamily: fonts.fontMedium,
-      color: theme.darkGreen,
-    },
-    switchHint: {
-      fontSize: fontSize.size11,
-      fontFamily: fonts.fontRegular,
-      color: theme.lightGreen,
-    },
     footer: {
       paddingHorizontal: moderateWidthScale(16),
       paddingTop: moderateHeightScale(10),
@@ -521,7 +494,6 @@ export default function PublishReelScreen() {
   const [productsLoading, setProductsLoading] = useState(true);
   const [productsError, setProductsError] = useState(false);
   const [showProductPicker, setShowProductPicker] = useState(false);
-  const [availableNow, setAvailableNow] = useState(false);
   const [categoryId, setCategoryId] = useState<number | null>(
     resolvedBusinessCategory?.id ?? null,
   );
@@ -638,7 +610,6 @@ export default function PublishReelScreen() {
         setProductTag(reel.product_tag || "");
         const pid = reel.product_id ?? reel.product?.id ?? null;
         if (pid) setSelectedProductId(Number(pid));
-        setAvailableNow(!!reel.available_now);
         userPickedCategoryRef.current = true;
         setCategoryId(reel.category?.id ?? resolvedBusinessCategory?.id ?? null);
         setCategoryName(
@@ -807,7 +778,6 @@ export default function PublishReelScreen() {
     ...(promotionText.trim() ? { promotion_text: promotionText.trim() } : {}),
     ...(productTag.trim() ? { product_tag: productTag.trim() } : {}),
     ...(selectedProductId != null ? { product_id: selectedProductId } : {}),
-    available_now: availableNow,
     ...(publish ? { publish: true } : {}),
   });
 
@@ -825,7 +795,6 @@ export default function PublishReelScreen() {
           promotion_text: promotionText.trim() || null,
           product_tag: productTag.trim() || null,
           product_id: selectedProductId,
-          available_now: availableNow,
         });
         showBanner(t("success"), t("reelSaved"), "success", 2500);
       } else {
@@ -874,7 +843,6 @@ export default function PublishReelScreen() {
           promotion_text: promotionText.trim() || null,
           product_tag: productTag.trim() || null,
           product_id: selectedProductId,
-          available_now: availableNow,
         });
         if (existing?.status !== "published") {
           await publishReel(reelId);
@@ -1345,19 +1313,6 @@ export default function PublishReelScreen() {
               </Text>
             </View>
           ) : null}
-
-          <View style={styles.field}>
-            <View style={styles.switchRow}>
-              <View style={styles.switchTextCol}>
-                <Text style={styles.switchLabel}>{t("anReelToggleTitle")}</Text>
-                <Text style={styles.switchHint}>{t("availableNowSubtitle")}</Text>
-              </View>
-              <CustomToggle
-                value={availableNow}
-                onValueChange={setAvailableNow}
-              />
-            </View>
-          </View>
       </KeyboardAwareScrollView>
 
       <View>

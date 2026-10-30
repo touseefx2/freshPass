@@ -27,6 +27,7 @@ import { useTranslation } from "react-i18next";
 import BuyBusinessPlanModal from "@/src/components/BuyBusinessPlanModal";
 import CreateReelPickerSheet from "@/src/components/createReelPickerSheet";
 import UpgradeToBusinessModal from "@/src/components/UpgradeToBusinessModal";
+import { useHiringPlanGate } from "@/src/hooks/useHiringPlanGate";
 import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
@@ -311,6 +312,11 @@ export default function BusinessCreateMediaMenu({
   const [reelPickerVisible, setReelPickerVisible] = useState(false);
   const canAddStaff = canAddStaffMembers(businessStatus);
   const isSoloPlan = isSoloSubscription(businessStatus);
+  const {
+    ensureCanHire,
+    planModals: hiringPlanModals,
+    planPromptVisible: hiringPlanPromptVisible,
+  } = useHiringPlanGate();
 
   const { currentReminder, isSetupStep } = useSetupReminder();
   const glowFabId =
@@ -445,6 +451,7 @@ export default function BusinessCreateMediaMenu({
           return;
         case "hiring":
           closeAll();
+          if (!ensureCanHire()) return;
           // Profile → Business profile settings → Hiring (job posts)
           router.push("/(main)/dashboard/(account)");
           setTimeout(() => {
@@ -492,7 +499,7 @@ export default function BusinessCreateMediaMenu({
           closeAll();
       }
     },
-    [closeAll, handleAddEmployee, openReelPicker, router],
+    [closeAll, ensureCanHire, handleAddEmployee, openReelPicker, router],
   );
 
   const renderMenuIcon = (item: MenuItem) => {
@@ -516,7 +523,12 @@ export default function BusinessCreateMediaMenu({
     );
   };
 
-  if (!visible && !buyPlanModalVisible && !upgradeModalVisible) {
+  if (
+    !visible &&
+    !buyPlanModalVisible &&
+    !upgradeModalVisible &&
+    !hiringPlanPromptVisible
+  ) {
     return null;
   }
 
@@ -600,6 +612,8 @@ export default function BusinessCreateMediaMenu({
         onClose={() => setUpgradeModalVisible(false)}
         onUpgradePlan={handleUpgradePlan}
       />
+
+      {hiringPlanModals}
     </>
   );
 }

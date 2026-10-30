@@ -116,28 +116,3 @@ export function getAvailableNowBadge(
     label: [next, formatUntil(status, t)].filter(Boolean).join(" · "),
   };
 }
-
-/** Salon-clock "HH:mm" of an ISO time, for prefilling a manual start. */
-export function salonHHmm(iso: string | null | undefined): string | null {
-  const clock = parseSalonTime(iso);
-  return clock ? dayjs(clock.wall).format("HH:mm") : null;
-}
-
-/** Minutes since midnight on the salon's clock now; null when the device can't format the zone. */
-export function salonNowMinutes(timeZone: string | null | undefined): number | null {
-  if (!timeZone) return null;
-  try {
-    const parts = new Intl.DateTimeFormat("en-US", {
-      timeZone,
-      hour: "2-digit",
-      minute: "2-digit",
-      hourCycle: "h23",
-    }).formatToParts(new Date());
-    const hours = Number(parts.find((p) => p.type === "hour")?.value);
-    const minutes = Number(parts.find((p) => p.type === "minute")?.value);
-    if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return null;
-    return (hours % 24) * 60 + minutes;
-  } catch {
-    return null;
-  }
-}

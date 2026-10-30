@@ -1308,6 +1308,8 @@ export default function BookingNow() {
     slot_offer_id?: string;
     deal_price?: string;
     deal_normal_price?: string;
+    /** "1" = no service chosen yet (Available Now): start empty and open the picker. */
+    pick_service?: string;
   }>();
 
   // Customer mode can't book the user's own business — leave before any call
@@ -1421,6 +1423,8 @@ export default function BookingNow() {
 
   const selectedStaff = reduxSelectedStaff || "anyone";
   const [addServiceModalVisible, setAddServiceModalVisible] = useState(false);
+  // Opened once for pick_service, so a refetch never reopens it
+  const servicePickerOpenedRef = useRef(false);
   const [staffSearchQuery, setStaffSearchQuery] = useState("");
   const [showAnyoneHint, setShowAnyoneHint] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -1788,9 +1792,13 @@ export default function BookingNow() {
           }
         }
 
+        // Available Now: the customer picks the service, never the first one
+        const pickService =
+          params.pick_service === "1" && serviceIdsToSelect.length === 0;
+
         let serviceToSelect = null;
         let servicesToSelect: Service[] = [];
-        if (!params.subscription_id && allServicesData.length > 0) {
+        if (!params.subscription_id && !pickService && allServicesData.length > 0) {
           if (serviceIdsToSelect.length > 0) {
             servicesToSelect = serviceIdsToSelect
               .map((id) => allServicesData.find((s: Service) => s.id === id))
@@ -1846,6 +1854,12 @@ export default function BookingNow() {
         // Set selected service in selectedServices - skip for subscription booking
         if (params.subscription_id) {
           dispatch(setSelectedServices([]));
+        } else if (pickService) {
+          dispatch(setSelectedServices([]));
+          if (!servicePickerOpenedRef.current && allServicesData.length > 0) {
+            servicePickerOpenedRef.current = true;
+            setAddServiceModalVisible(true);
+          }
         } else if (servicesToSelect.length > 0) {
           // Deal: charge the deal price, normal price struck through
           const dealPrice = params.deal_price ? Number(params.deal_price) : NaN;
@@ -1900,6 +1914,7 @@ export default function BookingNow() {
     params.service_id,
     params.service_ids,
     params.subscription_id,
+    params.pick_service,
     reduxBusinessId,
     allServices.length,
     reduxSelectedServices,

@@ -45,7 +45,6 @@ import {
   ChoiceChips,
   FlowTextField,
   SelectField,
-  ToggleRow,
 } from "./detailsFields";
 import ProductPickerSheet, {
   isLinkedProductError,
@@ -258,7 +257,6 @@ export default function StudioPublishStep({
   const [serviceId, setServiceId] = useState<number | null>(null);
   const [lookTag, setLookTag] = useState("");
   const [promotionText, setPromotionText] = useState("");
-  const [availableNow, setAvailableNow] = useState(false);
   const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
   const [productTag, setProductTag] = useState("");
   const [productSheetOpen, setProductSheetOpen] = useState(false);
@@ -469,7 +467,6 @@ export default function StudioPublishStep({
     ...(promotionText.trim() ? { promotion_text: promotionText.trim() } : {}),
     ...(productTag.trim() ? { product_tag: productTag.trim() } : {}),
     ...(selectedProductId != null ? { product_id: selectedProductId } : {}),
-    available_now: availableNow,
     ...(publish ? { publish: true } : {}),
   });
 
@@ -783,12 +780,6 @@ export default function StudioPublishStep({
               onChangeText={setPromotionText}
               placeholder={t("promotionTextPlaceholder")}
               maxLength={255}
-            />
-            <ToggleRow
-              title={t("anReelToggleTitle")}
-              subtitle={t("availableNowSubtitle")}
-              value={availableNow}
-              onValueChange={setAvailableNow}
             />
           </View>
         ) : null}

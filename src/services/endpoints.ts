@@ -958,19 +958,13 @@ export const reelsEndpoints = {
   tryOn: (id: number | string) => `/api/reels/${id}/try-on`,
 };
 
-/**
- * Available Now — live status from the professional's calendar.
- * `me` is the signed-in owner/staff's own controls; `list` is the public customer section.
- */
+/** Available Now — public customer list of businesses with free time left today. */
 export const availableNowEndpoints = {
-  me: `/api/available-now/me`,
   list: (params?: {
     category_id?: number | null;
     latitude?: number;
     longitude?: number;
     radius_km?: number;
-    min_price?: number;
-    max_price?: number;
     within_minutes?: number;
     page?: number;
     per_page?: number;
@@ -984,10 +978,6 @@ export const availableNowEndpoints = {
       if (params.radius_km != null)
         queryParams.append("radius_km", String(params.radius_km));
     }
-    if (params?.min_price != null)
-      queryParams.append("min_price", String(params.min_price));
-    if (params?.max_price != null)
-      queryParams.append("max_price", String(params.max_price));
     if (params?.within_minutes != null)
       queryParams.append("within_minutes", String(params.within_minutes));
     if (params?.page != null) queryParams.append("page", String(params.page));

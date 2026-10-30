@@ -1,152 +1,153 @@
 import React, { useMemo } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
-import { MaterialIcons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import { useRouter } from "expo-router";
 import AppImage from "@/src/components/AppImage";
+import {
+  HIRING_CORNER_OVERHANG,
+  HIRING_FRAME_WIDTH,
+  HiringCornerBadge,
+} from "@/src/components/jobs/jobBadges";
 import { useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import {
+  heightScale,
   moderateHeightScale,
   moderateWidthScale,
   widthScale,
 } from "@/src/theme/dimensions";
+import { getDefaultBusinessImage } from "@/src/services/remoteConfigService";
 import type { AvailableNowListItem } from "@/src/types/availableNow";
 import { getAvailableNowBadge } from "@/src/utils/availableNow";
 import { resolveApiImageUrl } from "@/src/utils/media";
 
 type AppRouter = ReturnType<typeof useRouter>;
 
-/** Row tap → the business profile; Book there preselects this pro. */
+/**
+ * One row is a business: no staff preselected — booking's "Anyone" slots
+ * already show only times when somebody is free.
+ */
 export function openAvailableNowProfile(
   router: AppRouter,
   item: AvailableNowListItem,
 ) {
-  const staffId = item.professional?.staff_id;
   router.push({
     pathname: "/(main)/businessDetail",
-    params: {
-      business_id: String(item.business.id),
-      ...(staffId != null ? { staff_id: String(staffId) } : null),
-    },
+    params: { business_id: String(item.business.id) },
   } as any);
 }
 
-/** Book → bookingNow with the offered service and pro preselected. */
+/** Book → booking with no service chosen; the customer picks one first. */
 export function bookAvailableNow(router: AppRouter, item: AvailableNowListItem) {
-  const staffId = item.professional?.staff_id;
   router.push({
     pathname: "/(main)/bookingNow",
-    params: {
-      business_id: String(item.business.id),
-      ...(item.service?.id != null
-        ? { service_id: String(item.service.id) }
-        : null),
-      ...(staffId != null ? { staff_id: String(staffId) } : null),
-    },
+    params: { business_id: String(item.business.id), pick_service: "1" },
   } as any);
 }
 
-export function formatServicePrice(price: string | number | null | undefined) {
-  if (price == null || price === "") return null;
-  const n = Number(price);
-  if (!Number.isFinite(n)) return null;
-  return Number.isInteger(n) ? `$${n}` : `$${n.toFixed(2)}`;
-}
-
+// Same look as the home "Recommended" business card
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
     card: {
-      backgroundColor: theme.white,
-      borderRadius: moderateWidthScale(14),
-      borderWidth: 1,
-      borderColor: theme.lightGreen015,
-      paddingHorizontal: moderateWidthScale(12),
-      paddingVertical: moderateHeightScale(12),
-      gap: moderateHeightScale(10),
-    },
-    cardCompact: {
-      width: widthScale(260),
-      marginRight: moderateWidthScale(12),
-    },
-    topRow: {
+      backgroundColor: theme.darkGreen,
+      borderRadius: moderateWidthScale(12),
+      // Transparent frame keeps hiring / non-hiring cards the same size
+      borderWidth: HIRING_FRAME_WIDTH,
+      borderColor: "transparent",
+      paddingHorizontal: moderateWidthScale(10) - HIRING_FRAME_WIDTH,
+      paddingVertical: moderateHeightScale(10) - HIRING_FRAME_WIDTH,
+      height: heightScale(132),
       flexDirection: "row",
       alignItems: "center",
       gap: moderateWidthScale(12),
     },
+    cardCompact: {
+      width: widthScale(310),
+    },
+    cardHiring: {
+      borderColor: theme.orangeBrown,
+    },
+    // Full-width list: room for the corner badge above the card
+    cardHiringSpaced: {
+      marginTop: HIRING_CORNER_OVERHANG,
+    },
     image: {
-      width: moderateWidthScale(52),
-      height: moderateWidthScale(52),
-      borderRadius: moderateWidthScale(12),
-      backgroundColor: theme.lightGreen05,
-      alignItems: "center",
-      justifyContent: "center",
+      width: widthScale(110),
+      height: heightScale(110),
+      borderRadius: moderateWidthScale(6),
+      backgroundColor: theme.emptyProfileImage,
+      borderWidth: 1,
+      borderColor: theme.borderLight,
       overflow: "hidden",
     },
-    textCol: {
+    content: {
       flex: 1,
-      minWidth: 0,
-      gap: moderateHeightScale(2),
-    },
-    titleRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: moderateWidthScale(8),
-    },
-    title: {
-      flex: 1,
-      fontSize: fontSize.size15,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-    },
-    distance: {
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontMedium,
-      color: theme.lightGreen5,
-    },
-    meta: {
-      fontSize: fontSize.size13,
-      fontFamily: fonts.fontRegular,
-      color: theme.lightGreen5,
-    },
-    bottomRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: moderateWidthScale(10),
+      height: heightScale(110),
+      justifyContent: "space-between",
     },
     badge: {
-      flex: 1,
+      backgroundColor: theme.darkGreenLight,
+      paddingHorizontal: moderateWidthScale(10),
+      paddingVertical: moderateHeightScale(4),
+      borderRadius: moderateWidthScale(999),
       flexDirection: "row",
       alignItems: "center",
       gap: moderateWidthScale(6),
-      minWidth: 0,
+      alignSelf: "flex-start",
+      maxWidth: "100%",
     },
     dot: {
-      width: moderateWidthScale(8),
-      height: moderateWidthScale(8),
+      width: moderateWidthScale(7),
+      height: moderateWidthScale(7),
       borderRadius: moderateWidthScale(4),
       backgroundColor: theme.green,
     },
-    dotBusy: {
+    dotLater: {
       backgroundColor: theme.orangeBrown,
     },
     badgeText: {
       flexShrink: 1,
-      fontSize: fontSize.size12,
+      fontSize: fontSize.size10,
       fontFamily: fonts.fontMedium,
-      color: theme.darkGreen,
+      color: theme.white,
+      includeFontPadding: false,
+    },
+    info: {
+      gap: moderateHeightScale(2),
+      flexShrink: 1,
+    },
+    title: {
+      fontSize: fontSize.size16,
+      fontFamily: fonts.fontBold,
+      color: theme.white,
+      textTransform: "capitalize",
+      includeFontPadding: false,
+    },
+    staff: {
+      fontSize: fontSize.size11,
+      fontFamily: fonts.fontMedium,
+      color: theme.orangeBrown,
+      includeFontPadding: false,
+    },
+    address: {
+      fontSize: fontSize.size11,
+      fontFamily: fonts.fontRegular,
+      color: theme.white80,
+      includeFontPadding: false,
     },
     bookBtn: {
-      paddingHorizontal: moderateWidthScale(18),
-      paddingVertical: moderateHeightScale(8),
-      borderRadius: moderateWidthScale(10),
-      backgroundColor: theme.buttonBack,
+      alignSelf: "flex-start",
+      paddingHorizontal: moderateWidthScale(16),
+      paddingVertical: moderateHeightScale(5),
+      borderRadius: moderateWidthScale(999),
+      backgroundColor: theme.orangeBrown,
     },
     bookText: {
-      fontSize: fontSize.size13,
+      fontSize: fontSize.size12,
       fontFamily: fonts.fontBold,
-      color: theme.buttonText,
+      color: theme.darkGreen,
+      includeFontPadding: false,
     },
   });
 
@@ -158,7 +159,7 @@ type Props = {
   compact?: boolean;
 };
 
-/** One professional free now: business, pro + service + price, distance and the live badge. */
+/** One business with free time left today: who's free, where, and the live badge. */
 export default function AvailableNowCard({
   item,
   onPress,
@@ -170,67 +171,75 @@ export default function AvailableNowCard({
   const styles = useMemo(() => createStyles(theme), [theme]);
   const { t } = useTranslation();
 
-  const imageUri = resolveApiImageUrl(item.business?.image_url);
+  const isHiring = item.business?.is_hiring === true;
+  // Same fallback as the Recommended cards when the business has no picture
+  const imageUri =
+    resolveApiImageUrl(item.business?.image_url) || getDefaultBusinessImage();
   const badge = getAvailableNowBadge(item, t);
-  const price = formatServicePrice(item.service?.price);
-  const meta = [
-    item.professional?.name,
-    item.service?.name,
-    price,
+  // Single-provider businesses send no staff
+  const staffNames = (item.available_staff ?? [])
+    .map((s) => s.name?.trim())
+    .filter(Boolean)
+    .join(", ");
+  const staffLine = staffNames ? t("anStaffFree", { names: staffNames }) : null;
+  const distance =
+    item.distance_km != null ? `${Number(item.distance_km).toFixed(1)} km` : null;
+  const address = [
+    [item.business?.city, item.business?.state].filter(Boolean).join(", "),
+    distance,
   ]
     .filter(Boolean)
     .join(" · ");
-  const distance =
-    item.distance_km != null ? `${Number(item.distance_km).toFixed(1)} km` : null;
 
   return (
     <TouchableOpacity
-      style={[styles.card, compact && styles.cardCompact]}
+      style={[
+        styles.card,
+        compact && styles.cardCompact,
+        isHiring && styles.cardHiring,
+        isHiring && !compact && styles.cardHiringSpaced,
+      ]}
       onPress={() => onPress(item)}
-      activeOpacity={0.85}
+      activeOpacity={0.9}
       accessibilityRole="button"
-      accessibilityLabel={[item.business?.title, meta, badge?.label, distance]
+      accessibilityLabel={[item.business?.title, badge?.label, staffLine, address]
         .filter(Boolean)
         .join(", ")}
     >
-      <View style={styles.topRow}>
-        <View style={styles.image}>
-          {imageUri ? (
-            <AppImage uri={imageUri} style={StyleSheet.absoluteFill} />
-          ) : (
-            <MaterialIcons
-              name="storefront"
-              size={moderateWidthScale(24)}
-              color={theme.lightGreen}
-            />
-          )}
-        </View>
-        <View style={styles.textCol}>
-          <View style={styles.titleRow}>
-            <Text style={styles.title} numberOfLines={1}>
-              {item.business?.title || ""}
-            </Text>
-            {distance ? <Text style={styles.distance}>{distance}</Text> : null}
-          </View>
-          {meta ? (
-            <Text style={styles.meta} numberOfLines={1}>
-              {meta}
-            </Text>
-          ) : null}
-        </View>
-      </View>
+      {isHiring ? <HiringCornerBadge /> : null}
+      <AppImage
+        uri={imageUri}
+        style={styles.image}
+        iconSize={widthScale(36)}
+        iconColor={theme.white50}
+      />
 
-      <View style={styles.bottomRow}>
+      <View style={styles.content}>
         {badge ? (
           <View style={styles.badge}>
-            <View style={[styles.dot, !badge.available && styles.dotBusy]} />
-            <Text style={styles.badgeText} numberOfLines={compact ? 1 : 2}>
+            <View style={[styles.dot, !badge.available && styles.dotLater]} />
+            <Text style={styles.badgeText} numberOfLines={1}>
               {badge.label}
             </Text>
           </View>
         ) : (
-          <View style={styles.badge} />
+          <View />
         )}
+        <View style={styles.info}>
+          <Text style={styles.title} numberOfLines={1}>
+            {item.business?.title || ""}
+          </Text>
+          {staffLine ? (
+            <Text style={styles.staff} numberOfLines={1}>
+              {staffLine}
+            </Text>
+          ) : null}
+          {address ? (
+            <Text style={styles.address} numberOfLines={1}>
+              {address}
+            </Text>
+          ) : null}
+        </View>
         <TouchableOpacity
           style={styles.bookBtn}
           onPress={() => onBook(item)}

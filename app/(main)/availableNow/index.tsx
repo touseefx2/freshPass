@@ -43,14 +43,6 @@ const TIME_OPTIONS = [
 const RADIUS_OPTIONS = [5, 10, 25, 50, 100];
 const DEFAULT_RADIUS = 25;
 
-const PRICE_OPTIONS: { key: string; min?: number; max?: number; label: string }[] = [
-  { key: "any", label: "" },
-  { key: "u25", max: 25, label: "$0–25" },
-  { key: "25-50", min: 25, max: 50, label: "$25–50" },
-  { key: "50-100", min: 50, max: 100, label: "$50–100" },
-  { key: "100+", min: 100, label: "$100+" },
-];
-
 type CategoryOption = { id: number; name: string };
 
 const createStyles = (theme: Theme) =>
@@ -185,7 +177,7 @@ const createStyles = (theme: Theme) =>
     },
   });
 
-/** Customer Available Now: pros free now (or soon), with category / distance / price / time filters. */
+/** Customer Available Now: businesses with free time left today, with category / distance / time filters. */
 export default function AvailableNowScreen() {
   const { t } = useTranslation();
   const { colors } = useTheme();
@@ -211,7 +203,6 @@ export default function AvailableNowScreen() {
   );
   const [categoryId, setCategoryId] = useState<number | null>(null);
   const [radiusKm, setRadiusKm] = useState(DEFAULT_RADIUS);
-  const [priceKey, setPriceKey] = useState("any");
   const [categories, setCategories] = useState<CategoryOption[]>(storeCategories);
 
   const [items, setItems] = useState<AvailableNowListItem[]>([]);
@@ -244,8 +235,6 @@ export default function AvailableNowScreen() {
     };
   }, [storeCategories]);
 
-  const price = PRICE_OPTIONS.find((p) => p.key === priceKey) ?? PRICE_OPTIONS[0];
-
   const load = useCallback(
     async (
       nextPage: number,
@@ -262,24 +251,15 @@ export default function AvailableNowScreen() {
           latitude: coords?.latitude,
           longitude: coords?.longitude,
           radius_km: coords ? radiusKm : undefined,
-          min_price: price.min,
-          max_price: price.max,
           within_minutes: withinMinutes,
           page: nextPage,
         });
         if (requestId !== requestIdRef.current) return;
         setItems((prev) => {
           if (nextPage === 1) return pageItems;
-          // Same pro can't repeat across pages, but the list is live — dedupe anyway
-          const seen = new Set(
-            prev.map((i) => `${i.business.id}:${i.professional?.user_id}`),
-          );
-          return [
-            ...prev,
-            ...pageItems.filter(
-              (i) => !seen.has(`${i.business.id}:${i.professional?.user_id}`),
-            ),
-          ];
+          // One row per business; the list is live, so dedupe across pages
+          const seen = new Set(prev.map((i) => i.business.id));
+          return [...prev, ...pageItems.filter((i) => !seen.has(i.business.id))];
         });
         setPage(meta.current_page ?? nextPage);
         setLastPage(meta.last_page ?? nextPage);
@@ -295,13 +275,12 @@ export default function AvailableNowScreen() {
         }
       }
     },
-    [categoryId, coords, price.max, price.min, radiusKm, withinMinutes],
+    [categoryId, coords, radiusKm, withinMinutes],
   );
 
   // Live list: re-fetch on focus (quietly) and whenever a filter changes (with loader)
   const filterKey = [
     categoryId,
-    priceKey,
     withinMinutes,
     coords ? `${coords.latitude},${coords.longitude},${radiusKm}` : "none",
   ].join("|");
@@ -361,14 +340,11 @@ export default function AvailableNowScreen() {
       onPress: () => setRadiusKm(wider),
     });
   }
-  if (categoryId != null || priceKey !== "any") {
+  if (categoryId != null) {
     widenOptions.push({
       key: "clear",
       label: t("anClearFilters"),
-      onPress: () => {
-        setCategoryId(null);
-        setPriceKey("any");
-      },
+      onPress: () => setCategoryId(null),
     });
   }
 
@@ -484,29 +460,11 @@ export default function AvailableNowScreen() {
             <Text style={styles.locationHintText}>{t("anNoLocationHint")}</Text>
           </View>
         )}
-
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.filterRow}
-        >
-          <Text style={styles.filterLabel}>{t("anPrice")}</Text>
-          {PRICE_OPTIONS.map((p) =>
-            renderChip(
-              p.key,
-              p.key === "any" ? t("anAnyPrice") : p.label,
-              priceKey === p.key,
-              () => setPriceKey(p.key),
-            ),
-          )}
-        </ScrollView>
       </View>
 
       <FlatList
         data={loading ? [] : items}
-        keyExtractor={(item) =>
-          `${item.business.id}:${item.professional?.user_id ?? "biz"}`
-        }
+        keyExtractor={(item) => String(item.business.id)}
         renderItem={({ item }) => (
           <AvailableNowCard
             item={item}

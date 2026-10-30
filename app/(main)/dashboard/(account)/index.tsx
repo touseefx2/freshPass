@@ -18,6 +18,7 @@ import {
   moderateWidthScale,
 } from "@/src/theme/dimensions";
 import BuyBusinessPlanModal from "@/src/components/BuyBusinessPlanModal";
+import { useHiringPlanGate } from "@/src/hooks/useHiringPlanGate";
 import DashboardHeader from "@/src/components/DashboardHeader";
 import { MaterialIcons, MaterialCommunityIcons, Entypo } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -869,6 +870,8 @@ export default function AccountScreen() {
   const isBusiness = userRole === "business" && !isGuest;
   const businessStatus = useAppSelector((state) => state.user.businessStatus);
 
+  const { ensureCanHire, planModals: hiringPlanModals } = useHiringPlanGate();
+
   const handleViewPlans = useCallback(() => {
     setBuyPlanModalVisible(false);
     dispatch(setBusinessPlansModalVisible(true));
@@ -965,8 +968,6 @@ export default function AccountScreen() {
       router.push("./(businessProfileSettings)");
     } else if (key === "availability") {
       router.push("./staffAvailability");
-    } else if (key === "availableNow") {
-      router.push("./availableNow");
     } else if (key === "uploadWork") {
       if (!ensureCanUploadWork()) return;
       router.push("./staffWorkImages");
@@ -1011,6 +1012,8 @@ export default function AccountScreen() {
       router.push(
         "/(main)/dashboard/(account)/(businessProfileSettings)/affiliationRequests",
       );
+    } else if (key === "hiring" && !ensureCanHire()) {
+      return;
     } else if (key in SOLO_BUSINESS_ROUTES) {
       router.push(
         `/(main)/dashboard/(account)/(businessProfileSettings)/${SOLO_BUSINESS_ROUTES[key]}` as any,
@@ -1044,8 +1047,6 @@ export default function AccountScreen() {
         return { name: "storefront", family: "material" };
       case "availability":
         return { name: "event-available", family: "material" };
-      case "availableNow":
-        return { name: "bolt", family: "material" };
       case "uploadWork":
         return { name: "photo-library", family: "material" };
       case "leaveRequest":
@@ -1107,6 +1108,7 @@ export default function AccountScreen() {
           onClose={() => setBuyPlanModalVisible(false)}
           onViewPlans={handleViewPlans}
         />
+        {hiringPlanModals}
       </View>
     );
   }
@@ -1220,7 +1222,6 @@ export default function AccountScreen() {
     ...(userRole === "staff" && !isGuest
       ? [
           { key: "availability", title: t("setAvailability") },
-          { key: "availableNow", title: t("availableNow") },
           { key: "uploadWork", title: t("uploadYourWork") },
           // Staff post reels for the business within the owner's monthly number
           { key: "mediaLibrary", title: t("mediaLibrary") },

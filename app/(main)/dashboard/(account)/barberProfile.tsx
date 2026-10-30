@@ -43,7 +43,6 @@ function getIconVariant(index: number): IconVariant {
 type BarberSettingKey =
   | "contact"
   | "workingHours"
-  | "availableNow"
   | "portfolio"
   | "appointments"
   | "customers"
@@ -371,9 +370,6 @@ export default function BarberProfileScreen() {
       case "workingHours":
         router.push("./staffAvailability");
         break;
-      case "availableNow":
-        router.push("./availableNow");
-        break;
       case "portfolio":
         router.push("./staffWorkImages");
         break;
@@ -409,7 +405,6 @@ export default function BarberProfileScreen() {
   const soloHiddenKeys: BarberSettingKey[] = [
     "contact",
     "workingHours",
-    "availableNow",
     "portfolio",
     "appointments",
     "viewPublicProfile",
@@ -418,7 +413,6 @@ export default function BarberProfileScreen() {
   const allSettings: BarberSettingItem[] = [
     { key: "contact", title: t("contactInformation") },
     { key: "workingHours", title: t("myWorkingHours") },
-    { key: "availableNow", title: t("availableNow"), subtitle: t("anCardSubtitle") },
     { key: "portfolio", title: t("myPortfolio"), subtitle: t("portfolioCardSubtitle") },
     { key: "appointments", title: t("myAppointments") },
     { key: "customers", title: t("myCustomers") },
@@ -438,8 +432,6 @@ export default function BarberProfileScreen() {
         return { name: "person", family: "material" };
       case "workingHours":
         return { name: "calendar-month", family: "material" };
-      case "availableNow":
-        return { name: "bolt", family: "material" };
       case "portfolio":
         return { name: "photo-library", family: "material" };
       case "appointments":
