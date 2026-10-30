@@ -1,7 +1,8 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect } from "react";
 import { useSegments } from "expo-router";
 import { useAppSelector, useAppDispatch } from "@/src/hooks/hooks";
 import {
+  dismissSetupReminder,
   setBusinessPlansModalVisible,
   setSuppressBusinessPlansAutoOpen,
 } from "@/src/state/slices/generalSlice";
@@ -18,6 +19,8 @@ const HOME_TAB_NESTED_ROUTES = [
   "aiRequests",
   "aiResults",
 ];
+
+const AUTO_OPEN_KEY = "auto:businessPlans";
 
 export default function BusinessPlansModalHandler() {
   const dispatch = useAppDispatch();
@@ -40,7 +43,10 @@ export default function BusinessPlansModalHandler() {
   const businessPlanPurchasedCongratsVisible = useAppSelector(
     (state) => state.general.businessPlanPurchasedCongratsVisible,
   );
-  const hasAutoOpenedOnce = useRef(false);
+  // Auto-open only once per login; after that the "Choose a plan" banner opens it.
+  const hasAutoOpenedOnce = useAppSelector((state) =>
+    state.general.dismissedSetupReminders.includes(AUTO_OPEN_KEY),
+  );
 
   const isOnHomeTab = Array.isArray(segments) && segments.includes("(home)");
 
@@ -67,14 +73,11 @@ export default function BusinessPlansModalHandler() {
   }, [isOnHomeTab, suppressBusinessPlansAutoOpen, dispatch]);
 
   useEffect(() => {
-    if (showBusinessSubscription && !hasAutoOpenedOnce.current) {
+    if (showBusinessSubscription && !hasAutoOpenedOnce) {
       dispatch(setBusinessPlansModalVisible(true));
-      hasAutoOpenedOnce.current = true;
+      dispatch(dismissSetupReminder(AUTO_OPEN_KEY));
     }
-    if (!showBusinessSubscription) {
-      hasAutoOpenedOnce.current = false;
-    }
-  }, [showBusinessSubscription, dispatch]);
+  }, [showBusinessSubscription, hasAutoOpenedOnce, dispatch]);
 
   const handleClose = () => {
     dispatch(setBusinessPlansModalVisible(false));
