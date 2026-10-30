@@ -493,11 +493,12 @@ export async function navigateFromPushNotification(
   let user = store.getState().user;
   const isSignedIn = !!user.accessToken && !user.isGuest;
 
-  // Cold start on an install that never stored the mode: ask the server first
+  // Switch flag not stored yet (it starts false: old install, details not
+  // loaded on cold start) — ask the server before deciding
   if (
     targetMode &&
     isSignedIn &&
-    user.can_switch_mode == null &&
+    !user.can_switch_mode &&
     getAccountRole(user) !== "customer"
   ) {
     try {
