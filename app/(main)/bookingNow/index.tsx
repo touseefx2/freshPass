@@ -1816,7 +1816,8 @@ export default function BookingNow() {
         }
 
         const businessPayload = {
-          selectedService: serviceToSelect,
+          // undefined = leave the slice's selection alone (cleared below)
+          selectedService: pickService ? undefined : serviceToSelect,
           allServices: allServicesData,
           staffMembers: staffMembersData,
           businessId: businessId,

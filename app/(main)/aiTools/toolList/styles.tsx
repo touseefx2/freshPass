@@ -305,6 +305,8 @@ export const createStyles = (theme: Theme) =>
 
     // ── Inline tutorial video ───────────────────────────────────────
     tutorialPanel: {
+      // Explicit width: with only aspectRatio the box sized itself from height
+      width: "100%",
       marginTop: moderateHeightScale(12),
       borderRadius: moderateWidthScale(18),
       overflow: "hidden",
