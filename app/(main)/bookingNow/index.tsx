@@ -2032,7 +2032,7 @@ export default function BookingNow() {
       isReschedule && params.booking_id
         ? parseInt(String(params.booking_id), 10)
         : undefined;
-    if (excludeAppointmentId && isNaN(excludeAppointmentId)) {
+    if (Number.isNaN(excludeAppointmentId)) {
       setApiSlots([]);
       setSlotsError(null);
       return;
