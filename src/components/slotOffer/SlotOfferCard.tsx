@@ -60,6 +60,21 @@ function formatDealTime(startsAt: string, durationMinutes: number) {
   return `${start.format("h:mm A")} – ${end.format("h:mm A")}`;
 }
 
+/** "YYYY-MM-DD" today on the salon's clock; phone date if the zone is unknown. */
+function salonToday(timezone: string | null | undefined) {
+  if (timezone) {
+    try {
+      return new Intl.DateTimeFormat("en-CA", {
+        timeZone: timezone,
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      }).format(new Date());
+    } catch {}
+  }
+  return dayjs().format("YYYY-MM-DD");
+}
+
 type Props = {
   deal: SlotOffer;
   compact?: boolean;
@@ -69,16 +84,21 @@ const createStyles = (theme: Theme) =>
   StyleSheet.create({
     card: {
       backgroundColor: theme.white,
-      borderRadius: moderateWidthScale(14),
+      borderRadius: moderateWidthScale(18),
       borderWidth: 1,
-      borderColor: theme.lightGreen015,
-      paddingHorizontal: moderateWidthScale(12),
-      paddingVertical: moderateHeightScale(12),
-      gap: moderateHeightScale(10),
+      borderColor: theme.lightGreen1,
+      padding: moderateWidthScale(14),
+      gap: moderateHeightScale(12),
+      shadowColor: theme.shadow,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.06,
+      shadowRadius: 12,
+      elevation: 2,
     },
     cardCompact: {
-      width: widthScale(280),
+      width: widthScale(290),
       marginRight: moderateWidthScale(12),
+      marginBottom: moderateHeightScale(6),
     },
     topRow: {
       flexDirection: "row",
@@ -86,8 +106,8 @@ const createStyles = (theme: Theme) =>
       gap: moderateWidthScale(12),
     },
     image: {
-      width: moderateWidthScale(52),
-      height: moderateWidthScale(52),
+      width: moderateWidthScale(48),
+      height: moderateWidthScale(48),
       borderRadius: moderateWidthScale(12),
       backgroundColor: theme.lightGreen05,
       alignItems: "center",
@@ -97,32 +117,77 @@ const createStyles = (theme: Theme) =>
     textCol: {
       flex: 1,
       minWidth: 0,
-      gap: moderateHeightScale(2),
-    },
-    titleRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: moderateWidthScale(6),
+      gap: moderateHeightScale(3),
     },
     title: {
-      flex: 1,
       fontSize: fontSize.size15,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
     },
+    locationRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(3),
+    },
     meta: {
-      fontSize: fontSize.size13,
+      flexShrink: 1,
+      fontSize: fontSize.size12,
       fontFamily: fonts.fontRegular,
       color: theme.lightGreen5,
     },
-    serviceRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: moderateWidthScale(6),
+    offBadge: {
+      alignSelf: "flex-start",
+      paddingHorizontal: moderateWidthScale(8),
+      paddingVertical: moderateHeightScale(4),
+      borderRadius: moderateWidthScale(8),
+      backgroundColor: theme.tilePeach,
+    },
+    offBadgeText: {
+      fontSize: fontSize.size11,
+      fontFamily: fonts.fontBold,
+      color: theme.orangeBrownText,
+      letterSpacing: 0.3,
+    },
+    divider: {
+      height: StyleSheet.hairlineWidth,
+      backgroundColor: theme.lightGreen015,
+    },
+    serviceBlock: {
+      gap: moderateHeightScale(3),
     },
     serviceName: {
-      flex: 1,
-      fontSize: fontSize.size13,
+      fontSize: fontSize.size16,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    serviceSub: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen6,
+    },
+    timeBox: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingHorizontal: moderateWidthScale(10),
+      paddingVertical: moderateHeightScale(9),
+      borderRadius: moderateWidthScale(12),
+      backgroundColor: theme.tileMint,
+      gap: moderateWidthScale(10),
+    },
+    timeItem: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(5),
+      flexShrink: 1,
+    },
+    timeSep: {
+      width: 1,
+      alignSelf: "stretch",
+      backgroundColor: theme.lightGreen015,
+    },
+    timeText: {
+      flexShrink: 1,
+      fontSize: fontSize.size12,
       fontFamily: fonts.fontMedium,
       color: theme.darkGreen,
     },
@@ -132,13 +197,17 @@ const createStyles = (theme: Theme) =>
       justifyContent: "space-between",
       gap: moderateWidthScale(8),
     },
+    priceCol: {
+      flexShrink: 1,
+      gap: moderateHeightScale(1),
+    },
     priceRow: {
       flexDirection: "row",
-      alignItems: "center",
+      alignItems: "baseline",
       gap: moderateWidthScale(6),
     },
     dealPrice: {
-      fontSize: fontSize.size16,
+      fontSize: fontSize.size20,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
     },
@@ -148,35 +217,23 @@ const createStyles = (theme: Theme) =>
       color: theme.lightGreen5,
       textDecorationLine: "line-through",
     },
-    savingsBadge: {
-      paddingHorizontal: moderateWidthScale(8),
-      paddingVertical: moderateHeightScale(3),
-      borderRadius: moderateWidthScale(8),
-      backgroundColor: theme.tileMint,
-    },
     savingsText: {
       fontSize: fontSize.size11,
       fontFamily: fonts.fontBold,
       color: theme.successGreen,
     },
-    timeRow: {
+    bookBtn: {
       flexDirection: "row",
       alignItems: "center",
       gap: moderateWidthScale(4),
-    },
-    timeText: {
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontMedium,
-      color: theme.lightGreen5,
-    },
-    bookBtn: {
-      paddingHorizontal: moderateWidthScale(16),
-      paddingVertical: moderateHeightScale(9),
-      borderRadius: moderateWidthScale(10),
+      paddingLeft: moderateWidthScale(18),
+      paddingRight: moderateWidthScale(14),
+      paddingVertical: moderateHeightScale(10),
+      borderRadius: moderateWidthScale(12),
       backgroundColor: theme.buttonBack,
     },
     bookBtnText: {
-      fontSize: fontSize.size13,
+      fontSize: fontSize.size14,
       fontFamily: fonts.fontBold,
       color: theme.buttonText,
     },
@@ -191,8 +248,28 @@ export default function SlotOfferCard({ deal, compact }: Props) {
 
   const imageUrl = resolveApiImageUrl(deal.business.image_url);
   const hasDiscount = deal.savings > 0;
+  const percentOff =
+    hasDiscount && deal.normal_price > 0
+      ? Math.round((deal.savings / deal.normal_price) * 100)
+      : 0;
   const timeLabel = formatDealTime(deal.starts_at, deal.duration_minutes);
-  const dateLabel = dayjs(deal.date).format("ddd, MMM D");
+  const today = salonToday(deal.timezone);
+  const dealDay = dayjs(deal.date);
+  const dateLabel =
+    deal.date === today
+      ? t("today")
+      : deal.date === dayjs(today).add(1, "day").format("YYYY-MM-DD")
+        ? t("tomorrow")
+        : dealDay.format("ddd, MMM D");
+  const location = [deal.business.city, deal.business.state]
+    .filter(Boolean)
+    .join(", ");
+  const serviceSub = [
+    deal.staff ? `${t("sdWith")} ${deal.staff.name}` : null,
+    deal.duration_minutes ? `${deal.duration_minutes} ${t("sdMin")}` : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
 
   return (
     <TouchableOpacity
@@ -213,7 +290,7 @@ export default function SlotOfferCard({ deal, compact }: Props) {
           ) : (
             <MaterialIcons
               name="storefront"
-              size={moderateWidthScale(24)}
+              size={moderateWidthScale(22)}
               color={theme.lightGreen2}
             />
           )}
@@ -222,53 +299,81 @@ export default function SlotOfferCard({ deal, compact }: Props) {
           <Text style={styles.title} numberOfLines={1}>
             {deal.business.title}
           </Text>
-          <Text style={styles.meta} numberOfLines={1}>
-            {[deal.business.city, deal.business.state]
-              .filter(Boolean)
-              .join(", ")}
+          {!!location && (
+            <View style={styles.locationRow}>
+              <MaterialIcons
+                name="place"
+                size={moderateWidthScale(13)}
+                color={theme.lightGreen5}
+              />
+              <Text style={styles.meta} numberOfLines={1}>
+                {location}
+              </Text>
+            </View>
+          )}
+        </View>
+        {percentOff > 0 && (
+          <View style={styles.offBadge}>
+            <Text style={styles.offBadgeText}>
+              {t("sdPercentOff", { percent: percentOff })}
+            </Text>
+          </View>
+        )}
+      </View>
+
+      <View style={styles.divider} />
+
+      <View style={styles.serviceBlock}>
+        <Text style={styles.serviceName} numberOfLines={1}>
+          {deal.service.name}
+        </Text>
+        {!!serviceSub && (
+          <Text style={styles.serviceSub} numberOfLines={1}>
+            {serviceSub}
+          </Text>
+        )}
+      </View>
+
+      <View style={styles.timeBox}>
+        <View style={styles.timeItem}>
+          <MaterialIcons
+            name="event"
+            size={moderateWidthScale(15)}
+            color={theme.buttonBack}
+          />
+          <Text style={styles.timeText} numberOfLines={1}>
+            {dateLabel}
+          </Text>
+        </View>
+        <View style={styles.timeSep} />
+        <View style={styles.timeItem}>
+          <MaterialIcons
+            name="schedule"
+            size={moderateWidthScale(15)}
+            color={theme.buttonBack}
+          />
+          <Text style={styles.timeText} numberOfLines={1}>
+            {timeLabel}
           </Text>
         </View>
       </View>
 
-      <View style={styles.serviceRow}>
-        <MaterialIcons
-          name="content-cut"
-          size={moderateWidthScale(14)}
-          color={theme.lightGreen5}
-        />
-        <Text style={styles.serviceName} numberOfLines={1}>
-          {deal.service.name}
-          {deal.staff ? ` · ${deal.staff.name}` : ""}
-        </Text>
-      </View>
-
-      <View style={styles.timeRow}>
-        <MaterialIcons
-          name="schedule"
-          size={moderateWidthScale(14)}
-          color={theme.lightGreen5}
-        />
-        <Text style={styles.timeText}>
-          {dateLabel} · {timeLabel}
-        </Text>
-      </View>
-
       <View style={styles.bottomRow}>
-        <View style={styles.priceRow}>
-          <Text style={styles.dealPrice}>
-            {formatDealPrice(deal.offer_price)}
-          </Text>
-          {hasDiscount && (
-            <>
+        <View style={styles.priceCol}>
+          <View style={styles.priceRow}>
+            <Text style={styles.dealPrice}>
+              {formatDealPrice(deal.offer_price)}
+            </Text>
+            {hasDiscount && (
               <Text style={styles.normalPrice}>
                 {formatDealPrice(deal.normal_price)}
               </Text>
-              <View style={styles.savingsBadge}>
-                <Text style={styles.savingsText}>
-                  {t("sdSave")} {formatDealPrice(deal.savings)}
-                </Text>
-              </View>
-            </>
+            )}
+          </View>
+          {hasDiscount && (
+            <Text style={styles.savingsText}>
+              {t("sdYouSave")} {formatDealPrice(deal.savings)}
+            </Text>
           )}
         </View>
         <TouchableOpacity
@@ -279,6 +384,11 @@ export default function SlotOfferCard({ deal, compact }: Props) {
           accessibilityLabel={t("sdBookThisOpening")}
         >
           <Text style={styles.bookBtnText}>{t("sdBook")}</Text>
+          <MaterialIcons
+            name="arrow-forward"
+            size={moderateWidthScale(16)}
+            color={theme.buttonText}
+          />
         </TouchableOpacity>
       </View>
     </TouchableOpacity>

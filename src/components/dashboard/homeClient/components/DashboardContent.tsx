@@ -1105,15 +1105,27 @@ export default function DashboardContent() {
         </View>
       )}
 
-      {userRole === "customer" && appointments.length > 0 && (
+      {(verifiedSalonsDeals.length > 0 || dealsLoading || dealsError) && (
         <View style={styles.section}>
-          <ShowAppointments appointments={appointments} />
+          <Text style={styles.sectionTitle}>{t("freshPassDeals")}</Text>
+          <ShowBusiness
+            businessesLoading={dealsLoading}
+            businessesError={dealsError}
+            verifiedSalons={verifiedSalonsDeals}
+            onRetry={fetchBusinessesDeals}
+          />
         </View>
       )}
 
-      <HomeAvailableNowSection />
-
-      <HomeSlotOffersSection />
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>{t("recommended")}</Text>
+        <ShowBusiness
+          businessesLoading={businessesLoading}
+          businessesError={businessesError}
+          verifiedSalons={verifiedSalons}
+          onRetry={fetchBusinesses}
+        />
+      </View>
 
       {userRole === "customer" &&
         (favoriteBusinesses.length > 0 ||
@@ -1144,28 +1156,6 @@ export default function DashboardContent() {
           </View>
         )}
 
-      {(verifiedSalonsDeals.length > 0 || dealsLoading || dealsError) && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{t("freshPassDeals")}</Text>
-          <ShowBusiness
-            businessesLoading={dealsLoading}
-            businessesError={dealsError}
-            verifiedSalons={verifiedSalonsDeals}
-            onRetry={fetchBusinessesDeals}
-          />
-        </View>
-      )}
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>{t("recommended")}</Text>
-        <ShowBusiness
-          businessesLoading={businessesLoading}
-          businessesError={businessesError}
-          verifiedSalons={verifiedSalons}
-          onRetry={fetchBusinesses}
-        />
-      </View>
-
       <View
         onLayout={(e: LayoutChangeEvent) => {
           const { y, height } = e.nativeEvent.layout;
@@ -1175,6 +1165,16 @@ export default function DashboardContent() {
       >
         <HomeReelsSection inView={reelsInView} />
       </View>
+
+      <HomeAvailableNowSection />
+
+      <HomeSlotOffersSection />
+
+      {userRole === "customer" && appointments.length > 0 && (
+        <View style={styles.section}>
+          <ShowAppointments appointments={appointments} />
+        </View>
+      )}
 
       {(proTipData?.cards?.length ?? 0) > 0 || proTipLoading || proTipError ? (
         <View style={styles.section}>

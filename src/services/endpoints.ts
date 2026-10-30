@@ -1066,6 +1066,9 @@ export const businessFollowersEndpoints = {
  */
 export const reportsEndpoints = {
   reasons: `/api/reports/reasons`,
+  reasonsFor: (type: string) =>
+    `/api/reports/reasons?type=${encodeURIComponent(type)}`,
+  submit: `/api/reports`,
 };
 
 /**

@@ -1238,6 +1238,12 @@ const createStyles = (theme: Theme) =>
       borderBottomWidth: moderateWidthScale(1),
       borderColor: theme.borderLight,
     },
+    policyItemLeft: {
+      flex: 1,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(12),
+    },
     policyItemText: {
       fontSize: fontSize.size14,
       fontFamily: fonts.fontMedium,
@@ -2457,6 +2463,33 @@ export default function BusinessDetailScreen() {
       // Silently ignore if URL cannot be opened
     }
   }, []);
+
+  // Report a Problem flow (business); the owner never sees the row
+  const handleReportPress = useCallback(() => {
+    if (isGuest) {
+      dispatch(setGuestModeModalVisible(true));
+      return;
+    }
+    if (!params.business_id) return;
+    const firstPhoto = businessData?.portfolio_photos?.[0];
+    const photoUrl =
+      firstPhoto?.url ||
+      (typeof firstPhoto?.path === "string"
+        ? firstPhoto.path.startsWith("http")
+          ? firstPhoto.path
+          : `${process.env.EXPO_PUBLIC_API_BASE_URL}${firstPhoto.path}`
+        : "");
+    router.push({
+      pathname: "/(main)/reportProblem",
+      params: {
+        type: "business",
+        id: String(params.business_id),
+        name: businessData?.title ?? "",
+        subtitle: (businessData?.description ?? "").replace(/\s+/g, " ").trim(),
+        image: resolveApiImageUrl(businessData?.logo_url) ?? photoUrl ?? "",
+      },
+    });
+  }, [businessData, dispatch, isGuest, params.business_id, router]);
 
   // Get business logo URL
   const getBusinessLogoUrl = () => {
@@ -4393,9 +4426,16 @@ export default function BusinessDetailScreen() {
             }
             disabled={isOwnerPreviewMode}
           >
-            <Text style={styles.policyItemText}>
-              {t("paymentCancelationPolicy")}
-            </Text>
+            <View style={styles.policyItemLeft}>
+              <MaterialIcons
+                name="lock-outline"
+                size={moderateWidthScale(20)}
+                color={theme.darkGreen}
+              />
+              <Text style={styles.policyItemText}>
+                {t("paymentCancelationPolicy")}
+              </Text>
+            </View>
             <ChevronRightIconBusinessDetail
               width={widthScale(6)}
               height={heightScale(10)}
@@ -4403,24 +4443,29 @@ export default function BusinessDetailScreen() {
             />
           </TouchableOpacity>
 
-          {/* Report */}
-          <TouchableOpacity
-            onPress={
-              isOwnerPreviewMode ? undefined : handlePrivacyPolicyPress
-            }
-            disabled={isOwnerPreviewMode}
-            style={[
-              styles.policyItem,
-              isOwnerPreviewMode && styles.disabledAction,
-            ]}
-          >
-            <Text style={styles.policyItemText}>{t("report")}</Text>
-            <ChevronRightIconBusinessDetail
-              width={widthScale(6)}
-              height={heightScale(10)}
-              color={theme.darkGreen}
-            />
-          </TouchableOpacity>
+          {/* Report a Problem — hidden at your own business (server refuses it) */}
+          {!isOwnerPreviewMode && !isOwnBusinessInCustomerMode ? (
+            <TouchableOpacity
+              onPress={handleReportPress}
+              style={styles.policyItem}
+              accessibilityRole="button"
+              accessibilityLabel={t("reportProblemTitle")}
+            >
+              <View style={styles.policyItemLeft}>
+                <MaterialIcons
+                  name="outlined-flag"
+                  size={moderateWidthScale(20)}
+                  color={theme.darkGreen}
+                />
+                <Text style={styles.policyItemText}>{t("report")}</Text>
+              </View>
+              <ChevronRightIconBusinessDetail
+                width={widthScale(6)}
+                height={heightScale(10)}
+                color={theme.darkGreen}
+              />
+            </TouchableOpacity>
+          ) : null}
         </View>
       </View>
     );

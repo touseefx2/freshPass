@@ -36,6 +36,7 @@ import {
   setActionLoader,
 } from "@/src/state/slices/generalSlice";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
+import { setGuestModeModalVisible } from "@/src/state/slices/generalSlice";
 import { formatLeaveRangeDisplay } from "@/src/utils/leaveDateTime";
 import { disableOwnerAsStaff } from "@/src/services/ownerAsStaffService";
 import Logger from "@/src/services/logger";
@@ -533,6 +534,25 @@ const createStyles = (theme: Theme) =>
       marginBottom: moderateHeightScale(18),
       paddingHorizontal: moderateWidthScale(16),
       zIndex: 2,
+    },
+    reportRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(12),
+      minHeight: moderateHeightScale(56),
+      marginHorizontal: moderateWidthScale(16),
+      marginTop: moderateHeightScale(6),
+      paddingHorizontal: moderateWidthScale(16),
+      borderRadius: moderateWidthScale(14),
+      borderWidth: 1,
+      borderColor: theme.borderLight,
+      backgroundColor: theme.white,
+    },
+    reportRowText: {
+      flex: 1,
+      fontSize: fontSize.size15,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
     },
     sectionContainerFlush: {
       marginBottom: moderateHeightScale(18),
@@ -1357,6 +1377,27 @@ export default function StaffDetail() {
     isBusinessRole && !isViewMode && !isOwnerStaff && reelLimits != null;
   // Business role viewing their own self-added staff profile → hide chat message row only
   const hideSelfStaffMessage = isBusinessRole && isOwnerStaff;
+  // Customers (and guests) can report a barber — never their own profile
+  const canReport =
+    !isViewMode &&
+    (user?.isGuest || user?.userRole === "customer") &&
+    (user?.isGuest || String(user?.id ?? "") !== String(data.user_id));
+  const handleReportPress = () => {
+    if (user?.isGuest) {
+      dispatch(setGuestModeModalVisible(true));
+      return;
+    }
+    router.push({
+      pathname: "/(main)/reportProblem",
+      params: {
+        type: "staff",
+        id: String(data.id),
+        name: data.name || data.user?.name || "",
+        subtitle: data.business?.title ?? "",
+        image: typeof profileImageUrl === "string" ? profileImageUrl : "",
+      },
+    });
+  };
   const showPendingInvite =
     !isOwnerStaff &&
     data.invitation_token != null &&
@@ -1943,6 +1984,28 @@ export default function StaffDetail() {
               })}
             </ScrollView>
           </View>
+        ) : null}
+
+        {canReport ? (
+          <TouchableOpacity
+            style={styles.reportRow}
+            onPress={handleReportPress}
+            activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityLabel={t("reportProblemTitle")}
+          >
+            <MaterialIcons
+              name="outlined-flag"
+              size={moderateWidthScale(20)}
+              color={theme.darkGreen}
+            />
+            <Text style={styles.reportRowText}>{t("report")}</Text>
+            <MaterialIcons
+              name="chevron-right"
+              size={moderateWidthScale(22)}
+              color={theme.darkGreen}
+            />
+          </TouchableOpacity>
         ) : null}
       </ScrollView>
     </View>
