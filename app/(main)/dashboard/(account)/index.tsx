@@ -804,7 +804,7 @@ export default function AccountScreen() {
     } else if (key === "myLooks") {
       router.push("/(main)/myLooks");
     } else if (key === "following") {
-      router.push("/(main)/dashboard/(home)/favourite" as any);
+      router.push("/(main)/following" as any);
     } else if (key === "subscriptions") {
       router.push(isCustomer ? "./subscriptionCustomer" : "./subscription");
     } else if (key === "mediaLibrary") {
