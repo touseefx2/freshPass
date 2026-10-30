@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState, type RefObject } from "react";
 import { StyleSheet, View } from "react-native";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
@@ -70,6 +70,8 @@ type Props = {
   awaitingOutcomeData: AwaitingOutcomeAppointment[] | null;
   awaitingOutcomeLoading: boolean;
   onRefreshAwaitingOutcome: () => void;
+  /** Home scrolls here when an appointment_outcomes push is tapped */
+  awaitingOutcomeRef?: RefObject<View | null>;
   paymentsRefreshKey: number;
   onError: (message?: string) => void;
 };
@@ -79,6 +81,7 @@ export default function BusinessHomeContent({
   awaitingOutcomeData,
   awaitingOutcomeLoading,
   onRefreshAwaitingOutcome,
+  awaitingOutcomeRef,
   paymentsRefreshKey,
   onError,
 }: Props) {
@@ -243,7 +246,7 @@ export default function BusinessHomeContent({
           showDate={!isSingleDayPeriod(period)}
           emptyText={t("bhNoAppointments")}
         />
-        <View style={styles.tight}>
+        <View ref={awaitingOutcomeRef} style={styles.tight}>
           <AwaitingOutcomeSection
             data={awaitingOutcomeData}
             loading={awaitingOutcomeLoading}

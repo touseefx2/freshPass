@@ -32,6 +32,7 @@ import {
   signOutSuspendedAccount,
 } from "@/src/services/api";
 import { getUserMode } from "@/src/services/userModeService";
+import { requestAwaitingOutcomeScroll } from "@/src/services/homeScrollRequest";
 
 export type NotificationSubType =
   | "appointment_scheduled"
@@ -256,7 +257,7 @@ function openOwnerReelsList(
  * and pendingNotificationNavigation (cold start after splash).
  * - type "message" + model_id + sender → chatBox
  * - type "appointment" + model_id → bookingDetailsById
- * - type "appointment_outcomes" + model_id → bookingDetailsById (else home)
+ * - type "appointment_outcomes" → Home, scrolled to "Needs your attention" (model_id = business id)
  * - type "appointment_checkout" + subType appointment_checkout_failed → bookingNow (if business_id) or notification list — never appointment details
  * - type "ai_memory" → Profile → AI Tools → Memories (panel: back first, then chain)
  * - type "airequest" + job_id → aiRequests, then aiResults for that job
@@ -698,23 +699,14 @@ export function navigateFromNotificationData(
     }
   }
 
+  // Summary of several finished appointments — model_id is the BUSINESS id, not
+  // an appointment. Open Home and scroll to "Needs your attention".
   if (type === "appointment_outcomes") {
-    const modelId = data.model_id as number | undefined;
-    if (modelId != null) {
-      router.push({
-        pathname: "/(main)/bookingDetailsById",
-        params: { bookingId: String(modelId) },
-      });
-      Logger.log(
-        "------>navigateFromNotificationData (appointment_outcomes) -> bookingDetailsById",
-        { bookingId: modelId, subType, count: data.count },
-      );
-      return;
-    }
-    router.push("/(main)/dashboard/(home)");
+    requestAwaitingOutcomeScroll();
+    resetToDashboardHome();
     Logger.log(
-      "------>navigateFromNotificationData (appointment_outcomes) -> home",
-      { count: data.count },
+      "------>navigateFromNotificationData (appointment_outcomes) -> home (awaiting outcome)",
+      { subType, count: data.count },
     );
     return;
   }

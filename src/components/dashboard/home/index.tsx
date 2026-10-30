@@ -1,4 +1,10 @@
-import React, { useMemo, useCallback, useState, useEffect } from "react";
+import React, {
+  useMemo,
+  useCallback,
+  useState,
+  useEffect,
+  useRef,
+} from "react";
 import { useFocusEffect, useRouter } from "expo-router";
 import {
   StyleSheet,
@@ -44,6 +50,10 @@ import {
 } from "@/src/services/api";
 import type { UserAffiliationFields } from "@/src/types/affiliation";
 import Logger from "@/src/services/logger";
+import {
+  consumeAwaitingOutcomeScroll,
+  subscribeToAwaitingOutcomeScroll,
+} from "@/src/services/homeScrollRequest";
 import {
   userEndpoints,
   dashboardEndpoints,
@@ -142,6 +152,11 @@ export default function HomeScreen() {
     AwaitingOutcomeAppointment[] | null
   >(null);
   const [awaitingOutcomeLoading, setAwaitingOutcomeLoading] = useState(false);
+  // appointment_outcomes push tap → scroll to "Needs your attention" once loaded
+  const [scrollToAwaitingOutcome, setScrollToAwaitingOutcome] = useState(false);
+  const scrollRef = useRef<ScrollView>(null);
+  const scrollContentRef = useRef<View>(null);
+  const awaitingOutcomeRef = useRef<View>(null);
   // Bumped on pull-to-refresh so "Payments to confirm" reloads too.
   const [paymentsRefreshKey, setPaymentsRefreshKey] = useState(0);
   // Business home: bumped after a good status fetch (focus, pull, retry) so the
@@ -488,6 +503,44 @@ export default function HomeScreen() {
     (!businessStatus && !apiError);
   const showErrorState = apiError && !isLoading;
 
+  useEffect(() => {
+    const check = () => {
+      if (consumeAwaitingOutcomeScroll()) setScrollToAwaitingOutcome(true);
+    };
+    check();
+    return subscribeToAwaitingOutcomeScroll(check);
+  }, []);
+
+  useEffect(() => {
+    if (
+      !scrollToAwaitingOutcome ||
+      showLoadingState ||
+      awaitingOutcomeData == null ||
+      awaitingOutcomeLoading
+    ) {
+      return;
+    }
+    // Let the sections above finish laying out before measuring
+    const timer = setTimeout(() => {
+      const section = awaitingOutcomeRef.current;
+      const content = scrollContentRef.current;
+      if (!section || !content) return;
+      setScrollToAwaitingOutcome(false);
+      section.measureLayout(content, (_x, y) => {
+        scrollRef.current?.scrollTo({
+          y: Math.max(0, y - moderateHeightScale(12)),
+          animated: true,
+        });
+      });
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [
+    scrollToAwaitingOutcome,
+    showLoadingState,
+    awaitingOutcomeData,
+    awaitingOutcomeLoading,
+  ]);
+
   return (
     <View style={styles.container}>
       <StatusBar
@@ -511,6 +564,7 @@ export default function HomeScreen() {
         </View>
       ) : (
         <ScrollView
+          ref={scrollRef}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={
             isBusinessHome || isStaffHome
@@ -526,29 +580,14 @@ export default function HomeScreen() {
             />
           }
         >
-          {isBusinessHome ? (
-            <BusinessHomeContent
-              refreshKey={businessHomeRefreshKey}
-              awaitingOutcomeData={awaitingOutcomeData}
-              awaitingOutcomeLoading={awaitingOutcomeLoading}
-              onRefreshAwaitingOutcome={handleFetchAwaitingOutcome}
-              paymentsRefreshKey={paymentsRefreshKey}
-              onError={(message) =>
-                showBanner(
-                  t("apiFailed"),
-                  message || t("failedToFetchDashboardStats"),
-                  "error",
-                  2500,
-                )
-              }
-            />
-          ) : isStaffHome ? (
-            <>
-              <StaffHomeContent
+          <View ref={scrollContentRef}>
+            {isBusinessHome ? (
+              <BusinessHomeContent
                 refreshKey={businessHomeRefreshKey}
                 awaitingOutcomeData={awaitingOutcomeData}
                 awaitingOutcomeLoading={awaitingOutcomeLoading}
                 onRefreshAwaitingOutcome={handleFetchAwaitingOutcome}
+                awaitingOutcomeRef={awaitingOutcomeRef}
                 paymentsRefreshKey={paymentsRefreshKey}
                 onError={(message) =>
                   showBanner(
@@ -559,53 +598,73 @@ export default function HomeScreen() {
                   )
                 }
               />
-              <View style={styles.staffWorkHistory}>
+            ) : isStaffHome ? (
+              <>
+                <StaffHomeContent
+                  refreshKey={businessHomeRefreshKey}
+                  awaitingOutcomeData={awaitingOutcomeData}
+                  awaitingOutcomeLoading={awaitingOutcomeLoading}
+                  onRefreshAwaitingOutcome={handleFetchAwaitingOutcome}
+                  awaitingOutcomeRef={awaitingOutcomeRef}
+                  paymentsRefreshKey={paymentsRefreshKey}
+                  onError={(message) =>
+                    showBanner(
+                      t("apiFailed"),
+                      message || t("failedToFetchDashboardStats"),
+                      "error",
+                      2500,
+                    )
+                  }
+                />
+                <View style={styles.staffWorkHistory}>
+                  <View style={styles.line} />
+                  <View style={styles.workHistoryContainer}>
+                    <WorkHistory
+                      data={workHistoryData}
+                      totalCount={workHistoryTotalCount}
+                      callApi={handleFetchWorkHistory}
+                      onSeeAll={() =>
+                        router.push({
+                          pathname:
+                            "/(main)/dashboard/(account)/myAppointments" as any,
+                          params: { status: "all" },
+                        })
+                      }
+                    />
+                  </View>
+                </View>
+              </>
+            ) : (
+              <>
+                {/* Summary Statistics */}
+                <View style={styles.statsContainer}>
+                  <SummaryStats
+                    callApi={handleFetchDashboardStats}
+                    data={dashboardStats}
+                  />
+                </View>
+
+                <View style={styles.appointmentsContainer}>
+                  <AppointmentsSection
+                    data={appointmentsData}
+                    totalCount={appointmentsTotalCount}
+                    callApi={handleFetchAppointments}
+                  />
+                </View>
+
                 <View style={styles.line} />
+
+                {/* Work History - All roles */}
                 <View style={styles.workHistoryContainer}>
                   <WorkHistory
                     data={workHistoryData}
                     totalCount={workHistoryTotalCount}
                     callApi={handleFetchWorkHistory}
-                    onSeeAll={() =>
-                      router.push({
-                        pathname: "/(main)/dashboard/(account)/myAppointments" as any,
-                        params: { status: "all" },
-                      })
-                    }
                   />
                 </View>
-              </View>
-            </>
-          ) : (
-            <>
-              {/* Summary Statistics */}
-              <View style={styles.statsContainer}>
-                <SummaryStats
-                  callApi={handleFetchDashboardStats}
-                  data={dashboardStats}
-                />
-              </View>
-
-              <View style={styles.appointmentsContainer}>
-                <AppointmentsSection
-                  data={appointmentsData}
-                  totalCount={appointmentsTotalCount}
-                  callApi={handleFetchAppointments}
-                />
-              </View>
-
-              <View style={styles.line} />
-
-              {/* Work History - All roles */}
-              <View style={styles.workHistoryContainer}>
-                <WorkHistory
-                  data={workHistoryData}
-                  totalCount={workHistoryTotalCount}
-                  callApi={handleFetchWorkHistory}
-                />
-              </View>
-            </>
-          )}
+              </>
+            )}
+          </View>
         </ScrollView>
       )}
     </View>
