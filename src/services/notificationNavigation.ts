@@ -3,7 +3,7 @@ import { InteractionManager } from "react-native";
 import Logger from "@/src/services/logger";
 import { store } from "@/src/state/store";
 import {
-  canUseModeSwitch,
+  setCanSwitchMode,
   getAccountRole,
   isStripeOnboardingCompleted,
   normalizeUserMode,
@@ -16,15 +16,22 @@ import {
 } from "@/src/state/slices/generalSlice";
 import { setCurrentStep } from "@/src/state/slices/completeProfileSlice";
 import { MAIN_ROUTES } from "@/src/constant/routes";
-import { switchActiveMode } from "@/src/state/thunks/userModeThunks";
+import {
+  switchActiveMode,
+  syncModeFromServer,
+  type SwitchActiveModeError,
+} from "@/src/state/thunks/userModeThunks";
 import { resetToDashboardHome } from "@/src/utils/navigation";
 import { fetchProductById } from "@/src/services/productService";
 import { addProduct, updateProduct } from "@/src/state/slices/inventorySlice";
 import { getPublicReel } from "@/src/services/reelsService";
+import i18n from "i18next";
 import {
+  showToast,
   signOutRemovedStaff,
   signOutSuspendedAccount,
 } from "@/src/services/api";
+import { getUserMode } from "@/src/services/userModeService";
 
 export type NotificationSubType =
   | "appointment_scheduled"
@@ -109,6 +116,10 @@ export function withPushNotificationType<
   }
   if (subType === STAFF_REMOVED) {
     return { ...data, type: STAFF_REMOVED };
+  }
+  // New-follower push carries only subType (list rows have type "business_follower")
+  if (subType === "business_new_follower") {
+    return { ...data, type: "business_follower" };
   }
   return data;
 }
@@ -479,10 +490,35 @@ export async function navigateFromPushNotification(
   }
 
   const targetMode = normalizeUserMode(data.mode);
-  const user = store.getState().user;
+  let user = store.getState().user;
+  const isSignedIn = !!user.accessToken && !user.isGuest;
+
+  // Cold start on an install that never stored the mode: ask the server first
+  if (
+    targetMode &&
+    isSignedIn &&
+    user.can_switch_mode == null &&
+    getAccountRole(user) !== "customer"
+  ) {
+    try {
+      const response = await getUserMode();
+      if (response?.data) {
+        store.dispatch(setCanSwitchMode(response.data.can_switch === true));
+        await store.dispatch(syncModeFromServer(response.data));
+        user = store.getState().user;
+      }
+    } catch (error) {
+      Logger.warn("Push mode check failed:", error);
+    }
+  }
+
   const currentMode: UserMode = user.active_mode ?? "business";
 
-  if (targetMode && targetMode !== currentMode && canUseModeSwitch(user)) {
+  // Not the local menu gate (canUseModeSwitch): the server answers
+  // onboarding_incomplete itself, and businessStatus may not be loaded yet
+  const canSwitch = user.can_switch_mode === true && isSignedIn;
+
+  if (targetMode && targetMode !== currentMode && canSwitch) {
     try {
       await store.dispatch(switchActiveMode(targetMode)).unwrap();
       Logger.log("------>navigateFromPushNotification switched mode", {
@@ -498,8 +534,18 @@ export async function navigateFromPushNotification(
       });
       return;
     } catch (error) {
-      // Still open the alert in the current mode rather than dropping the tap
+      // The target belongs to the other side and would not load here — stay
+      // put and show why. No-internet already showed its own toast.
       Logger.error("Push mode switch failed:", error);
+      const failure = error as SwitchActiveModeError | undefined;
+      if (!failure?.isNoInternet) {
+        // i18n may not be ready on cold start, and the server message may be empty
+        const title = i18n.isInitialized
+          ? i18n.t("modeSwitchFailed")
+          : "Couldn't switch mode. Please try again.";
+        showToast(title, failure?.message || "", "error");
+      }
+      return;
     }
   }
 

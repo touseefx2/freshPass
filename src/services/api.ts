@@ -98,6 +98,15 @@ export const setToastHandler = (
   onShowToast = callback;
 };
 
+/** Toast from outside React (services); no-op until the handler is mounted */
+export const showToast = (
+  title: string,
+  message: string,
+  type: "success" | "error" | "warning" | "info",
+) => {
+  onShowToast?.(title, message, type);
+};
+
 /**
  * Check internet connectivity using NetInfo
  * Returns true if internet is available, false otherwise
