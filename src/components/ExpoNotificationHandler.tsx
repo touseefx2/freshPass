@@ -8,7 +8,9 @@ import { fetchNotificationUnreadCount } from "../state/thunks/notificationThunks
 import { useAppDispatch, useAppSelector } from "../hooks/hooks";
 import { useTranslation } from "react-i18next";
 import {
+  isStaffRemovedNotification,
   navigateFromPushNotification,
+  openSignInAfterStaffRemoval,
   withPushNotificationType,
 } from "@/src/services/notificationNavigation";
 import { syncExpoPushTokenToBackend } from "@/src/services/pushTokenService";
@@ -152,6 +154,9 @@ export default function ExpoNotificationHandler() {
                 2500,
               ),
           });
+        } else if (isStaffRemovedNotification(data)) {
+          // Removed from a team: already signed out — sign in, then business setup
+          openSignInAfterStaffRemoval(router);
         }
       });
 

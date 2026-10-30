@@ -4,17 +4,27 @@ import Logger from "@/src/services/logger";
 import { store } from "@/src/state/store";
 import {
   canUseModeSwitch,
+  getAccountRole,
   isStripeOnboardingCompleted,
   normalizeUserMode,
   type UserMode,
 } from "@/src/state/slices/userSlice";
-import { setStripeConnectModalVisible } from "@/src/state/slices/generalSlice";
+import {
+  setBusinessPlansModalVisible,
+  setRole,
+  setStripeConnectModalVisible,
+} from "@/src/state/slices/generalSlice";
+import { setCurrentStep } from "@/src/state/slices/completeProfileSlice";
+import { MAIN_ROUTES } from "@/src/constant/routes";
 import { switchActiveMode } from "@/src/state/thunks/userModeThunks";
 import { resetToDashboardHome } from "@/src/utils/navigation";
 import { fetchProductById } from "@/src/services/productService";
 import { addProduct, updateProduct } from "@/src/state/slices/inventorySlice";
 import { getPublicReel } from "@/src/services/reelsService";
-import { signOutSuspendedAccount } from "@/src/services/api";
+import {
+  signOutRemovedStaff,
+  signOutSuspendedAccount,
+} from "@/src/services/api";
 
 export type NotificationSubType =
   | "appointment_scheduled"
@@ -70,7 +80,8 @@ export type NotificationSubType =
   | "posting_suspended"
   | "posting_restored"
   | "account_suspended"
-  | "account_restored";
+  | "account_restored"
+  | "staff_removed";
 
 /** sub_types of `type: "moderation"` (FreshPass warnings / suspensions). */
 const MODERATION_SUB_TYPES: string[] = [
@@ -81,8 +92,11 @@ const MODERATION_SUB_TYPES: string[] = [
   "account_restored",
 ];
 
+/** A business removed this user from its team (type and sub_type both). */
+const STAFF_REMOVED = "staff_removed";
+
 /**
- * Moderation pushes carry no `type` (only `subType`) — fill it in so the push
+ * Moderation / staff_removed pushes may carry no `type` (only `subType`) — fill it in so the push
  * tap / cold-start paths, which key on `type`, route them like list rows.
  */
 export function withPushNotificationType<
@@ -93,7 +107,20 @@ export function withPushNotificationType<
   if (typeof subType === "string" && MODERATION_SUB_TYPES.includes(subType)) {
     return { ...data, type: "moderation" };
   }
+  if (subType === STAFF_REMOVED) {
+    return { ...data, type: STAFF_REMOVED };
+  }
   return data;
+}
+
+export function isStaffRemovedNotification(
+  data: NotificationNavigationData | undefined,
+): boolean {
+  if (!data) return false;
+  return (
+    data.type === STAFF_REMOVED ||
+    (data.subType ?? data.sub_type) === STAFF_REMOVED
+  );
 }
 
 export type NotificationNavigationData = {
@@ -259,6 +286,8 @@ function openOwnerReelsList(
  * - type "business_job" (owner: new job application) → that post's manage screen with its applicants
  * - type "moderation" (push: subType only): warning / posting_suspended + reel_id → reelsFeed (404 → stay);
  *   account_suspended → sign out if still signed in; restored → nothing
+ * - type "staff_removed" (removed from a team; model_id = old business, never opened): signed out → sign-in as
+ *   business; old staff session still held → sign out → sign-in; business not set up → completeProfile; no plan → plan picker
  * - type "stripe_connect_reminder" (owner, not connected yet) → Stripe Connect setup modal; already connected → nothing
  * - type "stripe_connect_action_required" (owner, Stripe needs more details) → Stripe Connect onboarding screen (no local status check)
  * - otherwise → notification screen (unless options.skipNotificationScreen is true, e.g. when already on that screen)
@@ -370,6 +399,60 @@ async function openProductForRestock(router: Router, productId: number) {
   }
 }
 
+/**
+ * Signed out after being removed from a team: open sign-in as a business. After
+ * sign-in the unfinished-business prompt (OnboardingHandler) opens business setup.
+ */
+export function openSignInAfterStaffRemoval(router: Router): void {
+  store.dispatch(setRole("business"));
+  router.push(`/(main)/${MAIN_ROUTES.SOCIAL_LOGIN}` as any);
+}
+
+/**
+ * `staff_removed`: the account is now a business that isn't set up yet.
+ * - still holding the old staff session (token already revoked) → sign out → sign-in
+ * - business setup not finished → business setup at its next step
+ * - set up but no plan yet → plan picker
+ */
+async function openSetupAfterStaffRemoval(
+  router: Router,
+  fromInAppList?: boolean,
+): Promise<void> {
+  const user = store.getState().user;
+  if (!user.accessToken) {
+    openSignInAfterStaffRemoval(router);
+    return;
+  }
+  const accountRole = getAccountRole(user);
+  if (accountRole === "staff") {
+    await signOutRemovedStaff();
+    setTimeout(() => {
+      openSignInAfterStaffRemoval(router);
+    }, AI_MEMORY_BACK_DELAY_MS);
+    return;
+  }
+  const { businessStatus } = user;
+  // Status still loading: OnboardingHandler / plans auto-open take over once it lands
+  if (accountRole !== "business" || !businessStatus) return;
+
+  const go = () => {
+    if (!businessStatus.onboarding_completed) {
+      store.dispatch(setCurrentStep(businessStatus.next_step || 1));
+      router.push(`/(main)/${MAIN_ROUTES.COMPLETE_PROFILE}` as any);
+    } else if (businessStatus.has_subscription === false) {
+      store.dispatch(setBusinessPlansModalVisible(true));
+    }
+  };
+  if (fromInAppList) {
+    if (router.canGoBack()) {
+      router.back();
+    }
+    setTimeout(go, AI_MEMORY_BACK_DELAY_MS);
+    return;
+  }
+  go();
+}
+
 /** Let the dashboard remount for the new mode before pushing the target screen */
 const MODE_SWITCH_NAVIGATION_DELAY_MS = 150;
 
@@ -387,7 +470,10 @@ export async function navigateFromPushNotification(
   if (!data?.type) return;
 
   // Already signed out by the server — no mode switch (it needs a token)
-  if (getNotificationSubType(data) === "account_suspended") {
+  if (
+    getNotificationSubType(data) === "account_suspended" ||
+    isStaffRemovedNotification(data)
+  ) {
     navigateFromNotificationData(router, data);
     return;
   }
@@ -448,6 +534,12 @@ export function navigateFromNotificationData(
       void openModeratedReel(router, reelId, options?.fromInAppList);
     }
     // posting_restored / account_restored: nothing to open (row is marked read)
+    return;
+  }
+
+  if (isStaffRemovedNotification(data)) {
+    // model_id / business_id is the OLD business — never open it
+    void openSetupAfterStaffRemoval(router, options?.fromInAppList);
     return;
   }
 

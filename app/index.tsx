@@ -10,9 +10,8 @@ import { moderateWidthScale } from "@/src/theme/dimensions";
 import { useEffect, useMemo, useRef } from "react";
 import Logger from "@/src/services/logger";
 import {
-  clearLastNotificationResponse,
-  clearPendingNotificationData,
   consumePendingNotificationNavigation,
+  consumeSignedOutNotificationNavigation,
   queueColdStartNotificationIfNeeded,
 } from "@/src/services/pendingNotificationNavigation";
 
@@ -56,8 +55,8 @@ export default function Index() {
       consumePendingNotificationNavigation(router);
     } else {
       router.replace(`/(main)/${MAIN_ROUTES.ROLE}` as any);
-      clearPendingNotificationData();
-      void clearLastNotificationResponse();
+      // Drops the queued tap; a removed staff member's tap opens sign-in on top
+      void consumeSignedOutNotificationNavigation(router);
     }
   };
 

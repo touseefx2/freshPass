@@ -401,6 +401,14 @@ export const signOutSuspendedAccount = async (message?: string) => {
 };
 
 /**
+ * `staff_removed` tapped while this device still holds the old staff session:
+ * the server already revoked every token, so sign out without calling the API.
+ */
+export const signOutRemovedStaff = async () => {
+  await handleLogout({ skipApi: true });
+};
+
+/**
  * Get readable error message from API response
  */
 const getErrorMessage = (error: AxiosError): string => {

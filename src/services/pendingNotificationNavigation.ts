@@ -3,7 +3,9 @@ import type { Router } from "expo-router";
 import { InteractionManager } from "react-native";
 import Logger from "@/src/services/logger";
 import {
+  isStaffRemovedNotification,
   navigateFromPushNotification,
+  openSignInAfterStaffRemoval,
   withPushNotificationType,
   type NotificationNavigationData,
 } from "@/src/services/notificationNavigation";
@@ -76,6 +78,27 @@ export function consumePendingNotificationNavigation(router: Router): void {
       void navigateFromPushNotification(router, data);
       void clearLastNotificationResponse();
       Logger.log("------>consumePendingNotificationNavigation", data);
+    }, COLD_START_NAVIGATION_DELAY_MS);
+  });
+}
+
+/**
+ * Signed-out cold start: drop the queued tap, except `staff_removed` (the user
+ * was removed from a team and signed out) — that one still lands on sign-in.
+ */
+export async function consumeSignedOutNotificationNavigation(
+  router: Router,
+): Promise<void> {
+  await queueColdStartNotificationIfNeeded();
+  const data = pendingData;
+  clearPendingNotificationData();
+  void clearLastNotificationResponse();
+  if (!isStaffRemovedNotification(data)) return;
+
+  InteractionManager.runAfterInteractions(() => {
+    setTimeout(() => {
+      openSignInAfterStaffRemoval(router);
+      Logger.log("------>consumeSignedOutNotificationNavigation", data);
     }, COLD_START_NAVIGATION_DELAY_MS);
   });
 }

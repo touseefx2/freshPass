@@ -3,6 +3,7 @@ import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import { useRouter } from "expo-router";
 import AppImage from "@/src/components/AppImage";
+import { StarIconSmall } from "@/assets/icons";
 import {
   HIRING_CORNER_OVERHANG,
   HIRING_FRAME_WIDTH,
@@ -18,7 +19,10 @@ import {
   widthScale,
 } from "@/src/theme/dimensions";
 import { getDefaultBusinessImage } from "@/src/services/remoteConfigService";
-import type { AvailableNowListItem } from "@/src/types/availableNow";
+import type {
+  AvailableNowBusiness,
+  AvailableNowListItem,
+} from "@/src/types/availableNow";
 import { getAvailableNowBadge } from "@/src/utils/availableNow";
 import { resolveApiImageUrl } from "@/src/utils/media";
 
@@ -44,6 +48,15 @@ export function bookAvailableNow(router: AppRouter, item: AvailableNowListItem) 
     pathname: "/(main)/bookingNow",
     params: { business_id: String(item.business.id), pick_service: "1" },
   } as any);
+}
+
+/** Same picture as the Recommended card: portfolio photo → image → logo → default. */
+function businessImage(business: AvailableNowBusiness | undefined) {
+  return (
+    business?.portfolio_photos?.[0]?.url ||
+    resolveApiImageUrl(business?.image_url || business?.logo_url) ||
+    getDefaultBusinessImage()
+  );
 }
 
 // Same look as the home "Recommended" business card
@@ -136,8 +149,31 @@ const createStyles = (theme: Theme) =>
       color: theme.white80,
       includeFontPadding: false,
     },
+    bottomRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: moderateWidthScale(8),
+    },
+    rating: {
+      flexShrink: 1,
+      flexDirection: "row",
+      alignItems: "center",
+      paddingHorizontal: moderateWidthScale(6),
+      paddingVertical: moderateHeightScale(4),
+      borderRadius: moderateWidthScale(999),
+      borderWidth: moderateWidthScale(1),
+      borderColor: theme.white70,
+      gap: moderateWidthScale(6),
+    },
+    ratingText: {
+      flexShrink: 1,
+      fontSize: fontSize.size10,
+      fontFamily: fonts.fontRegular,
+      color: theme.white,
+      includeFontPadding: false,
+    },
     bookBtn: {
-      alignSelf: "flex-start",
       paddingHorizontal: moderateWidthScale(16),
       paddingVertical: moderateHeightScale(5),
       borderRadius: moderateWidthScale(999),
@@ -171,10 +207,10 @@ export default function AvailableNowCard({
   const styles = useMemo(() => createStyles(theme), [theme]);
   const { t } = useTranslation();
 
-  const isHiring = item.business?.is_hiring === true;
-  // Same fallback as the Recommended cards when the business has no picture
-  const imageUri =
-    resolveApiImageUrl(item.business?.image_url) || getDefaultBusinessImage();
+  const business = item.business;
+  const isHiring = business?.is_hiring === true;
+  const imageUri = businessImage(business);
+  const ownerName = business?.owner?.name?.trim() || null;
   const badge = getAvailableNowBadge(item, t);
   // Single-provider businesses send no staff
   const staffNames = (item.available_staff ?? [])
@@ -185,7 +221,9 @@ export default function AvailableNowCard({
   const distance =
     item.distance_km != null ? `${Number(item.distance_km).toFixed(1)} km` : null;
   const address = [
-    [item.business?.city, item.business?.state].filter(Boolean).join(", "),
+    business?.address ||
+      business?.street_address ||
+      [business?.city, business?.state].filter(Boolean).join(", "),
     distance,
   ]
     .filter(Boolean)
@@ -202,7 +240,7 @@ export default function AvailableNowCard({
       onPress={() => onPress(item)}
       activeOpacity={0.9}
       accessibilityRole="button"
-      accessibilityLabel={[item.business?.title, badge?.label, staffLine, address]
+      accessibilityLabel={[business?.title, badge?.label, staffLine, address]
         .filter(Boolean)
         .join(", ")}
     >
@@ -227,11 +265,12 @@ export default function AvailableNowCard({
         )}
         <View style={styles.info}>
           <Text style={styles.title} numberOfLines={1}>
-            {item.business?.title || ""}
+            {business?.title || ""}
           </Text>
-          {staffLine ? (
+          {/* Staff business: who's free; single provider: the owner */}
+          {staffLine || ownerName ? (
             <Text style={styles.staff} numberOfLines={1}>
-              {staffLine}
+              {staffLine || t("ownedBy", { name: ownerName })}
             </Text>
           ) : null}
           {address ? (
@@ -240,15 +279,28 @@ export default function AvailableNowCard({
             </Text>
           ) : null}
         </View>
-        <TouchableOpacity
-          style={styles.bookBtn}
-          onPress={() => onBook(item)}
-          activeOpacity={0.85}
-          accessibilityRole="button"
-          accessibilityLabel={t("anBook")}
-        >
-          <Text style={styles.bookText}>{t("anBook")}</Text>
-        </TouchableOpacity>
+        <View style={styles.bottomRow}>
+          <View style={styles.rating}>
+            <StarIconSmall
+              width={widthScale(12)}
+              height={heightScale(12)}
+              color={theme.orangeBrown}
+            />
+            <Text style={styles.ratingText} numberOfLines={1}>
+              {business?.average_rating || 0}/ {business?.ratings_count || 0}{" "}
+              reviews
+            </Text>
+          </View>
+          <TouchableOpacity
+            style={styles.bookBtn}
+            onPress={() => onBook(item)}
+            activeOpacity={0.85}
+            accessibilityRole="button"
+            accessibilityLabel={t("anBook")}
+          >
+            <Text style={styles.bookText}>{t("anBook")}</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </TouchableOpacity>
   );

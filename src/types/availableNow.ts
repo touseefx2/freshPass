@@ -35,18 +35,29 @@ export type AvailableNowStatus = {
   window_ends_at: string | null;
 };
 
+/** The same business card as /api/businesses (Recommended / Deals), plus how it is booked. */
 export type AvailableNowBusiness = {
   id: number;
   title: string;
   slug?: string | null;
   image_url?: string | null;
+  logo_url?: string | null;
+  portfolio_photos?: { id: number; path: string; url: string }[];
+  street_address?: string | null;
+  address?: string | null;
   city?: string | null;
   state?: string | null;
   category_id?: number | null;
-  /** true: Solo, or no staff yet — booked against the business's own hours */
-  is_single_provider?: boolean;
+  average_rating?: number | null;
+  ratings_count?: number | null;
+  owner?: { id: number; name: string | null } | null;
+  category?: { id: number; name: string } | null;
   /** Has an open job post — gold frame + HIRING corner badge, like other business cards */
   is_hiring?: boolean;
+  is_official?: boolean;
+  is_favorited?: boolean;
+  /** true: Solo, or no staff yet — booked against the business's own hours */
+  is_single_provider?: boolean;
 };
 
 export type AvailableNowStaff = {

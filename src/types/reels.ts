@@ -30,6 +30,13 @@ export type ReelBusiness = {
   is_own_business?: boolean;
 };
 
+/** Staff member who posted a feed reel, while they still work at its business */
+export type ReelPostedBy = {
+  staff_id: number;
+  name: string;
+  image_url?: string | null;
+};
+
 export type ReelStats = {
   views: number;
   likes: number;
@@ -93,6 +100,8 @@ export type FeedReel = {
   category: ReelCategory | null;
   service: ReelService | null;
   business: ReelBusiness;
+  /** null for owner / Freshy reels and staff who left — show the business only */
+  posted_by?: ReelPostedBy | null;
   distance_km?: number | null;
   stats: ReelStats;
   viewer: ReelViewer;

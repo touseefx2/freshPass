@@ -460,6 +460,35 @@ const createStyles = (theme: Theme) =>
       textShadowOffset: { width: 0, height: 1 },
       textShadowRadius: 5,
     },
+    postedByRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      alignSelf: "flex-start",
+      maxWidth: "100%",
+      gap: moderateWidthScale(6),
+      marginBottom: moderateHeightScale(6),
+    },
+    postedByAvatar: {
+      width: moderateWidthScale(20),
+      height: moderateWidthScale(20),
+      borderRadius: moderateWidthScale(10),
+      backgroundColor: theme.grey15,
+      borderWidth: 1,
+      borderColor: theme.white50,
+    },
+    postedByAvatarEmpty: {
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    postedByName: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontMedium,
+      color: theme.white,
+      flexShrink: 1,
+      textShadowColor: `${theme.black}CC`,
+      textShadowOffset: { width: 0, height: 1 },
+      textShadowRadius: 4,
+    },
     followBtn: {
       paddingHorizontal: moderateWidthScale(12),
       paddingVertical: moderateHeightScale(5),
@@ -1228,6 +1257,10 @@ function ReelFeedItemBase({
     .filter(Boolean)
     .join(", ");
   const categoryName = reel.category?.name?.trim() || "";
+  const businessAvatarUri = resolveApiImageUrl(reel.business?.image_url);
+  // Staff who posted it (null: owner / Freshy / left) — shown under the business
+  const postedByName = reel.posted_by?.name?.trim() || "";
+  const postedByAvatarUri = resolveApiImageUrl(reel.posted_by?.image_url);
   const dispatch = useAppDispatch();
   const shopProduct = reel.product ?? null;
   const productPrice = shopProduct
@@ -1526,9 +1559,9 @@ function ReelFeedItemBase({
             <View style={styles.businessRow}>
               {showAsOwner ? (
                 <>
-                  {resolveApiImageUrl(reel.business?.image_url) ? (
+                  {businessAvatarUri ? (
                     <AppImage
-                      uri={resolveApiImageUrl(reel.business?.image_url)!}
+                      uri={businessAvatarUri}
                       style={styles.avatar}
                     />
                   ) : (
@@ -1559,9 +1592,9 @@ function ReelFeedItemBase({
               ) : (
                 <>
                   <TouchableOpacity onPress={() => onProfile(reel)}>
-                    {resolveApiImageUrl(reel.business?.image_url) ? (
+                    {businessAvatarUri ? (
                       <AppImage
-                        uri={resolveApiImageUrl(reel.business?.image_url)!}
+                        uri={businessAvatarUri}
                         style={styles.avatar}
                       />
                     ) : (
@@ -1609,6 +1642,35 @@ function ReelFeedItemBase({
                 </>
               )}
             </View>
+
+            {!!postedByName && (
+              <TouchableOpacity
+                style={styles.postedByRow}
+                onPress={() => onProfile(reel)}
+                disabled={showAsOwner}
+                activeOpacity={0.7}
+              >
+                {postedByAvatarUri ? (
+                  <AppImage
+                    uri={postedByAvatarUri}
+                    style={styles.postedByAvatar}
+                  />
+                ) : (
+                  <View
+                    style={[styles.postedByAvatar, styles.postedByAvatarEmpty]}
+                  >
+                    <MaterialIcons
+                      name="person"
+                      size={moderateWidthScale(13)}
+                      color={theme.white}
+                    />
+                  </View>
+                )}
+                <Text style={styles.postedByName} numberOfLines={1}>
+                  {postedByName}
+                </Text>
+              </TouchableOpacity>
+            )}
 
             {(cityState || !!categoryName) && (
               <View style={styles.metaRow}>
