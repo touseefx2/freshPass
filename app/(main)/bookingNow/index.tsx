@@ -2052,9 +2052,8 @@ export default function BookingNow() {
         date: dateStr,
         staff_id: staffId,
         slot_minutes: slotMinutes,
-        // ...(excludeAppointmentId != null && !isNaN(excludeAppointmentId)
-        //   ? { exclude_appointment_id: excludeAppointmentId }
-        //   : {}),
+        // The visit being moved doesn't block times overlapping its own slot.
+        exclude_appointment_id: excludeAppointmentId,
       }),
     )
       .then((res) => {
