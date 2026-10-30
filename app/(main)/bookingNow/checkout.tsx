@@ -671,6 +671,16 @@ function CheckoutContent() {
   const selectedServices = reduxSelectedServices || [];
   const selectedStaffId = reduxSelectedStaff || "anyone";
   const assignedStaffId = reduxAssignedStaffId ?? null;
+  // Deal quotes run the same match check as the booking, so they need the deal's staff too.
+  const dealQuoteParams = params.slot_offer_id
+    ? {
+        slot_offer_id: Number(params.slot_offer_id),
+        staff_id: resolveAppointmentStaffId({
+          selectedStaff: selectedStaffId,
+          assignedStaffId,
+        }),
+      }
+    : {};
   const paymentMethod = canPayInApp
     ? reduxPaymentMethod || "payNow"
     : "payLater";
@@ -805,6 +815,7 @@ function CheckoutContent() {
             appointment_date: reduxSelectedDate || "",
             appointment_time: reduxSelectedTimeSlot || "",
             service_ids: selectedServices.map((service) => service.id),
+            ...dealQuoteParams,
           }),
         );
         if (quoteResponse?.success && quoteResponse.data && quoteResponse.data.policyActive !== false) {
@@ -1150,9 +1161,7 @@ function CheckoutContent() {
           appointment_date: reduxSelectedDate || "",
           appointment_time: reduxSelectedTimeSlot || "",
           service_ids: selectedServices.map((service) => service.id),
-          ...(params.slot_offer_id
-            ? { slot_offer_id: Number(params.slot_offer_id) }
-            : {}),
+          ...dealQuoteParams,
         }),
       );
 
