@@ -23,6 +23,7 @@ import { resolveApiImageUrl } from "@/src/utils/media";
 import { isSoloSubscription } from "@/src/state/slices/userSlice";
 import {
   fetchBusinessSummary,
+  fetchStaffBusinessSummary,
   type StaffBusinessSummary,
 } from "@/src/services/staffBusinessService";
 
@@ -43,6 +44,10 @@ export type SoloRowKey =
   | "cancellationPolicy"
   | "team"
   | "publicProfile"
+  | "availability"
+  | "myAppointments"
+  | "uploadWork"
+  | "leaveRequest"
   | "language"
   | "notifications"
   | "rules"
@@ -164,15 +169,18 @@ function Section({
 
 /**
  * Business owner on a Solo plan, or with no active plan: one flat Profile
- * page — the owner is the business.
+ * page — the owner is the business. Staff get the same page with their own rows.
  */
 export default function SoloProfileView({
   onRowPress,
   deleteLoading,
+  variant = "solo",
 }: {
   onRowPress: (key: SoloRowKey) => void;
   deleteLoading: boolean;
+  variant?: "solo" | "staff";
 }) {
+  const isStaff = variant === "staff";
   const { colors } = useTheme();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -182,18 +190,24 @@ export default function SoloProfileView({
   const businessId = user.business_id ?? user.businessStatus?.business_id;
 
   const [summary, setSummary] = useState<StaffBusinessSummary | null>(null);
-  const [summaryLoading, setSummaryLoading] = useState(!!businessId);
+  const [summaryLoading, setSummaryLoading] = useState(
+    isStaff || !!businessId,
+  );
 
   useEffect(() => {
-    if (!businessId) return;
+    if (!isStaff && !businessId) return;
     let active = true;
     setSummaryLoading(true);
-    fetchBusinessSummary(businessId)
+    // Staff: the business they work for
+    (isStaff
+      ? fetchStaffBusinessSummary(user.business_id)
+      : fetchBusinessSummary(businessId!)
+    )
       .then((data) => {
         if (active) setSummary(data);
       })
       .catch((error) => {
-        Logger.error("Failed to load solo business rating:", error);
+        Logger.error("Failed to load profile business summary:", error);
       })
       .finally(() => {
         if (active) setSummaryLoading(false);
@@ -201,21 +215,78 @@ export default function SoloProfileView({
     return () => {
       active = false;
     };
-  }, [businessId]);
+  }, [isStaff, businessId, user.business_id]);
 
-  const hasSoloPlan = isSoloSubscription(user.businessStatus);
-  const planBadge = hasSoloPlan ? t("soloProfessional") : t("noActivePlan");
+  const hasSoloPlan = isStaff || isSoloSubscription(user.businessStatus);
+  const planBadge = isStaff
+    ? t("staff")
+    : hasSoloPlan
+      ? t("soloProfessional")
+      : t("noActivePlan");
   const avatarUri = resolveApiImageUrl(user.profile_image_url);
   const displayName = user.name || summary?.name || user.business_name || "";
   const hasReviews = (summary?.ratingsCount ?? 0) > 0;
-  const ratingText = hasReviews
-    ? t("reviewsCount", {
-        rating: summary!.averageRating.toFixed(1),
-        count: summary!.ratingsCount,
-      })
-    : t("noReviewsYet");
+  // Staff: the line under the badge names their business, not a rating
+  const ratingText = isStaff
+    ? summary?.name || user.business_name || ""
+    : hasReviews
+      ? t("reviewsCount", {
+          rating: summary!.averageRating.toFixed(1),
+          count: summary!.ratingsCount,
+        })
+      : t("noReviewsYet");
 
   const dark = { tileBg: theme.darkGreen, iconColor: theme.white };
+
+  const staffAccountRows: SoloRow[] = [
+    {
+      key: "availability",
+      title: t("mySchedule"),
+      subtitle: t("soloScheduleSub"),
+      icon: "calendar-blank-outline",
+      ...dark,
+    },
+    {
+      key: "myAppointments",
+      title: t("myAppointments"),
+      subtitle: t("soloAppointmentsSub"),
+      icon: "calendar-check-outline",
+      tileBg: theme.apptBlueBg,
+      iconColor: theme.apptBlueAccent,
+    },
+    {
+      key: "uploadWork",
+      title: t("myPortfolio"),
+      subtitle: t("soloPortfolioSub"),
+      icon: "image-outline",
+      tileBg: theme.mintTintStrong,
+      iconColor: theme.apptMintAccent,
+    },
+    {
+      key: "mediaLibrary",
+      title: t("myReels"),
+      subtitle: t("soloReelsSub"),
+      icon: "play-box-outline",
+      tileBg: theme.apptPinkBg,
+      iconColor: theme.apptPinkAccent,
+    },
+    {
+      key: "aiTools",
+      title: t("aiTools"),
+      subtitle: t("soloAiToolsSub"),
+      icon: "creation",
+      tileBg: theme.apptLavenderBg,
+      iconColor: theme.apptLavenderAccent,
+    },
+    {
+      key: "leaveRequest",
+      title: t("leaveRequest"),
+      subtitle: t("staffLeaveRequestSub"),
+      icon: "calendar-remove-outline",
+      tileBg: theme.apptPeachBg,
+      iconColor: theme.orangeBrownText,
+    },
+  ];
 
   const accountRows: SoloRow[] = [
     {
@@ -393,7 +464,9 @@ export default function SoloProfileView({
         <Text style={styles.title} accessibilityRole="header">
           {t("profilePageTitle")}
         </Text>
-        <Text style={styles.subtitle}>{t("soloProfileSubtitle")}</Text>
+        <Text style={styles.subtitle}>
+          {isStaff ? t("manageAccountPreferences") : t("soloProfileSubtitle")}
+        </Text>
       </View>
 
       {/* Profile card */}
@@ -447,7 +520,13 @@ export default function SoloProfileView({
           ) : (
             <View style={styles.ratingRow}>
               <MaterialCommunityIcons
-                name={hasReviews ? "star" : "star-outline"}
+                name={
+                  isStaff
+                    ? "storefront-outline"
+                    : hasReviews
+                      ? "star"
+                      : "star-outline"
+                }
                 size={moderateWidthScale(16)}
                 color={theme.orangeBrown}
               />
@@ -467,18 +546,20 @@ export default function SoloProfileView({
 
       <Section
         title={t("profileSectionAccount")}
-        rows={accountRows}
+        rows={isStaff ? staffAccountRows : accountRows}
         onRowPress={onRowPress}
         theme={theme}
         styles={styles}
       />
-      <Section
-        title={t("profileSectionBusiness")}
-        rows={businessRows}
-        onRowPress={onRowPress}
-        theme={theme}
-        styles={styles}
-      />
+      {!isStaff && (
+        <Section
+          title={t("profileSectionBusiness")}
+          rows={businessRows}
+          onRowPress={onRowPress}
+          theme={theme}
+          styles={styles}
+        />
+      )}
       <Section
         title={t("profileSectionSettings")}
         rows={settingsRows}

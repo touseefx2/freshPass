@@ -132,6 +132,8 @@ export default function DashboardLayout() {
   const userRole = user.userRole;
   const isCustomer = userRole === "customer" && !isGuest;
   const isBusiness = userRole === "business";
+  // Staff get the owner's tab bar: + quick menu in the center, Profile in the header
+  const hasCreateTab = isBusiness || userRole === "staff";
   const dispatch = useAppDispatch();
   const store = useStore<RootState>();
   const { showBanner } = useNotificationContext();
@@ -512,7 +514,7 @@ export default function DashboardLayout() {
         <Tabs.Screen
           name="(create)"
           options={{
-            href: isBusiness ? undefined : null,
+            href: hasCreateTab ? undefined : null,
             title: "",
             tabBarLabel: () => null,
             tabBarIcon: () => (
@@ -528,7 +530,7 @@ export default function DashboardLayout() {
           listeners={{
             tabPress: (e) => {
               e.preventDefault();
-              if (!isBusiness) return;
+              if (!hasCreateTab) return;
               toggleCreateMenu();
             },
           }}
@@ -583,7 +585,7 @@ export default function DashboardLayout() {
         <Tabs.Screen
           name="(account)"
           options={{
-            href: isBusiness ? null : undefined,
+            href: hasCreateTab ? null : undefined,
             title: t("tabProfile"),
             tabBarIcon: ({ color, size, focused }) => (
               <View
@@ -600,7 +602,7 @@ export default function DashboardLayout() {
           }}
         />
       </Tabs>
-      {isBusiness && (
+      {hasCreateTab && (
         <BusinessCreateMediaMenu
           visible={createMenuOpen}
           onClose={closeCreateMenu}

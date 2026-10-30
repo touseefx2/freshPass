@@ -1118,6 +1118,22 @@ export default function AccountScreen() {
   }
 
   /* ════════════════════════════════════════════════
+     Staff — same flat page as solo, with the staff rows
+     ════════════════════════════════════════════════ */
+  if (isStaff) {
+    return (
+      <View style={styles.container}>
+        <DashboardHeader />
+        <SoloProfileView
+          variant="staff"
+          onRowPress={handleRowPress}
+          deleteLoading={deleteLoading}
+        />
+      </View>
+    );
+  }
+
+  /* ════════════════════════════════════════════════
      Business owner layout
      ════════════════════════════════════════════════ */
   if (isBusiness) {

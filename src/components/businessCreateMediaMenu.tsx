@@ -62,7 +62,10 @@ type CreateMenuAction =
   | "hiring"
   | "addProduct"
   | "createReel"
-  | "servicesAndMemberships";
+  | "servicesAndMemberships"
+  | "availability"
+  | "leaveRequest"
+  | "uploadWork";
 
 type IconSet = "material" | "community";
 
@@ -192,6 +195,35 @@ const createStyles = (theme: Theme) =>
     },
   });
 
+/** Staff: only what their Profile already offers */
+const STAFF_MENU_ITEMS: MenuItem[] = [
+  {
+    id: "availability",
+    labelKey: "setAvailability",
+    icon: "calendar-clock",
+    iconSet: "community",
+  },
+  {
+    id: "leaveRequest",
+    labelKey: "leaveRequest",
+    icon: "calendar-remove-outline",
+    iconSet: "community",
+  },
+  {
+    id: "uploadWork",
+    labelKey: "uploadYourWork",
+    icon: "image-plus",
+    iconSet: "community",
+  },
+  {
+    id: "createReel",
+    labelKey: "createReel",
+    icon: "movie-open-outline",
+    iconSet: "community",
+    highlighted: true,
+  },
+];
+
 type Styles = ReturnType<typeof createStyles>;
 
 /** Gap between pills plus one pill's height, roughly — how far each one rises */
@@ -306,6 +338,7 @@ export default function BusinessCreateMediaMenu({
   const dispatch = useAppDispatch();
   const userRole = useAppSelector((state) => state.user.userRole);
   const businessStatus = useAppSelector((state) => state.user.businessStatus);
+  const menuItems = userRole === "staff" ? STAFF_MENU_ITEMS : MENU_ITEMS;
 
   const [buyPlanModalVisible, setBuyPlanModalVisible] = useState(false);
   const [upgradeModalVisible, setUpgradeModalVisible] = useState(false);
@@ -480,6 +513,22 @@ export default function BusinessCreateMediaMenu({
             }, 5);
           }, 5);
           return;
+        case "availability":
+        case "uploadWork": {
+          closeAll();
+          // Profile → the staff screen
+          const screen =
+            action === "availability" ? "staffAvailability" : "staffWorkImages";
+          router.push("/(main)/dashboard/(account)");
+          setTimeout(() => {
+            router.push(`/(main)/dashboard/(account)/${screen}` as any);
+          }, 5);
+          return;
+        }
+        case "leaveRequest":
+          closeAll();
+          router.push("/(main)/leaveList");
+          return;
         case "servicesAndMemberships":
           closeAll();
           // Profile → Business profile settings → Services & Memberships
@@ -562,11 +611,11 @@ export default function BusinessCreateMediaMenu({
             pointerEvents="box-none"
           >
             <View style={styles.menu}>
-              {MENU_ITEMS.map((item, i) => {
+              {menuItems.map((item, i) => {
                 const pill = (
                   <MenuPill
                     item={item}
-                    fromBottom={MENU_ITEMS.length - 1 - i}
+                    fromBottom={menuItems.length - 1 - i}
                     label={t(item.labelKey)}
                     icon={renderMenuIcon(item)}
                     styles={styles}

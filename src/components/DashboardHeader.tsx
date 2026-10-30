@@ -449,6 +449,27 @@ function DashboardHeader({
     );
   };
 
+  const profileButton = (
+    <TouchableOpacity
+      style={styles.avatarButton}
+      onPress={handleProfilePress}
+      activeOpacity={0.85}
+      accessibilityRole="button"
+      accessibilityLabel={t("tabProfile")}
+    >
+      {avatarUri ? (
+        <AppImage uri={avatarUri} style={styles.avatarImage} />
+      ) : (
+        <Feather
+          name="user"
+          size={moderateWidthScale(18)}
+          color={theme.white80}
+          style={styles.avatarPlaceholderIcon}
+        />
+      )}
+    </TouchableOpacity>
+  );
+
   return (
     <View>
       <View
@@ -480,27 +501,7 @@ function DashboardHeader({
                   {isOnline ? t("active") : t("inactive")}
                 </Text>
               </View>
-              <TouchableOpacity
-                style={styles.avatarButton}
-                onPress={handleProfilePress}
-                activeOpacity={0.85}
-                accessibilityRole="button"
-                accessibilityLabel={t("tabProfile")}
-              >
-                {avatarUri ? (
-                  <AppImage
-                    uri={avatarUri}
-                    style={styles.avatarImage}
-                  />
-                ) : (
-                  <Feather
-                    name="user"
-                    size={moderateWidthScale(18)}
-                    color={theme.white80}
-                    style={styles.avatarPlaceholderIcon}
-                  />
-                )}
-              </TouchableOpacity>
+              {profileButton}
             </View>
           ) : (
             <View style={styles.toggleContainer}>
@@ -509,6 +510,8 @@ function DashboardHeader({
                 onValueChange={handleToggleChange}
                 loading={toggleLoading}
               />
+              {/* Staff have no Profile tab — the avatar opens it */}
+              {userRole === "staff" && profileButton}
             </View>
           )}
         </View>
