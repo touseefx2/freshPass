@@ -30,7 +30,7 @@ import {
   type OwnerReel,
 } from "@/src/types/reels";
 import dayjs from "dayjs";
-import { MaterialIcons } from "@expo/vector-icons";
+import { MaterialCommunityIcons, MaterialIcons } from "@expo/vector-icons";
 import { moderateWidthScale } from "@/src/theme/dimensions";
 import RetryButton from "@/src/components/retryButton";
 import EmptyState from "@/src/components/emptyState";
@@ -88,12 +88,15 @@ type RequestListItem = {
   title: string;
   /** UI status: completed | failed | processing | review | needs_input */
   status: string;
-  jobIdDisplay: string;
   createdAt: string;
+  /** Second line — reel rows only (caption / why it needs input) */
   prompt?: string;
   autoReelId?: number;
   reelId?: number | null;
   jobId?: string;
+  /** Raw job_type / try-on category — drive result screen + icon, never the title */
+  jobType?: string;
+  category?: string | null;
 };
 
 type RequestSection = {
@@ -201,12 +204,13 @@ function formatSectionDayLabel(dayKey: string, t: (key: string) => string): stri
   if (sectionDate.isSame(yesterday, "day")) {
     return t("yesterday");
   }
-  return sectionDate.format("D MMMM YYYY");
+  return sectionDate.format("MMM D, YYYY");
 }
 
 function buildSections(
   items: RequestListItem[],
   t: (key: string, options?: Record<string, unknown>) => string,
+  collapsedDays: Set<string>,
 ): RequestSection[] {
   const sectionsByDay = new Map<string, RequestListItem[]>();
   const orderedDayKeys: string[] = [];
@@ -230,7 +234,8 @@ function buildSections(
         count: dayItems.length,
       }),
       count: dayItems.length,
-      data: dayItems,
+      // Folded day: header + count stay, rows aren't rendered
+      data: collapsedDays.has(dayKey) ? [] : dayItems,
     };
   });
 }
@@ -244,40 +249,113 @@ function formatTime(value: string): string {
 }
 
 type IconName = React.ComponentProps<typeof MaterialIcons>["name"];
+type TileIconName = React.ComponentProps<typeof MaterialCommunityIcons>["name"];
 
-/** Icon for a row — display only, same type mapping the press handler uses. */
-function requestIcon(item: RequestListItem): IconName {
-  if (item.kind === "autoReel") return "movie-filter";
-  if (item.kind === "templateReel") return "dashboard-customize";
-  const title = item.title.toLowerCase();
-  if (title.includes("hair") || title.includes("replicate")) return "content-cut";
-  if (title.includes("collage")) return "grid-view";
-  if (title.includes("post")) return "image";
-  if (title.includes("reel")) return "videocam";
-  return "auto-awesome";
+/** job_type → aiResults resultType */
+const JOB_RESULT_TYPES: Record<string, string> = {
+  generate_with_replicate: "hairTryon",
+  hair_pipeline: "hairTryon",
+  generate_collage: "collage",
+  generate_post: "post",
+  generate_reel: "reel",
+};
+
+/** Social media jobs (owner Tools tab) → title key */
+const JOB_TITLE_KEYS: Record<string, string> = {
+  generate_post: "aiJobTitlePost",
+  generate_collage: "aiJobTitleCollage",
+  generate_reel: "aiJobTitleReel",
+};
+
+/** Try-on categories with one title whatever `gender` says */
+const SINGLE_TRYON_TITLE_KEYS: Record<string, string> = {
+  "nail-salon": "tryOnTitleNail",
+  makeup: "tryOnTitleMakeup",
+  tattoo: "tryOnTitleTattoo",
+  "pet-services": "tryOnTitlePet",
+  "brows-lashes": "tryOnTitleBrowsLashes",
+  piercings: "tryOnTitlePiercing",
+};
+
+function tryOnTitleKey(category: string | null, gender: unknown): string {
+  // Items made before categories existed were always hair
+  if (category == null) return "tryOnTitleHair";
+  if (category === "barbershop" || category === "beauty-salon") {
+    if (gender === "male") return "tryOnTitleMenHair";
+    if (gender === "female") return "tryOnTitleWomenHair";
+    return "tryOnTitleHair";
+  }
+  if (category === "braids-locs") {
+    if (gender === "male") return "tryOnTitleMenBraids";
+    if (gender === "female") return "tryOnTitleWomenBraids";
+    return "tryOnTitleBraids";
+  }
+  return SINGLE_TRYON_TITLE_KEYS[category] ?? "tryOnTitleGeneric";
 }
 
-function jobToListItem(job: AiRequestJob): RequestListItem {
-  const jobType =
-    job.request_payload?.job_type ?? job.response?.job_type ?? "—";
-  const title =
-    typeof jobType === "string" ? jobType.replace(/_/g, " ") : String(jobType);
-  const promptRaw =
-    job.request_payload?.prompt ?? job.response?.prompt ?? "";
-  const prompt =
-    typeof promptRaw === "string"
-      ? promptRaw.trim()
-      : String(promptRaw ?? "").trim();
+type TileIcon = { name: TileIconName; bg: string; color: string };
+
+/** Icon tile for a row: try-ons by category, the rest by kind / job_type */
+function requestIcon(item: RequestListItem, theme: Theme): TileIcon {
+  const neutral = { bg: theme.lightGreen07, color: theme.darkGreen };
+  if (item.kind === "autoReel") return { name: "movie-filter", ...neutral };
+  if (item.kind === "templateReel") {
+    return { name: "view-dashboard-edit", ...neutral };
+  }
+  if (item.jobType && HAIR_TRYON_JOB_TYPES.has(item.jobType)) {
+    switch (item.category) {
+      case null:
+      case undefined:
+      case "barbershop":
+      case "beauty-salon":
+        return { name: "content-cut", bg: theme.apptMintBg, color: theme.apptMintAccent };
+      case "braids-locs":
+        return { name: "hair-dryer", bg: theme.apptGoldBg, color: theme.apptGoldAccent };
+      case "nail-salon":
+        return { name: "bottle-tonic", bg: theme.apptPinkBg, color: theme.apptPinkAccent };
+      case "makeup":
+        return { name: "lipstick", bg: theme.tileRose, color: theme.accentRose };
+      case "tattoo":
+        return { name: "needle", bg: theme.apptBlueBg, color: theme.apptBlueAccent };
+      case "pet-services":
+        return { name: "paw", bg: theme.apptPeachBg, color: theme.apptPeachAccent };
+      case "brows-lashes":
+        return { name: "eye-outline", bg: theme.apptLavenderBg, color: theme.apptLavenderAccent };
+      case "piercings":
+        return { name: "diamond-stone", bg: theme.apptBlueBg, color: theme.apptBlueAccent };
+      default:
+        return { name: "creation", ...neutral };
+    }
+  }
+  if (item.jobType === "generate_collage") return { name: "view-grid", ...neutral };
+  if (item.jobType === "generate_post") return { name: "image", ...neutral };
+  if (item.jobType === "generate_reel") return { name: "video", ...neutral };
+  return { name: "creation", ...neutral };
+}
+
+function jobToListItem(
+  job: AiRequestJob,
+  t: (key: string) => string,
+): RequestListItem {
+  const rawJobType = job.request_payload?.job_type ?? job.response?.job_type;
+  const jobType = typeof rawJobType === "string" ? rawJobType : "";
+  const rawCategory =
+    job.request_payload?.category ?? job.response?.category ?? null;
+  const category = typeof rawCategory === "string" ? rawCategory : null;
+  const gender = job.request_payload?.gender ?? job.response?.gender ?? null;
+  const titleKey = HAIR_TRYON_JOB_TYPES.has(jobType)
+    ? tryOnTitleKey(category, gender)
+    : (JOB_TITLE_KEYS[jobType] ?? "aiJobTitleGeneric");
 
   return {
     key: `job-${job.job_id}`,
     kind: "job",
-    title,
+    title: t(titleKey),
     status: (job.status ?? "processing").toLowerCase(),
-    jobIdDisplay: job.job_id,
     createdAt: job.created_at,
-    prompt: prompt.length > 0 ? prompt : undefined,
     jobId: job.job_id,
+    jobType,
+    category,
   };
 }
 
@@ -307,7 +385,6 @@ function autoReelToListItem(
     kind: "autoReel",
     title: autoReel.template?.name || t("autoReelTitle"),
     status: mapAutoReelToUiStatus(autoReel),
-    jobIdDisplay: `auto_reel_${autoReel.id}`,
     createdAt:
       autoReel.created_at ?? autoReel.updated_at ?? new Date().toISOString(),
     prompt: detail?.trim() || undefined,
@@ -327,7 +404,6 @@ function templateReelToListItem(
     kind: "templateReel",
     title,
     status: mapGenerationToUiStatus(reel.generation_status),
-    jobIdDisplay: `reel_${reel.id}`,
     createdAt: reel.created_at ?? reel.updated_at ?? new Date().toISOString(),
     prompt: detail?.trim() || undefined,
     reelId: reel.id,
@@ -352,7 +428,11 @@ export default function AiRequests() {
   const isTryOnFlow =
     params.returnTo === "booking" || params.returnTo === "chat";
   const fromProcessingModal = params.fromProcessingModal === "1";
-  const headerTitle = isTryOnFlow ? t("tryOnList") : t("aiRequests");
+  // Customers only ever have try-ons; owner/staff lists also hold posts & reels
+  const headerTitle =
+    isTryOnFlow || (userRole !== "business" && userRole !== "staff")
+      ? t("myFreshyTryOn")
+      : t("aiRequests");
   const shouldFilterHairTryon = isTryOnFlow || userRole !== "business";
   const canFetchHistory = Boolean(accessToken) && !isGuest;
   // Auto reels list is business-wide for owner and staff
@@ -396,7 +476,20 @@ export default function AiRequests() {
   const [loadError, setLoadError] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
+  // Folded day keys — kept across refresh/poll, only while the screen is open
+  const [collapsedDays, setCollapsedDays] = useState<Set<string>>(
+    () => new Set(),
+  );
   const isPollingRef = useRef(false);
+
+  const toggleDay = useCallback((dayKey: string) => {
+    setCollapsedDays((prev) => {
+      const next = new Set(prev);
+      if (next.has(dayKey)) next.delete(dayKey);
+      else next.add(dayKey);
+      return next;
+    });
+  }, []);
 
   const fetchJobs = useCallback(
     async (
@@ -685,6 +778,7 @@ export default function AiRequests() {
       setJobs([]);
       setReels([]);
       setTemplateReels([]);
+      setCollapsedDays(new Set());
       setCurrentPage(1);
       setHasMore(true);
       setLoading(true);
@@ -706,12 +800,12 @@ export default function AiRequests() {
         (a, b) => dayjs(b.createdAt).valueOf() - dayjs(a.createdAt).valueOf(),
       );
     }
-    return jobs.map(jobToListItem);
+    return jobs.map((job) => jobToListItem(job, t));
   }, [activeTab, jobs, reels, templateReels, t]);
 
   const sections = useMemo(
-    () => buildSections(listItems, t),
-    [listItems, t],
+    () => buildSections(listItems, t, collapsedDays),
+    [listItems, t, collapsedDays],
   );
 
   const getStatusBadgeStyle = useCallback(
@@ -761,6 +855,7 @@ export default function AiRequests() {
     ({ item }: { item: RequestListItem }) => {
       const statusBadgeStyle = getStatusBadgeStyle(item.status);
       const statusColor = getStatusTextColor(item.status);
+      const icon = requestIcon(item, theme);
       const isHighlighted =
         (item.kind === "autoReel" &&
           params.highlightAutoReelId != null &&
@@ -800,15 +895,7 @@ export default function AiRequests() {
               });
               return;
             }
-            const titleLower = item.title.toLowerCase();
-            const resultType =
-              titleLower.includes("hair") || titleLower.includes("replicate")
-                ? "hairTryon"
-                : titleLower.includes("collage")
-                  ? "collage"
-                  : titleLower.includes("post")
-                    ? "post"
-                    : "reel";
+            const resultType = JOB_RESULT_TYPES[item.jobType ?? ""] ?? "reel";
             if (item.jobId) {
               router.push({
                 pathname: "/aiResults",
@@ -821,33 +908,21 @@ export default function AiRequests() {
             }
           }}
         >
-          <View style={styles.jobCardIcon}>
-            <MaterialIcons
-              name={requestIcon(item)}
+          <View style={[styles.jobCardIcon, { backgroundColor: icon.bg }]}>
+            <MaterialCommunityIcons
+              name={icon.name}
               size={moderateWidthScale(22)}
-              color={theme.darkGreen}
+              color={icon.color}
             />
           </View>
           <View style={styles.jobCardContent}>
-            <View style={styles.jobCardTopRow}>
-              <Text
-                style={styles.jobCardTypeTitle}
-                numberOfLines={1}
-                ellipsizeMode="middle"
-              >
-                {item.title}
-              </Text>
-              <View style={[styles.jobCardStatusBadge, statusBadgeStyle]}>
-                <MaterialIcons
-                  name={getStatusIcon(item.status)}
-                  size={moderateWidthScale(12)}
-                  color={statusColor}
-                />
-                <Text style={[styles.jobCardStatusText, { color: statusColor }]}>
-                  {formatStatusLabel(item.status)}
-                </Text>
-              </View>
-            </View>
+            <Text
+              style={styles.jobCardTypeTitle}
+              numberOfLines={2}
+              ellipsizeMode="tail"
+            >
+              {item.title}
+            </Text>
             {item.prompt ? (
               <Text
                 style={styles.jobCardPromptText}
@@ -866,27 +941,28 @@ export default function AiRequests() {
               <Text style={styles.jobCardMetaValue} numberOfLines={1}>
                 {formatTime(item.createdAt)}
               </Text>
-              <Text style={styles.jobCardMetaDot}>·</Text>
-              <Text
-                style={styles.jobCardJobIdMuted}
-                numberOfLines={1}
-                ellipsizeMode="middle"
-              >
-                {t("jobId")}: {item.jobIdDisplay}
-              </Text>
-              <MaterialIcons
-                name="chevron-right"
-                size={moderateWidthScale(20)}
-                color={theme.lightGreen5}
-              />
             </View>
           </View>
+          <View style={[styles.jobCardStatusBadge, statusBadgeStyle]}>
+            <MaterialIcons
+              name={getStatusIcon(item.status)}
+              size={moderateWidthScale(12)}
+              color={statusColor}
+            />
+            <Text style={[styles.jobCardStatusText, { color: statusColor }]}>
+              {formatStatusLabel(item.status)}
+            </Text>
+          </View>
+          <MaterialIcons
+            name="chevron-right"
+            size={moderateWidthScale(20)}
+            color={theme.lightGreen5}
+          />
         </TouchableOpacity>
       );
     },
     [
       styles,
-      t,
       theme,
       getStatusBadgeStyle,
       getStatusTextColor,
@@ -901,19 +977,33 @@ export default function AiRequests() {
   const keyExtractor = useCallback((item: RequestListItem) => item.key, []);
 
   const renderSectionHeader = useCallback(
-    ({ section }: { section: RequestSection }) => (
-      <View style={styles.sectionHeader} accessibilityRole="header">
-        <Text style={styles.sectionHeaderText}>
-          {formatSectionDayLabel(section.dayKey, t)}
-        </Text>
-        <View style={styles.sectionCountChip}>
-          <Text style={styles.sectionCountText}>
-            {t("aiHistoryCount", { count: section.count })}
+    ({ section }: { section: RequestSection }) => {
+      const collapsed = collapsedDays.has(section.dayKey);
+      return (
+        <TouchableOpacity
+          style={styles.sectionHeader}
+          activeOpacity={0.7}
+          onPress={() => toggleDay(section.dayKey)}
+          accessibilityRole="button"
+          accessibilityState={{ expanded: !collapsed }}
+        >
+          <Text style={styles.sectionHeaderText}>
+            {formatSectionDayLabel(section.dayKey, t)}
           </Text>
-        </View>
-      </View>
-    ),
-    [styles, t],
+          <View style={styles.sectionCountChip}>
+            <Text style={styles.sectionCountText}>
+              {t("aiHistoryCount", { count: section.count })}
+            </Text>
+          </View>
+          <MaterialIcons
+            name={collapsed ? "expand-more" : "expand-less"}
+            size={moderateWidthScale(22)}
+            color={theme.darkGreen}
+          />
+        </TouchableOpacity>
+      );
+    },
+    [styles, t, theme.darkGreen, collapsedDays, toggleDay],
   );
 
   const renderFooter = useCallback(() => {

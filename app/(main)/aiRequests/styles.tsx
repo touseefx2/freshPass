@@ -84,8 +84,8 @@ export const createStyles = (theme: Theme) =>
     // ── Request row ─────────────────────────────────────────────────
     jobCard: {
       flexDirection: "row",
-      alignItems: "flex-start",
-      gap: moderateWidthScale(12),
+      alignItems: "center",
+      gap: moderateWidthScale(10),
       backgroundColor: theme.white,
       borderRadius: moderateWidthScale(18),
       marginBottom: moderateHeightScale(12),
@@ -116,21 +116,12 @@ export const createStyles = (theme: Theme) =>
     },
     jobCardContent: {
       flex: 1,
-      gap: moderateHeightScale(6),
-    },
-    jobCardTopRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-      gap: moderateWidthScale(8),
-      paddingRight: moderateWidthScale(6),
+      gap: moderateHeightScale(4),
     },
     jobCardTypeTitle: {
-      flex: 1,
       fontSize: fontSize.size15,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
-      textTransform: "capitalize",
     },
     jobCardStatusBadge: {
       flexDirection: "row",
@@ -162,29 +153,17 @@ export const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontRegular,
       color: theme.lightGreen,
       lineHeight: fontSize.size18,
-      paddingRight: moderateWidthScale(6),
     },
     jobCardFooter: {
       flexDirection: "row",
       alignItems: "center",
       gap: moderateWidthScale(5),
-      marginTop: moderateHeightScale(2),
     },
     jobCardMetaValue: {
       fontSize: fontSize.size12,
       fontFamily: fonts.fontMedium,
       color: theme.darkGreen,
       fontVariant: ["tabular-nums"],
-    },
-    jobCardMetaDot: {
-      fontSize: fontSize.size12,
-      color: theme.lightGreen5,
-    },
-    jobCardJobIdMuted: {
-      flex: 1,
-      fontSize: fontSize.size11,
-      fontFamily: fonts.fontRegular,
-      color: theme.lightGreen5,
     },
 
     // ── Load error (list already has rows) ──────────────────────────
