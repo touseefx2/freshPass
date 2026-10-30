@@ -8,6 +8,7 @@ import {
   BackHandler,
   ActivityIndicator,
   TouchableOpacity,
+  Platform,
 } from "react-native";
 import { useRouter, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useTheme, useAppSelector, useAppDispatch } from "@/src/hooks/hooks";
@@ -76,6 +77,14 @@ import {
 } from "@/src/services/remoteConfigService";
 
 const isWebUrl = (u?: string) => !!u && /^https?:\/\//i.test(u);
+
+// iOS: the action loader is a native Modal. If Stripe presents while it is still
+// fading out, the payment sheet is attached to that Modal, closes with it, and
+// presentPaymentSheet never resolves. Hide the loader first, then wait for it.
+const waitForLoaderDismiss = () =>
+  Platform.OS === "ios"
+    ? new Promise<void>((resolve) => setTimeout(resolve, 500))
+    : Promise.resolve();
 
 const buildAppointmentFormData = (
   body: Record<string, any>,
@@ -964,7 +973,7 @@ function CheckoutContent() {
           params: {
             appointmentId: appointmentId ? String(appointmentId) : "",
             bookingId: bookingId,
-            selectedStaff: selectedStaffId,
+            selectedStaff: isSoloPlan ? "" : selectedStaffId,
             selectedStaffMember: selectedStaffMember
               ? JSON.stringify(selectedStaffMember)
               : "",
@@ -1363,6 +1372,7 @@ function CheckoutContent() {
             );
           }
 
+          await waitForLoaderDismiss();
           const { error: presentError } = await presentPaymentSheet();
 
           if (presentError) {
@@ -1423,7 +1433,7 @@ function CheckoutContent() {
                     : "",
                   bookingId: bookingId,
                   selectedServices: JSON.stringify(selectedServices),
-                  selectedStaff: selectedStaffId,
+                  selectedStaff: isSoloPlan ? "" : selectedStaffId,
                   selectedStaffMember: selectedStaffMember
                     ? JSON.stringify(selectedStaffMember)
                     : "",
@@ -1534,7 +1544,7 @@ function CheckoutContent() {
               appointmentId: appointmentId ? appointmentId.toString() : "",
               bookingId: bookingId,
               selectedServices: JSON.stringify(selectedServices),
-              selectedStaff: selectedStaffId,
+              selectedStaff: isSoloPlan ? "" : selectedStaffId,
               selectedStaffMember: selectedStaffMember
                 ? JSON.stringify(selectedStaffMember)
                 : "",
@@ -1662,6 +1672,8 @@ function CheckoutContent() {
               );
             }
 
+            dispatch(setActionLoader(false));
+            await waitForLoaderDismiss();
             const { error: presentError } = await presentPaymentSheet();
             if (presentError) {
               if (!presentError.code?.includes("Canceled")) {
