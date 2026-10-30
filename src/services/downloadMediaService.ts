@@ -47,7 +47,7 @@ export async function saveMediaToGallery(uri: string): Promise<boolean> {
       uri,
       localUri,
     );
-    const { status } = await MediaLibrary.requestPermissionsAsync();
+    const { status } = await MediaLibrary.requestPermissionsAsync(true);
     if (status !== "granted") return false;
     await MediaLibrary.saveToLibraryAsync(downloadedUri);
     return true;
