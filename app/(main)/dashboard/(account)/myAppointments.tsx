@@ -3,13 +3,13 @@ import { useLocalSearchParams } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { useAppSelector } from "@/src/hooks/hooks";
 import AppointmentsList, {
-  StatusFilter,
+  parseStatusFilter,
 } from "@/src/components/AppointmentsList";
 
 export default function MyAppointmentsScreen() {
   const { t } = useTranslation();
   // Staff home Work History "See all" opens on the All tab
-  const { status } = useLocalSearchParams<{ status?: StatusFilter }>();
+  const { status } = useLocalSearchParams<{ status?: string }>();
   const isStaff = useAppSelector((state) => state.user.userRole === "staff");
   const ownerStaffId = useAppSelector(
     (state) => state.user.businessStatus?.owner_as_staff?.staff_id ?? null,
@@ -21,7 +21,7 @@ export default function MyAppointmentsScreen() {
       headerTitle={t("myAppointments")}
       staffId={isStaff ? null : ownerStaffId}
       hideStaffName={isStaff}
-      initialStatus={status}
+      initialStatus={parseStatusFilter(status)}
     />
   );
 }

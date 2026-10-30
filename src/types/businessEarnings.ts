@@ -283,16 +283,20 @@ export interface EarningsTransaction {
   description: string;
   customerName: string | null;
   amount: number;
+  /*
+   * Optional fields below are left out of staff rows (gross only): staff never
+   * get fees, net, refunds, status, receipt or card. Owner rows always have them.
+   */
   /** null means Stripe has not reported a fee. Render as "—", never 0. */
-  stripeFee: number | null;
-  platformFee: number | null;
-  netAmount: number;
-  refundAmount: number;
-  refundedAt: string | null;
-  status: EarningsTransactionStatus;
+  stripeFee?: number | null;
+  platformFee?: number | null;
+  netAmount?: number;
+  refundAmount?: number;
+  refundedAt?: string | null;
+  status?: EarningsTransactionStatus;
   paidAt: string | null;
-  cardLastFour: string | null;
-  receiptUrl: string | null;
+  cardLastFour?: string | null;
+  receiptUrl?: string | null;
   appointmentId: number | null;
   subscriptionId: number | null;
   tipRecipientName: string | null;

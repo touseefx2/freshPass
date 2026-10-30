@@ -67,6 +67,16 @@ const STATUS_PARAM: Record<StatusFilter, string | undefined> = {
   all: undefined,
 };
 
+/** Route param → tab key; unknown values (stale / hand-built links) → undefined. */
+export const parseStatusFilter = (
+  raw: string | string[] | undefined,
+): StatusFilter | undefined => {
+  const value = Array.isArray(raw) ? raw[0] : raw;
+  return value != null && Object.prototype.hasOwnProperty.call(STATUS_PARAM, value)
+    ? (value as StatusFilter)
+    : undefined;
+};
+
 const normalizeStatus = (status: string): Exclude<StatusFilter, "all"> | null => {
   switch (status) {
     case "scheduled":
