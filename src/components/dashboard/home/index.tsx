@@ -1,5 +1,5 @@
 import React, { useMemo, useCallback, useState, useEffect } from "react";
-import { useFocusEffect } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import {
   StyleSheet,
   View,
@@ -24,13 +24,10 @@ import {
 } from "@/src/theme/dimensions";
 import SummaryStats from "./components/SummaryStats";
 import AppointmentsSection from "./components/AppointmentsSection";
-import AwaitingOutcomeSection, {
-  type AwaitingOutcomeAppointment,
-} from "./components/AwaitingOutcomeSection";
-import PaymentsToConfirmSection from "./components/PaymentsToConfirmSection";
+import type { AwaitingOutcomeAppointment } from "./components/AwaitingOutcomeSection";
 import WorkHistory from "./components/WorkHistory";
-import WelcomeSection from "./components/WelcomeSection";
 import BusinessHomeContent from "./business/BusinessHomeContent";
+import StaffHomeContent from "./business/StaffHomeContent";
 import DashboardHeader from "../../DashboardHeader";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import RetryButton from "@/src/components/retryButton";
@@ -86,6 +83,9 @@ const createStyles = (theme: Theme) =>
     appointmentsContainer: {
       paddingHorizontal: moderateWidthScale(20),
     },
+    staffWorkHistory: {
+      marginTop: moderateHeightScale(24),
+    },
     workHistoryContainer: {
       paddingHorizontal: moderateWidthScale(20),
       paddingTop: moderateHeightScale(15),
@@ -120,6 +120,7 @@ export default function HomeScreen() {
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
   const dispatch = useAppDispatch();
+  const router = useRouter();
   const store = useStore<RootState>();
   const { showBanner } = useNotificationContext();
   const userRole = useAppSelector((state) => state.user.userRole) as UserRole;
@@ -147,6 +148,8 @@ export default function HomeScreen() {
   // period sections reload; 0 = status not loaded yet.
   const [businessHomeRefreshKey, setBusinessHomeRefreshKey] = useState(0);
   const isBusinessHome = userRole === "business";
+  // Staff get the same period dashboard, scoped to their own work
+  const isStaffHome = userRole === "staff";
   const [refreshing, setRefreshing] = useState(false);
 
   const handleFetchUserStatus = async (): Promise<boolean> => {
@@ -441,6 +444,12 @@ export default function HomeScreen() {
         setBusinessHomeRefreshKey((key) => key + 1);
         return;
       }
+      if (userRole === "staff") {
+        // Stats, revenue and appointments load per period in StaffHomeContent
+        setBusinessHomeRefreshKey((key) => key + 1);
+        handleFetchWorkHistory();
+        return;
+      }
       handleFetchDashboardStats();
       handleFetchAppointments();
       handleFetchWorkHistory();
@@ -504,7 +513,9 @@ export default function HomeScreen() {
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={
-            isBusinessHome ? styles.businessScrollContent : styles.scrollContent
+            isBusinessHome || isStaffHome
+              ? styles.businessScrollContent
+              : styles.scrollContent
           }
           refreshControl={
             <RefreshControl
@@ -531,12 +542,43 @@ export default function HomeScreen() {
                 )
               }
             />
+          ) : isStaffHome ? (
+            <>
+              <StaffHomeContent
+                refreshKey={businessHomeRefreshKey}
+                awaitingOutcomeData={awaitingOutcomeData}
+                awaitingOutcomeLoading={awaitingOutcomeLoading}
+                onRefreshAwaitingOutcome={handleFetchAwaitingOutcome}
+                paymentsRefreshKey={paymentsRefreshKey}
+                onError={(message) =>
+                  showBanner(
+                    t("apiFailed"),
+                    message || t("failedToFetchDashboardStats"),
+                    "error",
+                    2500,
+                  )
+                }
+              />
+              <View style={styles.staffWorkHistory}>
+                <View style={styles.line} />
+                <View style={styles.workHistoryContainer}>
+                  <WorkHistory
+                    data={workHistoryData}
+                    totalCount={workHistoryTotalCount}
+                    callApi={handleFetchWorkHistory}
+                    onSeeAll={() =>
+                      router.push({
+                        pathname: "/(main)/dashboard/(account)/myAppointments" as any,
+                        params: { status: "all" },
+                      })
+                    }
+                  />
+                </View>
+              </View>
+            </>
           ) : (
             <>
-              {/* Welcome Section - Only for Staff role */}
-              {userRole === "staff" && <WelcomeSection />}
-
-              {/* Summary Statistics - All roles */}
+              {/* Summary Statistics */}
               <View style={styles.statsContainer}>
                 <SummaryStats
                   callApi={handleFetchDashboardStats}
@@ -544,23 +586,12 @@ export default function HomeScreen() {
                 />
               </View>
 
-              {/* Appointments + Awaiting outcome */}
               <View style={styles.appointmentsContainer}>
                 <AppointmentsSection
                   data={appointmentsData}
                   totalCount={appointmentsTotalCount}
                   callApi={handleFetchAppointments}
                 />
-                {userRole === "staff" && (
-                  <AwaitingOutcomeSection
-                    data={awaitingOutcomeData}
-                    loading={awaitingOutcomeLoading}
-                    onRefresh={handleFetchAwaitingOutcome}
-                  />
-                )}
-                {userRole === "staff" && (
-                  <PaymentsToConfirmSection refreshKey={paymentsRefreshKey} />
-                )}
               </View>
 
               <View style={styles.line} />

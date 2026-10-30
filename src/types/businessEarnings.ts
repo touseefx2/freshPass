@@ -102,7 +102,8 @@ export interface EarningsOverview {
   tips: OverviewLine;
   /** amount = membership charges; visits = completed visits a membership covered */
   memberships: OverviewLine & { visits: number };
-  products: OverviewLine;
+  /** Missing for staff logins: products belong to the business */
+  products?: OverviewLine;
   /** Cancellation and no-show fees */
   other: OverviewLine;
 }

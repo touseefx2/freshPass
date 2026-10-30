@@ -168,8 +168,11 @@ export default function TransactionsScreen() {
   const params = useLocalSearchParams<{ period?: string; from?: string; to?: string }>();
   const userRole = useAppSelector((state) => state.user.userRole);
   const businessStatus = useAppSelector((state) => state.user.businessStatus);
+  // Staff see their own gross work only (no fees, payouts, products, staff rows)
+  const isStaff = userRole === "staff";
+  const allowed = userRole === "business" || isStaff;
   const isSolo = businessStatus?.subscription_is_single === true;
-  const isPro = !isSolo;
+  const isPro = !isSolo && !isStaff;
 
   const [period, setPeriod] = useState<DashboardPeriod>(() => periodFromParams(params));
   const [rangeVisible, setRangeVisible] = useState(false);
@@ -178,8 +181,8 @@ export default function TransactionsScreen() {
   const [detailItem, setDetailItem] = useState<EarningsTransaction | null>(null);
 
   useEffect(() => {
-    if (userRole !== "business") router.back();
-  }, [userRole, router]);
+    if (!allowed) router.back();
+  }, [allowed, router]);
 
   // Refetch every time the screen comes back into focus
   useFocusEffect(
@@ -258,7 +261,7 @@ export default function TransactionsScreen() {
     ).slice(0, STAFF_APPOINTMENTS_LIMIT);
   }, [data.appointments]);
 
-  if (userRole !== "business") {
+  if (!allowed) {
     return <View style={styles.container} />;
   }
 
@@ -350,21 +353,27 @@ export default function TransactionsScreen() {
         </View>
 
         <View style={styles.breakdown}>
-          <RevenueBreakdownGrid overview={overview} onPressSource={(source) => openList(source)} />
+          <RevenueBreakdownGrid
+            overview={overview}
+            hideProducts={isStaff}
+            onPressSource={(source) => openList(source)}
+          />
         </View>
 
-        <TouchableOpacity
-          style={styles.earningsLink}
-          activeOpacity={0.7}
-          onPress={() => router.push("/(main)/businessEarnings")}
-          accessibilityRole="button"
-        >
-          <Ionicons name="wallet-outline" size={iconScale(18)} color={theme.buttonBack} />
-          <Text style={styles.earningsLinkText} numberOfLines={1}>
-            {t("bhNetEarningsLink")}
-          </Text>
-          <Feather name="chevron-right" size={iconScale(18)} color={theme.lightGreen5} />
-        </TouchableOpacity>
+        {isStaff ? null : (
+          <TouchableOpacity
+            style={styles.earningsLink}
+            activeOpacity={0.7}
+            onPress={() => router.push("/(main)/businessEarnings")}
+            accessibilityRole="button"
+          >
+            <Ionicons name="wallet-outline" size={iconScale(18)} color={theme.buttonBack} />
+            <Text style={styles.earningsLinkText} numberOfLines={1}>
+              {t("bhNetEarningsLink")}
+            </Text>
+            <Feather name="chevron-right" size={iconScale(18)} color={theme.lightGreen5} />
+          </TouchableOpacity>
+        )}
 
         <View style={styles.section}>
           <SectionHeader

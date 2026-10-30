@@ -115,6 +115,9 @@ type Props = {
   currency?: string;
 };
 
+// Staff logins get gross only: status, fees, net, receipt and card are left
+// out of the row, so each of those lines shows only when the key is present.
+
 export default function EarningsTransactionRow({
   item,
   currency = "USD",
@@ -179,9 +182,11 @@ export default function EarningsTransactionRow({
         <Text style={styles.title} numberOfLines={2}>
           {item.description || item.sourceLabel}
         </Text>
-        <View style={[styles.badge, badgeStyle]}>
-          <Text style={[styles.badgeText, badgeTextStyle]}>{statusLabel}</Text>
-        </View>
+        {item.status != null && (
+          <View style={[styles.badge, badgeStyle]}>
+            <Text style={[styles.badgeText, badgeTextStyle]}>{statusLabel}</Text>
+          </View>
+        )}
       </View>
 
       {!!item.customerName && (
@@ -206,25 +211,31 @@ export default function EarningsTransactionRow({
             {formatMoneyPlain(item.amount, currency)}
           </Text>
         </View>
-        <View style={styles.amountBlock}>
-          <Text style={styles.amountLabel}>{t("earningsStripeFee")}</Text>
-          <Text style={styles.amountValue}>{feeOrDash(item.stripeFee)}</Text>
-        </View>
-        <View style={styles.amountBlock}>
-          <Text style={styles.amountLabel}>{t("earningsPlatformFee")}</Text>
-          <Text style={styles.amountValue}>{feeOrDash(item.platformFee)}</Text>
-        </View>
-        <View style={styles.amountBlock}>
-          <Text style={styles.amountLabel}>{t("earningsNet")}</Text>
-          <Text
-            style={[
-              styles.amountValue,
-              item.netAmount < 0 && styles.amountNegative,
-            ]}
-          >
-            {formatMoneyPlain(item.netAmount, currency)}
-          </Text>
-        </View>
+        {item.stripeFee !== undefined && (
+          <View style={styles.amountBlock}>
+            <Text style={styles.amountLabel}>{t("earningsStripeFee")}</Text>
+            <Text style={styles.amountValue}>{feeOrDash(item.stripeFee)}</Text>
+          </View>
+        )}
+        {item.platformFee !== undefined && (
+          <View style={styles.amountBlock}>
+            <Text style={styles.amountLabel}>{t("earningsPlatformFee")}</Text>
+            <Text style={styles.amountValue}>{feeOrDash(item.platformFee)}</Text>
+          </View>
+        )}
+        {item.netAmount != null && (
+          <View style={styles.amountBlock}>
+            <Text style={styles.amountLabel}>{t("earningsNet")}</Text>
+            <Text
+              style={[
+                styles.amountValue,
+                item.netAmount < 0 && styles.amountNegative,
+              ]}
+            >
+              {formatMoneyPlain(item.netAmount, currency)}
+            </Text>
+          </View>
+        )}
       </View>
 
       {canViewReceipt && (

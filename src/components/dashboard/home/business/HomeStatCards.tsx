@@ -456,11 +456,14 @@ type BreakdownItem = {
   icon: (size: number) => React.ReactNode;
 };
 
-function useBreakdownItems(overview: EarningsOverview | null): BreakdownItem[] {
+function useBreakdownItems(
+  overview: EarningsOverview | null,
+  hideProducts: boolean,
+): BreakdownItem[] {
   const { colors } = useTheme();
   const theme = colors as Theme;
   const { t } = useTranslation();
-  return [
+  const items: BreakdownItem[] = [
     {
       key: "appointment",
       label: t("bhServices"),
@@ -502,8 +505,8 @@ function useBreakdownItems(overview: EarningsOverview | null): BreakdownItem[] {
     {
       key: "product",
       label: t("bhProducts"),
-      amount: overview?.products.amount ?? 0,
-      sub: t("bhTxCount", { count: overview?.products.count ?? 0 }),
+      amount: overview?.products?.amount ?? 0,
+      sub: t("bhTxCount", { count: overview?.products?.count ?? 0 }),
       tint: theme.tileRose,
       icon: (size) => (
         <MaterialCommunityIcons
@@ -514,6 +517,9 @@ function useBreakdownItems(overview: EarningsOverview | null): BreakdownItem[] {
       ),
     },
   ];
+  // Staff: no Products tile (the key is missing from their report)
+  const noProducts = hideProducts || (overview != null && overview.products == null);
+  return noProducts ? items.filter((item) => item.key !== "product") : items;
 }
 
 /** Cancellation / no-show fees — no tile in the design, a line only when > 0. */
@@ -530,18 +536,21 @@ function FeesLine({ overview }: { overview: EarningsOverview | null }) {
   );
 }
 
-/** Home: four compact tiles in one row. */
+/** Home: four (staff: three) compact tiles in one row. */
 export function RevenueBreakdownTiles({
   overview,
   onPressSource,
+  hideProducts = false,
 }: {
   overview: EarningsOverview | null;
   onPressSource: (source: BreakdownItem["key"]) => void;
+  /** Staff: Services, Tips, Membership only */
+  hideProducts?: boolean;
 }) {
   const { colors } = useTheme();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
-  const items = useBreakdownItems(overview);
+  const items = useBreakdownItems(overview, hideProducts);
   const loading = overview == null;
 
   return (
@@ -590,15 +599,19 @@ export function RevenueBreakdownTiles({
 export function RevenueBreakdownGrid({
   overview,
   onPressSource,
+  hideProducts = false,
 }: {
   overview: EarningsOverview | null;
   onPressSource: (source: BreakdownItem["key"]) => void;
+  /** Staff: Services, Tips, Membership only */
+  hideProducts?: boolean;
 }) {
   const { colors } = useTheme();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
-  const items = useBreakdownItems(overview);
+  const items = useBreakdownItems(overview, hideProducts);
   const loading = overview == null;
+  // 3 items (staff): the last card takes the full row
   const rows = [items.slice(0, 2), items.slice(2, 4)];
 
   return (

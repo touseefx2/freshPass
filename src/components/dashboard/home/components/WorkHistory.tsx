@@ -14,6 +14,7 @@ import EmptyState from "@/src/components/emptyState";
 import dayjs from "dayjs";
 import { Appointment } from "@/src/components/appointmentDetail";
 import { useRouter } from "expo-router";
+import { SectionHeader } from "../business/shared";
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -167,12 +168,15 @@ interface WorkHistoryProps {
   totalCount: number;
 
   callApi: () => Promise<void>;
+  /** Staff home: always-visible "See all" in the business-home header style */
+  onSeeAll?: () => void;
 }
 
 export default function WorkHistory({
   data,
   totalCount,
   callApi,
+  onSeeAll,
 }: WorkHistoryProps) {
   const { colors } = useTheme();
   const theme = colors as Theme;
@@ -238,6 +242,13 @@ export default function WorkHistory({
 
   return (
     <View style={styles.workHistoryContainer}>
+      {onSeeAll ? (
+        <SectionHeader
+          title={t("workHistory")}
+          actionLabel={t("seeAll")}
+          onAction={onSeeAll}
+        />
+      ) : (
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>{t("workHistory")}</Text>
         {data !== null && data.length > 5 && (
@@ -250,6 +261,7 @@ export default function WorkHistory({
           </TouchableOpacity>
         )}
       </View>
+      )}
       {!data ? (
         <Skeleton screenType="WorkHistory" styles={styles} />
       ) : displayedItems.length > 0 ? (

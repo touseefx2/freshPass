@@ -968,6 +968,8 @@ export default function AccountScreen() {
       router.push("./(businessProfileSettings)");
     } else if (key === "availability") {
       router.push("./staffAvailability");
+    } else if (key === "myAppointments") {
+      router.push("./myAppointments");
     } else if (key === "uploadWork") {
       if (!ensureCanUploadWork()) return;
       router.push("./staffWorkImages");
@@ -1047,6 +1049,8 @@ export default function AccountScreen() {
         return { name: "storefront", family: "material" };
       case "availability":
         return { name: "event-available", family: "material" };
+      case "myAppointments":
+        return { name: "event-note", family: "material" };
       case "uploadWork":
         return { name: "photo-library", family: "material" };
       case "leaveRequest":
@@ -1222,6 +1226,8 @@ export default function AccountScreen() {
     ...(userRole === "staff" && !isGuest
       ? [
           { key: "availability", title: t("setAvailability") },
+          // Own appointments with the status + date filters
+          { key: "myAppointments", title: t("myAppointments") },
           { key: "uploadWork", title: t("uploadYourWork") },
           // Staff post reels for the business within the owner's monthly number
           { key: "mediaLibrary", title: t("mediaLibrary") },

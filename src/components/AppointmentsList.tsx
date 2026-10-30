@@ -317,6 +317,8 @@ interface AppointmentsListProps {
   showBarberFilter?: boolean;
   /** Tab to open on (e.g. "needsAttention" from the home "View all"). */
   initialStatus?: StatusFilter;
+  /** Staff's own list: every row is theirs, so no barber line */
+  hideStaffName?: boolean;
 }
 
 export default function AppointmentsList({
@@ -324,6 +326,7 @@ export default function AppointmentsList({
   staffId,
   showBarberFilter = false,
   initialStatus = "upcoming",
+  hideStaffName = false,
 }: AppointmentsListProps) {
   const { t } = useTranslation();
   const { colors } = useTheme();
@@ -667,7 +670,7 @@ export default function AppointmentsList({
                   <Text style={styles.metaText}>{item.user}</Text>
                 </View>
               )}
-              {!!item.staffName && (
+              {!!item.staffName && !hideStaffName && (
                 <View style={styles.metaRow}>
                   <MaterialIcons name="content-cut" size={moderateWidthScale(14)} color={theme.lightGreen} />
                   <Text style={styles.metaText}>{item.staffName}</Text>

@@ -136,9 +136,15 @@ const createStyles = (theme: Theme) =>
     },
   });
 
-function parseSource(raw: string | string[] | undefined): RevenueSourceFilter {
+/** Staff: products belong to the business, so no Products chip */
+const STAFF_SOURCES = SOURCES.filter((s) => s.key !== "product");
+
+function parseSource(
+  raw: string | string[] | undefined,
+  sources: typeof SOURCES,
+): RevenueSourceFilter {
   const value = Array.isArray(raw) ? raw[0] : raw;
-  return SOURCES.some((s) => s.key === value) ? (value as RevenueSourceFilter) : "all";
+  return sources.some((s) => s.key === value) ? (value as RevenueSourceFilter) : "all";
 }
 
 export default function TransactionListScreen() {
@@ -155,15 +161,22 @@ export default function TransactionListScreen() {
     source?: string;
   }>();
   const userRole = useAppSelector((state) => state.user.userRole);
-  const isPro = useAppSelector(
-    (state) => state.user.businessStatus?.subscription_is_single !== true,
+  const isStaff = userRole === "staff";
+  const allowed = userRole === "business" || isStaff;
+  const isSoloBusiness = useAppSelector(
+    (state) => state.user.businessStatus?.subscription_is_single === true,
   );
+  // Staff rows are all their own: no staff name on them
+  const isPro = !isSoloBusiness && !isStaff;
+  const sources = isStaff ? STAFF_SOURCES : SOURCES;
 
   const period = useMemo(
     () => periodFromParams(params),
     [params.period, params.from, params.to],
   );
-  const [source, setSource] = useState<RevenueSourceFilter>(() => parseSource(params.source));
+  const [source, setSource] = useState<RevenueSourceFilter>(() =>
+    parseSource(params.source, sources),
+  );
   const [rows, setRows] = useState<EarningsTransaction[]>([]);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
@@ -176,8 +189,8 @@ export default function TransactionListScreen() {
   const onTransactionPress = useTransactionPress(setDetailItem);
 
   useEffect(() => {
-    if (userRole !== "business") router.back();
-  }, [userRole, router]);
+    if (!allowed) router.back();
+  }, [allowed, router]);
 
   const loadPage = useCallback(
     async (nextPage: number, mode: "replace" | "append") => {
@@ -214,11 +227,11 @@ export default function TransactionListScreen() {
   );
 
   useEffect(() => {
-    if (userRole !== "business") return;
+    if (!allowed) return;
     // New filter: don't show the previous filter's rows while loading
     setRows([]);
     void loadPage(1, "replace");
-  }, [userRole, loadPage]);
+  }, [allowed, loadPage]);
 
   const loadMore = useCallback(() => {
     if (loading || loadingMore || !hasMore) return;
@@ -253,7 +266,7 @@ export default function TransactionListScreen() {
     [isPro, showDate, onTransactionPress, styles, rows.length],
   );
 
-  if (userRole !== "business") {
+  if (!allowed) {
     return <View style={styles.container} />;
   }
 
@@ -294,7 +307,7 @@ export default function TransactionListScreen() {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.chips}
         >
-          {SOURCES.map((item) => {
+          {sources.map((item) => {
             const selected = item.key === source;
             return (
               <TouchableOpacity
