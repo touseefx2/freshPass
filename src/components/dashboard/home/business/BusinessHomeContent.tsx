@@ -29,6 +29,7 @@ import {
   RevenueRatingCards,
 } from "./HomeStatCards";
 import BookingProfileCard from "./BookingProfileCard";
+import HomeQuickCards from "./HomeQuickCards";
 import { PeriodAppointmentsCard } from "./AppointmentRows";
 import StaffOverview, { type StaffPeriodStats } from "./StaffOverview";
 import {
@@ -54,6 +55,9 @@ const styles = StyleSheet.create({
   },
   tight: {
     marginTop: moderateHeightScale(14),
+  },
+  periodTabs: {
+    marginTop: moderateHeightScale(18),
   },
 });
 
@@ -182,6 +186,10 @@ export default function BusinessHomeContent({
   return (
     <View>
       <View style={[styles.gutter, styles.first]}>
+        <HomeQuickCards />
+      </View>
+
+      <View style={[styles.gutter, styles.periodTabs]}>
         <PeriodTabs
           period={period}
           onSelect={selectPeriod}

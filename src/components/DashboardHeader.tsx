@@ -13,7 +13,6 @@ import { useTranslation } from "react-i18next";
 import {
   setToggleLoading,
   setBusinessPlansModalVisible,
-  setStripeConnectModalVisible,
   dismissSetupReminder,
 } from "@/src/state/slices/generalSlice";
 import { Theme } from "@/src/theme/colors";
@@ -29,15 +28,12 @@ import StaffCustomerStatusControl from "@/src/components/staffCustomerStatusCont
 import { updateBusinessActiveStatus } from "@/src/state/thunks/businessThunks";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { IMAGES } from "../constant/images";
-import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Feather } from "@expo/vector-icons";
 import { resolveApiImageUrl } from "@/src/utils/media";
 import ModeSwitchLogo from "@/src/components/ModeSwitchLogo";
-import { isStripeOnboardingCompleted } from "@/src/state/slices/userSlice";
-import dayjs from "dayjs";
 import { useBusinessTrialDaysLeft } from "@/src/hooks/useBusinessTrialDaysLeft";
 import PulseGlow from "@/src/components/PulseGlow";
 import { useSetupReminder } from "@/src/hooks/useSetupReminder";
-import { useBusinessOrdersCount } from "@/src/hooks/useBusinessOrdersCount";
 
 const AVATAR_SIZE = 36;
 
@@ -175,87 +171,6 @@ const createStyles = (theme: Theme) =>
       paddingLeft: moderateWidthScale(8),
       paddingVertical: moderateHeightScale(4),
     },
-    quickCardsRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: moderateWidthScale(14),
-      paddingHorizontal: moderateWidthScale(20),
-      paddingTop: moderateHeightScale(16),
-    },
-    ordersCardSlot: {
-      flex: 1,
-    },
-    // Sample: white pill, solid honey border + soft honey glow
-    quickCard: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "center",
-      height: moderateHeightScale(52),
-      paddingHorizontal: moderateWidthScale(14),
-      gap: moderateWidthScale(12),
-      backgroundColor: theme.white,
-    },
-    stripeCard: {
-      flex: 1.55,
-      justifyContent: "flex-start",
-      paddingHorizontal: moderateWidthScale(18),
-      gap: moderateWidthScale(14),
-      borderRadius: moderateHeightScale(26),
-      borderWidth: 2,
-      borderColor: theme.orangeBrown,
-      shadowColor: theme.orangeBrown,
-      shadowOffset: { width: 0, height: 0 },
-      shadowOpacity: 0.55,
-      shadowRadius: 10,
-      elevation: 6,
-    },
-    // Done state: calm green outline instead of the "do this" honey glow
-    stripeCardConnected: {
-      borderColor: theme.buttonBack,
-      shadowOpacity: 0,
-      elevation: 2,
-    },
-    ordersCard: {
-      paddingHorizontal: moderateWidthScale(10),
-      gap: moderateWidthScale(10),
-      borderRadius: moderateWidthScale(14),
-      borderWidth: 1,
-      borderColor: theme.borderLight,
-      shadowColor: theme.shadow,
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.06,
-      shadowRadius: 6,
-      elevation: 2,
-    },
-    quickCardText: {
-      flexShrink: 1,
-      fontSize: fontSize.size15,
-      fontFamily: fonts.fontMedium,
-      color: theme.text,
-    },
-    stripeCardText: {
-      flex: 1,
-    },
-    ordersBadge: {
-      position: "absolute",
-      top: -moderateWidthScale(8),
-      right: -moderateWidthScale(6),
-      minWidth: moderateWidthScale(22),
-      height: moderateWidthScale(22),
-      paddingHorizontal: moderateWidthScale(5),
-      borderRadius: moderateWidthScale(11),
-      backgroundColor: theme.red,
-      borderWidth: 2,
-      borderColor: theme.background,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    ordersBadgeText: {
-      fontSize: fontSize.size11,
-      fontFamily: fonts.fontBold,
-      color: theme.white,
-      fontVariant: ["tabular-nums"],
-    },
   });
 
 interface DashboardHeaderProps {
@@ -291,10 +206,6 @@ function DashboardHeader({
     router.push("/(main)/dashboard/(account)" as any);
   }, [router]);
 
-  const handleStripeOnboardingPress = () => {
-    dispatch(setStripeConnectModalVisible(true));
-  };
-
   const handleBusinessSubscriptionPress = () => {
     dispatch(setBusinessPlansModalVisible(true));
   };
@@ -312,31 +223,9 @@ function DashboardHeader({
   const showBusinessSubscriptipn =
     isOnboardedOwner && businessStatus?.has_subscription === false;
 
-  // Stripe Connect is optional — it only turns on customer payments
-  const stripeStatus = businessStatus?.stripe_onboarding_status;
-  const stripeDeadline = businessStatus?.requirements_deadline
-    ? dayjs(businessStatus.requirements_deadline)
-    : null;
-  const isStripeConnected = isStripeOnboardingCompleted(businessStatus);
-  const stripeCardLabel = isStripeConnected
-    ? t("stripeCardConnected")
-    : stripeStatus === "action_required"
-      ? t("stripeCardFinishSetup")
-      : stripeStatus === "under_review"
-        ? t("stripeCardInReview")
-        : t("stripeCardConnect");
-  // Full sentence for screen readers (the card only fits a short label)
-  const stripeCardA11y = isStripeConnected
-    ? t("stripeCardConnectedA11y")
-    : stripeStatus === "action_required"
-      ? stripeDeadline?.isValid()
-        ? t("stripeNeedsDetailsByDate", { date: stripeDeadline.format("MMM D") })
-        : t("stripeNeedsDetails")
-      : stripeStatus === "under_review"
-        ? t("stripeReviewingDetails")
-        : t("getPaidFromCustomers");
-  // Guide banners clear once tapped (client 10-30); "Choose a plan" and the
-  // Stripe / Orders cards stay. Persisted in dismissedSetupReminders, reset on logout.
+  // Guide banners clear once tapped (client 10-30); "Choose a plan" stays.
+  // Stripe / Orders cards live in the home scroll (HomeQuickCards).
+  // Persisted in dismissedSetupReminders, reset on logout.
   const dismissedReminders = useAppSelector(
     (state) => state.general.dismissedSetupReminders,
   );
@@ -344,21 +233,6 @@ function DashboardHeader({
     dispatch(dismissSetupReminder(key));
     action();
   };
-  // Always shown; once connected it says so and opens earnings / payouts
-  const handleStripeCardPress = isStripeConnected
-    ? () => router.push("/(main)/businessEarnings" as any)
-    : stripeStatus === "action_required" || stripeStatus === "under_review"
-      ? () => router.push("/(main)/stripeConnectOnboarding" as any)
-      : handleStripeOnboardingPress;
-
-  // "Orders" = product orders to act on (same count as Business Management)
-  const ordersCount = useBusinessOrdersCount(isOnboardedOwner);
-  const handleOrdersPress = useCallback(() => {
-    router.push(
-      "/(main)/dashboard/(account)/(businessProfileSettings)/orders" as any,
-    );
-  }, [router]);
-
   const { currentReminder, isSetupStep, dismiss: dismissReminder } =
     useSetupReminder();
 
@@ -501,14 +375,6 @@ function DashboardHeader({
     ],
   );
 
-  // Plan / trial sit above the Stripe + Orders cards; setup steps below
-  const topBanners = actionBanners.filter(
-    (b) => b.key === "plan" || b.key === "trial",
-  );
-  const setupBanners = actionBanners.filter(
-    (b) => b.key !== "plan" && b.key !== "trial",
-  );
-
   const renderBanner = (
     banner: (typeof actionBanners)[number],
     index: number,
@@ -649,78 +515,7 @@ function DashboardHeader({
       </View>
       <View style={styles.line} />
 
-      {userRole === "business" && (
-        <>
-          {topBanners.map(renderBanner)}
-          {isOnboardedOwner && (
-            <View style={styles.quickCardsRow}>
-              <TouchableOpacity
-                style={[
-                  styles.quickCard,
-                  styles.stripeCard,
-                  isStripeConnected && styles.stripeCardConnected,
-                ]}
-                onPress={handleStripeCardPress}
-                activeOpacity={0.8}
-                accessibilityRole="button"
-                accessibilityLabel={`${stripeCardLabel}. ${stripeCardA11y}`}
-              >
-                <MaterialCommunityIcons
-                  name={
-                    isStripeConnected
-                      ? "check-circle"
-                      : stripeStatus === "action_required"
-                        ? "alert-circle"
-                        : stripeStatus === "under_review"
-                          ? "clock"
-                          : "credit-card"
-                  }
-                  size={moderateWidthScale(26)}
-                  color={
-                    !isStripeConnected && stripeStatus === "action_required"
-                      ? theme.orangeBrownText
-                      : theme.buttonBack
-                  }
-                />
-                <Text
-                  style={[styles.quickCardText, styles.stripeCardText]}
-                  numberOfLines={1}
-                >
-                  {stripeCardLabel}
-                </Text>
-              </TouchableOpacity>
-              <View style={styles.ordersCardSlot}>
-                <TouchableOpacity
-                  style={[styles.quickCard, styles.ordersCard]}
-                  onPress={handleOrdersPress}
-                  activeOpacity={0.8}
-                  accessibilityRole="button"
-                  accessibilityLabel={t("ordersNeedActionA11y", {
-                    count: ordersCount ?? 0,
-                  })}
-                >
-                  <MaterialCommunityIcons
-                    name="shopping"
-                    size={moderateWidthScale(22)}
-                    color={theme.red}
-                  />
-                  <Text style={styles.quickCardText} numberOfLines={1}>
-                    {t("ordersTitle")}
-                  </Text>
-                </TouchableOpacity>
-                {ordersCount != null && ordersCount > 0 && (
-                  <View style={styles.ordersBadge} pointerEvents="none">
-                    <Text style={styles.ordersBadgeText}>
-                      {ordersCount > 99 ? "99+" : ordersCount}
-                    </Text>
-                  </View>
-                )}
-              </View>
-            </View>
-          )}
-          {setupBanners.map(renderBanner)}
-        </>
-      )}
+      {userRole === "business" && actionBanners.map(renderBanner)}
     </View>
   );
 }
