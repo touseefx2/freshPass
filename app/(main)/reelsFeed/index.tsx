@@ -820,6 +820,8 @@ type ReelItemProps = {
   onMore: (reel: FeedReel) => void;
   onFollow: (reel: FeedReel) => void;
   onProfile: (reel: FeedReel) => void;
+  /** Staff row under the business: opens that staff's profile. */
+  onPostedBy: (reel: FeedReel) => void;
   onWantLook: (reel: FeedReel) => void;
   /** Customer closed the product card on this reel (until the feed is reopened). */
   productDismissed?: boolean;
@@ -855,6 +857,7 @@ function ReelFeedItemBase({
   onMore,
   onFollow,
   onProfile,
+  onPostedBy,
   onWantLook,
   productDismissed = false,
   onDismissProduct,
@@ -1646,7 +1649,7 @@ function ReelFeedItemBase({
             {!!postedByName && (
               <TouchableOpacity
                 style={styles.postedByRow}
-                onPress={() => onProfile(reel)}
+                onPress={() => onPostedBy(reel)}
                 disabled={showAsOwner}
                 activeOpacity={0.7}
               >
@@ -3100,6 +3103,21 @@ export default function ReelsFeedScreen() {
     [router],
   );
 
+  const openPostedBy = useCallback(
+    (reel: FeedReel) => {
+      const staffId = reel.posted_by?.staff_id;
+      if (!staffId) {
+        openProfile(reel);
+        return;
+      }
+      router.push({
+        pathname: "/(main)/staffDetail",
+        params: { id: String(staffId) },
+      });
+    },
+    [openProfile, router],
+  );
+
   const bookFromLook = useCallback(
     (reel: FeedReel, look?: ReelLookResponse | null) => {
       const serviceId = look?.book?.service_id ?? reel.service?.id ?? null;
@@ -3471,6 +3489,7 @@ export default function ReelsFeedScreen() {
                 onMore={handleMore}
                 onFollow={handleFollow}
                 onProfile={openProfile}
+                onPostedBy={openPostedBy}
                 onWantLook={wantLook}
                 productDismissed={dismissedProductReelIds.has(item.id)}
                 onDismissProduct={dismissProduct}
