@@ -1,6 +1,7 @@
 import React, {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -11,6 +12,7 @@ import {
   AppState,
   BackHandler,
   Dimensions,
+  Easing,
   FlatList,
   LayoutChangeEvent,
   PanResponder,
@@ -795,9 +797,19 @@ const createStyles = (theme: Theme) =>
   });
 
 
+function uniqueById<T extends { id: number }>(items: T[]): T[] {
+  const seen = new Set<number>();
+  return items.filter((r) => (seen.has(r.id) ? false : (seen.add(r.id), true)));
+}
+
 type ReelItemProps = {
   reel: FeedReel;
+  /** Playing now (current page, feed focused, app active). */
   isActive: boolean;
+  /** Current page even while playback is held (blurred / backgrounded / guide). */
+  isCurrent?: boolean;
+  /** Next / previous page: load paused + muted so the swipe starts instantly. */
+  preload?: boolean;
   isOwnReel: boolean;
   isPreview?: boolean;
   canPublish?: boolean;
@@ -836,6 +848,8 @@ type ReelItemProps = {
 function ReelFeedItemBase({
   reel,
   isActive,
+  isCurrent = isActive,
+  preload = false,
   isOwnReel,
   isPreview = false,
   canPublish = false,
@@ -874,11 +888,26 @@ function ReelFeedItemBase({
   const fullUrl = resolveApiImageUrl(reel.video?.playback_url) || "";
   const posterUrl = resolveApiImageUrl(reel.video?.thumbnail_url);
   const [showPoster, setShowPoster] = useState(true);
-  const [playerLoaded, setPlayerLoaded] = useState(isActive);
-  const playbackUrl = playerLoaded ? fullUrl : "";
+  const shouldLoad = isCurrent || preload;
+  const [playerLoaded, setPlayerLoaded] = useState(shouldLoad);
   const [isPaused, setIsPaused] = useState(false);
   const [isScrubbing, setIsScrubbing] = useState(false);
+  // Only drives the scrub UI; normal playback moves `progress` natively.
   const [currentTime, setCurrentTime] = useState(0);
+  const progress = useRef(new Animated.Value(0)).current;
+  const lastTimeRef = useRef(0);
+  // Jump the bar via a 0ms native timing, not setValue: on Android Fabric the
+  // interrupted tick's end callback would commit its stale value after setValue.
+  const jumpProgress = useCallback(
+    (value: number) => {
+      Animated.timing(progress, {
+        toValue: value,
+        duration: 0,
+        useNativeDriver: true,
+      }).start();
+    },
+    [progress],
+  );
   const [duration, setDuration] = useState(
     Math.max(0, reel.video?.duration_seconds ?? 0),
   );
@@ -899,22 +928,28 @@ function ReelFeedItemBase({
   const seekHitRef = useRef<View>(null);
   const durationRef = useRef(duration);
 
-  useEffect(() => {
+  // Layout effect: refs must be current before any player callback reads them.
+  useLayoutEffect(() => {
     isActiveRef.current = isActive;
   }, [isActive]);
 
-  // Load player when active, release 1s after leaving to free native decoders.
+  // Current page loads at once; neighbours wait for the snap to settle.
+  // Release shortly after a page leaves the ±1 window to free native decoders.
   useEffect(() => {
-    if (isActive) {
-      setPlayerLoaded(true);
-      return;
+    if (shouldLoad) {
+      if (isCurrent) {
+        setPlayerLoaded(true);
+        return;
+      }
+      const timer = setTimeout(() => setPlayerLoaded(true), 150);
+      return () => clearTimeout(timer);
     }
     const timer = setTimeout(() => {
       setPlayerLoaded(false);
       setShowPoster(true);
-    }, 1000);
+    }, 400);
     return () => clearTimeout(timer);
-  }, [isActive]);
+  }, [isCurrent, shouldLoad]);
 
   useEffect(() => {
     isPausedRef.current = isPaused;
@@ -924,18 +959,51 @@ function ReelFeedItemBase({
     durationRef.current = duration;
   }, [duration]);
 
-  const player = useVideoPlayer(playbackUrl, (p) => {
+  // null (not "") when unloaded — "" makes Android build an erroring player.
+  const source = useMemo(
+    () =>
+      playerLoaded && fullUrl
+        ? // Disk cache: swipe back / replay without re-downloading (Android only for now).
+          { uri: fullUrl, useCaching: Platform.OS === "android" }
+        : null,
+    [fullUrl, playerLoaded],
+  );
+  const playbackUrl = source ? fullUrl : "";
+
+  const player = useVideoPlayer(source, (p) => {
     p.loop = true;
     p.muted = true; // unmute only while this reel is the active page
-    p.timeUpdateEventInterval = 0.25;
+    p.timeUpdateEventInterval = 0; // only the active page ticks (see below)
+    // Start on a small buffer; cap memory since up to 3 players are alive.
+    p.bufferOptions =
+      Platform.OS === "android"
+        ? {
+            minBufferForPlayback: 0.5,
+            preferredForwardBufferDuration: 12,
+            maxBufferBytes: 12 * 1024 * 1024,
+          }
+        : { preferredForwardBufferDuration: 6, waitsToMinimizeStalling: false };
   });
+  const playerRef = useRef(player);
+  playerRef.current = player;
+
+  /**
+   * Sound only after this reel's own first frame is on screen, so a reel
+   * never plays audio over a thumbnail (client: other reel's music).
+   * Fallback after 1.5s of playback in case the frame event never comes.
+   */
+  const frameShownRef = useRef(false);
+  const soundFallbackRef = useRef(false);
+  useLayoutEffect(() => {
+    frameShownRef.current = false;
+    soundFallbackRef.current = false;
+  }, [player]);
 
   useEffect(() => {
     if (!isActive) {
       setIsPaused(false);
       setIsScrubbing(false);
       isScrubbingRef.current = false;
-      setCurrentTime(0);
       setCenterIcon(null);
       centerIconOpacity.setValue(0);
       if (hideCenterIconTimer.current) {
@@ -961,7 +1029,7 @@ function ReelFeedItemBase({
     if (isScrubbingRef.current) return;
     if (isActiveRef.current && !isPausedRef.current) {
       try {
-        player.muted = false;
+        player.muted = !(frameShownRef.current || soundFallbackRef.current);
       } catch {}
       try {
         player.play();
@@ -975,13 +1043,56 @@ function ReelFeedItemBase({
     syncPlayback();
   }, [isActive, isPaused, isScrubbing, syncPlayback]);
 
-  // Hard-stop as soon as the page is no longer active (before status races).
-  useEffect(() => {
-    if (!player) return;
+  // Hard-stop before paint as soon as the page is no longer active, so the
+  // old song never overlaps the next reel.
+  useLayoutEffect(() => {
     if (!isActive) {
       silencePlayer();
+      try {
+        player.timeUpdateEventInterval = 0;
+      } catch {}
     }
   }, [isActive, player, silencePlayer]);
+
+  // Swiped away: rewind so coming back starts the reel from 0:00 (Reels-style).
+  const wasCurrentRef = useRef(isCurrent);
+  useLayoutEffect(() => {
+    const leaving = wasCurrentRef.current && !isCurrent;
+    wasCurrentRef.current = isCurrent;
+    if (!leaving) return;
+    try {
+      player.currentTime = 0;
+    } catch {}
+    setCurrentTime(0);
+    lastTimeRef.current = 0;
+    jumpProgress(0);
+  }, [isCurrent, jumpProgress, player]);
+
+  // Only the playing reel emits time updates (each tick re-renders nothing heavy).
+  useEffect(() => {
+    try {
+      player.timeUpdateEventInterval = isActive ? 0.25 : 0;
+    } catch {}
+  }, [isActive, player]);
+
+  // Unmount: pause before useVideoPlayer releases (release alone never pauses).
+  useLayoutEffect(
+    () => () => {
+      const p = playerRef.current;
+      try {
+        p.timeUpdateEventInterval = 0;
+        p.muted = true;
+        p.pause();
+      } catch {}
+    },
+    [],
+  );
+
+  const onFirstFrameRender = useCallback(() => {
+    frameShownRef.current = true;
+    setShowPoster(false);
+    if (isActiveRef.current) syncPlayback();
+  }, [syncPlayback]);
 
   useEffect(() => {
     if (!player) return;
@@ -994,14 +1105,31 @@ function ReelFeedItemBase({
       }
     });
     const timeSub = player.addListener("timeUpdate", ({ currentTime: tSec }) => {
-      if (isScrubbingRef.current) return;
-      setCurrentTime(tSec);
-      if (player.duration > 0) {
-        setDuration((prev) =>
-          prev > 0 && Math.abs(prev - player.duration) < 0.05
-            ? prev
-            : player.duration,
-        );
+      // Late tick after leaving the page must not move the rewound bar.
+      if (isScrubbingRef.current || !isActiveRef.current) return;
+      const dur = player.duration > 0 ? player.duration : durationRef.current;
+      if (dur > 0) {
+        const value = Math.max(0, Math.min(1, tSec / dur));
+        if (tSec < lastTimeRef.current) {
+          jumpProgress(value); // loop wrap: jump back, don't animate
+        } else {
+          Animated.timing(progress, {
+            toValue: value,
+            duration: 250,
+            easing: Easing.linear,
+            useNativeDriver: true,
+          }).start();
+        }
+      }
+      lastTimeRef.current = tSec;
+      if (
+        isActiveRef.current &&
+        !frameShownRef.current &&
+        !soundFallbackRef.current &&
+        tSec >= 1.5
+      ) {
+        soundFallbackRef.current = true;
+        syncPlayback();
       }
     });
     return () => {
@@ -1009,7 +1137,7 @@ function ReelFeedItemBase({
       timeSub.remove();
       silencePlayer();
     };
-  }, [player, silencePlayer, syncPlayback]);
+  }, [jumpProgress, player, progress, silencePlayer, syncPlayback]);
 
   /**
    * Watch time: one play = one active stretch of this reel (ends on swipe,
@@ -1132,7 +1260,7 @@ function ReelFeedItemBase({
       }, 450);
     } else {
       try {
-        player.muted = false;
+        player.muted = !(frameShownRef.current || soundFallbackRef.current);
       } catch {}
       try {
         player.play();
@@ -1210,19 +1338,23 @@ function ReelFeedItemBase({
         player.currentTime = clamped;
       } catch {}
       setCurrentTime(clamped);
+      lastTimeRef.current = clamped;
+      if (durationRef.current > 0) {
+        jumpProgress(Math.min(1, clamped / durationRef.current));
+      }
       isScrubbingRef.current = false;
       setIsScrubbing(false);
       if (wasPlayingBeforeScrubRef.current) {
         setIsPaused(false);
         try {
-          player.muted = false;
+          player.muted = !(frameShownRef.current || soundFallbackRef.current);
         } catch {}
         try {
           player.play();
         } catch {}
       }
     },
-    [player, timeFromSeekX],
+    [jumpProgress, player, timeFromSeekX],
   );
 
   const onSeekTrackLayout = useCallback(
@@ -1295,7 +1427,7 @@ function ReelFeedItemBase({
           {...(Platform.OS === "android"
             ? { surfaceType: "textureView" as const }
             : null)}
-          onFirstFrameRender={() => setShowPoster(false)}
+          onFirstFrameRender={onFirstFrameRender}
         />
       ) : null}
       {showPoster && posterUrl ? (
@@ -1303,6 +1435,7 @@ function ReelFeedItemBase({
           uri={posterUrl}
           style={styles.poster}
           resizeMode={contentFit}
+          transition={0}
         />
       ) : null}
 
@@ -1907,10 +2040,24 @@ function ReelFeedItemBase({
           {...seekPanResponder.panHandlers}
         >
           <View style={styles.seekTrack} pointerEvents="none">
-            <View
-              pointerEvents="none"
-              style={[styles.seekFill, { width: `${seekProgress * 100}%` }]}
-            />
+            {isScrubbing ? (
+              <View
+                pointerEvents="none"
+                style={[styles.seekFill, { width: `${seekProgress * 100}%` }]}
+              />
+            ) : (
+              <Animated.View
+                pointerEvents="none"
+                style={[
+                  styles.seekFill,
+                  {
+                    width: "100%",
+                    transformOrigin: "left",
+                    transform: [{ scaleX: progress }],
+                  },
+                ]}
+              />
+            )}
             {isScrubbing ? (
               <View
                 pointerEvents="none"
@@ -2216,8 +2363,13 @@ export default function ReelsFeedScreen() {
     return { latitude: lat, longitude: lng };
   }, [user.location?.lat, user.location?.long]);
 
+  /** Bumped by every fresh (non-append) load; older responses are dropped. */
+  const loadSeqRef = useRef(0);
+
   const loadPage = useCallback(
     async (nextCursor?: string | null, append = false) => {
+      const seq = append ? loadSeqRef.current : ++loadSeqRef.current;
+      const isStale = () => seq !== loadSeqRef.current;
       if (!append) setLoading(true);
       try {
         if (isPreviewMode && firstReelId && !append) {
@@ -2225,6 +2377,7 @@ export default function ReelsFeedScreen() {
             getMyReel(firstReelId),
             ensureOwnerBusinessLocation(),
           ]);
+          if (isStale()) return;
           const mapped = mapOwnerReelToFeedReel(owner, {
             id: Number(owner.business_id || ownerBusinessId || 0),
             title: user.business_name || "",
@@ -2257,6 +2410,7 @@ export default function ReelsFeedScreen() {
             "published",
             REELS_MINE_PER_PAGE,
           );
+          if (isStale()) return;
           let mapped = pageReels.map((owner) =>
             mapOwnerReelToFeedReel(owner, {
               id: Number(owner.business_id || businessMeta.id),
@@ -2296,6 +2450,8 @@ export default function ReelsFeedScreen() {
               }
             }
           }
+          if (isStale()) return;
+          mapped = uniqueById(mapped);
           setReels((prev) => {
             const merged = append
               ? [
@@ -2321,7 +2477,7 @@ export default function ReelsFeedScreen() {
         }
         const useFirstReel =
           !append && !firstReelUsedRef.current && !!firstReelId;
-        const { reels: pageReels, meta } = await fetchReelFeed({
+        const { reels: fetchedReels, meta } = await fetchReelFeed({
           category_id: feedTab === "for_you" ? categoryId : undefined,
           first_reel_id: useFirstReel ? firstReelId : undefined,
           cursor: nextCursor || undefined,
@@ -2329,6 +2485,9 @@ export default function ReelsFeedScreen() {
           longitude: coords?.longitude,
           tab: feedTab,
         });
+        if (isStale()) return;
+        // Same id twice = two "active" cells playing at once.
+        const pageReels = uniqueById(fetchedReels);
         if (!append) {
           firstReelUsedRef.current = true;
         }
@@ -2362,6 +2521,7 @@ export default function ReelsFeedScreen() {
           setActiveId(pageReels[0].id);
         }
       } catch (error: any) {
+        if (isStale()) return;
         Logger.error("Failed to load reels feed:", error);
         showBanner(
           t("error"),
@@ -2370,7 +2530,7 @@ export default function ReelsFeedScreen() {
           3000,
         );
       } finally {
-        setLoading(false);
+        if (!isStale()) setLoading(false);
       }
     },
     [
@@ -2545,6 +2705,7 @@ export default function ReelsFeedScreen() {
 
       const cached = tabCacheRef.current[tab];
       if (cached.loaded) {
+        loadSeqRef.current += 1; // drop any in-flight load for the old tab
         setReels(cached.reels);
         setCursor(cached.cursor);
         setHasMore(cached.hasMore);
@@ -2713,6 +2874,15 @@ export default function ReelsFeedScreen() {
     },
     [],
   );
+
+  const activeIndex = useMemo(
+    () => reels.findIndex((r) => r.id === activeId),
+    [activeId, reels],
+  );
+  const playbackAllowed =
+    isFeedFocused &&
+    isAppActive &&
+    (isPreviewMode || isOwnerMode || isBusiness || hasSeenReelsSwipeGuide);
 
   const onViewableItemsChanged = useRef(
     ({ viewableItems }: { viewableItems: ViewToken[] }) => {
@@ -3434,8 +3604,10 @@ export default function ReelsFeedScreen() {
             decelerationRate="fast"
             windowSize={3}
             maxToRenderPerBatch={2}
-            initialNumToRender={1}
-            removeClippedSubviews={Platform.OS === "android"}
+            initialNumToRender={2}
+            // Off: clipped Android cells lose their video surface, so the
+            // preloaded next reel couldn't show its first frame.
+            removeClippedSubviews={false}
             contentInsetAdjustmentBehavior="never"
             automaticallyAdjustContentInsets={false}
             automaticallyAdjustsScrollIndicatorInsets={false}
@@ -3447,18 +3619,17 @@ export default function ReelsFeedScreen() {
             onViewableItemsChanged={onViewableItemsChanged}
             viewabilityConfig={viewabilityConfig}
             onEndReached={handleEndReached}
-            onEndReachedThreshold={0.3}
-            renderItem={({ item }) => (
+            onEndReachedThreshold={2}
+            renderItem={({ item, index }) => (
               <ReelFeedItem
                 reel={item}
-                isActive={
-                  item.id === activeId &&
+                isActive={item.id === activeId && playbackAllowed}
+                isCurrent={item.id === activeId}
+                // Next / previous reel loads paused so the swipe has no gap.
+                preload={
                   isFeedFocused &&
-                  isAppActive &&
-                  (isPreviewMode ||
-                    isOwnerMode ||
-                    isBusiness ||
-                    hasSeenReelsSwipeGuide)
+                  activeIndex >= 0 &&
+                  Math.abs(index - activeIndex) === 1
                 }
                 isOwnReel={
                   isOwnerMode ||
