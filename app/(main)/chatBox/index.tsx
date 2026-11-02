@@ -49,6 +49,7 @@ import {
 import { CloseIcon, SendIcon } from "@/assets/icons";
 import { MaterialIcons, Feather } from "@expo/vector-icons";
 import { useDispatch } from "react-redux";
+import { resetToDashboardHome } from "@/src/utils/navigation";
 import { ApiService } from "@/src/services/api";
 import {
   prepareImageForUpload,
@@ -1052,8 +1053,13 @@ const createStyles = (theme: Theme) =>
       paddingVertical: moderateHeightScale(4),
     },
     headerInfo: {
+      flex: 1,
       flexDirection: "row",
       alignItems: "center",
+    },
+    homeButton: {
+      marginLeft: moderateWidthScale(12),
+      paddingVertical: moderateHeightScale(4),
     },
     headerAvatar: {
       width: moderateWidthScale(36),
@@ -1081,6 +1087,7 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontMedium,
       color: theme.white,
       textTransform: "capitalize",
+      flexShrink: 1,
     },
     sepLine: {
       width: "100%",
@@ -2494,6 +2501,19 @@ export default function ChatBoxScreen() {
             {name}
           </Text>
         </View>
+        <TouchableOpacity
+          style={styles.homeButton}
+          onPress={resetToDashboardHome}
+          activeOpacity={0.7}
+          hitSlop={{
+            top: moderateHeightScale(8),
+            bottom: moderateHeightScale(8),
+            left: moderateWidthScale(8),
+            right: moderateWidthScale(8),
+          }}
+        >
+          <Feather name="home" size={moderateWidthScale(22)} color={theme.white} />
+        </TouchableOpacity>
       </View>
       <View style={styles.sepLine} />
       {Platform.OS === "ios" ? (
