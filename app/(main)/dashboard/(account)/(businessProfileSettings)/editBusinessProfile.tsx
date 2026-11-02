@@ -59,9 +59,6 @@ import {
 } from "react-native-country-codes-picker";
 import CountryPickerItem from "@/src/components/countryPickerItem";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
-import {
-  getDefaultBusinessLogo,
-} from "@/src/services/remoteConfigService";
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -122,6 +119,17 @@ const createStyles = (theme: Theme) =>
       fontSize: fontSize.size14,
       fontFamily: fonts.fontMedium,
       color: theme.darkGreen,
+    },
+    removeButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(4),
+      alignSelf: "flex-start",
+    },
+    removeButtonText: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontMedium,
+      color: theme.red,
     },
     googleDriveLink: {
       fontSize: fontSize.size12,
@@ -367,7 +375,7 @@ export default function EditBusinessProfileScreen() {
   }>();
 
   const getInitialLogoUri = () => {
-    return resolveApiImageUrl(params.logo_url) ?? getDefaultBusinessLogo();
+    return resolveApiImageUrl(params.logo_url) ?? "";
   };
 
   const originalLogoImageUri = getInitialLogoUri();
@@ -659,6 +667,12 @@ export default function EditBusinessProfileScreen() {
     setShowImagePickerModal(true);
   };
 
+  const hasLogo = !!logoImageUri;
+
+  const handleRemovePhoto = () => {
+    setLogoImageUri("");
+  };
+
   const handleImportFromGoogleDrive = () => {
     // TODO: Implement Google Drive import
     Logger.log("Import from Google Drive pressed");
@@ -728,6 +742,10 @@ export default function EditBusinessProfileScreen() {
           formData.append("image", prepared as any);
         }
         // If it's a remote URL and hasn't changed, we don't need to send it
+      }
+      if (hasImageChanged && !hasLogo) {
+        // User removed the logo
+        formData.append("remove_image", "true");
       }
 
       // API call with FormData
@@ -802,6 +820,20 @@ export default function EditBusinessProfileScreen() {
               />
               <Text style={styles.uploadButtonText}>{t("uploadPhoto")}</Text>
             </TouchableOpacity>
+            {hasLogo && (
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={handleRemovePhoto}
+                style={styles.removeButton}
+              >
+                <MaterialIcons
+                  name="delete-outline"
+                  size={moderateWidthScale(18)}
+                  color={theme.red}
+                />
+                <Text style={styles.removeButtonText}>{t("removePhoto")}</Text>
+              </TouchableOpacity>
+            )}
             <TouchableOpacity
               disabled
               activeOpacity={0.7}

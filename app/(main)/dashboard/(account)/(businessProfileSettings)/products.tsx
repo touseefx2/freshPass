@@ -381,17 +381,36 @@ export default function ProductsInventoryScreen() {
   const [filter, setFilter] = useState<ShopStockFilter>("all");
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  // Shown instead of "No products yet" so a failed load never looks like lost data
+  const [loadError, setLoadError] = useState<{
+    message: string;
+    ownerOnly: boolean;
+  } | null>(null);
 
   const loadProducts = useCallback(async () => {
     try {
       const { products: list } = await fetchMyProducts();
       dispatch(setProducts(list));
-    } catch {
+      setLoadError(null);
+    } catch (error: any) {
+      if (
+        error?.status === 403 &&
+        error?.data?.data?.error_code === "owner_only"
+      ) {
+        // Drop products cached from another account on this device
+        dispatch(setProducts([]));
+        setLoadError({ message: error.message, ownerOnly: true });
+        return;
+      }
       // keep existing Redux data on failure
+      setLoadError({
+        message: error?.message || t("somethingWentWrong"),
+        ownerOnly: false,
+      });
     } finally {
       setLoading(false);
     }
-  }, [dispatch]);
+  }, [dispatch, t]);
 
   useEffect(() => {
     loadProducts();
@@ -710,6 +729,29 @@ export default function ProductsInventoryScreen() {
         <Text style={styles.emptyLinkText}>{t("clearFilters")}</Text>
       </TouchableOpacity>
     </View>
+  ) : loadError && products.length === 0 ? (
+    <View style={styles.emptyWrap}>
+      <View style={styles.emptyIconWrap}>
+        <MaterialIcons
+          name={loadError.ownerOnly ? "lock-outline" : "cloud-off"}
+          size={moderateWidthScale(34)}
+          color={theme.darkGreen}
+        />
+      </View>
+      <Text style={styles.emptySubtitle}>{loadError.message}</Text>
+      {!loadError.ownerOnly ? (
+        <TouchableOpacity
+          style={styles.emptyLink}
+          onPress={() => {
+            setLoading(true);
+            loadProducts();
+          }}
+          accessibilityRole="button"
+        >
+          <Text style={styles.emptyLinkText}>{t("retry")}</Text>
+        </TouchableOpacity>
+      ) : null}
+    </View>
   ) : (
     <View style={styles.emptyWrap}>
       <View style={styles.emptyIconWrap}>
@@ -831,24 +873,26 @@ export default function ProductsInventoryScreen() {
             );
           }}
         />
-        <View
-          style={[
-            styles.bottomBar,
-            { paddingBottom: insets.bottom + moderateHeightScale(12) },
-          ]}
-        >
-          <Button
-            title={t("addProductCta")}
-            leftIcon={
-              <MaterialIcons
-                name="add"
-                size={moderateWidthScale(20)}
-                color={theme.buttonText}
-              />
-            }
-            onPress={() => router.push("./addProduct" as any)}
-          />
-        </View>
+        {!loadError?.ownerOnly ? (
+          <View
+            style={[
+              styles.bottomBar,
+              { paddingBottom: insets.bottom + moderateHeightScale(12) },
+            ]}
+          >
+            <Button
+              title={t("addProductCta")}
+              leftIcon={
+                <MaterialIcons
+                  name="add"
+                  size={moderateWidthScale(20)}
+                  color={theme.buttonText}
+                />
+              }
+              onPress={() => router.push("./addProduct" as any)}
+            />
+          </View>
+        ) : null}
       </View>
     </View>
   );
