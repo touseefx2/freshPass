@@ -46,6 +46,8 @@ import type {
 
 const PADDING = moderateWidthScale(20);
 const PER_PAGE = 15;
+// Order save reads all ids at once (the order call takes up to 500 ids)
+const ORDER_PAGE_SIZE = 500;
 
 /** One tile in display order; backendId is set for photos already saved */
 type WorkPhoto = { id: string; uri: string; backendId?: number };
@@ -427,8 +429,9 @@ export default function StaffWorkImagesManageScreen() {
             .map((photo) => photo.backendId ?? uploadedIds.get(photo.id))
             .filter((id): id is number => id != null);
           // Send the full list: photos on pages not loaded yet keep their
-          // order after the ones on screen. Re-read from page 1 since the
-          // uploads/deletes above shifted the page boundaries.
+          // order after the ones on screen. One big page from the start
+          // (the uploads/deletes above shifted the page boundaries); keeps
+          // paging only if the server caps per_page lower.
           let nextPage = 1;
           let more = hasMore;
           while (more) {
@@ -436,7 +439,7 @@ export default function StaffWorkImagesManageScreen() {
               success: boolean;
               message: string;
               data: StaffWorkImagePage;
-            }>(staffEndpoints.myWorkImages(nextPage, PER_PAGE));
+            }>(staffEndpoints.myWorkImages(nextPage, ORDER_PAGE_SIZE));
             (response.data?.data ?? []).forEach((photo) => {
               if (
                 !orderedIds.includes(photo.id) &&

@@ -780,7 +780,10 @@ export default function ManageSubscriptionsScreen() {
           return acc;
         }, {});
 
+        const backendPlanId = subscriptionPlanIdMap[subscription.id];
         return {
+          // Existing plans keep their id so a save edits them, not duplicates
+          ...(backendPlanId != null && { id: backendPlanId }),
           name: subscription.packageName,
           description: subscription.description ?? subscription.packageName,
           price: subscription.price,
