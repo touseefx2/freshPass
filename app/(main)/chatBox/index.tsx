@@ -1579,8 +1579,10 @@ type ChatContentProps = {
   onAttachmentPress?: () => void;
   selectedAttachments?: string[];
   onRemoveAttachment?: (index: number) => void;
-  inputValue?: string;
+  inputRef?: React.RefObject<TextInput | null>;
+  hasInputValue?: boolean;
   onInputChange?: (text: string) => void;
+  onClearInput?: () => void;
   sending?: boolean;
   onSend?: () => void;
   isTyping?: boolean;
@@ -1606,15 +1608,16 @@ const ChatContent = ({
   onAttachmentPress,
   selectedAttachments = [],
   onRemoveAttachment,
-  inputValue = "",
+  inputRef,
+  hasInputValue = false,
   onInputChange,
+  onClearInput,
   sending = false,
   onSend,
   isTyping = false,
   onMessageCopied,
   onVideoPress,
 }: ChatContentProps) => {
-  const hasInputValue = Boolean(inputValue && inputValue.trim().length > 0);
   const canSend = hasInputValue || selectedAttachments.length > 0;
   const sendDisabled = !canSend || sending;
   return (
@@ -1916,17 +1919,18 @@ const ChatContent = ({
         ]}
       >
         <View style={styles.inputRow}>
+          {/* Uncontrolled: a controlled value lags the keyboard on a busy Android JS thread, so Send got partial text */}
           <TextInput
+            ref={inputRef}
             style={styles.textInput}
             placeholder="Enter message"
             placeholderTextColor={theme.lightGreen4}
-            value={inputValue}
             onChangeText={onInputChange}
           />
           {hasInputValue ? (
             <TouchableOpacity
               style={styles.inputClearButton}
-              onPress={() => onInputChange?.("")}
+              onPress={onClearInput}
               activeOpacity={0.7}
               hitSlop={{
                 top: moderateHeightScale(8),
@@ -2001,7 +2005,13 @@ export default function ChatBoxScreen() {
   const [imagePickerVisible, setImagePickerVisible] = useState(false);
   const [selectedAttachments, setSelectedAttachments] = useState<string[]>([]);
   const [videoModalUrl, setVideoModalUrl] = useState<string | null>(null);
-  const [inputText, setInputText] = useState("");
+  const inputRef = useRef<TextInput>(null);
+  const inputTextRef = useRef("");
+  const [hasInputText, setHasInputText] = useState(false);
+  const typingSentAtRef = useRef(0);
+  const stopTypingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
   const [sending, setSending] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -2279,23 +2289,52 @@ export default function ChatBoxScreen() {
     };
   }, [userId, accessToken, currentUserId, apiMessageToItem]);
 
-  // Send typing / stop-typing whisper (debounced: typing at most every 1.5s, stop when idle 2s or empty)
-  useEffect(() => {
-    if (!userId || currentUserId == null) return;
-    const ch = channelRef.current;
-    if (!ch) return;
-    const trimmed = inputText.trim();
-    if (trimmed.length > 0) {
-      ch.whisper(CHAT_WHISPER_TYPING, { userId: currentUserId });
-      const stopT = setTimeout(() => {
+  // Text lives in a ref (no re-render per keystroke); state only flips when empty <-> non-empty.
+  // Typing whisper: at most every 1.5s, stop when idle 2s or empty.
+  const handleInputChange = useCallback(
+    (text: string) => {
+      inputTextRef.current = text;
+      const has = text.trim().length > 0;
+      setHasInputText(has);
+      if (!userId || currentUserId == null) return;
+      const ch = channelRef.current;
+      if (!ch) return;
+      if (stopTypingTimerRef.current) {
+        clearTimeout(stopTypingTimerRef.current);
+        stopTypingTimerRef.current = null;
+      }
+      if (!has) {
+        typingSentAtRef.current = 0;
+        ch.whisper(CHAT_WHISPER_STOP_TYPING, { userId: currentUserId });
+        return;
+      }
+      const now = Date.now();
+      if (now - typingSentAtRef.current > 1500) {
+        typingSentAtRef.current = now;
+        ch.whisper(CHAT_WHISPER_TYPING, { userId: currentUserId });
+      }
+      stopTypingTimerRef.current = setTimeout(() => {
+        stopTypingTimerRef.current = null;
+        typingSentAtRef.current = 0;
         channelRef.current?.whisper(CHAT_WHISPER_STOP_TYPING, {
           userId: currentUserId,
         });
       }, 2000);
-      return () => clearTimeout(stopT);
-    }
-    ch.whisper(CHAT_WHISPER_STOP_TYPING, { userId: currentUserId });
-  }, [userId, currentUserId, inputText]);
+    },
+    [userId, currentUserId],
+  );
+
+  const clearInput = useCallback(() => {
+    inputRef.current?.clear();
+    handleInputChange("");
+  }, [handleInputChange]);
+
+  useEffect(
+    () => () => {
+      if (stopTypingTimerRef.current) clearTimeout(stopTypingTimerRef.current);
+    },
+    [],
+  );
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
@@ -2308,7 +2347,7 @@ export default function ChatBoxScreen() {
   }, [loadingMore, loading, page, lastPage, fetchMessages]);
 
   const handleSend = useCallback(async () => {
-    const trimmed = inputText.trim();
+    const trimmed = inputTextRef.current.trim();
     const localUris = selectedAttachments.filter((uri) => !isOnlineLink(uri));
     const linkUris = selectedAttachments.filter((uri) => isOnlineLink(uri));
     const hasAttachments = localUris.length > 0;
@@ -2358,7 +2397,7 @@ export default function ChatBoxScreen() {
       if (res?.success && res?.data) {
         const newItem = apiMessageToItem(res.data);
         setMessages((prev) => [newItem, ...prev]);
-        setInputText("");
+        clearInput();
         setSelectedAttachments([]);
       }
     } catch {
@@ -2373,7 +2412,7 @@ export default function ChatBoxScreen() {
     }
   }, [
     userId,
-    inputText,
+    clearInput,
     selectedAttachments,
     sending,
     apiMessageToItem,
@@ -2496,8 +2535,10 @@ export default function ChatBoxScreen() {
             onMessageCopied={() =>
               showBanner(t("copied") || "Copied", "", "success", 1500)
             }
-            inputValue={inputText}
-            onInputChange={setInputText}
+            inputRef={inputRef}
+            hasInputValue={hasInputText}
+            onInputChange={handleInputChange}
+            onClearInput={clearInput}
             sending={sending}
             onSend={handleSend}
             isTyping={isTyping}
@@ -2545,8 +2586,10 @@ export default function ChatBoxScreen() {
             onMessageCopied={() =>
               showBanner(t("copied") || "Copied", "", "success", 1500)
             }
-            inputValue={inputText}
-            onInputChange={setInputText}
+            inputRef={inputRef}
+            hasInputValue={hasInputText}
+            onInputChange={handleInputChange}
+            onClearInput={clearInput}
             sending={sending}
             onSend={handleSend}
             isTyping={isTyping}
