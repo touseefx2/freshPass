@@ -13,6 +13,7 @@ import { useTranslation } from "react-i18next";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { Feather } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import { useAppDispatch, useTheme } from "@/src/hooks/hooks";
 import { setStripeConnectModalVisible } from "@/src/state/slices/generalSlice";
 import { Theme } from "@/src/theme/colors";
@@ -233,6 +234,7 @@ export default function CancellationPolicyScreen() {
   const styles = useMemo(() => createStyles(theme), [colors]);
   const { showBanner } = useNotificationContext();
   const dispatch = useAppDispatch();
+  const router = useRouter();
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -330,22 +332,7 @@ export default function CancellationPolicyScreen() {
           "success",
           3000,
         );
-        if (response.data) {
-          setCutoff(String(response.data.cancellation_cutoff ?? cutoff));
-          setCancellationFee(
-            String(response.data.cancellation_fee_percent ?? cancellationFee),
-          );
-          setNoShowFee(
-            String(response.data.no_show_fee_percent ?? noShowFee),
-          );
-          setLateCancelUsesVisit(
-            response.data.membership_late_cancel_forfeits_visit ??
-              lateCancelUsesVisit,
-          );
-          setNoShowUsesVisit(
-            response.data.membership_no_show_forfeits_visit ?? noShowUsesVisit,
-          );
-        }
+        router.back();
       } else {
         showBanner(
           "Error",

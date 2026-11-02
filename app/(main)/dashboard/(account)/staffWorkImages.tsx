@@ -413,15 +413,48 @@ export default function StaffWorkImagesManageScreen() {
         }
       }
 
-      // Display order, first = main photo. Not fatal: photos are already saved
-      const orderedIds = photos
-        .map((photo) => photo.backendId ?? uploadedIds.get(photo.id))
-        .filter((id): id is number => id != null);
-      if ((isReordered || uploadedIds.size > 0) && orderedIds.length > 1) {
+      // Uploads land after the saved photos on their own, so the order only
+      // needs saving after a drag/star, or when a new photo was put earlier
+      const newBeforeSaved = photos.some(
+        (photo, index) =>
+          photo.backendId == null &&
+          photos.slice(index + 1).some((p) => p.backendId != null),
+      );
+      if (isReordered || newBeforeSaved) {
+        // Not fatal: the photos themselves are already saved
         try {
-          await ApiService.put(staffEndpoints.workImagesOrder, {
-            imageIds: orderedIds,
-          });
+          const orderedIds = photos
+            .map((photo) => photo.backendId ?? uploadedIds.get(photo.id))
+            .filter((id): id is number => id != null);
+          // Send the full list: photos on pages not loaded yet keep their
+          // order after the ones on screen. Re-read from page 1 since the
+          // uploads/deletes above shifted the page boundaries.
+          let nextPage = 1;
+          let more = hasMore;
+          while (more) {
+            const response = await ApiService.get<{
+              success: boolean;
+              message: string;
+              data: StaffWorkImagePage;
+            }>(staffEndpoints.myWorkImages(nextPage, PER_PAGE));
+            (response.data?.data ?? []).forEach((photo) => {
+              if (
+                !orderedIds.includes(photo.id) &&
+                !removedPhotoIds.includes(photo.id)
+              ) {
+                orderedIds.push(photo.id);
+              }
+            });
+            more =
+              response.data?.meta?.has_more === true &&
+              nextPage < (response.data?.meta?.last_page ?? nextPage);
+            nextPage += 1;
+          }
+          if (orderedIds.length > 1) {
+            await ApiService.put(staffEndpoints.workImagesOrder, {
+              imageIds: orderedIds,
+            });
+          }
         } catch (orderError) {
           Logger.error("Failed to save work images order:", orderError);
         }
