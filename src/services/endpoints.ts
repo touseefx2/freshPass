@@ -36,6 +36,8 @@ export const staffEndpoints = {
   leaveCancel: (id: number) => `/api/leaves/${id}`,
   breaks: `/api/breaks`,
   workImages: `/api/staff/work-images`,
+  /** Save display order (first = main photo) — body { imageIds } */
+  workImagesOrder: `/api/staff/work-images/order`,
   workImage: (imageId: number | string) =>
     `/api/staff/work-images/${imageId}`,
   /** Logged-in user's work images (owner or staff) — no staff id required */

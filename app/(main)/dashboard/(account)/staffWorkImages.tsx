@@ -2,17 +2,15 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   ActivityIndicator,
   Alert,
-  FlatList,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
-  Dimensions,
   Platform,
 } from "react-native";
-import AppImage from "@/src/components/AppImage";
+import Animated, { useAnimatedRef } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { MaterialIcons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
 import { useTheme, useAppSelector } from "@/src/hooks/hooks";
@@ -32,7 +30,7 @@ import {
   handleCameraPermission,
   handleMediaLibraryPermission,
 } from "@/src/services/mediaPermissionService";
-import { GalleryIcon, CameraIcon } from "@/assets/icons";
+import PortfolioPhotoGrid from "@/src/components/PortfolioPhotoGrid";
 import { Skeleton } from "@/src/components/skeletons";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import {
@@ -46,28 +44,17 @@ import type {
   StaffWorkImagePage,
 } from "@/src/types/staffWorkImages";
 
-const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const PADDING = moderateWidthScale(20);
-const GAP = moderateWidthScale(10);
-const NUM_COLUMNS = 3;
 const PER_PAGE = 15;
 
-const calculateItemWidth = () => {
-  const availableWidth = SCREEN_WIDTH - PADDING * 2;
-  const totalGaps = GAP * (NUM_COLUMNS - 1);
-  return (availableWidth - totalGaps) / NUM_COLUMNS;
-};
+/** One tile in display order; backendId is set for photos already saved */
+type WorkPhoto = { id: string; uri: string; backendId?: number };
 
-type GridItem =
-  | { type: "gallery"; id: string }
-  | { type: "camera"; id: string }
-  | {
-      type: "photo";
-      id: string;
-      uri: string;
-      isExisting: boolean;
-      backendId?: number;
-    };
+const toWorkPhoto = (photo: StaffWorkImage): WorkPhoto => ({
+  id: `existing_${photo.id}`,
+  uri: photo.url || resolveApiImageUrl(photo.url) || "",
+  backendId: photo.id,
+});
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -97,61 +84,6 @@ const createStyles = (theme: Theme) =>
       fontSize: fontSize.size14,
       fontFamily: fonts.fontRegular,
       color: theme.lightGreen,
-    },
-    columnWrapper: {
-      justifyContent: "flex-start",
-    },
-    gridItem: {
-      aspectRatio: 1,
-      overflow: "hidden",
-      marginRight: GAP,
-      marginBottom: GAP,
-    },
-    actionButton: {
-      width: "100%",
-      height: "100%",
-      alignItems: "center",
-      justifyContent: "center",
-      backgroundColor: theme.galleryPhotoBack,
-      borderWidth: 1,
-      borderColor: theme.borderLight,
-      borderRadius: moderateWidthScale(8),
-    },
-    actionButtonContent: {
-      alignItems: "center",
-      justifyContent: "center",
-      gap: moderateHeightScale(8),
-    },
-    actionButtonText: {
-      fontSize: fontSize.size14,
-      fontFamily: fonts.fontMedium,
-      color: theme.darkGreen,
-    },
-    photoContainer: {
-      position: "relative",
-      width: "100%",
-      height: "100%",
-      backgroundColor: theme.grey15,
-      borderWidth: 1,
-      borderColor: theme.borderLight,
-      borderRadius: moderateWidthScale(8),
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    photo: {
-      width: "100%",
-      height: "100%",
-      borderRadius: moderateWidthScale(8),
-    },
-    deleteButton: {
-      position: "absolute",
-      top: moderateHeightScale(4),
-      right: moderateWidthScale(4),
-      width: moderateWidthScale(24),
-      height: moderateWidthScale(24),
-      alignItems: "center",
-      justifyContent: "center",
-      zIndex: 1,
     },
     emptyState: {
       marginTop: moderateHeightScale(40),
@@ -194,16 +126,14 @@ export default function StaffWorkImagesManageScreen() {
   const [isUpdating, setIsUpdating] = useState(false);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
-  const [existingPhotos, setExistingPhotos] = useState<StaffWorkImage[]>([]);
-  const [newPhotos, setNewPhotos] = useState<
-    Array<{ id: string; uri: string }>
-  >([]);
+  const [photos, setPhotos] = useState<WorkPhoto[]>([]);
+  // Saved photo order as loaded, to tell if the user rearranged anything
+  const [savedOrder, setSavedOrder] = useState<string[]>([]);
   const [removedPhotoIds, setRemovedPhotoIds] = useState<number[]>([]);
+  const scrollRef = useAnimatedRef<Animated.ScrollView>();
 
   const removedIdsRef = useRef<number[]>([]);
   removedIdsRef.current = removedPhotoIds;
-
-  const itemWidth = useMemo(() => calculateItemWidth(), []);
 
   const generateLocalId = () =>
     `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -225,17 +155,32 @@ export default function StaffWorkImagesManageScreen() {
         }>(staffEndpoints.myWorkImages(pageToLoad, PER_PAGE));
 
         const pageData = response.data;
-        const nextItems = (pageData?.data ?? []).filter(
-          (photo) => !removedIdsRef.current.includes(photo.id),
-        );
+        const nextItems = (pageData?.data ?? [])
+          .filter((photo) => !removedIdsRef.current.includes(photo.id))
+          .map(toWorkPhoto);
 
-        setExistingPhotos((prev) => {
+        setPhotos((prev) => {
           if (!append) {
             return nextItems;
           }
           const seen = new Set(prev.map((p) => p.id));
           const unique = nextItems.filter((p) => !seen.has(p.id));
-          return [...prev, ...unique];
+          // Older saved photos go after the last saved one, before new picks
+          let insertAt = 0;
+          prev.forEach((p, index) => {
+            if (p.backendId != null) insertAt = index + 1;
+          });
+          return [
+            ...prev.slice(0, insertAt),
+            ...unique,
+            ...prev.slice(insertAt),
+          ];
+        });
+        setSavedOrder((prev) => {
+          const ids = nextItems.map((p) => p.id);
+          return append
+            ? [...prev, ...ids.filter((id) => !prev.includes(id))]
+            : ids;
         });
         setPage(pageData?.meta?.current_page ?? pageToLoad);
         setHasMore(pageData?.meta?.has_more === true);
@@ -248,7 +193,8 @@ export default function StaffWorkImagesManageScreen() {
             "error",
             3000,
           );
-          setExistingPhotos([]);
+          setPhotos([]);
+          setSavedOrder([]);
           setHasMore(false);
         }
       } finally {
@@ -290,7 +236,7 @@ export default function StaffWorkImagesManageScreen() {
       });
 
       if (!result.canceled && result.assets) {
-        const added: Array<{ id: string; uri: string }> = [];
+        const added: WorkPhoto[] = [];
         result.assets.forEach((asset) => {
           if (asset.uri) {
             added.push({
@@ -300,7 +246,7 @@ export default function StaffWorkImagesManageScreen() {
           }
         });
         if (added.length > 0) {
-          setNewPhotos((prev) => [...prev, ...added]);
+          setPhotos((prev) => [...prev, ...added]);
         }
       }
     } catch (error) {
@@ -328,7 +274,7 @@ export default function StaffWorkImagesManageScreen() {
       });
 
       if (!result.canceled && result.assets && result.assets[0]) {
-        setNewPhotos((prev) => [
+        setPhotos((prev) => [
           ...prev,
           {
             id: generateLocalId(),
@@ -342,124 +288,31 @@ export default function StaffWorkImagesManageScreen() {
     }
   }, [t]);
 
-  const handleDeletePhoto = useCallback((item: GridItem) => {
-    if (item.type !== "photo") {
-      return;
-    }
-
-    if (item.isExisting && item.backendId != null) {
-      setExistingPhotos((prev) => prev.filter((p) => p.id !== item.backendId));
+  const handleDeletePhoto = useCallback((photo: WorkPhoto) => {
+    setPhotos((prev) => prev.filter((p) => p.id !== photo.id));
+    if (photo.backendId != null) {
+      const backendId = photo.backendId;
       setRemovedPhotoIds((prev) =>
-        prev.includes(item.backendId as number)
-          ? prev
-          : [...prev, item.backendId as number],
+        prev.includes(backendId) ? prev : [...prev, backendId],
       );
-    } else {
-      setNewPhotos((prev) => prev.filter((p) => p.id !== item.id));
     }
   }, []);
 
-  const gridData: GridItem[] = useMemo(() => {
-    const uploadTiles: GridItem[] = canUploadWork
-      ? [
-          { type: "gallery", id: "gallery" },
-          { type: "camera", id: "camera" },
-        ]
-      : [];
-
-    return [
-      ...uploadTiles,
-      ...existingPhotos.map((photo) => ({
-        type: "photo" as const,
-        id: `existing_${photo.id}`,
-        uri: photo.url || resolveApiImageUrl(photo.url) || "",
-        isExisting: true,
-        backendId: photo.id,
-      })),
-      ...newPhotos.map((photo) => ({
-        type: "photo" as const,
-        id: photo.id,
-        uri: photo.uri,
-        isExisting: false,
-      })),
-    ];
-  }, [canUploadWork, existingPhotos, newPhotos]);
-
-  const renderItem = useCallback(
-    ({ item, index }: { item: GridItem; index: number }) => {
-      const isLastInRow = (index + 1) % NUM_COLUMNS === 0;
-      const itemStyle = [
-        styles.gridItem,
-        { width: itemWidth },
-        isLastInRow && { marginRight: 0 },
-      ];
-
-      if (item.type === "gallery") {
-        return (
-          <TouchableOpacity
-            style={itemStyle}
-            onPress={handleSelectFromGallery}
-            activeOpacity={0.7}
-          >
-            <View style={styles.actionButton}>
-              <View style={styles.actionButtonContent}>
-                <GalleryIcon color={theme.darkGreen} />
-                <Text style={styles.actionButtonText}>
-                  {t("fromGalleryLower")}
-                </Text>
-              </View>
-            </View>
-          </TouchableOpacity>
-        );
+  const handleScroll = useCallback(
+    ({ nativeEvent }: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const { layoutMeasurement, contentOffset, contentSize } = nativeEvent;
+      const distanceFromEnd =
+        contentSize.height - layoutMeasurement.height - contentOffset.y;
+      if (distanceFromEnd < layoutMeasurement.height * 0.4) {
+        handleLoadMore();
       }
-
-      if (item.type === "camera") {
-        return (
-          <TouchableOpacity
-            style={itemStyle}
-            onPress={handleTakePhoto}
-            activeOpacity={0.7}
-          >
-            <View style={styles.actionButton}>
-              <View style={styles.actionButtonContent}>
-                <CameraIcon color={theme.darkGreen} />
-                <Text style={styles.actionButtonText}>
-                  {t("fromCameraLower")}
-                </Text>
-              </View>
-            </View>
-          </TouchableOpacity>
-        );
-      }
-
-      return (
-        <View style={itemStyle}>
-          <View style={styles.photoContainer}>
-            <AppImage uri={item.uri} style={styles.photo} />
-            <TouchableOpacity
-              style={styles.deleteButton}
-              onPress={() => handleDeletePhoto(item)}
-              activeOpacity={0.7}
-            >
-              <MaterialIcons
-                name="delete-outline"
-                size={moderateWidthScale(20)}
-                color={theme.red}
-              />
-            </TouchableOpacity>
-          </View>
-        </View>
-      );
     },
-    [
-      itemWidth,
-      theme,
-      styles,
-      t,
-      handleSelectFromGallery,
-      handleTakePhoto,
-      handleDeletePhoto,
-    ],
+    [handleLoadMore],
+  );
+
+  const newPhotos = useMemo(
+    () => photos.filter((photo) => photo.backendId == null),
+    [photos],
   );
 
   const handleUpdate = async () => {
@@ -468,12 +321,14 @@ export default function StaffWorkImagesManageScreen() {
     }
 
     const photosToUpload = canUploadWork ? newPhotos : [];
-    if (photosToUpload.length === 0 && removedPhotoIds.length === 0) {
+    if (!hasChanges) {
       return;
     }
 
     setIsUpdating(true);
     try {
+      // Saved id for each new pick, by local id, to build the final order
+      const uploadedIds = new Map<string, number>();
       if (photosToUpload.length > 0) {
         const formData = new FormData();
         const preparedPhotos = await prepareImagesForUpload(
@@ -514,6 +369,17 @@ export default function StaffWorkImagesManageScreen() {
           );
           return;
         }
+
+        // Only trust the mapping when every pick came back, in upload order
+        const created = response.data ?? [];
+        if (
+          preparedPhotos.length === photosToUpload.length &&
+          created.length === photosToUpload.length
+        ) {
+          photosToUpload.forEach((photo, index) =>
+            uploadedIds.set(photo.id, created[index].id),
+          );
+        }
       }
 
       if (removedPhotoIds.length > 0) {
@@ -547,6 +413,20 @@ export default function StaffWorkImagesManageScreen() {
         }
       }
 
+      // Display order, first = main photo. Not fatal: photos are already saved
+      const orderedIds = photos
+        .map((photo) => photo.backendId ?? uploadedIds.get(photo.id))
+        .filter((id): id is number => id != null);
+      if ((isReordered || uploadedIds.size > 0) && orderedIds.length > 1) {
+        try {
+          await ApiService.put(staffEndpoints.workImagesOrder, {
+            imageIds: orderedIds,
+          });
+        } catch (orderError) {
+          Logger.error("Failed to save work images order:", orderError);
+        }
+      }
+
       showBanner(
         t("success"),
         t("workImagesUpdatedSuccessfully"),
@@ -574,19 +454,17 @@ export default function StaffWorkImagesManageScreen() {
     }
   };
 
-  const hasAnyPhoto = existingPhotos.length > 0 || newPhotos.length > 0;
+  const hasAnyPhoto = photos.length > 0;
+  const keptOrder = photos
+    .filter((photo) => photo.backendId != null)
+    .map((photo) => photo.id);
+  const isReordered =
+    keptOrder.join(",") !==
+    savedOrder.filter((id) => keptOrder.includes(id)).join(",");
   const hasChanges =
-    (canUploadWork && newPhotos.length > 0) || removedPhotoIds.length > 0;
-
-  const listHeader = useMemo(
-    () => (
-      <View style={styles.titleSec}>
-        <Text style={styles.title}>{t("buildTrustWithPhotos")}</Text>
-        <Text style={styles.subtitle}>{t("clientsBookSalonBarbersFirst")}</Text>
-      </View>
-    ),
-    [styles, t],
-  );
+    (canUploadWork && newPhotos.length > 0) ||
+    removedPhotoIds.length > 0 ||
+    isReordered;
 
   return (
     <SafeAreaView edges={["bottom"]} style={styles.container}>
@@ -595,34 +473,41 @@ export default function StaffWorkImagesManageScreen() {
         {loading ? (
           <Skeleton screenType="StepEight" styles={styles} />
         ) : (
-          <FlatList
-            data={gridData}
-            renderItem={renderItem}
-            keyExtractor={(item) => item.id}
-            numColumns={NUM_COLUMNS}
-            columnWrapperStyle={styles.columnWrapper}
+          <Animated.ScrollView
+            ref={scrollRef}
             contentContainerStyle={styles.listContent}
-            ListHeaderComponent={listHeader}
-            onEndReached={handleLoadMore}
-            onEndReachedThreshold={0.4}
-            ListFooterComponent={
-              <>
-                {!hasAnyPhoto ? (
-                  <View style={styles.emptyState}>
-                    <Text style={styles.emptyStateText}>
-                      {t("youDidntSelectAnythingYet")}
-                    </Text>
-                  </View>
-                ) : null}
-                {loadingMore ? (
-                  <View style={styles.footerLoader}>
-                    <ActivityIndicator size="small" color={theme.darkGreen} />
-                  </View>
-                ) : null}
-              </>
-            }
+            onScroll={handleScroll}
+            scrollEventThrottle={200}
             showsVerticalScrollIndicator={false}
-          />
+          >
+            <View style={styles.titleSec}>
+              <Text style={styles.title}>{t("buildTrustWithPhotos")}</Text>
+              <Text style={styles.subtitle}>
+                {t("clientsBookSalonBarbersFirst")}
+              </Text>
+            </View>
+            <PortfolioPhotoGrid
+              photos={photos}
+              onChangeOrder={setPhotos}
+              onDelete={handleDeletePhoto}
+              onPickGallery={handleSelectFromGallery}
+              onTakePhoto={handleTakePhoto}
+              scrollableRef={scrollRef}
+              showUploadTiles={canUploadWork}
+            />
+            {!hasAnyPhoto ? (
+              <View style={styles.emptyState}>
+                <Text style={styles.emptyStateText}>
+                  {t("youDidntSelectAnythingYet")}
+                </Text>
+              </View>
+            ) : null}
+            {loadingMore ? (
+              <View style={styles.footerLoader}>
+                <ActivityIndicator size="small" color={theme.darkGreen} />
+              </View>
+            ) : null}
+          </Animated.ScrollView>
         )}
       </View>
 

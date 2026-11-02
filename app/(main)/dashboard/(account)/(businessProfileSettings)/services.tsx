@@ -1,11 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import {
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import Animated, { useAnimatedRef } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
@@ -272,6 +267,7 @@ export default function ManageServicesScreen() {
     changeSeq.current += 1;
     setPendingSync(true);
   };
+  const scrollRef = useAnimatedRef<Animated.ScrollView>();
   const idsBeforeSheet = useRef("");
   const [editingServiceId, setEditingServiceId] = useState<string | null>(null);
   const [editServiceVisible, setEditServiceVisible] = useState(false);
@@ -611,7 +607,8 @@ export default function ManageServicesScreen() {
   return (
     <SafeAreaView edges={["bottom"]} style={styles.container}>
       <StackHeader title={t("individualServicesListTitle")} />
-      <ScrollView
+      <Animated.ScrollView
+        ref={scrollRef}
         style={styles.content}
         contentContainerStyle={styles.contentContainer}
         showsVerticalScrollIndicator={false}
@@ -627,6 +624,11 @@ export default function ManageServicesScreen() {
                 setEditServiceVisible(true);
               }}
               onEdit={handleEditService}
+              onReorder={(ordered) => {
+                dispatch(setServices(ordered));
+                markChanged();
+              }}
+              scrollableRef={scrollRef}
             />
 
             {!serviceTemplatesLoading &&
@@ -690,7 +692,7 @@ export default function ManageServicesScreen() {
               )}
           </>
         )}
-      </ScrollView>
+      </Animated.ScrollView>
 
       <EditServiceBottomSheet
         visible={editServiceVisible}

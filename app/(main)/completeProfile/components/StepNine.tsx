@@ -35,6 +35,7 @@ import {
   setInstagramUrl,
   setFacebookUrl,
   setPhotos,
+  setServices,
 } from "@/src/state/slices/completeProfileSlice";
 import ServiceListBottomSheet from "@/src/components/ServiceListBottomSheet";
 import EditServiceBottomSheet from "@/src/components/EditServiceBottomSheet";
@@ -479,6 +480,7 @@ export default function StepNine() {
               setEditServiceVisible(true);
             }}
             onEdit={handleEditService}
+            onReorder={(ordered) => dispatch(setServices(ordered))}
           />
 
           <View style={styles.popularSection}>

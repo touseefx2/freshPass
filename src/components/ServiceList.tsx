@@ -1,6 +1,9 @@
-import React, { useMemo } from "react";
+import React, { useCallback, useMemo } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
-import { Feather } from "@expo/vector-icons";
+import { Feather, MaterialIcons } from "@expo/vector-icons";
+import Sortable, { type SortableGridRenderItem } from "react-native-sortables";
+import type { AnimatedRef } from "react-native-reanimated";
+import { useTranslation } from "react-i18next";
 import { useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
@@ -18,10 +21,14 @@ export interface ServiceListItem {
   price: number | string;
 }
 
-interface ServiceListProps {
-  services: ServiceListItem[];
+interface ServiceListProps<S extends ServiceListItem> {
+  services: S[];
   onAdd: () => void;
   onEdit: (serviceId: string) => void;
+  /** When set, cards can be rearranged by press + hold + drag */
+  onReorder?: (services: S[]) => void;
+  /** Parent Animated.ScrollView, enables auto-scroll while dragging */
+  scrollableRef?: AnimatedRef<any>;
 }
 
 const formatDuration = (hours: number, minutes: number): string => {
@@ -93,6 +100,17 @@ const createStyles = (theme: Theme) =>
     chevron: {
       marginLeft: moderateWidthScale(6),
     },
+    hintRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(6),
+    },
+    hintText: {
+      flex: 1,
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+    },
     empty: {
       fontSize: fontSize.size14,
       fontFamily: fonts.fontRegular,
@@ -102,14 +120,58 @@ const createStyles = (theme: Theme) =>
     },
   });
 
-export default function ServiceList({
+export default function ServiceList<S extends ServiceListItem>({
   services,
   onAdd,
   onEdit,
-}: ServiceListProps) {
+  onReorder,
+  scrollableRef,
+}: ServiceListProps<S>) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
+
+  const renderCardContent = (service: S) => {
+    const duration = formatDuration(service.hours, service.minutes);
+    const price = formatPrice(service.price);
+    return (
+      <>
+        <View style={styles.info}>
+          <Text style={styles.name} numberOfLines={2}>
+            {service.name}
+          </Text>
+          <Text style={styles.duration}>{duration}</Text>
+        </View>
+        <Text style={styles.price}>{price}</Text>
+        <Feather
+          name="chevron-right"
+          size={moderateWidthScale(20)}
+          color={theme.lightGreen}
+          style={styles.chevron}
+        />
+      </>
+    );
+  };
+
+  const renderSortableItem = useCallback<SortableGridRenderItem<S>>(
+    ({ item }) => (
+      <Sortable.Touchable style={styles.card} onTap={() => onEdit(item.id)}>
+        {renderCardContent(item)}
+      </Sortable.Touchable>
+    ),
+    // renderCardContent only reads styles/theme
+    [styles, theme, onEdit],
+  );
+
+  const handleDragEnd = useCallback(
+    ({ data }: { data: S[] }) => {
+      if (data.some((service, index) => service.id !== services[index]?.id)) {
+        onReorder?.(data);
+      }
+    },
+    [services, onReorder],
+  );
 
   return (
     <View style={styles.wrap}>
@@ -125,6 +187,32 @@ export default function ServiceList({
 
       {services.length === 0 ? (
         <Text style={styles.empty}>You haven't added any service yet</Text>
+      ) : onReorder ? (
+        <>
+          {services.length > 1 && (
+            <View style={styles.hintRow}>
+              <MaterialIcons
+                name="drag-indicator"
+                size={moderateWidthScale(16)}
+                color={theme.lightGreen}
+              />
+              <Text style={styles.hintText}>{t("servicesReorderHint")}</Text>
+            </View>
+          )}
+          <Sortable.Grid
+            data={services}
+            renderItem={renderSortableItem}
+            keyExtractor={(service) => service.id}
+            columns={1}
+            rowGap={moderateHeightScale(12)}
+            hapticsEnabled
+            dragActivationDelay={250}
+            activeItemScale={1.03}
+            inactiveItemOpacity={1}
+            onDragEnd={handleDragEnd}
+            scrollableRef={scrollableRef}
+          />
+        </>
       ) : (
         services.map((service) => {
           const duration = formatDuration(service.hours, service.minutes);
@@ -139,19 +227,7 @@ export default function ServiceList({
               accessibilityLabel={`${service.name}, ${duration}, ${price}`}
               accessibilityHint="Opens the service editor"
             >
-              <View style={styles.info}>
-                <Text style={styles.name} numberOfLines={2}>
-                  {service.name}
-                </Text>
-                <Text style={styles.duration}>{duration}</Text>
-              </View>
-              <Text style={styles.price}>{price}</Text>
-              <Feather
-                name="chevron-right"
-                size={moderateWidthScale(20)}
-                color={theme.lightGreen}
-                style={styles.chevron}
-              />
+              {renderCardContent(service)}
             </TouchableOpacity>
           );
         })

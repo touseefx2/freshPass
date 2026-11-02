@@ -2,12 +2,13 @@ import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import Animated, { useAnimatedRef } from "react-native-reanimated";
+import Sortable, { type SortableGridRenderItem } from "react-native-sortables";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather, MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -182,6 +183,18 @@ const createStyles = (theme: Theme) =>
     },
     subscriptionsContainer: {
       gap: moderateHeightScale(16),
+    },
+    reorderHintRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(6),
+      marginBottom: -moderateHeightScale(6),
+    },
+    reorderHintText: {
+      flex: 1,
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
     },
     actionRow: {
       flexDirection: "row",
@@ -444,6 +457,7 @@ export default function ManageSubscriptionsScreen() {
     (state) => state.completeProfile,
   );
 
+  const scrollRef = useAnimatedRef<Animated.ScrollView>();
   const [generatedResult, setGeneratedResult] = useState<any>(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -757,7 +771,7 @@ export default function ManageSubscriptionsScreen() {
     if (!requireStripeToCreate()) return;
     setIsUpdating(true);
     try {
-      const payload = subscriptions.map((subscription) => {
+      const payload = subscriptions.map((subscription, index) => {
         const planServices = subscription.serviceIds.map((id) => Number(id));
         const serviceQuantities = subscription.serviceIds.reduce<
           Record<string, number>
@@ -776,6 +790,8 @@ export default function ManageSubscriptionsScreen() {
           ),
           plan_services: planServices,
           service_quantities: serviceQuantities,
+          // Display order chosen by press + hold + drag (0 = first)
+          sort_order: index,
         };
       });
 
@@ -882,10 +898,102 @@ export default function ManageSubscriptionsScreen() {
     }
   };
 
+  // Membership card; press + hold + drag anywhere on it to rearrange
+  const renderSubscriptionCard: SortableGridRenderItem<
+    (typeof subscriptions)[number]
+  > = ({ item: subscription }) => {
+    const serviceItems = getServiceItems(
+      subscription.serviceIds,
+      subscription.serviceCounts,
+    );
+    const description = subscription.description?.trim();
+    const showDescription =
+      !!description &&
+      description.toLowerCase() !==
+        subscription.packageName.trim().toLowerCase();
+    const totalUses = serviceItems.reduce(
+      (sum, item) => sum + item.count,
+      0,
+    );
+    return (
+      <View style={styles.subscriptionCard}>
+        <View style={styles.subscriptionCardHeader}>
+          <Text style={styles.subscriptionName}>
+            {subscription.packageName}
+          </Text>
+          <Sortable.Touchable
+            style={styles.editButton}
+            onTap={() => handleEditSubscription(subscription.id)}
+            accessibilityRole="button"
+            accessibilityLabel={`Edit ${subscription.packageName}`}
+          >
+            <Text style={styles.editText}>Edit</Text>
+          </Sortable.Touchable>
+        </View>
+        {showDescription ? (
+          <Text
+            style={styles.subscriptionDescription}
+            numberOfLines={2}
+          >
+            {description}
+          </Text>
+        ) : null}
+        <View style={styles.priceRow}>
+          <Text style={styles.priceText}>
+            {formatPrice(subscription.price)}
+          </Text>
+          <Text style={styles.perMonthText}>/month</Text>
+        </View>
+        <View style={styles.accentBar} />
+        {serviceItems.length > 0 ? (
+          <>
+            <Text style={styles.includedLabel}>
+              Included each month
+            </Text>
+            <View style={styles.includedList}>
+              {serviceItems.map((item) => (
+                <View key={item.id} style={styles.includedItem}>
+                  <View style={styles.checkCircle}>
+                    <Feather
+                      name="check"
+                      size={moderateWidthScale(13)}
+                      color={theme.white}
+                    />
+                  </View>
+                  <Text style={styles.includedText}>
+                    <Text style={styles.includedCount}>
+                      {item.count}
+                    </Text>
+                    {"  "}
+                    {item.name}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          </>
+        ) : null}
+        {totalUses > 0 ? (
+          <View style={styles.visitsPill}>
+            <Feather
+              name="calendar"
+              size={moderateWidthScale(18)}
+              color={theme.orangeBrownText}
+            />
+            <Text style={styles.visitsText}>
+              {totalUses} service{totalUses === 1 ? "" : "s"} to
+              use anytime this month
+            </Text>
+          </View>
+        ) : null}
+      </View>
+    );
+  };
+
   return (
     <SafeAreaView edges={["bottom"]} style={styles.container}>
       <StackHeader title={t("membershipList")} />
-      <ScrollView
+      <Animated.ScrollView
+        ref={scrollRef}
         style={styles.content}
         contentContainerStyle={styles.contentContainer}
         showsVerticalScrollIndicator={false}
@@ -965,95 +1073,39 @@ export default function ManageSubscriptionsScreen() {
               ) : null
             ) : (
               <View style={styles.subscriptionsContainer}>
-                {subscriptions.map((subscription) => {
-                  const serviceItems = getServiceItems(
-                    subscription.serviceIds,
-                    subscription.serviceCounts,
-                  );
-                  const description = subscription.description?.trim();
-                  const showDescription =
-                    !!description &&
-                    description.toLowerCase() !==
-                      subscription.packageName.trim().toLowerCase();
-                  const totalUses = serviceItems.reduce(
-                    (sum, item) => sum + item.count,
-                    0,
-                  );
-                  return (
-                    <View key={subscription.id} style={styles.subscriptionCard}>
-                      <View style={styles.subscriptionCardHeader}>
-                        <Text style={styles.subscriptionName}>
-                          {subscription.packageName}
-                        </Text>
-                        <TouchableOpacity
-                          style={styles.editButton}
-                          onPress={() =>
-                            handleEditSubscription(subscription.id)
-                          }
-                          accessibilityRole="button"
-                          accessibilityLabel={`Edit ${subscription.packageName}`}
-                        >
-                          <Text style={styles.editText}>Edit</Text>
-                        </TouchableOpacity>
-                      </View>
-                      {showDescription ? (
-                        <Text
-                          style={styles.subscriptionDescription}
-                          numberOfLines={2}
-                        >
-                          {description}
-                        </Text>
-                      ) : null}
-                      <View style={styles.priceRow}>
-                        <Text style={styles.priceText}>
-                          {formatPrice(subscription.price)}
-                        </Text>
-                        <Text style={styles.perMonthText}>/month</Text>
-                      </View>
-                      <View style={styles.accentBar} />
-                      {serviceItems.length > 0 ? (
-                        <>
-                          <Text style={styles.includedLabel}>
-                            Included each month
-                          </Text>
-                          <View style={styles.includedList}>
-                            {serviceItems.map((item) => (
-                              <View key={item.id} style={styles.includedItem}>
-                                <View style={styles.checkCircle}>
-                                  <Feather
-                                    name="check"
-                                    size={moderateWidthScale(13)}
-                                    color={theme.white}
-                                  />
-                                </View>
-                                <Text style={styles.includedText}>
-                                  <Text style={styles.includedCount}>
-                                    {item.count}
-                                  </Text>
-                                  {"  "}
-                                  {item.name}
-                                </Text>
-                              </View>
-                            ))}
-                          </View>
-                        </>
-                      ) : null}
-                      {totalUses > 0 ? (
-                        <View style={styles.visitsPill}>
-                          <Feather
-                            name="calendar"
-                            size={moderateWidthScale(18)}
-                            color={theme.orangeBrownText}
-                          />
-                          <Text style={styles.visitsText}>
-                            {totalUses} service{totalUses === 1 ? "" : "s"} to
-                            use anytime this month
-                          </Text>
-                        </View>
-                      ) : null}
-                    </View>
-                  );
-                })}
+                {subscriptions.length > 1 && (
+                  <View style={styles.reorderHintRow}>
+                    <MaterialIcons
+                      name="drag-indicator"
+                      size={moderateWidthScale(16)}
+                      color={theme.lightGreen}
+                    />
+                    <Text style={styles.reorderHintText}>
+                      {t("membershipsReorderHint")}
+                    </Text>
+                  </View>
+                )}
+                <Sortable.Grid
+                  data={subscriptions}
+                  renderItem={renderSubscriptionCard}
+                  keyExtractor={(subscription) => subscription.id}
+                  columns={1}
+                  rowGap={moderateHeightScale(16)}
+                  hapticsEnabled
+                  dragActivationDelay={250}
+                  activeItemScale={1.03}
+                  inactiveItemOpacity={1}
+                  onDragEnd={({ data }) => {
+                    if (
+                      data.some(
+                        (plan, index) => plan.id !== subscriptions[index]?.id,
+                      )
+                    ) {
+                      dispatch(setSubscriptions(data));
+                    }
+                  }}
+                  scrollableRef={scrollRef}
+                />
               </View>
             )}
 
@@ -1107,7 +1159,7 @@ export default function ManageSubscriptionsScreen() {
             )}
           </>
         )}
-      </ScrollView>
+      </Animated.ScrollView>
 
       {!loading && (
         <View style={styles.continueButtonContainer}>

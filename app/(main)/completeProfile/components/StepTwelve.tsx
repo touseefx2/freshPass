@@ -1,19 +1,9 @@
 import React, { useMemo, useCallback } from "react";
 import Logger from "@/src/services/logger";
-import {
-  StyleSheet,
-  Text,
-  View,
-  TouchableOpacity,
-  Alert,
-  Dimensions,
-  FlatList,
-  Platform,
-} from "react-native";
-import { MaterialIcons } from "@expo/vector-icons";
+import { StyleSheet, Text, View, Alert, Platform } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
-import AppImage from "@/src/components/AppImage";
+import PortfolioPhotoGrid from "@/src/components/PortfolioPhotoGrid";
 import { useTranslation } from "react-i18next";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
@@ -21,29 +11,17 @@ import {
   moderateHeightScale,
   moderateWidthScale,
 } from "@/src/theme/dimensions";
-import { addPhoto, removePhoto } from "@/src/state/slices/completeProfileSlice";
+import {
+  addPhoto,
+  removePhoto,
+  setPhotos,
+} from "@/src/state/slices/completeProfileSlice";
 import {
   handleMediaLibraryPermission,
   handleCameraPermission,
 } from "@/src/services/mediaPermissionService";
-import { GalleryIcon, CameraIcon } from "@/assets/icons";
 
-const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const PADDING = moderateWidthScale(20);
-const GAP = moderateWidthScale(10);
-const NUM_COLUMNS = 3;
-
-const calculateItemWidth = () => {
-  const availableWidth = SCREEN_WIDTH - PADDING * 2;
-  const totalGaps = GAP * (NUM_COLUMNS - 1); // 2 gaps for 3 items
-  const itemWidth = (availableWidth - totalGaps) / NUM_COLUMNS;
-  return itemWidth;
-};
-
-type GridItem =
-  | { type: "gallery"; id: string }
-  | { type: "camera"; id: string }
-  | { type: "photo"; id: string; uri: string };
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -66,65 +44,6 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontRegular,
       color: theme.lightGreen,
     },
-    gridContainer: {
-      marginTop: moderateHeightScale(10),
-    },
-    columnWrapper: {
-      justifyContent: "flex-start",
-    },
-    gridItem: {
-      aspectRatio: 1,
-      overflow: "hidden",
-      marginRight: GAP,
-      marginBottom: GAP,
-    },
-    actionButton: {
-      width: "100%",
-      height: "100%",
-      alignItems: "center",
-      justifyContent: "center",
-      backgroundColor: theme.galleryPhotoBack,
-      borderWidth: 1,
-      borderColor: theme.borderLight,
-      borderRadius: moderateWidthScale(8),
-    },
-    actionButtonContent: {
-      alignItems: "center",
-      justifyContent: "center",
-      gap: moderateHeightScale(8),
-    },
-    actionButtonText: {
-      fontSize: fontSize.size14,
-      fontFamily: fonts.fontMedium,
-      color: theme.darkGreen,
-    },
-    photoContainer: {
-      position: "relative",
-      width: "100%",
-      height: "100%",
-      backgroundColor: theme.grey15,
-      borderWidth: 1,
-      borderColor: theme.borderLight,
-      borderRadius: moderateWidthScale(8),
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    photo: {
-      width: "100%",
-      height: "100%",
-      borderRadius: moderateWidthScale(8),
-    },
-    deleteButton: {
-      position: "absolute",
-      top: moderateHeightScale(4),
-      right: moderateWidthScale(4),
-      width: moderateWidthScale(24),
-      height: moderateWidthScale(24),
-      // backgroundColor:"yellow",
-      alignItems: "center",
-      justifyContent: "center",
-      zIndex: 1,
-    },
     emptyState: {
       position: "absolute",
       top: "60%",
@@ -143,7 +62,6 @@ export default function StepTwelve() {
   const { colors } = useTheme();
   const { t } = useTranslation();
   const styles = useMemo(() => createStyles(colors as Theme), [colors]);
-  const theme = colors as Theme;
   const { photos } = useAppSelector((state) => state.completeProfile);
 
   const generatePhotoId = () => {
@@ -223,98 +141,17 @@ export default function StepTwelve() {
   }, [dispatch]);
 
   const handleDeletePhoto = useCallback(
-    (id: string) => {
-      dispatch(removePhoto(id));
+    (photo: { id: string }) => {
+      dispatch(removePhoto(photo.id));
     },
     [dispatch],
   );
 
-  const itemWidth = useMemo(() => calculateItemWidth(), []);
-
-  // Create data array: gallery, camera, then photos
-  const gridData = useMemo<GridItem[]>(() => {
-    const items: GridItem[] = [
-      { type: "gallery", id: "gallery" },
-      { type: "camera", id: "camera" },
-      ...photos.map((photo) => ({
-        type: "photo" as const,
-        id: photo.id,
-        uri: photo.uri,
-      })),
-    ];
-    return items;
-  }, [photos]);
-
-  const renderItem = useCallback(
-    ({ item, index }: { item: GridItem; index: number }) => {
-      const isLastInRow = (index + 1) % NUM_COLUMNS === 0;
-      const itemStyle = [
-        styles.gridItem,
-        { width: itemWidth },
-        isLastInRow && { marginRight: 0 },
-      ];
-
-      if (item.type === "gallery") {
-        return (
-          <TouchableOpacity
-            style={itemStyle}
-            onPress={handleSelectFromGallery}
-            activeOpacity={0.7}
-          >
-            <View style={styles.actionButton}>
-              <View style={styles.actionButtonContent}>
-                <GalleryIcon color={theme.darkGreen} />
-                <Text style={styles.actionButtonText}>from gallery</Text>
-              </View>
-            </View>
-          </TouchableOpacity>
-        );
-      }
-
-      if (item.type === "camera") {
-        return (
-          <TouchableOpacity
-            style={itemStyle}
-            onPress={handleTakePhoto}
-            activeOpacity={0.7}
-          >
-            <View style={styles.actionButton}>
-              <View style={styles.actionButtonContent}>
-                <CameraIcon color={theme.darkGreen} />
-                <Text style={styles.actionButtonText}>from camera</Text>
-              </View>
-            </View>
-          </TouchableOpacity>
-        );
-      }
-
-      // Photo item
-      return (
-        <View style={itemStyle}>
-          <View style={styles.photoContainer}>
-            <AppImage uri={item.uri} style={styles.photo} />
-            <TouchableOpacity
-              style={styles.deleteButton}
-              onPress={() => handleDeletePhoto(item.id)}
-              activeOpacity={0.7}
-            >
-              <MaterialIcons
-                name="delete-outline"
-                size={moderateWidthScale(20)}
-                color={theme.red}
-              />
-            </TouchableOpacity>
-          </View>
-        </View>
-      );
+  const handleChangeOrder = useCallback(
+    (ordered: Array<{ id: string; uri: string }>) => {
+      dispatch(setPhotos(ordered));
     },
-    [
-      itemWidth,
-      theme,
-      handleSelectFromGallery,
-      handleTakePhoto,
-      handleDeletePhoto,
-    ],
+    [dispatch],
   );
 
   return (
@@ -326,14 +163,12 @@ export default function StepTwelve() {
         </Text>
       </View>
 
-      <FlatList
-        data={gridData}
-        renderItem={renderItem}
-        keyExtractor={(item) => item.id}
-        numColumns={NUM_COLUMNS}
-        columnWrapperStyle={styles.columnWrapper}
-        contentContainerStyle={styles.gridContainer}
-        scrollEnabled={false}
+      <PortfolioPhotoGrid
+        photos={photos}
+        onChangeOrder={handleChangeOrder}
+        onDelete={handleDeletePhoto}
+        onPickGallery={handleSelectFromGallery}
+        onTakePhoto={handleTakePhoto}
       />
 
       {photos.length === 0 && (
