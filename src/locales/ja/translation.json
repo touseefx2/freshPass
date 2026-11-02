@@ -89,6 +89,7 @@
   "changePassword": "パスワードを変更",
   "addYourNewImage": "新しい画像を追加",
   "uploadPhoto": "写真をアップロード",
+  "removePhoto": "写真を削除",
   "phone": "電話",
   "phoneNumber": "電話番号",
   "enterValidPhoneNumber": "有効な電話番号を入力してください",

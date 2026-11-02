@@ -151,7 +151,7 @@ export default function ProfileScreen() {
       user.profile_image_url.startsWith("https://")
       ? user.profile_image_url
       : process.env.EXPO_PUBLIC_API_BASE_URL + user.profile_image_url
-    : "https://imgcdn.stablediffusionweb.com/2024/3/24/3b153c48-649f-4ee2-b1cc-3d45333db028.jpg";
+    : "";
   const userName = user.name || "";
   const userEmail = user.email || "";
   const { t } = useTranslation();

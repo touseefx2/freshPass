@@ -141,6 +141,17 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontMedium,
       color: theme.darkGreen,
     },
+    removeButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(4),
+      alignSelf: "flex-start",
+    },
+    removeButtonText: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontMedium,
+      color: theme.red,
+    },
     googleDriveLink: {
       fontSize: fontSize.size12,
       fontFamily: fonts.fontRegular,
@@ -791,7 +802,7 @@ export default function EditProfileScreen() {
       user.profile_image_url.startsWith("https://")
       ? user.profile_image_url
       : process.env.EXPO_PUBLIC_API_BASE_URL + user.profile_image_url
-    : "https://imgcdn.stablediffusionweb.com/2024/3/24/3b153c48-649f-4ee2-b1cc-3d45333db028.jpg";
+    : "";
 
   const [email, setEmail] = useState(user.email || "");
   const [fullName, setFullName] = useState(user.name || "");
@@ -1300,6 +1311,10 @@ export default function EditProfileScreen() {
     setShowImagePickerModal(true);
   };
 
+  const handleRemovePhoto = () => {
+    setProfileImageUri("");
+  };
+
   const handleImportFromGoogleDrive = () => {
     // TODO: Implement Google Drive import
     Logger.log("Import from Google Drive pressed");
@@ -1463,9 +1478,10 @@ export default function EditProfileScreen() {
           formData.append(imageFieldName, prepared as any);
         } else if (profileImageUri === "") {
           // User wants to remove avatar
-          if (user.userRole !== "staff") {
-            formData.append("remove_avatar", "true");
-          }
+          formData.append(
+            user.userRole === "staff" ? "remove_image" : "remove_avatar",
+            "true",
+          );
         }
         // If it's a remote URL and hasn't changed, we don't need to send it
       }
@@ -1602,6 +1618,20 @@ export default function EditProfileScreen() {
               />
               <Text style={styles.uploadButtonText}>{t("uploadPhoto")}</Text>
             </TouchableOpacity>
+            {profileImageUri !== "" && (
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={handleRemovePhoto}
+                style={styles.removeButton}
+              >
+                <MaterialIcons
+                  name="delete-outline"
+                  size={moderateWidthScale(18)}
+                  color={theme.red}
+                />
+                <Text style={styles.removeButtonText}>{t("removePhoto")}</Text>
+              </TouchableOpacity>
+            )}
             <TouchableOpacity
               disabled
               activeOpacity={0.7}
