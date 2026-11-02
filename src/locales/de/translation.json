@@ -2194,6 +2194,7 @@
   "monthlyReelsChange": "Ändern",
   "monthlyReelsGive": "KI-Reels vergeben",
   "monthlyReelsBusinessSubtitle": "{{count}} KI-Reels pro Monat für das ganze Unternehmen. Das Team nutzt, was du vergibst; den Rest nutzt du. Normale Uploads sind nicht begrenzt.",
+  "monthlyReelsSoloSubtitle": "{{count}} KI-Reels pro Monat für dein Unternehmen. Normale Uploads sind nicht begrenzt.",
   "monthlyReelsUsedThisMonth": "Diesen Monat genutzt",
   "monthlyReelsGivenToStaff": "An Team vergeben",
   "monthlyReelsForYou": "Für dich",

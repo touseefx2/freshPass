@@ -2194,6 +2194,7 @@
   "monthlyReelsChange": "Cambiar",
   "monthlyReelsGive": "Asignar reels con IA",
   "monthlyReelsBusinessSubtitle": "{{count}} reels con IA al mes para todo el negocio. El equipo usa lo que le asignes; tú usas el resto. Las subidas normales no tienen límite.",
+  "monthlyReelsSoloSubtitle": "{{count}} reels con IA al mes para tu negocio. Las subidas normales no tienen límite.",
   "monthlyReelsUsedThisMonth": "Usados este mes",
   "monthlyReelsGivenToStaff": "Asignados al equipo",
   "monthlyReelsForYou": "Para ti",

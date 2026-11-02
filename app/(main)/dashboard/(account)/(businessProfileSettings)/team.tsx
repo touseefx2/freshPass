@@ -1010,9 +1010,10 @@ export default function ManageTeamScreen() {
               )}
             </View>
 
-            {employees.length > 0 && reelLimits?.staff_reel_limits ? (
+            {reelLimits?.monthly_reel_role === "owner" ? (
               <BusinessReelsSummaryCard
                 limits={reelLimits}
+                solo={isSoloPlan}
                 resetLabel={formatReelsResetDate(
                   reelLimits.monthly_reels_reset_on,
                 )}

@@ -2194,6 +2194,7 @@
   "monthlyReelsChange": "変更",
   "monthlyReelsGive": "AIリールを割り当て",
   "monthlyReelsBusinessSubtitle": "ビジネス全体で月{{count}}本のAIリール。スタッフは割り当てた分、残りはあなたが使えます。通常のアップロードは無制限です。",
+  "monthlyReelsSoloSubtitle": "ビジネスで月{{count}}本のAIリール。通常のアップロードは無制限です。",
   "monthlyReelsUsedThisMonth": "今月の使用数",
   "monthlyReelsGivenToStaff": "スタッフに割り当て",
   "monthlyReelsForYou": "あなたの分",

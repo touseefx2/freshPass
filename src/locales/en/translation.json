@@ -2252,6 +2252,7 @@
   "monthlyReelsChange": "Change",
   "monthlyReelsGive": "Give AI reels",
   "monthlyReelsBusinessSubtitle": "{{count}} AI reels a month for the whole business. Staff use the number you give them; you use the rest. Normal uploads aren’t limited.",
+  "monthlyReelsSoloSubtitle": "{{count}} AI reels a month for your business. Normal uploads aren’t limited.",
   "monthlyReelsUsedThisMonth": "Used this month",
   "monthlyReelsGivenToStaff": "Given to staff",
   "monthlyReelsForYou": "Left for you",

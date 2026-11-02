@@ -2194,6 +2194,7 @@
   "monthlyReelsChange": "Modifier",
   "monthlyReelsGive": "Attribuer des reels IA",
   "monthlyReelsBusinessSubtitle": "{{count}} reels IA par mois pour toute l’entreprise. Le personnel utilise ce que vous lui attribuez ; vous utilisez le reste. Les envois normaux ne sont pas limités.",
+  "monthlyReelsSoloSubtitle": "{{count}} reels IA par mois pour votre entreprise. Les envois normaux ne sont pas limités.",
   "monthlyReelsUsedThisMonth": "Utilisés ce mois-ci",
   "monthlyReelsGivenToStaff": "Attribués au personnel",
   "monthlyReelsForYou": "Pour vous",

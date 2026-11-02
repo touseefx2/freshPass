@@ -553,9 +553,12 @@ export function StaffReelUsageCard({
 export function BusinessReelsSummaryCard({
   limits,
   resetLabel,
+  solo = false,
 }: {
   limits: MediaLimits;
   resetLabel: string | null;
+  /** Solo plan can't add staff: hide the staff split and wording */
+  solo?: boolean;
 }) {
   const { colors } = useTheme();
   const theme = colors as Theme;
@@ -600,14 +603,24 @@ export function BusinessReelsSummaryCard({
       </View>
 
       <View style={styles.splitRow}>
-        <View style={styles.splitCell}>
-          <Text style={styles.statLabel}>{t("monthlyReelsGivenToStaff")}</Text>
-          <Text style={styles.statValue}>{limits.assigned_to_staff ?? 0}</Text>
-        </View>
-        <View style={styles.splitDivider} />
+        {solo ? null : (
+          <>
+            <View style={styles.splitCell}>
+              <Text style={styles.statLabel}>
+                {t("monthlyReelsGivenToStaff")}
+              </Text>
+              <Text style={styles.statValue}>
+                {limits.assigned_to_staff ?? 0}
+              </Text>
+            </View>
+            <View style={styles.splitDivider} />
+          </>
+        )}
         <View style={styles.splitCell}>
           <Text style={styles.statLabel}>{t("monthlyReelsForYou")}</Text>
-          <Text style={styles.statValue}>{limits.unassigned ?? 0}</Text>
+          <Text style={styles.statValue}>
+            {limits.reels_remaining_this_month ?? limits.unassigned ?? 0}
+          </Text>
         </View>
       </View>
 
@@ -618,7 +631,10 @@ export function BusinessReelsSummaryCard({
           color={theme.lightGreen}
         />
         <Text style={styles.helperText}>
-          {t("monthlyReelsBusinessSubtitle", { count: max })}
+          {t(
+            solo ? "monthlyReelsSoloSubtitle" : "monthlyReelsBusinessSubtitle",
+            { count: max },
+          )}
         </Text>
       </View>
     </View>

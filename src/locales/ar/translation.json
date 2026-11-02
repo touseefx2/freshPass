@@ -2194,6 +2194,7 @@
   "monthlyReelsChange": "تغيير",
   "monthlyReelsGive": "امنح ريلز ذكاء اصطناعي",
   "monthlyReelsBusinessSubtitle": "{{count}} ريلز ذكاء اصطناعي شهريًا للنشاط التجاري بأكمله. يستخدم الموظفون ما تمنحه لهم، وتستخدم أنت الباقي. الرفع العادي غير محدود.",
+  "monthlyReelsSoloSubtitle": "{{count}} ريلز ذكاء اصطناعي شهريًا لنشاطك التجاري. الرفع العادي غير محدود.",
   "monthlyReelsUsedThisMonth": "المستخدم هذا الشهر",
   "monthlyReelsGivenToStaff": "ممنوحة للموظفين",
   "monthlyReelsForYou": "متبقية لك",
