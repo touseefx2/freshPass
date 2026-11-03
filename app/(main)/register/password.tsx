@@ -158,6 +158,8 @@ export default function RegisterPassword() {
   const [isLoading, setIsLoading] = useState(false);
   const [isVerificationModalVisible, setIsVerificationModalVisible] =
     useState(false);
+  // Register just emailed a code; false when the popup is only reopened
+  const [codeJustSent, setCodeJustSent] = useState(false);
 
   const [data, setData] = useState<any>(null);
 
@@ -309,6 +311,7 @@ export default function RegisterPassword() {
     // Account already created but not verified yet (popup was closed):
     // reopen the code popup instead of registering a second time.
     if (data?.token) {
+      setCodeJustSent(false);
       setIsVerificationModalVisible(true);
       return;
     }
@@ -354,12 +357,14 @@ export default function RegisterPassword() {
           if (user?.role?.toLowerCase() == "business") {
             // Owners verify the emailed code first (same popup as customers)
             if (email_verification_required) {
+              setCodeJustSent(true);
               setIsVerificationModalVisible(true);
             } else {
               finishBusinessSignup(response.data);
             }
           } else {
             if (email_verification_required) {
+              setCodeJustSent(true);
               setIsVerificationModalVisible(true);
             }
           }
@@ -538,6 +543,7 @@ export default function RegisterPassword() {
           email={data?.user?.email || email.trim()}
           onCodeComplete={handleVerificationCodeComplete}
           onEmailChanged={handleVerificationEmailChanged}
+          codeJustSent={codeJustSent}
           accessToken={data?.token || null}
           screen="signup"
         />

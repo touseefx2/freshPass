@@ -47,6 +47,8 @@ interface VerificationCodeModalProps {
   onCodeComplete?: () => void;
   /** Called after "Wrong email? Change it" saved a new address. */
   onEmailChanged?: (email: string) => void;
+  /** True when the caller just sent a code (signup), so resend waits first. */
+  codeJustSent?: boolean;
   accessToken?: string | null;
   screen?: "signup" | "login";
 }
@@ -268,6 +270,7 @@ export default function VerificationCodeModal({
   email,
   onCodeComplete,
   onEmailChanged,
+  codeJustSent = false,
   accessToken,
   screen,
 }: VerificationCodeModalProps) {
@@ -282,8 +285,10 @@ export default function VerificationCodeModal({
   const [isInitialLoading, setIsInitialLoading] = useState(screen === "login");
   const [initialLoadError, setInitialLoadError] = useState(false);
   const inputRefs = useRef<(TextInput | null)[]>([]);
-  // A code was just sent (by signup, or by the send below), so start waiting
-  const [resendSeconds, setResendSeconds] = useState(RESEND_COOLDOWN_SECONDS);
+  // Wait only after a real send: signup's code, or a send from this popup
+  const [resendSeconds, setResendSeconds] = useState(
+    codeJustSent ? RESEND_COOLDOWN_SECONDS : 0,
+  );
 
   useEffect(() => {
     if (resendSeconds <= 0) return;
