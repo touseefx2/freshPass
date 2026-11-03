@@ -1109,12 +1109,12 @@ export default function ReelTemplatesScreen() {
 
   const noReelsLeft = reelsRemaining != null && reelsRemaining <= 0;
 
-  // Photo designs don't use the monthly AI reels — only video reels do
   const canGenerate = needsPhotos
     ? !!selected &&
       photosComplete &&
       (!needsMusicChoice || music !== undefined) &&
-      !!categoryId
+      !!categoryId &&
+      !noReelsLeft
     : !!selected &&
       !!sourceVideo &&
       (sourceVideo.id != null || sourceVideo.local != null) &&
@@ -1136,13 +1136,14 @@ export default function ReelTemplatesScreen() {
     sourceExactSeconds != null &&
     sourceExactSeconds < minVideoSeconds;
   const noCreditsLeft = credits != null && credits.remaining <= 0;
-  // One-video design: no AI video reels left (monthly limit or credits) →
-  // the pickers are swapped for the "limit reached" card
-  const autoBuildBlocked = isAutoBuild && (noReelsLeft || noCreditsLeft);
-  const autoBuildStaffNoneGiven =
+  // Video or photo design with no AI reels left this month → the pickers are
+  // swapped for the "limit reached" card (media/limits and credits are one counter)
+  const aiReelBlocked =
+    (isAutoBuild || needsPhotos) && (noReelsLeft || noCreditsLeft);
+  const aiReelStaffNoneGiven =
     noReelsLeft && isStaffQuota && (reelsLimit ?? 0) <= 0;
   // Same "AI reels" wording for both (credits are the same monthly reels)
-  const autoBuildBlockedMessage =
+  const aiReelBlockedMessage =
     (noReelsLeft && quotaBlockedMessage) || t("autoReelNoReelsLeft");
   const canAutoBuild =
     !!selected &&
@@ -1150,7 +1151,7 @@ export default function ReelTemplatesScreen() {
     (sourceVideo.id != null || sourceVideo.local != null) &&
     !sourceTooLong &&
     !sourceTooShort &&
-    !autoBuildBlocked &&
+    !aiReelBlocked &&
     (!autoBuildSilent || music !== undefined);
 
   /** Upload the picked file (compress → POST /api/media) and keep its id. */
@@ -1265,8 +1266,11 @@ export default function ReelTemplatesScreen() {
       setMusicError(t("designMusicRequired"));
       return;
     }
-    // Photo reels don't use the monthly AI reels; the server's 422 still decides
     setSubmitting(true);
+    if (!(await passQuota())) {
+      setSubmitting(false);
+      return;
+    }
 
     setStep("creating");
     const controller = new AbortController();
@@ -1396,6 +1400,7 @@ export default function ReelTemplatesScreen() {
     loadTemplates,
     music,
     needsMusicChoice,
+    passQuota,
     photosComplete,
     router,
     selected,
@@ -1537,10 +1542,10 @@ export default function ReelTemplatesScreen() {
       setMusicError(t("designMusicRequired"));
       return;
     }
-    if (autoBuildBlocked) {
+    if (aiReelBlocked) {
       showBanner(
         t("monthlyReelsLimitTitle"),
-        autoBuildBlockedMessage,
+        aiReelBlockedMessage,
         "error",
         5000,
       );
@@ -1909,9 +1914,9 @@ export default function ReelTemplatesScreen() {
           subtitle={t("flowChooseStyleSubtitle")}
         />
         {isAutoBuild ? (
-          // One-video designs use reel credits, not the monthly AI-reel limit
+          // One-video designs show the same monthly count as reel credits
           renderCreditsNote()
-        ) : reelsRemaining != null && !needsPhotos ? (
+        ) : reelsRemaining != null ? (
           <QuotaBanner
             remaining={reelsRemaining}
             blockedMessage={quotaBlockedMessage}
@@ -2127,45 +2132,6 @@ export default function ReelTemplatesScreen() {
             ? Math.floor(sourceExactSeconds)
             : sourceSeconds,
     );
-    // No AI video reels left → say so instead of letting them pick a video
-    if (autoBuildBlocked) {
-      return (
-        <>
-          <ScrollView
-            style={styles.flex}
-            contentContainerStyle={styles.content}
-            showsVerticalScrollIndicator={false}
-          >
-            <FlowTitle
-              title={t("autoBuildAddTitle")}
-              subtitle={t("reelLimitStepSubtitle")}
-            />
-            <ReelLimitReachedCard
-              noneGiven={autoBuildStaffNoneGiven}
-              message={autoBuildBlockedMessage}
-              limit={noReelsLeft ? reelsLimit : credits?.monthly_limit}
-              resetLabel={quotaResetLabel}
-            />
-            <InfoNote
-              icon="photo-library"
-              title={t("reelLimitPhotoTitle")}
-              text={t("reelLimitPhotoNote")}
-            />
-          </ScrollView>
-          <FlowFooter
-            primary={{
-              label: t("reelLimitPhotoCta"),
-              onPress: () =>
-                router.replace({
-                  pathname: "/(main)/templateGallery",
-                  params: { kind: "photo" },
-                } as any),
-              icon: "photo-library",
-            }}
-          />
-        </>
-      );
-    }
     return (
       <>
         <ScrollView
@@ -2351,6 +2317,40 @@ export default function ReelTemplatesScreen() {
       </>
     );
   };
+
+  /** No AI reels left this month: shown instead of the video / photo pickers */
+  const renderLimitReachedStep = () => (
+    <>
+      <ScrollView
+        style={styles.flex}
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
+        <FlowTitle
+          title={t(needsPhotos ? "designPhotosTitle" : "autoBuildAddTitle")}
+          subtitle={t("reelLimitStepSubtitle")}
+        />
+        <ReelLimitReachedCard
+          noneGiven={aiReelStaffNoneGiven}
+          message={aiReelBlockedMessage}
+          limit={reelsLimit ?? credits?.monthly_limit}
+          resetLabel={quotaResetLabel}
+        />
+        <InfoNote
+          icon="file-upload"
+          title={t("reelLimitUploadTitle")}
+          text={t("reelLimitUploadNote")}
+        />
+      </ScrollView>
+      <FlowFooter
+        primary={{
+          label: t("goBack"),
+          onPress: onHeaderBack,
+          icon: "arrow-back",
+        }}
+      />
+    </>
+  );
 
   /** Photo design: one photo per slot + the texts */
   const renderPhotosStep = () => (
@@ -2590,7 +2590,7 @@ export default function ReelTemplatesScreen() {
           icon: "auto-awesome",
         }}
         hint={
-          noReelsLeft && !needsPhotos
+          noReelsLeft
             ? quotaBlockedMessage || t("autoReelNoReelsLeft")
             : !categoryId
               ? t("autoReelNeedCategory")
@@ -2748,6 +2748,8 @@ export default function ReelTemplatesScreen() {
           <View style={styles.loading}>
             <ActivityIndicator size="large" color={theme.buttonBack} />
           </View>
+        ) : aiReelBlocked ? (
+          renderLimitReachedStep()
         ) : needsPhotos ? (
           renderPhotosStep()
         ) : isAutoBuild ? (

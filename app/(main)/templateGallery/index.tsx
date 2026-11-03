@@ -1376,11 +1376,9 @@ export default function TemplateGalleryScreen() {
     }, []),
   );
 
-  // Video tab: credits are read again on every visit — a reel made since
-  // may have used one
+  // Credits are read again on every visit — a reel made since may have used one
   useFocusEffect(
     useCallback(() => {
-      if (kind !== "video") return;
       let alive = true;
       void getReelCredits().then((next) => {
         if (alive) setCredits(next);
@@ -1408,12 +1406,9 @@ export default function TemplateGalleryScreen() {
   const current = templates[index] ?? templates[0];
   // Only the centred template's sample is loaded
   const videoId = focused && current?.previewVideoUrl ? current.id : null;
-  // Out of credits: one-video designs can't be made (null credits never block)
-  const noCredits =
-    kind === "video" &&
-    credits != null &&
-    credits.remaining <= 0 &&
-    !!current?.autoBuild;
+  // No AI reels left: no template can be made — video and photo both use one
+  // (null credits never block)
+  const noCredits = credits != null && credits.remaining <= 0;
   const activeKind = KINDS.find((k) => k.kind === kind) ?? KINDS[0];
   const chip = useMemo(
     () => ({ label: t(activeKind.chipKey), icon: activeKind.chipIcon }),
@@ -1744,7 +1739,7 @@ export default function TemplateGalleryScreen() {
   };
 
   const showCounter = !tab.loading && !tab.error && count > 0;
-  // Video tab: only when no reel credits are left for this one-video design
+  // Only when no AI reels are left this month
   // (the count itself shows on the next screen)
   const creditsLine = noCredits ? t("templateGalleryNoCredits") : null;
 
