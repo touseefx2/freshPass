@@ -292,8 +292,26 @@ export default function RegisterPassword() {
     setIsVerificationModalVisible(false);
   }, []);
 
+  // Code popup "Wrong email? Change it": keep the new address everywhere
+  const handleVerificationEmailChanged = useCallback(
+    (newEmail: string) => {
+      setData((prev: any) =>
+        prev?.user ? { ...prev, user: { ...prev.user, email: newEmail } } : prev,
+      );
+      dispatch(setRegisterEmail(newEmail));
+    },
+    [dispatch],
+  );
+
   const handleContinue = async () => {
     Keyboard.dismiss();
+
+    // Account already created but not verified yet (popup was closed):
+    // reopen the code popup instead of registering a second time.
+    if (data?.token) {
+      setIsVerificationModalVisible(true);
+      return;
+    }
 
     setIsLoading(true);
     try {
@@ -517,8 +535,9 @@ export default function RegisterPassword() {
         <VerificationCodeModal
           visible={isVerificationModalVisible}
           onClose={handleCloseVerificationModal}
-          email={email}
+          email={data?.user?.email || email.trim()}
           onCodeComplete={handleVerificationCodeComplete}
+          onEmailChanged={handleVerificationEmailChanged}
           accessToken={data?.token || null}
           screen="signup"
         />

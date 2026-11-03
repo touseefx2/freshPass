@@ -617,6 +617,7 @@ export const affiliationEndpoints = {
 export const emailVerificationEndpoints = {
   verify: `/api/email/verify`,
   resendNotification: `/api/email/verification-notification`,
+  changeEmail: `/api/email/change`,
 };
 
 /**

@@ -33,14 +33,20 @@ import {
 import { ApiService } from "@/src/services/api";
 import Logger from "@/src/services/logger";
 import { emailVerificationEndpoints } from "@/src/services/endpoints";
+import { validateEmail } from "@/src/services/validationService";
 import RetryButton from "@/src/components/retryButton";
 import NotificationBanner from "@/src/components/notificationBanner";
+
+// Seconds before "Didn't get a code?" can send another code
+const RESEND_COOLDOWN_SECONDS = 30;
 
 interface VerificationCodeModalProps {
   visible: boolean;
   onClose: () => void;
   email: string;
   onCodeComplete?: () => void;
+  /** Called after "Wrong email? Change it" saved a new address. */
+  onEmailChanged?: (email: string) => void;
   accessToken?: string | null;
   screen?: "signup" | "login";
 }
@@ -197,6 +203,63 @@ const createStyles = (theme: Theme) =>
       alignItems: "center",
       gap: moderateHeightScale(32),
     },
+    changeEmailLink: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontMedium,
+      color: theme.lightGreen,
+      textDecorationLine: "underline",
+      textAlign: "center",
+    },
+    changeEmailForm: {
+      width: "100%",
+      gap: moderateHeightScale(12),
+    },
+    emailInput: {
+      width: "100%",
+      height: heightScale(50),
+      borderWidth: 1.5,
+      borderColor: theme.darkGreen,
+      borderRadius: moderateWidthScale(8),
+      backgroundColor: theme.white,
+      paddingHorizontal: moderateWidthScale(14),
+      fontSize: fontSize.size16,
+      fontFamily: fonts.fontRegular,
+      color: theme.text,
+    },
+    emailInputError: {
+      borderColor: theme.red,
+    },
+    emailErrorText: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontRegular,
+      color: theme.red,
+    },
+    changeEmailButtons: {
+      flexDirection: "row",
+      gap: moderateWidthScale(12),
+    },
+    changeEmailButton: {
+      flex: 1,
+      height: heightScale(46),
+      borderRadius: moderateWidthScale(8),
+      alignItems: "center",
+      justifyContent: "center",
+      borderWidth: 1.5,
+      borderColor: theme.darkGreen,
+    },
+    changeEmailSave: {
+      backgroundColor: theme.darkGreen,
+    },
+    changeEmailCancelText: {
+      fontSize: fontSize.size15,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
+    },
+    changeEmailSaveText: {
+      fontSize: fontSize.size15,
+      fontFamily: fonts.fontMedium,
+      color: theme.white,
+    },
   });
 
 export default function VerificationCodeModal({
@@ -204,6 +267,7 @@ export default function VerificationCodeModal({
   onClose,
   email,
   onCodeComplete,
+  onEmailChanged,
   accessToken,
   screen,
 }: VerificationCodeModalProps) {
@@ -218,6 +282,21 @@ export default function VerificationCodeModal({
   const [isInitialLoading, setIsInitialLoading] = useState(screen === "login");
   const [initialLoadError, setInitialLoadError] = useState(false);
   const inputRefs = useRef<(TextInput | null)[]>([]);
+  // A code was just sent (by signup, or by the send below), so start waiting
+  const [resendSeconds, setResendSeconds] = useState(RESEND_COOLDOWN_SECONDS);
+
+  useEffect(() => {
+    if (resendSeconds <= 0) return;
+    const timer = setTimeout(() => setResendSeconds((s) => s - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [resendSeconds]);
+
+  // "Wrong email? Change it" form
+  const [currentEmail, setCurrentEmail] = useState(email);
+  const [isEditingEmail, setIsEditingEmail] = useState(false);
+  const [newEmail, setNewEmail] = useState("");
+  const [newEmailError, setNewEmailError] = useState<string | null>(null);
+  const [isChangingEmail, setIsChangingEmail] = useState(false);
 
   // Local notification banner state
   const [localBannerVisible, setLocalBannerVisible] = useState(false);
@@ -264,6 +343,7 @@ export default function VerificationCodeModal({
       }>(emailVerificationEndpoints.resendNotification, undefined, config);
 
       if (response.success) {
+        setResendSeconds(RESEND_COOLDOWN_SECONDS);
         if (isInitial) {
           setIsInitialLoading(false);
           setInitialLoadError(false);
@@ -389,6 +469,66 @@ export default function VerificationCodeModal({
     // onCodeComplete?.();
   };
 
+  const openChangeEmail = () => {
+    setNewEmail(currentEmail);
+    setNewEmailError(null);
+    setIsEditingEmail(true);
+  };
+
+  const handleChangeEmail = async () => {
+    const trimmed = newEmail.trim();
+    const validation = validateEmail(trimmed);
+    if (!validation.isValid) {
+      setNewEmailError(validation.error);
+      return;
+    }
+    Keyboard.dismiss();
+    setIsChangingEmail(true);
+    setNewEmailError(null);
+    try {
+      const config = accessToken
+        ? {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+            },
+          }
+        : undefined;
+
+      const response = await ApiService.post<{
+        success: boolean;
+        message: string;
+        data?: { email?: string };
+      }>(emailVerificationEndpoints.changeEmail, { email: trimmed }, config);
+
+      if (response.success) {
+        const savedEmail = response.data?.email || trimmed.toLowerCase();
+        setCurrentEmail(savedEmail);
+        setCode(["", "", "", "", ""]);
+        setResendSeconds(RESEND_COOLDOWN_SECONDS);
+        setIsEditingEmail(false);
+        onEmailChanged?.(savedEmail);
+        showLocalBanner(
+          "Success",
+          response.message || `A new code has been sent to ${savedEmail}.`,
+          "success",
+          3000,
+        );
+      } else {
+        setNewEmailError(response.message || "Failed to change email.");
+      }
+    } catch (error: any) {
+      Logger.error("Failed to change email:", error);
+      setNewEmailError(
+        error.data?.errors?.email?.[0] ||
+          error.data?.message ||
+          error.message ||
+          "Failed to change email. Please try again.",
+      );
+    } finally {
+      setIsChangingEmail(false);
+    }
+  };
+
   const handleCodeChange = useCallback(
     (text: string, index: number) => {
       // Don't allow changes while verifying
@@ -502,10 +642,59 @@ export default function VerificationCodeModal({
               <Text style={styles.instructionText}>
                 Enter a one time code that we sent to
               </Text>
-              <Text style={styles.emailText}>{email}</Text>
+              <Text style={styles.emailText}>{currentEmail}</Text>
             </View>
 
-            {isInitialLoading && !initialLoadError ? (
+            {isEditingEmail ? (
+              <View style={styles.changeEmailForm}>
+                <TextInput
+                  style={[
+                    styles.emailInput,
+                    !!newEmailError && styles.emailInputError,
+                  ]}
+                  value={newEmail}
+                  onChangeText={(text) => {
+                    setNewEmail(text);
+                    setNewEmailError(null);
+                  }}
+                  placeholder="Enter your email"
+                  placeholderTextColor={theme.lightGreen}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  autoComplete="email"
+                  autoFocus
+                  editable={!isChangingEmail}
+                  returnKeyType="done"
+                  onSubmitEditing={handleChangeEmail}
+                />
+                {!!newEmailError && (
+                  <Text style={styles.emailErrorText}>{newEmailError}</Text>
+                )}
+                <View style={styles.changeEmailButtons}>
+                  <TouchableOpacity
+                    style={styles.changeEmailButton}
+                    onPress={() => setIsEditingEmail(false)}
+                    disabled={isChangingEmail}
+                  >
+                    <Text style={styles.changeEmailCancelText}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.changeEmailButton, styles.changeEmailSave]}
+                    onPress={handleChangeEmail}
+                    disabled={isChangingEmail}
+                  >
+                    {isChangingEmail ? (
+                      <ActivityIndicator size="small" color={theme.white} />
+                    ) : (
+                      <Text style={styles.changeEmailSaveText}>
+                        Send new code
+                      </Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ) : isInitialLoading && !initialLoadError ? (
               <SkeletonPlaceholder
                 backgroundColor="#E8DFB8"
                 highlightColor="#DCCF9E"
@@ -567,15 +756,34 @@ export default function VerificationCodeModal({
                 <Pressable
                   onPress={() => handleResendCode(false)}
                   style={styles.resendLink}
-                  disabled={isResending || isVerifying}
+                  disabled={isResending || isVerifying || resendSeconds > 0}
                 >
                   <Text
                     style={[
                       styles.resendText,
+                      (isResending || isVerifying || resendSeconds > 0) &&
+                        styles.disabledInput,
+                    ]}
+                  >
+                    {isResending
+                      ? "Sending..."
+                      : resendSeconds > 0
+                        ? `Resend code in 0:${String(resendSeconds).padStart(2, "0")}`
+                        : "Didn't get a code?"}
+                  </Text>
+                </Pressable>
+
+                <Pressable
+                  onPress={openChangeEmail}
+                  disabled={isResending || isVerifying}
+                >
+                  <Text
+                    style={[
+                      styles.changeEmailLink,
                       (isResending || isVerifying) && styles.disabledInput,
                     ]}
                   >
-                    {isResending ? "Sending..." : "Didn't get a code?"}
+                    Wrong email? Change it
                   </Text>
                 </Pressable>
               </>

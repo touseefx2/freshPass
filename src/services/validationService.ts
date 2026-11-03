@@ -13,11 +13,11 @@ export const validateEmail = (email: string): { isValid: boolean; error: string 
     return { isValid: false, error: "Email is required" };
   }
 
-  // Simple email regex pattern
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  // Same pattern as the server/web: one @, a dot after it, no empty parts
+  const emailRegex = /^[^\s@]+@[^\s@.]+(\.[^\s@.]+)+$/;
 
   if (!emailRegex.test(email.trim())) {
-    return { isValid: false, error: "Please enter a valid email address" };
+    return { isValid: false, error: "Please enter a valid email address." };
   }
 
   return { isValid: true, error: null };

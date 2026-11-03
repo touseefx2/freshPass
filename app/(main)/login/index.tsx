@@ -402,6 +402,18 @@ export default function Login() {
     setIsVerificationModalVisible(false);
   }, []);
 
+  // Code popup "Wrong email? Change it": keep the new address everywhere
+  const handleVerificationEmailChanged = useCallback(
+    (newEmail: string) => {
+      setData((prev: any) =>
+        prev?.user ? { ...prev, user: { ...prev.user, email: newEmail } } : prev,
+      );
+      dispatch(setRegisterEmail(newEmail));
+    setEmail(newEmail);
+    },
+    [dispatch],
+  );
+
   const handleVerificationCodeComplete = useCallback(() => {
     if (data) {
       setUserData(data);
@@ -544,8 +556,9 @@ export default function Login() {
         <VerificationCodeModal
           visible={isVerificationModalVisible}
           onClose={handleCloseVerificationModal}
-          email={email}
+          email={data?.user?.email || email.trim()}
           onCodeComplete={handleVerificationCodeComplete}
+          onEmailChanged={handleVerificationEmailChanged}
           accessToken={data?.token || null}
           screen="login"
         />
