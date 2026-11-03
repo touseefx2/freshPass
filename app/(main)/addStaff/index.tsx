@@ -1799,7 +1799,13 @@ export default function AddStaffScreen() {
         )}
       </KeyboardAwareScrollView>
 
-      <View style={styles.footerRow}>
+      <View
+        style={[
+          styles.footerRow,
+          // Absolute footer ignores SafeAreaView padding; keep it above Android 3-button nav
+          { paddingBottom: Math.max(insets.bottom + moderateHeightScale(12), moderateHeightScale(30)) },
+        ]}
+      >
         <Button
           title={
             isSubmitting

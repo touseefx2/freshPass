@@ -18,6 +18,7 @@ import {
   Platform,
   Linking,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { useVideoPlayer, VideoView } from "expo-video";
 import { useTranslation } from "react-i18next";
@@ -1705,6 +1706,7 @@ export default function AiResults() {
     !isSelectionMode;
 
   const styles = useMemo(() => createStyles(colors as Theme), [colors]);
+  const insets = useSafeAreaInsets();
   const theme = colors as Theme;
 
   let content: React.ReactNode;
@@ -2716,7 +2718,13 @@ export default function AiResults() {
       {(fromBooking || fromChat) &&
         normalized?.status === "completed" &&
         allSelectableUrls.length > 0 && (
-          <View style={styles.selectFooter}>
+          <View
+            style={[
+              styles.selectFooter,
+              // Keep above Android 3-button nav / iOS home indicator
+              { paddingBottom: Math.max(insets.bottom + moderateHeightScale(12), moderateHeightScale(34)) },
+            ]}
+          >
             <TouchableOpacity
               style={[
                 styles.selectButton,
