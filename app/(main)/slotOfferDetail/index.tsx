@@ -8,6 +8,7 @@ import {
   View,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useTheme } from "@/src/hooks/hooks";
@@ -38,7 +39,7 @@ const createStyles = (theme: Theme) =>
     container: { flex: 1, backgroundColor: theme.background },
     scrollContent: {
       paddingHorizontal: moderateWidthScale(20),
-      paddingBottom: moderateHeightScale(120),
+      paddingBottom: moderateHeightScale(160),
       gap: moderateHeightScale(16),
     },
     center: {
@@ -212,6 +213,7 @@ export default function SlotOfferDetailScreen() {
   const { colors } = useTheme();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const params = useLocalSearchParams<{ id: string }>();
 
@@ -436,7 +438,13 @@ export default function SlotOfferDetailScreen() {
 
       {/* CTA */}
       {deal.bookable && (
-        <View style={styles.ctaWrap}>
+        <View
+          style={[
+            styles.ctaWrap,
+            // Keep the button above Android 3-button nav / iOS home indicator
+            { paddingBottom: Math.max(insets.bottom + moderateHeightScale(12), moderateHeightScale(34)) },
+          ]}
+        >
           <TouchableOpacity
             style={styles.ctaBtn}
             activeOpacity={0.75}
