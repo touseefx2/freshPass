@@ -96,6 +96,7 @@ import DesignSlotCard from "@/src/components/reelFlow/designSlotCard";
 import DesignMusicField from "@/src/components/reelFlow/designMusicField";
 import { rememberCreateMusic } from "@/src/utils/autoReelCreateMusic";
 import QuotaBanner from "@/src/components/reelFlow/quotaBanner";
+import ReelLimitReachedCard from "@/src/components/reelFlow/reelLimitReachedCard";
 import ProgressTracker from "@/src/components/reelFlow/progressTracker";
 import {
   ChoiceChips,
@@ -389,6 +390,9 @@ export default function ReelTemplatesScreen() {
     null,
   );
   const [quotaResetLabel, setQuotaResetLabel] = useState<string | null>(null);
+  /** This user's monthly AI reels (staff: what the owner gave; owner: their share) */
+  const [reelsLimit, setReelsLimit] = useState<number | null>(null);
+  const [isStaffQuota, setIsStaffQuota] = useState(false);
   /** One-video designs: reel credits this month (null = unknown → the server decides) */
   const [credits, setCredits] = useState<ReelCredits | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -567,6 +571,12 @@ export default function ReelTemplatesScreen() {
       }
       setQuotaBlockedMessage(blocked);
       setQuotaResetLabel(formatReelsResetDate(limits.monthly_reels_reset_on));
+      setReelsLimit(
+        typeof limits.your_monthly_reel_limit === "number"
+          ? limits.your_monthly_reel_limit
+          : null,
+      );
+      setIsStaffQuota(limits.monthly_reel_role === "staff");
       limitsLoadedRef.current = true;
       return blocked ?? "";
     } catch (error) {
@@ -1099,12 +1109,12 @@ export default function ReelTemplatesScreen() {
 
   const noReelsLeft = reelsRemaining != null && reelsRemaining <= 0;
 
+  // Photo designs don't use the monthly AI reels — only video reels do
   const canGenerate = needsPhotos
     ? !!selected &&
       photosComplete &&
       (!needsMusicChoice || music !== undefined) &&
-      !!categoryId &&
-      !noReelsLeft
+      !!categoryId
     : !!selected &&
       !!sourceVideo &&
       (sourceVideo.id != null || sourceVideo.local != null) &&
@@ -1126,13 +1136,21 @@ export default function ReelTemplatesScreen() {
     sourceExactSeconds != null &&
     sourceExactSeconds < minVideoSeconds;
   const noCreditsLeft = credits != null && credits.remaining <= 0;
+  // One-video design: no AI video reels left (monthly limit or credits) →
+  // the pickers are swapped for the "limit reached" card
+  const autoBuildBlocked = isAutoBuild && (noReelsLeft || noCreditsLeft);
+  const autoBuildStaffNoneGiven =
+    noReelsLeft && isStaffQuota && (reelsLimit ?? 0) <= 0;
+  // Same "AI reels" wording for both (credits are the same monthly reels)
+  const autoBuildBlockedMessage =
+    (noReelsLeft && quotaBlockedMessage) || t("autoReelNoReelsLeft");
   const canAutoBuild =
     !!selected &&
     !!sourceVideo &&
     (sourceVideo.id != null || sourceVideo.local != null) &&
     !sourceTooLong &&
     !sourceTooShort &&
-    !noCreditsLeft &&
+    !autoBuildBlocked &&
     (!autoBuildSilent || music !== undefined);
 
   /** Upload the picked file (compress → POST /api/media) and keep its id. */
@@ -1247,11 +1265,8 @@ export default function ReelTemplatesScreen() {
       setMusicError(t("designMusicRequired"));
       return;
     }
+    // Photo reels don't use the monthly AI reels; the server's 422 still decides
     setSubmitting(true);
-    if (!(await passQuota())) {
-      setSubmitting(false);
-      return;
-    }
 
     setStep("creating");
     const controller = new AbortController();
@@ -1381,7 +1396,6 @@ export default function ReelTemplatesScreen() {
     loadTemplates,
     music,
     needsMusicChoice,
-    passQuota,
     photosComplete,
     router,
     selected,
@@ -1523,8 +1537,13 @@ export default function ReelTemplatesScreen() {
       setMusicError(t("designMusicRequired"));
       return;
     }
-    if (noCreditsLeft) {
-      showBanner(t("credits"), t("autoBuildNoCredits"), "error", 5000);
+    if (autoBuildBlocked) {
+      showBanner(
+        t("monthlyReelsLimitTitle"),
+        autoBuildBlockedMessage,
+        "error",
+        5000,
+      );
       return;
     }
 
@@ -1892,7 +1911,7 @@ export default function ReelTemplatesScreen() {
         {isAutoBuild ? (
           // One-video designs use reel credits, not the monthly AI-reel limit
           renderCreditsNote()
-        ) : reelsRemaining != null ? (
+        ) : reelsRemaining != null && !needsPhotos ? (
           <QuotaBanner
             remaining={reelsRemaining}
             blockedMessage={quotaBlockedMessage}
@@ -2108,6 +2127,45 @@ export default function ReelTemplatesScreen() {
             ? Math.floor(sourceExactSeconds)
             : sourceSeconds,
     );
+    // No AI video reels left → say so instead of letting them pick a video
+    if (autoBuildBlocked) {
+      return (
+        <>
+          <ScrollView
+            style={styles.flex}
+            contentContainerStyle={styles.content}
+            showsVerticalScrollIndicator={false}
+          >
+            <FlowTitle
+              title={t("autoBuildAddTitle")}
+              subtitle={t("reelLimitStepSubtitle")}
+            />
+            <ReelLimitReachedCard
+              noneGiven={autoBuildStaffNoneGiven}
+              message={autoBuildBlockedMessage}
+              limit={noReelsLeft ? reelsLimit : credits?.monthly_limit}
+              resetLabel={quotaResetLabel}
+            />
+            <InfoNote
+              icon="photo-library"
+              title={t("reelLimitPhotoTitle")}
+              text={t("reelLimitPhotoNote")}
+            />
+          </ScrollView>
+          <FlowFooter
+            primary={{
+              label: t("reelLimitPhotoCta"),
+              onPress: () =>
+                router.replace({
+                  pathname: "/(main)/templateGallery",
+                  params: { kind: "photo" },
+                } as any),
+              icon: "photo-library",
+            }}
+          />
+        </>
+      );
+    }
     return (
       <>
         <ScrollView
@@ -2532,7 +2590,7 @@ export default function ReelTemplatesScreen() {
           icon: "auto-awesome",
         }}
         hint={
-          noReelsLeft
+          noReelsLeft && !needsPhotos
             ? quotaBlockedMessage || t("autoReelNoReelsLeft")
             : !categoryId
               ? t("autoReelNeedCategory")

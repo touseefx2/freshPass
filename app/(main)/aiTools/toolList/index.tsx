@@ -1,4 +1,4 @@
-import React, { useMemo, useEffect, useState } from "react";
+import React, { useMemo, useEffect, useState, useCallback } from "react";
 import {
   ScrollView,
   View,
@@ -9,7 +9,7 @@ import {
 } from "react-native";
 import Animated, { FadeInDown, ReduceMotion } from "react-native-reanimated";
 import { useTranslation } from "react-i18next";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { moderateWidthScale } from "@/src/theme/dimensions";
@@ -33,6 +33,12 @@ import { setTryOnPurchaseSuccessSource } from "@/src/state/slices/generalSlice";
 import {
   getTutorialVideoTryonUri,
 } from "@/src/services/remoteConfigService";
+import {
+  BUSINESS_REELS_PER_MONTH,
+  fetchMonthlyReelLimits,
+  formatReelsResetDate,
+} from "@/src/services/monthlyReelsService";
+import type { MediaLimits } from "@/src/types/media";
 
 
 type ToolIcon = React.ComponentType<{
@@ -101,7 +107,7 @@ function TutorialInlineVideo() {
 export default function ToolList() {
   const router = useRouter();
   const { colors } = useTheme();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const user = useAppSelector((state) => state.user);
   const userRole = user?.userRole;
   const aiQuota = user?.ai_quota;
@@ -128,6 +134,29 @@ export default function ToolList() {
   useEffect(() => {
     fetchQuota();
   }, []);
+
+  // Monthly AI reels left for this owner / staff member (refreshed on focus,
+  // so it drops right after a reel is made)
+  const [reelLimits, setReelLimits] = useState<MediaLimits | null>(null);
+  const [reelLimitsFailed, setReelLimitsFailed] = useState(false);
+  useFocusEffect(
+    useCallback(() => {
+      if (!canManageBusinessReels) return;
+      let active = true;
+      fetchMonthlyReelLimits()
+        .then((limits) => {
+          if (!active) return;
+          setReelLimits(limits);
+          setReelLimitsFailed(false);
+        })
+        .catch(() => {
+          if (active) setReelLimitsFailed(true);
+        });
+      return () => {
+        active = false;
+      };
+    }, [canManageBusinessReels]),
+  );
 
   const fetchQuota = async () => {
     try {
@@ -224,6 +253,7 @@ export default function ToolList() {
     cta,
     onPress,
     expanded,
+    quota,
   }: {
     icon: ToolIcon;
     title: string;
@@ -232,6 +262,8 @@ export default function ToolList() {
     onPress: () => void;
     /** Set for a card that opens options below it (Generate Reel). */
     expanded?: boolean;
+    /** Strip between the text and the button (monthly AI reels left). */
+    quota?: { node: React.ReactNode; label: string } | null;
   }) => {
     const toggles = expanded !== undefined;
     return (
@@ -241,7 +273,7 @@ export default function ToolList() {
           onPress={onPress}
           activeOpacity={0.88}
           accessibilityRole="button"
-          accessibilityLabel={title}
+          accessibilityLabel={quota?.label ? `${title}. ${quota.label}` : title}
           accessibilityHint={desc}
           accessibilityState={toggles ? { expanded } : undefined}
         >
@@ -263,6 +295,7 @@ export default function ToolList() {
               <Text style={styles.featuredDesc}>{desc}</Text>
             </View>
           </View>
+          {quota?.node}
           <View style={[styles.featuredCta, expanded && styles.featuredCtaOpen]}>
             <Text style={styles.featuredCtaText}>{cta}</Text>
             <MaterialIcons
@@ -360,7 +393,78 @@ export default function ToolList() {
     </View>
   );
 
-  // Monthly reel limit is checked on the reel screens behind the gallery
+  // ── Monthly AI reels left (owner + staff) ───────────────────────────
+  // Hidden when the server doesn't send the numbers or the call failed.
+  const reelQuota = (() => {
+    if (!canManageBusinessReels || reelLimitsFailed) return null;
+    if (!reelLimits) {
+      // Keep the card height steady while the first numbers load
+      return {
+        label: "",
+        node: (
+          <View style={[styles.quotaStrip, styles.quotaStripLoading]}>
+            <ActivityIndicator size="small" color={theme.buttonBack} />
+          </View>
+        ),
+      };
+    }
+    const remaining = reelLimits.reels_remaining_this_month;
+    if (typeof remaining !== "number") return null;
+
+    const isStaffRole = reelLimits.monthly_reel_role === "staff";
+    const yourLimit = reelLimits.your_monthly_reel_limit;
+    const total = Math.max(
+      remaining,
+      typeof yourLimit === "number"
+        ? yourLimit
+        : (reelLimits.max_reels_per_month ?? BUSINESS_REELS_PER_MONTH),
+    );
+    const resetDate = formatReelsResetDate(
+      reelLimits.monthly_reels_reset_on,
+      i18n.language,
+    );
+    const noneGiven = isStaffRole && (yourLimit ?? 0) <= 0;
+    const empty = remaining <= 0;
+
+    const title = noneGiven
+      ? t("aiReelsNoneGivenTitle")
+      : t("aiReelsRemainingOf", { count: remaining, total });
+    const sub = noneGiven
+      ? t("aiReelsNoneGivenSub")
+      : [
+          t("aiReelsMonthlyAllowance"),
+          resetDate ? t("monthlyReelsResets", { date: resetDate }) : null,
+        ]
+          .filter(Boolean)
+          .join(" · ");
+
+    return {
+      label: `${title}. ${sub}`,
+      node: (
+        <View
+          style={[styles.quotaStrip, (empty || noneGiven) && styles.quotaStripEmpty]}
+        >
+          <MaterialIcons
+            name={noneGiven ? "lock-outline" : empty ? "hourglass-empty" : "theaters"}
+            size={moderateWidthScale(24)}
+            color={theme.selectCard}
+            accessibilityElementsHidden
+            importantForAccessibility="no"
+          />
+          <View style={styles.quotaTextCol}>
+            <Text
+              style={[styles.quotaTitle, (empty || noneGiven) && styles.quotaTitleEmpty]}
+            >
+              {title}
+            </Text>
+            <Text style={styles.quotaSub}>{sub}</Text>
+          </View>
+        </View>
+      ),
+    };
+  })();
+
+  // Monthly reel limit is still enforced on the reel screens behind the gallery
   const reelFeatured = () =>
     renderFeatured({
       icon: GenerateReelIcon,
@@ -368,6 +472,7 @@ export default function ToolList() {
       desc: t("generateReelDesc"),
       cta: t("generateReelCta"),
       onPress: openTemplateGallery,
+      quota: reelQuota,
     });
 
   const libraryLinks: LibraryLink[] = [

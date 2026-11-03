@@ -176,6 +176,42 @@ export const createStyles = (theme: Theme) =>
       color: theme.lightGreen,
       lineHeight: fontSize.size18,
     },
+    // Monthly AI reels left (inside the Generate Reel card)
+    quotaStrip: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(12),
+      marginTop: moderateHeightScale(14),
+      paddingVertical: moderateHeightScale(10),
+      paddingHorizontal: moderateWidthScale(14),
+      borderRadius: moderateWidthScale(14),
+      backgroundColor: theme.background,
+    },
+    quotaStripLoading: {
+      justifyContent: "center",
+      minHeight: moderateHeightScale(52),
+    },
+    quotaStripEmpty: {
+      backgroundColor: theme.orangeBrown01,
+    },
+    quotaTextCol: {
+      flex: 1,
+      gap: moderateHeightScale(2),
+    },
+    quotaTitle: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+      fontVariant: ["tabular-nums"],
+    },
+    quotaTitleEmpty: {
+      color: theme.orangeBrownText,
+    },
+    quotaSub: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontRegular,
+      color: theme.buttonBack,
+    },
     featuredCta: {
       flexDirection: "row",
       alignItems: "center",
