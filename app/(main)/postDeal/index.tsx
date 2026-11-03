@@ -20,6 +20,7 @@ import {
   View,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import { MaterialIcons } from "@expo/vector-icons";
 import dayjs from "dayjs";
@@ -68,7 +69,7 @@ const createStyles = (theme: Theme) =>
       paddingHorizontal: moderateWidthScale(20),
     },
     scrollContent: {
-      paddingBottom: moderateHeightScale(120),
+      paddingBottom: moderateHeightScale(160),
       gap: moderateHeightScale(12),
     },
     stepLabel: {
@@ -378,6 +379,7 @@ export default function PostDealScreen() {
   const { colors } = useTheme();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const params = useLocalSearchParams<{
     date?: string;
@@ -949,7 +951,13 @@ export default function PostDealScreen() {
       </KeyboardAvoidingView>
 
       {/* Footer buttons */}
-      <View style={styles.footer}>
+      <View
+        style={[
+          styles.footer,
+          // Keep buttons above Android 3-button nav / iOS home indicator
+          { paddingBottom: Math.max(insets.bottom + moderateHeightScale(12), moderateHeightScale(34)) },
+        ]}
+      >
         <TouchableOpacity
           style={styles.backBtn}
           activeOpacity={0.75}
