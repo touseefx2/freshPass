@@ -51,7 +51,6 @@ import Button from "@/src/components/button";
 import { useTheme } from "@/src/hooks/hooks";
 import Logger from "@/src/services/logger";
 import {
-  getReelCredits,
   listAutoReelTemplates,
   listReelTemplates,
 } from "@/src/services/reelsService";
@@ -62,7 +61,6 @@ import {
   moderateWidthScale,
 } from "@/src/theme/dimensions";
 import { fontSize } from "@/src/theme/fonts";
-import type { ReelCredits } from "@/src/types/reels";
 import type {
   TemplateGalleryItem,
   TemplateGalleryKind,
@@ -1318,8 +1316,6 @@ export default function TemplateGalleryScreen() {
   const [muted, setMuted] = useState(true);
   // False while another screen is in front (set early by Use This Template)
   const [focused, setFocused] = useState(true);
-  // This month's reel credits (Video tab); null = unknown, nothing blocked
-  const [credits, setCredits] = useState<ReelCredits | null>(null);
   const [fullItem, setFullItem] = useState<TemplateGalleryItem | null>(null);
   // Swipe position in templates (0 = first); fractional mid-swipe
   const progress = useSharedValue(0);
@@ -1376,19 +1372,6 @@ export default function TemplateGalleryScreen() {
     }, []),
   );
 
-  // Credits are read again on every visit — a reel made since may have used one
-  useFocusEffect(
-    useCallback(() => {
-      let alive = true;
-      void getReelCredits().then((next) => {
-        if (alive) setCredits(next);
-      });
-      return () => {
-        alive = false;
-      };
-    }, [kind]),
-  );
-
   // CapCut-style full-screen cover (autoplaying sample, chips, button over
   // it); a tab left out falls back to the card + info boxes layout
   const fullCover = FULL_COVER_KINDS.includes(kind);
@@ -1406,9 +1389,6 @@ export default function TemplateGalleryScreen() {
   const current = templates[index] ?? templates[0];
   // Only the centred template's sample is loaded
   const videoId = focused && current?.previewVideoUrl ? current.id : null;
-  // No AI reels left: no template can be made — video and photo both use one
-  // (null credits never block)
-  const noCredits = credits != null && credits.remaining <= 0;
   const activeKind = KINDS.find((k) => k.kind === kind) ?? KINDS[0];
   const chip = useMemo(
     () => ({ label: t(activeKind.chipKey), icon: activeKind.chipIcon }),
@@ -1505,7 +1485,8 @@ export default function TemplateGalleryScreen() {
   );
 
   const handleUseTemplate = () => {
-    if (!current || noCredits) return;
+    // The monthly AI reel limit is checked on the next screen (step 2)
+    if (!current) return;
     // Stop the sample now, before the next screen opens over it
     setFocused(false);
     const sourceMediaAssetId =
@@ -1739,9 +1720,6 @@ export default function TemplateGalleryScreen() {
   };
 
   const showCounter = !tab.loading && !tab.error && count > 0;
-  // Only when no AI reels are left this month
-  // (the count itself shows on the next screen)
-  const creditsLine = noCredits ? t("templateGalleryNoCredits") : null;
 
   // Video tab with a cover showing: footer laid over the video
   // (also while loading, so the skeleton has the same layout)
@@ -1820,43 +1798,10 @@ export default function TemplateGalleryScreen() {
           ))}
         </View>
       ) : null}
-      {creditsLine ? (
-        <View
-          style={[
-            styles.credits,
-            overlay && styles.videoCredits,
-            noCredits && styles.creditsEmpty,
-          ]}
-          accessible
-          accessibilityLabel={creditsLine}
-          accessibilityRole={noCredits ? "alert" : undefined}
-        >
-          <MaterialIcons
-            name={noCredits ? "block" : "toll"}
-            size={moderateWidthScale(16)}
-            color={
-              noCredits
-                ? theme.red
-                : overlay
-                  ? theme.white85
-                  : theme.darkGreenLight
-            }
-          />
-          <Text
-            style={[
-              styles.creditsText,
-              overlay && styles.videoCreditsText,
-              noCredits && styles.creditsTextEmpty,
-            ]}
-          >
-            {creditsLine}
-          </Text>
-        </View>
-      ) : null}
       <Button
         title={t("templateGalleryUse")}
         onPress={handleUseTemplate}
-        disabled={!current || tab.loading || noCredits}
+        disabled={!current || tab.loading}
         containerStyle={
           overlay
             ? { ...styles.ctaButton, ...styles.videoCta }

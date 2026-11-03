@@ -388,14 +388,6 @@ export const createStyles = (theme: Theme) =>
     videoDotActive: {
       backgroundColor: theme.white,
     },
-    videoCredits: {
-      backgroundColor: GLASS,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: GLASS_BORDER,
-    },
-    videoCreditsText: {
-      color: theme.white,
-    },
     // Brand orange pill over the video
     videoCta: {
       backgroundColor: theme.orangeBrown,
@@ -725,32 +717,6 @@ export const createStyles = (theme: Theme) =>
       right: 0,
       top: -moderateHeightScale(24),
       height: moderateHeightScale(24),
-    },
-    // Reel credits left this month (Video tab), just above the button
-    credits: {
-      alignSelf: "center",
-      flexDirection: "row",
-      alignItems: "center",
-      gap: moderateWidthScale(6),
-      marginBottom: moderateHeightScale(8),
-      paddingHorizontal: moderateWidthScale(12),
-      paddingVertical: moderateHeightScale(5),
-      borderRadius: moderateWidthScale(999),
-      backgroundColor: theme.lightGreen07,
-    },
-    // None left for this template: error tone
-    creditsEmpty: {
-      backgroundColor: theme.lightRed,
-    },
-    creditsText: {
-      flexShrink: 1,
-      fontSize: fontSize.size13,
-      fontFamily: fonts.fontMedium,
-      color: theme.darkGreen,
-      textAlign: "center",
-    },
-    creditsTextEmpty: {
-      color: theme.red,
     },
     ctaButton: {
       backgroundColor: theme.darkGreen,

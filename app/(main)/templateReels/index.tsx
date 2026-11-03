@@ -78,6 +78,7 @@ import RequirementsCard, {
   type Requirement,
 } from "@/src/components/reelFlow/requirementsCard";
 import QuotaBanner from "@/src/components/reelFlow/quotaBanner";
+import ReelLimitReachedCard from "@/src/components/reelFlow/reelLimitReachedCard";
 import {
   FlowTextField,
   SelectField,
@@ -333,6 +334,9 @@ export default function ReelTemplatesScreen() {
     null,
   );
   const [quotaResetLabel, setQuotaResetLabel] = useState<string | null>(null);
+  /** This user's monthly AI reels (staff: what the owner gave; owner: their share) */
+  const [reelsLimit, setReelsLimit] = useState<number | null>(null);
+  const [isStaffQuota, setIsStaffQuota] = useState(false);
 
   const [mediaPickerSlot, setMediaPickerSlot] = useState<number | null>(null);
   const [sourcePickerVisible, setSourcePickerVisible] = useState(false);
@@ -425,6 +429,12 @@ export default function ReelTemplatesScreen() {
       }
       setQuotaBlockedMessage(blocked);
       setQuotaResetLabel(formatReelsResetDate(limits.monthly_reels_reset_on));
+      setReelsLimit(
+        typeof limits.your_monthly_reel_limit === "number"
+          ? limits.your_monthly_reel_limit
+          : null,
+      );
+      setIsStaffQuota(limits.monthly_reel_role === "staff");
       return blocked ?? "";
     } catch (error) {
       Logger.error("Failed to load media limits for template reel:", error);
@@ -1230,6 +1240,40 @@ export default function ReelTemplatesScreen() {
     </>
   );
 
+  /** No AI reels left this month: shown instead of the slots (same as video reels) */
+  const renderLimitReachedStep = () => (
+    <>
+      <ScrollView
+        style={styles.flex}
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
+        <FlowTitle
+          title={t("flowAddMediaTitle")}
+          subtitle={t("reelLimitStepSubtitle")}
+        />
+        <ReelLimitReachedCard
+          noneGiven={isStaffQuota && (reelsLimit ?? 0) <= 0}
+          message={quotaBlockedMessage || t("autoReelNoReelsLeft")}
+          limit={reelsLimit}
+          resetLabel={quotaResetLabel}
+        />
+        <InfoNote
+          icon="file-upload"
+          title={t("reelLimitUploadTitle")}
+          text={t("reelLimitUploadNote")}
+        />
+      </ScrollView>
+      <FlowFooter
+        primary={{
+          label: t("goBack"),
+          onPress: onHeaderBack,
+          icon: "arrow-back",
+        }}
+      />
+    </>
+  );
+
   const renderMediaStep = () => (
     <>
       <ScrollView
@@ -1243,6 +1287,14 @@ export default function ReelTemplatesScreen() {
             .filter(Boolean)
             .join(" · ")}
         />
+        {/* Reels left this month (same note as the video reel step) */}
+        {reelsRemaining != null ? (
+          <InfoNote
+            icon="toll"
+            tone={reelsRemaining <= 2 ? "warm" : "info"}
+            text={t("autoBuildCreditsLeft", { count: reelsRemaining })}
+          />
+        ) : null}
         {/* From the gallery: the slots come once the template has loaded */}
         {loadingTemplates ? (
           <ActivityIndicator color={theme.buttonBack} />
@@ -1473,7 +1525,11 @@ export default function ReelTemplatesScreen() {
         backIcon={step === "template" ? "close" : "back"}
       />
       {step === "template" ? renderTemplateStep() : null}
-      {step === "media" ? renderMediaStep() : null}
+      {step === "media"
+        ? noReelsLeft
+          ? renderLimitReachedStep()
+          : renderMediaStep()
+        : null}
       {step === "details" ? renderDetailsStep() : null}
 
       <ImagePickerModal
