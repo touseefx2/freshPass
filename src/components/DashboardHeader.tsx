@@ -418,7 +418,13 @@ function DashboardHeader() {
             <View style={{ width: 16, height: moderateHeightScale(38) }} />
           ) : userRole === "business" ? (
             <View style={styles.toggleContainer}>
-              <View style={styles.statusBadge}>
+              <TouchableOpacity
+                style={styles.statusBadge}
+                onPress={handleTrialPress}
+                activeOpacity={0.85}
+                accessibilityRole="button"
+                accessibilityLabel={t("freshpassSubscription")}
+              >
                 <View
                   style={[
                     styles.statusDot,
@@ -430,7 +436,7 @@ function DashboardHeader() {
                 <Text style={styles.statusText}>
                   {isOnline ? t("active") : t("inactive")}
                 </Text>
-              </View>
+              </TouchableOpacity>
               {profileButton}
             </View>
           ) : (
