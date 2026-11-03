@@ -8,6 +8,7 @@ import {
   purchaseErrorListener,
   purchaseUpdatedListener,
   requestPurchase,
+  showManageSubscriptionsIOS,
   type Product,
   type ProductSubscription,
   type Purchase,
@@ -125,9 +126,29 @@ const verifyWithRetry = async <T>(run: () => Promise<T>): Promise<T> => {
 const getPurchaseTransactionId = (purchase: Purchase): string =>
   String(purchase.transactionId ?? purchase.id ?? purchase.productId ?? "");
 
-/** StoreKit only gives a SKU at recovery time; business SKUs include this fragment. */
-const isBusinessSubscriptionProduct = (productId?: string | null): boolean =>
-  Boolean(productId?.includes("business.plan"));
+/**
+ * Business plans are the only auto-renewing Apple products (AI credits are
+ * consumable). Live SKUs (com.freshpass.business.monthly, ...solo.addon.monthly)
+ * don't contain "business.plan", so the subscription group decides — e.g. a
+ * plan change made in Apple's sheet must verify as a plan, not as credits.
+ */
+const isBusinessSubscriptionPurchase = (purchase: Purchase): boolean => {
+  const iosPurchase = purchase as Purchase & {
+    subscriptionGroupIdIOS?: string | null;
+    expirationDateIOS?: number | null;
+  };
+  return (
+    Boolean(purchase.productId?.includes("business.plan")) ||
+    Boolean(iosPurchase.subscriptionGroupIdIOS) ||
+    iosPurchase.expirationDateIOS != null
+  );
+};
+
+/** Apple's own manage-subscriptions sheet; resolves when it closes. */
+export const showAppleManageSubscriptions = async () => {
+  await ensureIapConnection();
+  await showManageSubscriptionsIOS();
+};
 
 export const ensureIapConnection = async () => {
   if (Platform.OS !== "ios") {
@@ -382,7 +403,7 @@ const recoverPurchase = async (purchase: Purchase): Promise<boolean> => {
   verifyingTransactionIds.add(transactionId);
 
   try {
-    const isSubscription = isBusinessSubscriptionProduct(productId);
+    const isSubscription = isBusinessSubscriptionPurchase(purchase);
 
     if (isSubscription) {
       const verifyResponse = await verifyWithRetry(() =>

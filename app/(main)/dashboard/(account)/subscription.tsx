@@ -8,6 +8,8 @@ import {
   Pressable,
   ActivityIndicator,
   AppState,
+  Platform,
+  TouchableOpacity,
   type AppStateStatus,
 } from "react-native";
 import { useTheme, useAppDispatch, useAppSelector } from "@/src/hooks/hooks";
@@ -32,6 +34,8 @@ import RetryButton from "@/src/components/retryButton";
 import { LinearGradient } from "expo-linear-gradient";
 import BusinessPlansModal from "@/src/components/businessPlansModal";
 import CancelSubscriptionConfirmModal from "@/src/components/cancelSubscriptionConfirmModal";
+import RemovePromotionConfirmModal from "@/src/components/removePromotionConfirmModal";
+import { showAppleManageSubscriptions } from "@/src/services/iapService";
 import { setActionLoader } from "@/src/state/slices/generalSlice";
 import { useTranslation } from "react-i18next";
 import dayjs from "dayjs";
@@ -85,11 +89,52 @@ interface SubscriptionData {
   stripePaymentUrl: string;
   cardLastFour: string | null;
   paymentProvider: string | null;
+  appStoreProductId?: string | null;
+  /** Still in FreshPass Deals (stays true until promotionEndsAt) */
+  hasFeaturedAddOn?: boolean;
+  /** Promotion removal pending: Deals ends on this date */
+  promotionEndsAt?: string | null;
+  /** Next renewal amount after any pending change; null = won't renew */
+  renewalPrice?: string | null;
+  /** Apple can bill in local currency (e.g. PKR); Stripe is USD */
+  renewalCurrency?: string | null;
+  /** Apple only: plan the subscription switches to at renewal */
+  pendingPlanName?: string | null;
+  /** On Solo with staff: staff paused, not deleted */
+  teamPaused?: boolean;
+  pausedStaffCount?: number;
   createdAt: string;
   deleted_at: string | null;
   appointments: any[];
   hasTrialAvailable?: boolean;
 }
+
+type SubscriptionActionResponse = {
+  success: boolean;
+  message?: string;
+  data?: SubscriptionData;
+};
+
+/** Delay before re-reading after Apple's sheet: the server hears from Apple a few seconds later */
+const APPLE_SYNC_REFETCH_MS = 5000;
+
+/** "60.00" + "USD" → "$60.00"; "16900.00" + "PKR" → "PKR 16,900.00" */
+const formatMoney = (
+  amount: string | null | undefined,
+  currency: string | null | undefined,
+): string | null => {
+  const value = Number(amount);
+  if (amount == null || amount === "" || !Number.isFinite(value)) return null;
+  const code = (currency || "USD").toUpperCase();
+  try {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: code,
+    }).format(value);
+  } catch {
+    return `${code} ${amount}`;
+  }
+};
 
 interface SubscriptionResponse {
   success: boolean;
@@ -669,6 +714,60 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontBold,
       color: theme.white,
     },
+    addOnNote: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontMedium,
+      color: theme.white80,
+      marginBottom: moderateHeightScale(8),
+    },
+    manageSection: {
+      marginHorizontal: moderateWidthScale(20),
+      marginTop: moderateHeightScale(8),
+      marginBottom: moderateHeightScale(20),
+    },
+    manageCard: {
+      backgroundColor: theme.white,
+      borderRadius: moderateWidthScale(16),
+      paddingHorizontal: moderateWidthScale(16),
+      shadowColor: theme.shadow,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.06,
+      shadowRadius: 8,
+      elevation: 2,
+    },
+    manageRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(12),
+      paddingVertical: moderateHeightScale(16),
+    },
+    manageRowIcon: {
+      width: moderateWidthScale(40),
+      height: moderateWidthScale(40),
+      borderRadius: moderateWidthScale(12),
+      backgroundColor: theme.lightGreen05,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    manageRowCopy: {
+      flex: 1,
+      gap: moderateHeightScale(3),
+    },
+    manageRowTitle: {
+      fontSize: fontSize.size15,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    manageRowText: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+      lineHeight: fontSize.size18,
+    },
+    manageDivider: {
+      height: StyleSheet.hairlineWidth,
+      backgroundColor: theme.borderLight,
+    },
   });
 
 export default function SubscriptionScreen() {
@@ -692,6 +791,8 @@ export default function SubscriptionScreen() {
   const [businessPlansModalBusinessOnly, setBusinessPlansModalBusinessOnly] =
     useState(false);
   const [cancelConfirmVisible, setCancelConfirmVisible] = useState(false);
+  const [removePromotionVisible, setRemovePromotionVisible] = useState(false);
+  const [managing, setManaging] = useState(false);
 
   const businessStatus = useAppSelector((state) => state.user.businessStatus);
   const isSoloPlanActive = isSoloSubscription(businessStatus);
@@ -700,12 +801,15 @@ export default function SubscriptionScreen() {
   const isTrialing = subscription
     ? isSubscriptionTrialing(subscription)
     : false;
+  // Route by who bills the plan, not by the device (client 11-03)
   const isApplePayment =
     subscription?.paymentProvider?.toLowerCase() === "apple";
-  const canCancel =
-    !!subscription && !isApplePayment && !isCancelled && !subscription.hasEnded;
-  const showAppleCancelHelp =
-    !!subscription && isApplePayment && !isCancelled && !subscription.hasEnded;
+  const isIosDevice = Platform.OS === "ios";
+  const isRenewing =
+    !!subscription && !isCancelled && !subscription.hasEnded;
+  const canCancel = isRenewing && !isApplePayment;
+  // Apple's subscription pages only open on an Apple device
+  const showAppleCancelHelp = isRenewing && isApplePayment && isIosDevice;
   const showBuyNewPlan =
     !!subscription && canRepurchaseCancelledSubscription(subscription);
   const showUpgradePlan =
@@ -728,6 +832,9 @@ export default function SubscriptionScreen() {
   const fetchSeqRef = useRef(0);
   const refetchingAfterPurchaseRef = useRef(false);
   const appStateRef = useRef<AppStateStatus>(AppState.currentState);
+  const appleSyncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
 
   const fetchSubscription = useCallback(
     async (options?: { retries?: number }) => {
@@ -811,9 +918,139 @@ export default function SubscriptionScreen() {
       };
 
       const appStateSub = AppState.addEventListener("change", onAppStateChange);
-      return () => appStateSub.remove();
+      return () => {
+        appStateSub.remove();
+        if (appleSyncTimerRef.current) {
+          clearTimeout(appleSyncTimerRef.current);
+          appleSyncTimerRef.current = null;
+        }
+      };
     }, [fetchSubscription]),
   );
+
+  /**
+   * Remove / keep the promotion and change the card. Shows the server message;
+   * on a refusal (already removed, billed by Apple...) re-reads so the screen
+   * matches the server.
+   */
+  const runSubscriptionAction = async (
+    request: () => Promise<SubscriptionActionResponse>,
+    fallbackSuccess: string,
+  ) => {
+    if (managing) return;
+    setManaging(true);
+    dispatch(setActionLoader(true));
+    try {
+      const response = await request();
+      if (response.success) {
+        if (response.data) setSubscription(response.data);
+        showBanner(
+          t("success"),
+          response.message || fallbackSuccess,
+          "success",
+          3000,
+        );
+      } else {
+        showBanner(
+          t("error"),
+          response.message || t("failedToUpdateSubscription"),
+          "error",
+          3000,
+        );
+      }
+    } catch (err: any) {
+      showBanner(
+        t("error"),
+        err?.message || t("failedToUpdateSubscription"),
+        "error",
+        3000,
+      );
+    } finally {
+      setManaging(false);
+      dispatch(setActionLoader(false));
+      await fetchSubscription();
+    }
+  };
+
+  const handleConfirmRemovePromotion = () => {
+    setRemovePromotionVisible(false);
+    void runSubscriptionAction(
+      () =>
+        ApiService.post<SubscriptionActionResponse>(
+          businessEndpoints.removePromotionAddOn,
+          {},
+        ),
+      t("promotionRemovedFallback"),
+    );
+  };
+
+  const handleKeepPromotion = () => {
+    void runSubscriptionAction(
+      () =>
+        ApiService.post<SubscriptionActionResponse>(
+          businessEndpoints.keepPromotionAddOn,
+          {},
+        ),
+      t("promotionKeptFallback"),
+    );
+  };
+
+  /** Stripe card-update page; a fresh link every tap (they expire). */
+  const handleChangeCard = async () => {
+    if (!subscription || managing) return;
+    setManaging(true);
+    dispatch(setActionLoader(true));
+    try {
+      const response = await ApiService.post<{
+        success: boolean;
+        message?: string;
+        data?: { url?: string };
+      }>(businessEndpoints.subscriptionBillingPortal(subscription.id), {});
+      const url = response.data?.url;
+      if (!response.success || !url) {
+        throw new Error(response.message || t("failedToOpenBillingPortal"));
+      }
+      // Real browser (not a WebView). The return link lands back here and the
+      // foreground refetch picks up the new card.
+      await Linking.openURL(url);
+    } catch (err: any) {
+      showBanner(
+        t("error"),
+        err?.message || t("failedToOpenBillingPortal"),
+        "error",
+        3000,
+      );
+      if (err?.data?.data?.error_code === "billed_by_apple") {
+        void fetchSubscription();
+      }
+    } finally {
+      setManaging(false);
+      dispatch(setActionLoader(false));
+    }
+  };
+
+  /**
+   * Apple-billed on iPhone: the owner picks the plan in Apple's own sheet
+   * (no backend call). Re-read now and again shortly after, once Apple has
+   * told the server.
+   */
+  const handleOpenAppleSheet = async () => {
+    if (managing) return;
+    setManaging(true);
+    try {
+      await showAppleManageSubscriptions();
+    } catch {
+      await handleOpenAppStoreSubscriptions();
+    } finally {
+      setManaging(false);
+      void fetchSubscription();
+      if (appleSyncTimerRef.current) clearTimeout(appleSyncTimerRef.current);
+      appleSyncTimerRef.current = setTimeout(() => {
+        appleSyncTimerRef.current = null;
+        void fetchSubscription();
+      }, APPLE_SYNC_REFETCH_MS);
+    }
+  };
 
   const cancelCurrentSubscription = async () => {
     if (!subscription) return;
@@ -997,6 +1234,126 @@ export default function SubscriptionScreen() {
     [subscription?.additionalServices],
   );
 
+  const hasPromotion =
+    subscription?.hasFeaturedAddOn ?? activeAddOns.length > 0;
+  const promotionPending = !!subscription?.promotionEndsAt;
+  // "2026-11-28T19:00:00-05:00": keep the server's calendar day so it matches
+  // nextPaymentDate (converting to the phone's zone can show the 29th)
+  const promotionEndDate = formatTrialEndDate(
+    subscription?.promotionEndsAt?.match(/^\d{4}-\d{2}-\d{2}(?=T)/)?.[0] ??
+      subscription?.promotionEndsAt ??
+      null,
+  );
+  const renewalPriceText = formatMoney(
+    subscription?.renewalPrice,
+    subscription?.renewalCurrency,
+  );
+
+  /** "Promotion removed" / "Plan change scheduled" banner lines */
+  const pendingChangeLines = (() => {
+    if (!subscription || !isRenewing) return [];
+    const lines: string[] = [];
+    const planName = subscription.pendingPlanName;
+    if (promotionPending) {
+      lines.push(
+        renewalPriceText && !planName
+          ? t("promotionEndsMessage", {
+              date: promotionEndDate,
+              price: renewalPriceText,
+            })
+          : t("promotionEndsOn", { date: promotionEndDate }),
+      );
+    }
+    if (planName) {
+      const changeDate = formatTrialEndDate(subscription.nextPaymentDate);
+      lines.push(
+        renewalPriceText
+          ? t("planChangeMessage", {
+              plan: planName,
+              date: changeDate,
+              price: renewalPriceText,
+            })
+          : t("planChangeMessageNoPrice", { plan: planName, date: changeDate }),
+      );
+    }
+    return lines;
+  })();
+
+  /** Manage plan rows — what each one shows depends on who bills the plan */
+  const manageRows = (() => {
+    type ManageRow = {
+      key: string;
+      icon: React.ComponentProps<typeof Feather>["name"];
+      title?: string;
+      text: string;
+      onPress?: () => void;
+    };
+    if (!subscription || !isRenewing) return [] as ManageRow[];
+    const rows: ManageRow[] = [];
+
+    if (isApplePayment && !isIosDevice) {
+      rows.push({
+        key: "apple-android",
+        icon: "smartphone",
+        text: t("billedThroughAppleManageOnIphone"),
+      });
+      return rows;
+    }
+
+    if (isApplePayment) {
+      if (promotionPending) {
+        rows.push({
+          key: "keep",
+          icon: "tag",
+          title: t("keepPromotionAddOn"),
+          text: t("appleKeepPromotionDesc"),
+          onPress: () => void handleOpenAppleSheet(),
+        });
+      } else if (hasPromotion) {
+        rows.push({
+          key: "remove",
+          icon: "tag",
+          title: t("removePromotionAddOn"),
+          text: t("appleRemovePromotionDesc"),
+          onPress: () => void handleOpenAppleSheet(),
+        });
+      }
+      rows.push({
+        key: "card",
+        icon: "credit-card",
+        title: t("paymentManagedByApple"),
+        text: t("paymentManagedByAppleSteps"),
+      });
+      return rows;
+    }
+
+    if (promotionPending) {
+      rows.push({
+        key: "keep",
+        icon: "tag",
+        title: t("keepPromotionAddOn"),
+        text: t("keepPromotionAddOnDesc"),
+        onPress: handleKeepPromotion,
+      });
+    } else if (hasPromotion) {
+      rows.push({
+        key: "remove",
+        icon: "tag",
+        title: t("removePromotionAddOn"),
+        text: t("removePromotionAddOnDesc"),
+        onPress: () => setRemovePromotionVisible(true),
+      });
+    }
+    rows.push({
+      key: "card",
+      icon: "credit-card",
+      title: t("changePaymentMethod"),
+      text: t("changePaymentMethodDesc"),
+      onPress: () => void handleChangeCard(),
+    });
+    return rows;
+  })();
+
   return (
     <SafeAreaView edges={["bottom"]} style={styles.container}>
       <StackHeader title={t("subscription")} />
@@ -1147,6 +1504,66 @@ export default function SubscriptionScreen() {
             </View>
           )}
 
+          {pendingChangeLines.length > 0 && (
+            <View style={styles.trialBanner}>
+              <LinearGradient
+                colors={[theme.darkGreenLight, theme.darkGreen]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.trialBannerGradient}
+              >
+                <View style={styles.trialBannerLeft}>
+                  <Text style={styles.trialBannerTitle}>
+                    {subscription.pendingPlanName
+                      ? t("planChangeScheduledTitle")
+                      : t("promotionRemovedTitle")}
+                  </Text>
+                  {pendingChangeLines.map((line) => (
+                    <Text key={line} style={styles.trialBannerSubtitle}>
+                      {line}
+                    </Text>
+                  ))}
+                </View>
+                <View style={styles.trialBannerIcon}>
+                  <Feather
+                    name="calendar"
+                    size={moderateWidthScale(24)}
+                    color={theme.white}
+                  />
+                </View>
+              </LinearGradient>
+            </View>
+          )}
+
+          {subscription.teamPaused && (
+            <View style={styles.trialBanner}>
+              <LinearGradient
+                colors={[theme.darkGreenLight, theme.darkGreen]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.trialBannerGradient}
+              >
+                <View style={styles.trialBannerLeft}>
+                  <Text style={styles.trialBannerTitle}>
+                    {t("teamPausedTitle")}
+                  </Text>
+                  <Text style={styles.trialBannerSubtitle}>
+                    {t("teamPausedOwnerMessage", {
+                      count: subscription.pausedStaffCount ?? 0,
+                    })}
+                  </Text>
+                </View>
+                <View style={styles.trialBannerIcon}>
+                  <Feather
+                    name="users"
+                    size={moderateWidthScale(24)}
+                    color={theme.white}
+                  />
+                </View>
+              </LinearGradient>
+            </View>
+          )}
+
           {/* Header Card with Gradient */}
           <View style={styles.headerCard}>
             <LinearGradient
@@ -1193,6 +1610,11 @@ export default function SubscriptionScreen() {
                       </Text>
                     </View>
                   ))}
+                  {promotionPending && isRenewing && (
+                    <Text style={styles.addOnNote}>
+                      {t("promotionEndsShort", { date: promotionEndDate })}
+                    </Text>
+                  )}
                 </>
               )}
             </LinearGradient>
@@ -1342,6 +1764,58 @@ export default function SubscriptionScreen() {
             )}
           </View>
 
+          {manageRows.length > 0 && (
+            <View style={styles.manageSection}>
+              <Text style={styles.sectionTitle}>{t("managePlan")}</Text>
+              <View style={styles.manageCard}>
+                {manageRows.map((row, index) => {
+                  const content = (
+                    <>
+                      <View style={styles.manageRowIcon}>
+                        <Feather
+                          name={row.icon}
+                          size={moderateWidthScale(18)}
+                          color={theme.darkGreenLight}
+                        />
+                      </View>
+                      <View style={styles.manageRowCopy}>
+                        {row.title ? (
+                          <Text style={styles.manageRowTitle}>{row.title}</Text>
+                        ) : null}
+                        <Text style={styles.manageRowText}>{row.text}</Text>
+                      </View>
+                      {row.onPress ? (
+                        <Feather
+                          name="chevron-right"
+                          size={moderateWidthScale(18)}
+                          color={theme.lightGreen}
+                        />
+                      ) : null}
+                    </>
+                  );
+                  return (
+                    <React.Fragment key={row.key}>
+                      {index > 0 ? <View style={styles.manageDivider} /> : null}
+                      {row.onPress ? (
+                        <TouchableOpacity
+                          style={styles.manageRow}
+                          onPress={row.onPress}
+                          disabled={managing}
+                          activeOpacity={0.7}
+                          accessibilityRole="button"
+                        >
+                          {content}
+                        </TouchableOpacity>
+                      ) : (
+                        <View style={styles.manageRow}>{content}</View>
+                      )}
+                    </React.Fragment>
+                  );
+                })}
+              </View>
+            </View>
+          )}
+
           {(hasPrimaryPlanAction || canCancel || showAppleCancelHelp) && (
             <View style={styles.actionsSection}>
               {showUpgradePlan && (
@@ -1463,6 +1937,16 @@ export default function SubscriptionScreen() {
         )}
         onClose={handleCloseCancelConfirm}
         onConfirm={handleConfirmCancel}
+      />
+      <RemovePromotionConfirmModal
+        visible={removePromotionVisible}
+        endDate={formatTrialEndDate(subscription?.nextPaymentDate ?? null)}
+        basePrice={
+          formatMoney(subscription?.subscriptionPlanPrice, "USD") ??
+          `$${subscription?.subscriptionPlanPrice ?? ""}`
+        }
+        onClose={() => setRemovePromotionVisible(false)}
+        onConfirm={handleConfirmRemovePromotion}
       />
     </SafeAreaView>
   );

@@ -22,6 +22,7 @@ import {
   type SwitchActiveModeError,
 } from "@/src/state/thunks/userModeThunks";
 import { resetToDashboardHome } from "@/src/utils/navigation";
+import { fetchUserStatus } from "@/src/state/thunks/businessThunks";
 import { fetchProductById } from "@/src/services/productService";
 import { addProduct, updateProduct } from "@/src/state/slices/inventorySlice";
 import { getPublicReel } from "@/src/services/reelsService";
@@ -89,7 +90,12 @@ export type NotificationSubType =
   | "posting_restored"
   | "account_suspended"
   | "account_restored"
-  | "staff_removed";
+  | "staff_removed"
+  | "staff_paused"
+  | "staff_restored";
+
+/** Business moved to Solo (paused) / back to Business (restored): type and sub_type both */
+const STAFF_PAUSE_TYPES: string[] = ["staff_paused", "staff_restored"];
 
 /** sub_types of `type: "moderation"` (FreshPass warnings / suspensions). */
 const MODERATION_SUB_TYPES: string[] = [
@@ -117,6 +123,9 @@ export function withPushNotificationType<
   }
   if (subType === STAFF_REMOVED) {
     return { ...data, type: STAFF_REMOVED };
+  }
+  if (typeof subType === "string" && STAFF_PAUSE_TYPES.includes(subType)) {
+    return { ...data, type: subType };
   }
   // New-follower push carries only subType (list rows have type "business_follower")
   if (subType === "business_new_follower") {
@@ -284,6 +293,8 @@ function openOwnerReelsList(
  *   account_suspended → sign out if still signed in; restored → nothing
  * - type "staff_removed" (removed from a team; model_id = old business, never opened): signed out → sign-in as
  *   business; old staff session still held → sign out → sign-in; business not set up → completeProfile; no plan → plan picker
+ * - type "staff_paused" | "staff_restored" (staff; business moved to Solo / back to Business) → refetch status → Home
+ * - type "subscription" events (promotion removed/ended, plan change scheduled) → Profile → Subscription (refetches on focus)
  * - type "stripe_connect_reminder" (owner, not connected yet) → Stripe Connect setup modal; already connected → nothing
  * - type "stripe_connect_action_required" (owner, Stripe needs more details) → Stripe Connect onboarding screen (no local status check)
  * - otherwise → notification screen (unless options.skipNotificationScreen is true, e.g. when already on that screen)
@@ -1047,6 +1058,14 @@ export function navigateFromNotificationData(
       );
       return;
     }
+  }
+
+  // Staff: re-read status (is_paused) and show home, where the paused card lives
+  if (type && STAFF_PAUSE_TYPES.includes(type)) {
+    void store.dispatch(fetchUserStatus({ showError: false }));
+    resetToDashboardHome();
+    Logger.log(`------>navigateFromNotificationData (${type}) -> home`);
+    return;
   }
 
   if (type === "availability") {

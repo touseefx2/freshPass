@@ -58,6 +58,7 @@ export const fetchUserStatus = createAsyncThunk<
           };
           active: boolean;
           active_mode?: string | null;
+          is_paused?: boolean;
         };
         active: boolean;
       }>(userEndpoints.status);
@@ -87,6 +88,7 @@ export const fetchUserStatus = createAsyncThunk<
           working_with_business: null,
           working_with_business_request: null,
           owner_as_staff: DEFAULT_OWNER_AS_STAFF,
+          is_paused: response.data.is_paused === true,
         };
         dispatch(setBusinessStatus(businessStatusData));
         dispatch(setBusinessStatusError(false));

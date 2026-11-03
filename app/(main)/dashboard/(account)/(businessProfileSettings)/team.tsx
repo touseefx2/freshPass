@@ -439,6 +439,8 @@ interface TeamMember {
   monthly_reel_limit?: number | null;
   is_owner?: boolean;
   is_business_owner?: boolean;
+  /** Business is on Solo: kept on the team but not bookable */
+  is_paused?: boolean;
   user?: {
     profile_image_url: string | null;
     working_hours?: any[];
@@ -710,9 +712,12 @@ export default function ManageTeamScreen() {
 
   const getMemberStatus = (
     member: TeamMember,
-  ): { label: string; tone: "active" | "pending" } => {
+  ): { label: string; tone: "active" | "pending" | "paused" } => {
     if (member.invitation_token && member.invitation_status !== "accepted") {
       return { label: t("invitationSent"), tone: "pending" };
+    }
+    if (member.is_paused) {
+      return { label: t("paused"), tone: "paused" };
     }
     // No online/offline any more (client 10-30): joined = active
     return { label: t("active"), tone: "active" };

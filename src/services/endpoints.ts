@@ -134,6 +134,13 @@ export const businessEndpoints = {
     `/api/subscriptions/${subscriptionId}/cancel-trial`,
   cancelSubscription: (subscriptionId: number) =>
     `/api/subscriptions/${subscriptionId}/cancel`,
+  /** POST, Stripe only: Deals add-on ends at period end (no refund) */
+  removePromotionAddOn: `/api/business/unfeature`,
+  /** POST, Stripe only: undo a pending removal (or add the promotion) */
+  keepPromotionAddOn: `/api/business/feature`,
+  /** POST, Stripe only → { url }: card-update-only Stripe page */
+  subscriptionBillingPortal: (subscriptionId: number) =>
+    `/api/subscriptions/${subscriptionId}/billing-portal`,
   businessDetails: (businessId: string | number) =>
     `/api/business/details?business_id=${businessId}`,
   ownerWorkImages: (

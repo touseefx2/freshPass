@@ -20,6 +20,7 @@ import AwaitingOutcomeSection, {
 } from "../components/AwaitingOutcomeSection";
 import PaymentsToConfirmSection from "../components/PaymentsToConfirmSection";
 import WelcomeSection from "../components/WelcomeSection";
+import StaffPausedCard from "./StaffPausedCard";
 import PeriodTabs from "./PeriodTabs";
 import DateRangeSheet from "./DateRangeSheet";
 import {
@@ -159,6 +160,8 @@ export default function StaffHomeContent({
   return (
     <View>
       <WelcomeSection />
+
+      <StaffPausedCard />
 
       <View style={styles.gutter}>
         <PeriodTabs

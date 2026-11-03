@@ -81,6 +81,8 @@ export interface BusinessStatus {
   working_with_business_request?: WorkingWithBusinessRequest | null;
   /** Business-plan gate for putting the owner on their own team */
   owner_as_staff: OwnerAsStaffStatus;
+  /** Staff only: the business moved to Solo, so customers can't book this member */
+  is_paused?: boolean;
 }
 
 export const deriveHasAddStaff = (
