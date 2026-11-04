@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -88,55 +94,67 @@ export default function SavedProductsScreen() {
   const removedSinceReload = useRef(0);
 
   /**
-   * pageNumber 1 = fresh list; N = append page N. `throughPage` re-reads
-   * pages 1..throughPage in one go (after unsaves shifted the server's
-   * pages) and replaces the list with them, so loaded rows stay put.
+   * Reads pages fromPage..toPage. "replace" starts the list over (first load,
+   * focus, pull to refresh); "append" adds the rows after the ones shown,
+   * skipping any already there.
    */
-  const load = useCallback(async (pageNumber: number, throughPage?: number) => {
-    const request = ++requestRef.current;
-    const removedAtStart = removedSinceReload.current;
-    try {
-      const last = throughPage ?? pageNumber;
-      const first = throughPage ? 1 : pageNumber;
-      const rows: ShopProduct[] = [];
-      let result = await fetchFavoriteProducts({ page: first, perPage: PAGE_SIZE });
-      rows.push(...result.products);
-      for (let n = first + 1; n <= last && result.meta.has_more; n += 1) {
-        result = await fetchFavoriteProducts({ page: n, perPage: PAGE_SIZE });
-        if (request !== requestRef.current) return;
-        rows.push(...result.products);
-      }
-      if (request !== requestRef.current) return;
-      const fresh = first === 1;
-      setProducts((prev) => {
-        const base = fresh ? [] : prev;
-        const seen = new Set(base.map((p) => p.id));
-        const merged = [...base];
-        rows.forEach((p) => {
-          if (!seen.has(p.id)) {
-            seen.add(p.id);
-            merged.push(p);
-          }
+  const load = useCallback(
+    async (
+      fromPage: number,
+      toPage: number = fromPage,
+      mode: "replace" | "append" = fromPage === 1 ? "replace" : "append",
+    ) => {
+      const request = ++requestRef.current;
+      const removedAtStart = removedSinceReload.current;
+      try {
+        const rows: ShopProduct[] = [];
+        let result = await fetchFavoriteProducts({
+          page: fromPage,
+          perPage: PAGE_SIZE,
         });
-        return merged;
-      });
-      if (fresh) removedSinceReload.current -= removedAtStart;
-      setPage(result.meta.current_page);
-      setHasMore(result.meta.has_more);
-      setError(false);
-      loadedOnce.current = true;
-    } catch (err) {
-      if (isRequestCanceled(err) || request !== requestRef.current) return;
-      Logger.error("Saved products load failed:", err);
-      if (pageNumber === 1) setError(true);
-    } finally {
-      if (request === requestRef.current) {
-        setLoading(false);
-        setRefreshing(false);
-        setLoadingMore(false);
+        rows.push(...result.products);
+        for (
+          let n = fromPage + 1;
+          n <= toPage && result.meta.has_more;
+          n += 1
+        ) {
+          if (request !== requestRef.current) return;
+          result = await fetchFavoriteProducts({ page: n, perPage: PAGE_SIZE });
+          rows.push(...result.products);
+        }
+        if (request !== requestRef.current) return;
+        setProducts((prev) => {
+          const base = mode === "replace" ? [] : prev;
+          const seen = new Set(base.map((p) => p.id));
+          const merged = [...base];
+          rows.forEach((p) => {
+            if (!seen.has(p.id)) {
+              seen.add(p.id);
+              merged.push(p);
+            }
+          });
+          return merged;
+        });
+        // These pages were read after the unsaves, so the shift is accounted for
+        removedSinceReload.current -= removedAtStart;
+        setPage(result.meta.current_page);
+        setHasMore(result.meta.has_more);
+        setError(false);
+        loadedOnce.current = true;
+      } catch (err) {
+        if (isRequestCanceled(err) || request !== requestRef.current) return;
+        Logger.error("Saved products load failed:", err);
+        if (mode === "replace") setError(true);
+      } finally {
+        if (request === requestRef.current) {
+          setLoading(false);
+          setRefreshing(false);
+          setLoadingMore(false);
+        }
       }
-    }
-  }, []);
+    },
+    [],
+  );
 
   // Re-read on focus: a heart may have changed on the product page
   useFocusEffect(
@@ -165,10 +183,12 @@ export default function SavedProductsScreen() {
   const onEndReached = useCallback(() => {
     if (!hasMore || loadingMore || loading) return;
     setLoadingMore(true);
-    // After unsaves, page N+1 would skip rows: re-read pages 1..N+1 together
-    // (keeps everything already shown, no jump back to one page)
-    if (removedSinceReload.current > 0) void load(1, page + 1);
-    else void load(page + 1);
+    // Each unsave moves later rows one place up, so page N+1 alone would skip
+    // some. Step back only as many pages as the unsaves shifted (1 page per
+    // PAGE_SIZE unsaves) and append — a few requests, never the whole list.
+    const removed = removedSinceReload.current;
+    const stepBack = removed > 0 ? Math.ceil(removed / PAGE_SIZE) : 0;
+    void load(Math.max(1, page + 1 - stepBack), page + 1, "append");
   }, [hasMore, load, loading, loadingMore, page]);
 
   const browse = useCallback(() => {
@@ -247,7 +267,10 @@ export default function SavedProductsScreen() {
         }
         ListFooterComponent={
           loadingMore ? (
-            <ActivityIndicator style={styles.footerLoader} color={theme.darkGreen} />
+            <ActivityIndicator
+              style={styles.footerLoader}
+              color={theme.darkGreen}
+            />
           ) : null
         }
         contentContainerStyle={[
