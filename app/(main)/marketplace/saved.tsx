@@ -87,21 +87,40 @@ export default function SavedProductsScreen() {
   // Cards unsaved since the last page-1 load shift the server's pages
   const removedSinceReload = useRef(0);
 
-  const load = useCallback(async (pageNumber: number) => {
+  /**
+   * pageNumber 1 = fresh list; N = append page N. `throughPage` re-reads
+   * pages 1..throughPage in one go (after unsaves shifted the server's
+   * pages) and replaces the list with them, so loaded rows stay put.
+   */
+  const load = useCallback(async (pageNumber: number, throughPage?: number) => {
     const request = ++requestRef.current;
     const removedAtStart = removedSinceReload.current;
     try {
-      const result = await fetchFavoriteProducts({
-        page: pageNumber,
-        perPage: PAGE_SIZE,
-      });
+      const last = throughPage ?? pageNumber;
+      const first = throughPage ? 1 : pageNumber;
+      const rows: ShopProduct[] = [];
+      let result = await fetchFavoriteProducts({ page: first, perPage: PAGE_SIZE });
+      rows.push(...result.products);
+      for (let n = first + 1; n <= last && result.meta.has_more; n += 1) {
+        result = await fetchFavoriteProducts({ page: n, perPage: PAGE_SIZE });
+        if (request !== requestRef.current) return;
+        rows.push(...result.products);
+      }
       if (request !== requestRef.current) return;
+      const fresh = first === 1;
       setProducts((prev) => {
-        if (pageNumber === 1) return result.products;
-        const seen = new Set(prev.map((p) => p.id));
-        return [...prev, ...result.products.filter((p) => !seen.has(p.id))];
+        const base = fresh ? [] : prev;
+        const seen = new Set(base.map((p) => p.id));
+        const merged = [...base];
+        rows.forEach((p) => {
+          if (!seen.has(p.id)) {
+            seen.add(p.id);
+            merged.push(p);
+          }
+        });
+        return merged;
       });
-      if (pageNumber === 1) removedSinceReload.current -= removedAtStart;
+      if (fresh) removedSinceReload.current -= removedAtStart;
       setPage(result.meta.current_page);
       setHasMore(result.meta.has_more);
       setError(false);
@@ -146,8 +165,10 @@ export default function SavedProductsScreen() {
   const onEndReached = useCallback(() => {
     if (!hasMore || loadingMore || loading) return;
     setLoadingMore(true);
-    // After removals, page N+1 would skip rows: start over from page 1
-    void load(removedSinceReload.current > 0 ? 1 : page + 1);
+    // After unsaves, page N+1 would skip rows: re-read pages 1..N+1 together
+    // (keeps everything already shown, no jump back to one page)
+    if (removedSinceReload.current > 0) void load(1, page + 1);
+    else void load(page + 1);
   }, [hasMore, load, loading, loadingMore, page]);
 
   const browse = useCallback(() => {
