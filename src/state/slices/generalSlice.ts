@@ -127,23 +127,6 @@ export interface GeneralState {
   chatTryOnPreselectedUrls: string[];
   /** Setup/growth reminder keys the user has dismissed (persisted) */
   dismissedSetupReminders: string[];
-  /** Gold frame reminders: which features this account has completed (from the server, not persisted) */
-  goldFrames: GoldFramesState | null;
-}
-
-export type GoldTask =
-  | "stripe"
-  | "createReel"
-  | "addProduct"
-  | "membership"
-  | "cancellationPolicy"
-  | "hiring";
-
-export interface GoldFramesState {
-  /** role:business:user — results from another account are ignored */
-  accountKey: string;
-  /** true = done, false = not done yet; missing = unknown (no frame) */
-  done: Partial<Record<GoldTask, boolean>>;
 }
 
 export interface ChatContactItem {
@@ -217,7 +200,6 @@ const initialState: GeneralState = {
   chatAttachmentUrls: [],
   chatTryOnPreselectedUrls: [],
   dismissedSetupReminders: [],
-  goldFrames: null,
 };
 
 const generalSlice = createSlice({
@@ -451,27 +433,6 @@ const generalSlice = createSlice({
     resetSetupReminders(state) {
       state.dismissedSetupReminders = [];
     },
-    setGoldFrames(state, action: PayloadAction<GoldFramesState>) {
-      const prev =
-        state.goldFrames?.accountKey === action.payload.accountKey
-          ? state.goldFrames.done
-          : {};
-      // A failed request leaves the last known value
-      state.goldFrames = {
-        accountKey: action.payload.accountKey,
-        done: { ...prev, ...action.payload.done },
-      };
-    },
-    /** Right after a successful action, before the next server check */
-    markGoldTaskDone(
-      state,
-      action: PayloadAction<{ accountKey: string; task: GoldTask }>,
-    ) {
-      const { accountKey, task } = action.payload;
-      const prev =
-        state.goldFrames?.accountKey === accountKey ? state.goldFrames.done : {};
-      state.goldFrames = { accountKey, done: { ...prev, [task]: true } };
-    },
     setBookingTryOnSelectionForJob(
       state,
       action: PayloadAction<{ jobId: string; urls: string[] }>,
@@ -608,7 +569,6 @@ const generalSlice = createSlice({
       state.chatAttachmentUrls = [];
       state.chatTryOnPreselectedUrls = [];
       state.dismissedSetupReminders = [];
-      state.goldFrames = null;
     },
   },
 });
@@ -656,8 +616,6 @@ export const {
   setBookingTryOnSelectionForJob,
   dismissSetupReminder,
   resetSetupReminders,
-  setGoldFrames,
-  markGoldTaskDone,
   setIsFirstShowTryOn,
   setHasSeenReelsSwipeGuide,
   setAiHairTryOnConsentAccepted,

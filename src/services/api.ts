@@ -316,10 +316,6 @@ const handleLogout = async (options?: { skipApi?: boolean }) => {
       aiVoiceDataConsentAccepted,
     } = store.getState().general;
 
-    // Clear module-level caches
-    const { clearGoldFramesCache } = require("@/src/hooks/useGoldFrames");
-    clearGoldFramesCache();
-
     // Clear Redux state (in-memory)
     store.dispatch(resetCompleteProfile());
     store.dispatch(clearGeneral());

@@ -61,7 +61,6 @@ import {
   chatEndpoints,
 } from "@/src/services/endpoints";
 import { fetchUserStatus } from "@/src/state/thunks/businessThunks";
-import { refreshGoldFrames } from "@/src/hooks/useGoldFrames";
 import { fetchNotificationUnreadCount } from "@/src/state/thunks/notificationThunks";
 import { Appointment } from "@/src/components/appointmentDetail";
 import {
@@ -450,8 +449,6 @@ export default function HomeScreen() {
     const statusSuccess = await handleFetchUserStatus();
     // Only proceed with other APIs if status fetch succeeded
     if (statusSuccess) {
-      // Gold frames on unfinished features (owner / staff)
-      void refreshGoldFrames();
       handleFetchUserDetails();
       dispatch(fetchNotificationUnreadCount());
       handleFetchChatUnreadCount();
@@ -482,7 +479,6 @@ export default function HomeScreen() {
           Logger.log("app comes to foreground");
           // Refresh data when app comes to foreground
           handleFetchUserStatus();
-          void refreshGoldFrames();
           dispatch(fetchNotificationUnreadCount());
           handleFetchChatUnreadCount();
         }

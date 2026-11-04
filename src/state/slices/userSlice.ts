@@ -53,6 +53,21 @@ export const normalizeOwnerAsStaff = (
       : null,
 });
 
+/**
+ * GET /api/user/status → setup_progress (owner and staff; missing in customer
+ * mode). Server flags never turn back to false. Drives the gold-frame reminders.
+ */
+export interface SetupProgress {
+  /** Owner: any reel on the business; staff: one they posted */
+  has_published_reel?: boolean;
+  has_listed_product?: boolean;
+  has_membership_plan?: boolean;
+  cancellation_policy_saved?: boolean;
+  has_job_post?: boolean;
+  /** Staff: uploaded a work photo */
+  has_work_photos?: boolean;
+}
+
 export interface BusinessStatus {
   onboarding_completed: boolean;
   current_step: number | null;
@@ -83,6 +98,7 @@ export interface BusinessStatus {
   owner_as_staff: OwnerAsStaffStatus;
   /** Staff only: the business moved to Solo, so customers can't book this member */
   is_paused?: boolean;
+  setup_progress?: SetupProgress | null;
 }
 
 export const deriveHasAddStaff = (
@@ -395,6 +411,14 @@ const userSlice = createSlice({
       });
       state.businessStatusError = false;
     },
+    /** A setup step was just completed: hide its gold frame before the next status call */
+    markSetupProgressDone(state, action: PayloadAction<keyof SetupProgress>) {
+      if (!state.businessStatus) return;
+      state.businessStatus.setup_progress = {
+        ...state.businessStatus.setup_progress,
+        [action.payload]: true,
+      };
+    },
     setBusinessStatusLoading(state, action: PayloadAction<boolean>) {
       state.businessStatusLoading = action.payload;
     },
@@ -541,6 +565,7 @@ export const {
   setCanSwitchMode,
   setCustomerAiQuota,
   setBusinessStatus,
+  markSetupProgressDone,
   setBusinessStatusLoading,
   setBusinessStatusError,
   setUserDetails,

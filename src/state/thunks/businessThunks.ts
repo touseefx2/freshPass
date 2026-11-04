@@ -13,6 +13,8 @@ import {
   userEndpoints,
 } from "@/src/services/endpoints";
 import { BusinessStatus, deriveHasAddStaff, DEFAULT_OWNER_AS_STAFF, normalizeOwnerAsStaff } from "../slices/userSlice";
+import type { SetupProgress } from "../slices/userSlice";
+import { withRecentGoldMarks } from "@/src/utils/goldFrames";
 import { canApplyServerMode } from "@/src/services/userModeService";
 
 interface fetchUserStatusOptions {
@@ -28,6 +30,7 @@ export const fetchUserStatus = createAsyncThunk<
 
   dispatch(setBusinessStatusLoading(true));
   dispatch(setBusinessStatusError(false));
+  const requestStartedAt = Date.now();
 
   /**
    * Business/Staff in customer mode get a slim status ({ user_role, active_mode, active }).
@@ -59,6 +62,7 @@ export const fetchUserStatus = createAsyncThunk<
           active: boolean;
           active_mode?: string | null;
           is_paused?: boolean;
+          setup_progress?: SetupProgress | null;
         };
         active: boolean;
       }>(userEndpoints.status);
@@ -89,6 +93,10 @@ export const fetchUserStatus = createAsyncThunk<
           working_with_business_request: null,
           owner_as_staff: DEFAULT_OWNER_AS_STAFF,
           is_paused: response.data.is_paused === true,
+          setup_progress: withRecentGoldMarks(
+            response.data.setup_progress,
+            requestStartedAt,
+          ),
         };
         dispatch(setBusinessStatus(businessStatusData));
         dispatch(setBusinessStatusError(false));
@@ -128,6 +136,10 @@ export const fetchUserStatus = createAsyncThunk<
           has_seen_stripe_connect_congrats:
             response.data.has_seen_stripe_connect_congrats === true,
           owner_as_staff: normalizeOwnerAsStaff(response.data.owner_as_staff),
+          setup_progress: withRecentGoldMarks(
+            response.data.setup_progress,
+            requestStartedAt,
+          ),
         };
 
         dispatch(setBusinessStatus(businessStatusData));

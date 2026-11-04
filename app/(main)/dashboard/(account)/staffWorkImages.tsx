@@ -37,6 +37,7 @@ import {
   isBusinessSubscriptionActive,
 } from "@/src/state/slices/userSlice";
 import { prepareImagesForUpload } from "@/src/utils/prepareImageForUpload";
+import { markGoldDone } from "@/src/utils/goldFrames";
 import { resolveApiImageUrl } from "@/src/utils/media";
 import type {
   DeleteStaffWorkImagesResult,
@@ -371,6 +372,9 @@ export default function StaffWorkImagesManageScreen() {
           );
           return;
         }
+
+        // Staff "Upload your work" gold frame
+        markGoldDone("uploadWork");
 
         // Only trust the mapping when every pick came back, in upload order
         const created = response.data ?? [];
