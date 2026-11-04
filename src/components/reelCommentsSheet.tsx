@@ -498,7 +498,7 @@ export default function ReelCommentsSheet({
           <Text style={styles.headerTitle}>
             {total > 0 ? `${t("comments")} (${total})` : t("comments")}
           </Text>
-          <Pressable onPress={onClose} style={styles.closeButton}>
+          <Pressable onPress={onClose} hitSlop={14} style={styles.closeButton}>
             <Feather name="x" size={iconScale(12)} color={theme.darkGreen} />
           </Pressable>
         </View>

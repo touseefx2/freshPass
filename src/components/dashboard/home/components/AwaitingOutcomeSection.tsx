@@ -327,6 +327,7 @@ export default function AwaitingOutcomeSection({
               : router.push("/(main)/dashboard/(calendar)")
           }
           activeOpacity={0.7}
+          hitSlop={12}
         >
           <Text style={styles.viewAllText}>{t("viewAll")} &gt;</Text>
         </TouchableOpacity>

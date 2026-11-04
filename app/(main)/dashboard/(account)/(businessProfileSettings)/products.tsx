@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -8,6 +14,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   View,
 } from "react-native";
 import AppImage from "@/src/components/AppImage";
@@ -378,6 +385,7 @@ export default function ProductsInventoryScreen() {
   const deliveryLines = describeDelivery(delivery, t);
 
   const [search, setSearch] = useState("");
+  const searchInputRef = useRef<TextInput>(null);
   const [filter, setFilter] = useState<ShopStockFilter>("all");
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -642,35 +650,42 @@ export default function ProductsInventoryScreen() {
 
       {products.length > 0 ? (
         <>
-          <View style={styles.searchWrap}>
-            <MaterialIcons
-              name="search"
-              size={moderateWidthScale(20)}
-              color={theme.lightGreen5}
-            />
-            <TextInput
-              style={styles.searchInput}
-              value={search}
-              onChangeText={setSearch}
-              placeholder={t("searchProducts")}
-              placeholderTextColor={theme.lightGreen5}
-              returnKeyType="search"
-            />
-            {search.length > 0 ? (
-              <TouchableOpacity
-                onPress={() => setSearch("")}
-                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-                accessibilityRole="button"
-                accessibilityLabel={t("clearFilters")}
-              >
-                <MaterialIcons
-                  name="cancel"
-                  size={moderateWidthScale(18)}
-                  color={theme.lightGreen4}
-                />
-              </TouchableOpacity>
-            ) : null}
-          </View>
+          <TouchableWithoutFeedback
+            accessible={false}
+            focusable={false}
+            onPress={() => searchInputRef.current?.focus()}
+          >
+            <View style={styles.searchWrap}>
+              <MaterialIcons
+                name="search"
+                size={moderateWidthScale(20)}
+                color={theme.lightGreen5}
+              />
+              <TextInput
+                ref={searchInputRef}
+                style={styles.searchInput}
+                value={search}
+                onChangeText={setSearch}
+                placeholder={t("searchProducts")}
+                placeholderTextColor={theme.lightGreen5}
+                returnKeyType="search"
+              />
+              {search.length > 0 ? (
+                <TouchableOpacity
+                  onPress={() => setSearch("")}
+                  hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                  accessibilityRole="button"
+                  accessibilityLabel={t("clearFilters")}
+                >
+                  <MaterialIcons
+                    name="cancel"
+                    size={moderateWidthScale(18)}
+                    color={theme.lightGreen4}
+                  />
+                </TouchableOpacity>
+              ) : null}
+            </View>
+          </TouchableWithoutFeedback>
 
           <View style={styles.tabs}>
             {tabs.map((tab) => {

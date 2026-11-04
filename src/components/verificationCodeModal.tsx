@@ -628,7 +628,11 @@ export default function VerificationCodeModal({
             ]}
           >
             <View style={styles.headerRow}>
-              <TouchableOpacity onPress={onClose} style={styles.backButton}>
+              <TouchableOpacity
+                onPress={onClose}
+                style={styles.backButton}
+                hitSlop={10}
+              >
                 <Feather
                   name="arrow-left"
                   size={iconScale(22)}
@@ -762,6 +766,8 @@ export default function VerificationCodeModal({
                   onPress={() => handleResendCode(false)}
                   style={styles.resendLink}
                   disabled={isResending || isVerifying || resendSeconds > 0}
+                  // Links sit 32 apart; 12 each way keeps their slops apart
+                  hitSlop={{ top: 12, bottom: 12, left: 16, right: 16 }}
                 >
                   <Text
                     style={[
@@ -781,6 +787,7 @@ export default function VerificationCodeModal({
                 <Pressable
                   onPress={openChangeEmail}
                   disabled={isResending || isVerifying}
+                  hitSlop={{ top: 12, bottom: 12, left: 16, right: 16 }}
                 >
                   <Text
                     style={[

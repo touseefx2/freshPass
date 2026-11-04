@@ -231,6 +231,7 @@ export default function ChangePasswordScreen() {
         style={styles.content}
         contentContainerStyle={styles.contentContainer}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
         <View style={styles.inputContainer}>
           <FloatingInput

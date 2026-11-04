@@ -219,7 +219,7 @@ export default function NotificationBanner({
             borderLeftColor: getIconColor(),
           },
         ]}
-        onPress={onPress}
+        onPress={onPress ?? handleDismiss}
         activeOpacity={onPress ? 0.8 : 1}
       >
         <View style={styles.content}>

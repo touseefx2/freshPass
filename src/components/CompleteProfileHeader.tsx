@@ -87,6 +87,7 @@ export default function CompleteProfileHeader({
             onPress={onBack}
             activeOpacity={0.6}
             style={styles.backButton}
+            hitSlop={10}
           >
             <Feather
               name="arrow-left"

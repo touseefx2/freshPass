@@ -89,6 +89,9 @@ export const createStyles = (theme: Theme) =>
     searchContainer: {
       marginTop: moderateHeightScale(5),
       marginHorizontal: moderateWidthScale(20),
+      // Above the transparent dismiss backdrop (5) so taps on the focused
+      // search field reach it; below the results dropdown (10).
+      zIndex: 6,
     },
     searchDropdown: {
       position: "absolute",
@@ -346,11 +349,11 @@ export default function StepOne({
     onSearchDropdownOpenChange?.(false);
   }, [onSearchDropdownOpenChange]);
 
+  // The X only shows while the field is focused (blur clears the query), so
+  // clearing keeps the search open and the dropdown back on the full list.
   const handleSearchClear = useCallback(() => {
     setSearchQuery("");
-    setIsSearchFocused(false);
-    onSearchDropdownOpenChange?.(false);
-  }, [onSearchDropdownOpenChange]);
+  }, []);
 
   const handleDismissSearch = useCallback(() => {
     Keyboard.dismiss();

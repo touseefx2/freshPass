@@ -10,6 +10,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  TouchableWithoutFeedback,
   View,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
@@ -654,46 +655,52 @@ export default function StepTwo() {
         </View>
 
         <View style={[styles.field, styles.phoneField]}>
-          <View style={styles.phoneFieldContainer}>
-            <Text style={styles.inputLabel}>
-              {t("phoneNumber")}
-              <Text style={styles.requiredAsterisk}> *</Text>
-            </Text>
-            <View style={styles.phoneInputContainer}>
-              <View style={styles.countrySelector}>
-                <Text style={styles.countryCodeText}>{US_COUNTRY_CODE}</Text>
-              </View>
-              <View style={styles.segmentWrapper}>
-                <TextInput
-                  ref={phoneInputRef}
-                  style={styles.hiddenInput}
-                  value={formattedPhoneValue}
-                  onChangeText={handlePhoneChange}
-                  onSelectionChange={handleSelectionChange}
-                  selection={selection}
-                  keyboardType="phone-pad"
-                  returnKeyType="done"
-                  maxLength={phonePlaceholder.length}
-                  showSoftInputOnFocus={true}
-                  caretHidden={false}
-                />
-                <View style={styles.segInputWrapper} pointerEvents="none">
-                  {segmentNodes}
+          <TouchableWithoutFeedback
+            accessible={false}
+            focusable={false}
+            onPress={() => phoneInputRef.current?.focus()}
+          >
+            <View style={styles.phoneFieldContainer}>
+              <Text style={styles.inputLabel}>
+                {t("phoneNumber")}
+                <Text style={styles.requiredAsterisk}> *</Text>
+              </Text>
+              <View style={styles.phoneInputContainer}>
+                <View style={styles.countrySelector}>
+                  <Text style={styles.countryCodeText}>{US_COUNTRY_CODE}</Text>
                 </View>
+                <View style={styles.segmentWrapper}>
+                  <TextInput
+                    ref={phoneInputRef}
+                    style={styles.hiddenInput}
+                    value={formattedPhoneValue}
+                    onChangeText={handlePhoneChange}
+                    onSelectionChange={handleSelectionChange}
+                    selection={selection}
+                    keyboardType="phone-pad"
+                    returnKeyType="done"
+                    maxLength={phonePlaceholder.length}
+                    showSoftInputOnFocus={true}
+                    caretHidden={false}
+                  />
+                  <View style={styles.segInputWrapper} pointerEvents="none">
+                    {segmentNodes}
+                  </View>
+                </View>
+                {!!phoneNumber && (
+                  <Pressable
+                    onPress={() => {
+                      previousDigitCountRef.current = 0;
+                      dispatch(setPhoneNumber({ value: "", isValid: false }));
+                    }}
+                    hitSlop={moderateWidthScale(10)}
+                  >
+                    <CloseIcon color={(colors as Theme).darkGreen} />
+                  </Pressable>
+                )}
               </View>
-              {!!phoneNumber && (
-                <Pressable
-                  onPress={() => {
-                    previousDigitCountRef.current = 0;
-                    dispatch(setPhoneNumber({ value: "", isValid: false }));
-                  }}
-                  hitSlop={moderateWidthScale(10)}
-                >
-                  <CloseIcon color={(colors as Theme).darkGreen} />
-                </Pressable>
-              )}
             </View>
-          </View>
+          </TouchableWithoutFeedback>
 
           {isPhoneInvalid && (
             <Text style={styles.errorText}>{t("enterValidPhoneNumber")}</Text>

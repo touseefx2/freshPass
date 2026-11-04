@@ -1770,6 +1770,7 @@ function ReelFeedItemBase({
                   <TouchableOpacity
                     style={styles.followBtn}
                     onPress={() => onFollow(reel)}
+                    hitSlop={{ top: 10, bottom: 10, left: 6, right: 10 }}
                   >
                     <Text style={styles.followText}>
                       {reel.viewer?.following ? t("following") : t("follow")}

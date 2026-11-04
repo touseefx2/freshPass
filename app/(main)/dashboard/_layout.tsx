@@ -130,12 +130,15 @@ export default function DashboardLayout() {
   const tabBarHeight = isButtonMode
     ? moderateHeightScale(110)
     : moderateHeightScale(80);
-  const user = useAppSelector((state) => state.user);
+  // Field selectors (not the whole user slice) so unrelated user updates
+  // don't re-render the tab bar.
+  const userId = useAppSelector((state) => state.user.id);
+  const userAccessToken = useAppSelector((state) => state.user.accessToken);
   const segments = useSegments() as string[];
-  const unreadCount = user.unreadCount;
-  const totalUnreadChat = user.totalUnreadChat;
-  const isGuest = user.isGuest;
-  const userRole = user.userRole;
+  const unreadCount = useAppSelector((state) => state.user.unreadCount);
+  const totalUnreadChat = useAppSelector((state) => state.user.totalUnreadChat);
+  const isGuest = useAppSelector((state) => state.user.isGuest);
+  const userRole = useAppSelector((state) => state.user.userRole);
   const isCustomer = userRole === "customer" && !isGuest;
   const isBusiness = userRole === "business";
   // Staff get the owner's tab bar: + quick menu in the center, Profile in the header
@@ -202,16 +205,16 @@ export default function DashboardLayout() {
 
   // Socket: users.{userId} for inbox updates. Only when !isGuest. Close on logout (isGuest) or unmount; keep on in background.
   useEffect(() => {
-    if (isGuest || !user?.id || !user?.accessToken) {
+    if (isGuest || !userId || !userAccessToken) {
       if (isGuest) dispatch(resetChatContacts());
       return;
     }
-    const echo = getEcho(user.accessToken);
+    const echo = getEcho(userAccessToken);
     if (!echo) {
       if (__DEV__) console.log("[InboxSocket] getEcho returned null — no socket");
       return;
     }
-    const channelName = `users.${user.id}`;
+    const channelName = `users.${userId}`;
     if (__DEV__) console.log("[InboxSocket] subscribe", channelName);
     const channel = echo.private(channelName);
 
@@ -241,7 +244,7 @@ export default function DashboardLayout() {
       channel.stopListening(MODE_CHANGED);
       echo.leave(channelName);
     };
-  }, [isGuest, user?.id, user?.accessToken, dispatch]);
+  }, [isGuest, userId, userAccessToken, dispatch]);
 
   const fetchUserDetails = async () => {
     try {

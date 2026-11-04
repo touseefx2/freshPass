@@ -256,6 +256,7 @@ export default function WorkHistory({
             onPress={() => {
               router.push("/(main)/dashboard/(home)/workHistory");
             }}
+            hitSlop={12}
           >
             <Text style={styles.sectionLink}>{t("viewAll")}</Text>
           </TouchableOpacity>

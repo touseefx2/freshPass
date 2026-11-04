@@ -110,7 +110,8 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
       marginHorizontal: moderateWidthScale(20),
-      marginBottom: moderateHeightScale(12),
+      // 12 total: the other 10 moved into styles.tab paddingTop (bigger tap area)
+      marginBottom: moderateHeightScale(12) - moderateHeightScale(10),
       marginTop: moderateHeightScale(20),
     },
     tabsContainer: {
@@ -125,6 +126,7 @@ const createStyles = (theme: Theme) =>
     tab: {
       alignItems: "center",
       justifyContent: "center",
+      paddingTop: moderateHeightScale(10),
       paddingBottom: moderateHeightScale(8),
       width: "33%",
     },

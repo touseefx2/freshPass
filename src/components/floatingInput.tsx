@@ -16,6 +16,7 @@ import {
   TextInput,
   TextInputProps,
   TextStyle,
+  TouchableWithoutFeedback,
   View,
   ViewStyle,
 } from "react-native";
@@ -127,6 +128,26 @@ const FloatingInput = forwardRef<TextInput, FloatingInputProps>(
     const styles = useMemo(() => createStyles(theme), [theme]);
     const [isFocused, setIsFocused] = useState(false);
     const hasValue = Boolean(value && value.toString().length > 0);
+
+    // The visible box is taller than the TextInput itself; let a tap anywhere
+    // on the box (padding, label) focus the field. Disabled when read-only so
+    // parent touchables (e.g. dropdown pickers) still receive the tap.
+    const inputRef = useRef<TextInput | null>(null);
+    const setInputRef = useCallback(
+      (node: TextInput | null) => {
+        inputRef.current = node;
+        if (typeof ref === "function") {
+          ref(node);
+        } else if (ref) {
+          ref.current = node;
+        }
+      },
+      [ref]
+    );
+    const canFocusFromBox = rest.editable !== false && rest.readOnly !== true;
+    const focusInput = useCallback(() => {
+      inputRef.current?.focus();
+    }, []);
     const labelAnimation = useRef(new Animated.Value(hasValue ? 1 : 0)).current;
 
     const shouldShowLabel = hasValue || (floatOnFocus && isFocused);
@@ -229,58 +250,69 @@ const FloatingInput = forwardRef<TextInput, FloatingInputProps>(
     };
 
     return (
-      <Animated.View
-        style={[
-          styles.container,
-          containerAnimatedStyle,
-          (isFocused || hasValue) && styles.containerFocused,
-          containerStyle,
-        ]}
+      <TouchableWithoutFeedback
+        onPress={focusInput}
+        disabled={!canFocusFromBox}
+        accessible={false}
+        focusable={false}
       >
-        <Animated.Text
+        <Animated.View
           style={[
-            styles.label,
-            dynamicLabelStyle,
-            labelAnimatedStyle,
-            labelStyle,
+            styles.container,
+            containerAnimatedStyle,
+            (isFocused || hasValue) && styles.containerFocused,
+            containerStyle,
           ]}
         >
-          {label}
-          {required ? <Text style={styles.requiredAsterisk}> *</Text> : null}
-        </Animated.Text>
-        <View style={styles.inputRow}>
-          {leftAccessoryContent ? (
-            <View style={styles.leftAccessoryContainer}>
-              {leftAccessoryContent}
-            </View>
-          ) : null}
-          <TextInput
-            ref={ref}
-            style={[styles.input, inputStyle]}
-            value={value}
-            placeholder={resolvedPlaceholder}
-            placeholderTextColor={placeholderTextColor ?? theme.lightGreen2}
-            onFocus={handleFocus}
-            onBlur={handleBlur}
-            onChangeText={onChangeText}
-            {...rest}
-          />
-          {showClear && (
-            <Pressable
-              onPress={handleClear}
-              style={styles.clearButton}
-              hitSlop={moderateWidthScale(8)}
-            >
-              <CloseIcon color={theme.darkGreen} />
-            </Pressable>
-          )}
-          {rightAccessoryContent ? (
-            <View style={styles.accessoryContainer}>
-              {rightAccessoryContent}
-            </View>
-          ) : null}
-        </View>
-      </Animated.View>
+          <Animated.Text
+            pointerEvents="none"
+            style={[
+              styles.label,
+              dynamicLabelStyle,
+              labelAnimatedStyle,
+              labelStyle,
+            ]}
+          >
+            {label}
+            {required ? <Text style={styles.requiredAsterisk}> *</Text> : null}
+          </Animated.Text>
+          <View style={styles.inputRow}>
+            {leftAccessoryContent ? (
+              <View style={styles.leftAccessoryContainer}>
+                {leftAccessoryContent}
+              </View>
+            ) : null}
+            <TextInput
+              ref={setInputRef}
+              style={[styles.input, inputStyle]}
+              value={value}
+              placeholder={resolvedPlaceholder}
+              placeholderTextColor={placeholderTextColor ?? theme.lightGreen2}
+              onFocus={handleFocus}
+              onBlur={handleBlur}
+              onChangeText={onChangeText}
+              // iOS: a read-only TextInput still claims the touch, so parent
+              // touchables (e.g. dropdown pickers) never fire; let it pass.
+              pointerEvents={canFocusFromBox ? undefined : "none"}
+              {...rest}
+            />
+            {showClear && (
+              <Pressable
+                onPress={handleClear}
+                style={styles.clearButton}
+                hitSlop={moderateWidthScale(8)}
+              >
+                <CloseIcon color={theme.darkGreen} />
+              </Pressable>
+            )}
+            {rightAccessoryContent ? (
+              <View style={styles.accessoryContainer}>
+                {rightAccessoryContent}
+              </View>
+            ) : null}
+          </View>
+        </Animated.View>
+      </TouchableWithoutFeedback>
     );
   }
 );

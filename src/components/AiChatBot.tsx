@@ -1189,6 +1189,7 @@ const AiChatBot: React.FC = () => {
           style={[styles.minimizedTab, styles.shadowLight]}
           onPress={handleExpand}
           activeOpacity={0.9}
+          hitSlop={{ top: 10, bottom: 10, left: 14, right: 4 }}
         >
           <Ionicons
             name="chevron-back"
@@ -1243,6 +1244,8 @@ const AiChatBot: React.FC = () => {
           style={[styles.minimizeArrow, styles.shadowLight]}
           onPress={handleMinimize}
           activeOpacity={0.9}
+          // No right slop: the FAB is only 2pt away
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 0 }}
         >
           <Ionicons
             name="chevron-forward"
@@ -1274,6 +1277,8 @@ const AiChatBot: React.FC = () => {
             style={styles.buttonInner}
             onPress={menuExpanded ? handleCloseMenu : handleFloatingButtonPress}
             activeOpacity={0.9}
+            // Reach over floatingButton's 3pt border + 2pt padding ring
+            hitSlop={3 + moderateWidthScale(2)}
           >
             <View style={styles.aiIconContainer}>
               {menuExpanded ? (

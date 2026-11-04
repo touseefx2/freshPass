@@ -89,10 +89,18 @@ const createStyles = (theme: Theme) =>
       width: "100%",
       height: "100%",
     },
+    // Touch boxes are 4pt bigger on every side than the visible 24pt icon box
+    // (RNGH tap ignores hitSlop); the padding keeps the icon box where it was.
     deleteButton: {
       position: "absolute",
-      top: moderateHeightScale(4),
-      right: moderateWidthScale(4),
+      top: 0,
+      right: 0,
+      paddingTop: moderateHeightScale(4),
+      paddingBottom: moderateHeightScale(4),
+      paddingLeft: moderateWidthScale(4),
+      paddingRight: moderateWidthScale(4),
+    },
+    deleteIconBox: {
       width: moderateWidthScale(24),
       height: moderateWidthScale(24),
       alignItems: "center",
@@ -100,8 +108,14 @@ const createStyles = (theme: Theme) =>
     },
     setMainButton: {
       position: "absolute",
-      top: moderateHeightScale(4),
-      left: moderateWidthScale(4),
+      top: 0,
+      left: 0,
+      paddingTop: moderateHeightScale(4),
+      paddingBottom: moderateHeightScale(4),
+      paddingLeft: moderateWidthScale(4),
+      paddingRight: moderateWidthScale(4),
+    },
+    setMainCircle: {
       width: moderateWidthScale(24),
       height: moderateWidthScale(24),
       borderRadius: moderateWidthScale(12),
@@ -237,22 +251,26 @@ export default function PortfolioPhotoGrid<P extends PortfolioGridPhoto>({
                 style={styles.setMainButton}
                 onTap={() => handleSetMain(item.id)}
               >
-                <MaterialIcons
-                  name="star-outline"
-                  size={moderateWidthScale(16)}
-                  color={theme.orangeBrown}
-                />
+                <View style={styles.setMainCircle}>
+                  <MaterialIcons
+                    name="star-outline"
+                    size={moderateWidthScale(16)}
+                    color={theme.orangeBrown}
+                  />
+                </View>
               </Sortable.Touchable>
             )}
             <Sortable.Touchable
               style={styles.deleteButton}
               onTap={() => handleDelete(item.id)}
             >
-              <MaterialIcons
-                name="delete-outline"
-                size={moderateWidthScale(20)}
-                color={theme.red}
-              />
+              <View style={styles.deleteIconBox}>
+                <MaterialIcons
+                  name="delete-outline"
+                  size={moderateWidthScale(20)}
+                  color={theme.red}
+                />
+              </View>
             </Sortable.Touchable>
           </View>
         </Sortable.Handle>

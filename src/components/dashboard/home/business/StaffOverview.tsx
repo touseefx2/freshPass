@@ -353,7 +353,6 @@ export default function StaffOverview({ staff, statsFor, onStaffChanged }: Props
                   })
                 }
                 onLongPress={() => setMenuStaff(member)}
-                delayLongPress={350}
                 accessibilityRole="button"
                 accessibilityLabel={[
                   member.name,

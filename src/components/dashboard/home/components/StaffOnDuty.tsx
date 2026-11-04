@@ -517,7 +517,6 @@ function StaffMotionCard({
           style={styles.staffCard}
           onPress={onPress}
           onLongPress={onLongPress}
-          delayLongPress={350}
         >
           <AppImage
             uri={getStaffImageUri(staff)}

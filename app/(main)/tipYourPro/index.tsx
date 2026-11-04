@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   ScrollView,
@@ -6,6 +6,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -225,6 +226,7 @@ export default function TipYourProScreen() {
   const [customAmount, setCustomAmount] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
+  const customAmountInputRef = useRef<TextInput>(null);
 
   const appointmentId = Number(params.appointmentId);
   const hasValidAppointmentId =
@@ -435,24 +437,31 @@ export default function TipYourProScreen() {
           })}
         </View>
 
-        <View style={styles.customAmountContainer}>
-          <Text style={styles.customAmountLabel}>Custom amount</Text>
-          <View style={styles.customAmountInputRow}>
-            <Text style={styles.currencyPrefix}>$</Text>
-            <TextInput
-              style={styles.customAmountInput}
-              value={customAmount}
-              onChangeText={handleCustomAmountChange}
-              keyboardType="decimal-pad"
-              placeholder="0.00"
-              placeholderTextColor={theme.lightGreen5}
-            />
+        <TouchableWithoutFeedback
+          accessible={false}
+          focusable={false}
+          onPress={() => customAmountInputRef.current?.focus()}
+        >
+          <View style={styles.customAmountContainer}>
+            <Text style={styles.customAmountLabel}>Custom amount</Text>
+            <View style={styles.customAmountInputRow}>
+              <Text style={styles.currencyPrefix}>$</Text>
+              <TextInput
+                ref={customAmountInputRef}
+                style={styles.customAmountInput}
+                value={customAmount}
+                onChangeText={handleCustomAmountChange}
+                keyboardType="decimal-pad"
+                placeholder="0.00"
+                placeholderTextColor={theme.lightGreen5}
+              />
+            </View>
+            <Text style={styles.amountHint}>
+              Min {formatTipAmount(tipDetails.minAmount, tipDetails.currency)} · Max{" "}
+              {formatTipAmount(tipDetails.maxAmount, tipDetails.currency)}
+            </Text>
           </View>
-          <Text style={styles.amountHint}>
-            Min {formatTipAmount(tipDetails.minAmount, tipDetails.currency)} · Max{" "}
-            {formatTipAmount(tipDetails.maxAmount, tipDetails.currency)}
-          </Text>
-        </View>
+        </TouchableWithoutFeedback>
       </>
     );
   };

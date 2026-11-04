@@ -295,6 +295,7 @@ export default function AvailableNowCard({
             style={styles.bookBtn}
             onPress={() => onBook(item)}
             activeOpacity={0.85}
+            hitSlop={10}
             accessibilityRole="button"
             accessibilityLabel={t("anBook")}
           >

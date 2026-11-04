@@ -11,6 +11,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  TouchableWithoutFeedback,
   View,
 } from "react-native";
 import { AntDesign, Feather } from "@expo/vector-icons";
@@ -626,52 +627,58 @@ export default function StepOne() {
         </View>
 
         <View style={[styles.field, styles.phoneField]}>
-          <View style={styles.phoneFieldContainer}>
-            <Text style={styles.inputLabel}>{t("phoneNumber")}</Text>
-            <View style={styles.phoneInputContainer}>
-              <Pressable
-                onPress={() => setPickerVisible(true)}
-                style={styles.countrySelector}
-                hitSlop={moderateWidthScale(10)}
-              >
-                <Text style={styles.countryCodeText}>{countryCode}</Text>
-                <AntDesign
-                  name="caret-down"
-                  size={moderateWidthScale(12)}
-                  color={(colors as Theme).darkGreen}
-                />
-              </Pressable>
-              <View style={styles.segmentWrapper}>
-                <TextInput
-                  ref={phoneInputRef}
-                  style={styles.hiddenInput}
-                  value={formattedPhoneValue}
-                  onChangeText={handlePhoneChange}
-                  onSelectionChange={handleSelectionChange}
-                  selection={selection}
-                  keyboardType="phone-pad"
-                  returnKeyType="done"
-                  maxLength={phonePlaceholder.length}
-                  showSoftInputOnFocus={true}
-                  caretHidden={false}
-                />
-                <View style={styles.segInputWrapper} pointerEvents="none">
-                  {segmentNodes}
-                </View>
-              </View>
-              {!!phoneNumber && (
+          <TouchableWithoutFeedback
+            accessible={false}
+            focusable={false}
+            onPress={() => phoneInputRef.current?.focus()}
+          >
+            <View style={styles.phoneFieldContainer}>
+              <Text style={styles.inputLabel}>{t("phoneNumber")}</Text>
+              <View style={styles.phoneInputContainer}>
                 <Pressable
-                  onPress={() => {
-                    previousDigitCountRef.current = 0;
-                    dispatch(setPhoneNumber({ value: "", isValid: false }));
-                  }}
+                  onPress={() => setPickerVisible(true)}
+                  style={styles.countrySelector}
                   hitSlop={moderateWidthScale(10)}
                 >
-                  <CloseIcon color={(colors as Theme).darkGreen} />
+                  <Text style={styles.countryCodeText}>{countryCode}</Text>
+                  <AntDesign
+                    name="caret-down"
+                    size={moderateWidthScale(12)}
+                    color={(colors as Theme).darkGreen}
+                  />
                 </Pressable>
-              )}
+                <View style={styles.segmentWrapper}>
+                  <TextInput
+                    ref={phoneInputRef}
+                    style={styles.hiddenInput}
+                    value={formattedPhoneValue}
+                    onChangeText={handlePhoneChange}
+                    onSelectionChange={handleSelectionChange}
+                    selection={selection}
+                    keyboardType="phone-pad"
+                    returnKeyType="done"
+                    maxLength={phonePlaceholder.length}
+                    showSoftInputOnFocus={true}
+                    caretHidden={false}
+                  />
+                  <View style={styles.segInputWrapper} pointerEvents="none">
+                    {segmentNodes}
+                  </View>
+                </View>
+                {!!phoneNumber && (
+                  <Pressable
+                    onPress={() => {
+                      previousDigitCountRef.current = 0;
+                      dispatch(setPhoneNumber({ value: "", isValid: false }));
+                    }}
+                    hitSlop={moderateWidthScale(10)}
+                  >
+                    <CloseIcon color={(colors as Theme).darkGreen} />
+                  </Pressable>
+                )}
+              </View>
             </View>
-          </View>
+          </TouchableWithoutFeedback>
 
           {isPhoneInvalid && (
             <Text style={styles.errorText}>{t("enterValidPhoneNumber")}</Text>

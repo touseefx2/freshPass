@@ -1,4 +1,10 @@
-import React, { createContext, useContext, useState } from "react";
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useMemo,
+  useState,
+} from "react";
 import NotificationBanner from "@/src/components/notificationBanner";
 
 interface NotificationContextType {
@@ -39,22 +45,32 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
   >("info");
   const [bannerDuration, setBannerDuration] = useState(4000);
 
-  const showBanner = (
-    title: string,
-    message: string,
-    type: "success" | "error" | "warning" | "info",
-    duration: number = 4000,
-  ) => {
-    setBannerTitle(title);
-    setBannerMessage(message);
-    setBannerType(type);
-    setBannerDuration(duration);
-    setBannerVisible(true);
-  };
+  // Stable identity (state setters never change), so consumers and effects
+  // that list showBanner in their deps don't re-run on every banner.
+  const showBanner = useCallback(
+    (
+      title: string,
+      message: string,
+      type: "success" | "error" | "warning" | "info",
+      duration: number = 4000,
+    ) => {
+      setBannerTitle(title);
+      setBannerMessage(message);
+      setBannerType(type);
+      setBannerDuration(duration);
+      setBannerVisible(true);
+    },
+    [],
+  );
 
-  const contextValue: NotificationContextType = {
-    showBanner,
-  };
+  const contextValue: NotificationContextType = useMemo(
+    () => ({
+      showBanner,
+    }),
+    [showBanner],
+  );
+
+  const handleBannerDismiss = useCallback(() => setBannerVisible(false), []);
 
   return (
     <NotificationContext.Provider value={contextValue}>
@@ -65,7 +81,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
         message={bannerMessage}
         type={bannerType}
         duration={bannerDuration}
-        onDismiss={() => setBannerVisible(false)}
+        onDismiss={handleBannerDismiss}
       />
     </NotificationContext.Provider>
   );

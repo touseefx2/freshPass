@@ -3,6 +3,7 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   View,
   ScrollView,
 } from "react-native";
@@ -926,34 +927,40 @@ export default function StaffAvailabilityScreen() {
 
             {salonBusinessHours && (
               <View style={styles.copyCheckboxContainer}>
-                <View style={styles.copyHoursSection}>
-                  <TouchableOpacity
-                    onPress={() => setCopySalonHours(!copySalonHours)}
-                  >
-                    <View
-                      style={[
-                        styles.checkbox,
-                        copySalonHours && styles.checkboxChecked,
-                      ]}
+                <TouchableWithoutFeedback
+                  accessible={false}
+                  focusable={false}
+                  onPress={() => setCopySalonHours(!copySalonHours)}
+                >
+                  <View style={styles.copyHoursSection}>
+                    <TouchableOpacity
+                      onPress={() => setCopySalonHours(!copySalonHours)}
                     >
-                      {copySalonHours && (
-                        <Feather
-                          name="check"
-                          size={moderateWidthScale(14)}
-                          color={theme.white}
-                        />
-                      )}
+                      <View
+                        style={[
+                          styles.checkbox,
+                          copySalonHours && styles.checkboxChecked,
+                        ]}
+                      >
+                        {copySalonHours && (
+                          <Feather
+                            name="check"
+                            size={moderateWidthScale(14)}
+                            color={theme.white}
+                          />
+                        )}
+                      </View>
+                    </TouchableOpacity>
+                    <View style={{ gap: 3, width: "90%" }}>
+                      <Text style={styles.checkboxLabel}>
+                        {t("copyBusinessHours", { name: businessName })}
+                      </Text>
+                      <Text style={styles.sectionDescription}>
+                        {t("copyBusinessHoursDescription")}
+                      </Text>
                     </View>
-                  </TouchableOpacity>
-                  <View style={{ gap: 3, width: "90%" }}>
-                    <Text style={styles.checkboxLabel}>
-                      {t("copyBusinessHours", { name: businessName })}
-                    </Text>
-                    <Text style={styles.sectionDescription}>
-                      {t("copyBusinessHoursDescription")}
-                    </Text>
                   </View>
-                </View>
+                </TouchableWithoutFeedback>
               </View>
             )}
           </>

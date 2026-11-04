@@ -111,6 +111,7 @@ export default function HomeSlotOffersSection() {
         <TouchableOpacity
           onPress={() => router.push("/(main)/slotOffers" as any)}
           activeOpacity={0.75}
+          hitSlop={12}
           accessibilityRole="button"
         >
           <Text style={styles.seeAll}>{t("seeAll")}</Text>

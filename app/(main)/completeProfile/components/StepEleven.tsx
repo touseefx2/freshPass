@@ -1,5 +1,12 @@
-import React, { useMemo, useState, useEffect } from "react";
-import { StyleSheet, Text, View, TextInput, Pressable } from "react-native";
+import React, { useMemo, useState, useEffect, useRef } from "react";
+import {
+  StyleSheet,
+  Text,
+  View,
+  TextInput,
+  Pressable,
+  TouchableWithoutFeedback,
+} from "react-native";
 import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
@@ -107,6 +114,11 @@ export default function StepEleven() {
   const INSTAGRAM_PREFIX = "www.instagram.com/";
   const FACEBOOK_PREFIX = "www.facebook.com/";
 
+  // Tapping anywhere on a field box (label, prefix, padding) focuses its input.
+  const tiktokRef = useRef<TextInput>(null);
+  const instagramRef = useRef<TextInput>(null);
+  const facebookRef = useRef<TextInput>(null);
+
   // Extract usernames from stored URLs
   const [tiktokUsername, setTiktokUsername] = useState(
     extractUsername(tiktokUrl, TIKTOK_PREFIX)
@@ -174,74 +186,95 @@ export default function StepEleven() {
       </View>
 
       <View style={styles.formGroup}>
-        <View style={styles.field}>
-          <Text style={styles.label}>TikTok</Text>
-          <View style={styles.inputRow}>
-            <Text style={styles.prefix}>{TIKTOK_PREFIX}</Text>
-            <TextInput
-              style={styles.input}
-              value={tiktokUsername}
-              onChangeText={handleTiktokChange}
-              placeholder="username"
-              placeholderTextColor={theme.lightGreen2}
-            />
-            {tiktokUsername && tiktokUsername.trim() !== "" && (
-              <Pressable
-                onPress={handleClearTiktok}
-                style={styles.clearButton}
-                hitSlop={moderateWidthScale(8)}
-              >
-                <CloseIcon color={theme.darkGreen} />
-              </Pressable>
-            )}
+        <TouchableWithoutFeedback
+          accessible={false}
+          focusable={false}
+          onPress={() => tiktokRef.current?.focus()}
+        >
+          <View style={styles.field}>
+            <Text style={styles.label}>TikTok</Text>
+            <View style={styles.inputRow}>
+              <Text style={styles.prefix}>{TIKTOK_PREFIX}</Text>
+              <TextInput
+                ref={tiktokRef}
+                style={styles.input}
+                value={tiktokUsername}
+                onChangeText={handleTiktokChange}
+                placeholder="username"
+                placeholderTextColor={theme.lightGreen2}
+              />
+              {tiktokUsername && tiktokUsername.trim() !== "" && (
+                <Pressable
+                  onPress={handleClearTiktok}
+                  style={styles.clearButton}
+                  hitSlop={moderateWidthScale(8)}
+                >
+                  <CloseIcon color={theme.darkGreen} />
+                </Pressable>
+              )}
+            </View>
           </View>
-        </View>
+        </TouchableWithoutFeedback>
 
-        <View style={styles.field}>
-          <Text style={styles.label}>Instagram</Text>
-          <View style={styles.inputRow}>
-            <Text style={styles.prefix}>{INSTAGRAM_PREFIX}</Text>
-            <TextInput
-              style={styles.input}
-              value={instagramUsername}
-              onChangeText={handleInstagramChange}
-              placeholder="username"
-              placeholderTextColor={theme.lightGreen2}
-            />
-            {instagramUsername && instagramUsername.trim() !== "" && (
-              <Pressable
-                onPress={handleClearInstagram}
-                style={styles.clearButton}
-                hitSlop={moderateWidthScale(8)}
-              >
-                <CloseIcon color={theme.darkGreen} />
-              </Pressable>
-            )}
+        <TouchableWithoutFeedback
+          accessible={false}
+          focusable={false}
+          onPress={() => instagramRef.current?.focus()}
+        >
+          <View style={styles.field}>
+            <Text style={styles.label}>Instagram</Text>
+            <View style={styles.inputRow}>
+              <Text style={styles.prefix}>{INSTAGRAM_PREFIX}</Text>
+              <TextInput
+                ref={instagramRef}
+                style={styles.input}
+                value={instagramUsername}
+                onChangeText={handleInstagramChange}
+                placeholder="username"
+                placeholderTextColor={theme.lightGreen2}
+              />
+              {instagramUsername && instagramUsername.trim() !== "" && (
+                <Pressable
+                  onPress={handleClearInstagram}
+                  style={styles.clearButton}
+                  hitSlop={moderateWidthScale(8)}
+                >
+                  <CloseIcon color={theme.darkGreen} />
+                </Pressable>
+              )}
+            </View>
           </View>
-        </View>
+        </TouchableWithoutFeedback>
 
-        <View style={styles.field}>
-          <Text style={styles.label}>Facebook</Text>
-          <View style={styles.inputRow}>
-            <Text style={styles.prefix}>{FACEBOOK_PREFIX}</Text>
-            <TextInput
-              style={styles.input}
-              value={facebookUsername}
-              onChangeText={handleFacebookChange}
-              placeholder="username"
-              placeholderTextColor={theme.lightGreen2}
-            />
-            {facebookUsername && facebookUsername.trim() !== "" && (
-              <Pressable
-                onPress={handleClearFacebook}
-                style={styles.clearButton}
-                hitSlop={moderateWidthScale(8)}
-              >
-                <CloseIcon color={theme.darkGreen} />
-              </Pressable>
-            )}
+        <TouchableWithoutFeedback
+          accessible={false}
+          focusable={false}
+          onPress={() => facebookRef.current?.focus()}
+        >
+          <View style={styles.field}>
+            <Text style={styles.label}>Facebook</Text>
+            <View style={styles.inputRow}>
+              <Text style={styles.prefix}>{FACEBOOK_PREFIX}</Text>
+              <TextInput
+                ref={facebookRef}
+                style={styles.input}
+                value={facebookUsername}
+                onChangeText={handleFacebookChange}
+                placeholder="username"
+                placeholderTextColor={theme.lightGreen2}
+              />
+              {facebookUsername && facebookUsername.trim() !== "" && (
+                <Pressable
+                  onPress={handleClearFacebook}
+                  style={styles.clearButton}
+                  hitSlop={moderateWidthScale(8)}
+                >
+                  <CloseIcon color={theme.darkGreen} />
+                </Pressable>
+              )}
+            </View>
           </View>
-        </View>
+        </TouchableWithoutFeedback>
       </View>
     </View>
   );

@@ -4,6 +4,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View,
 } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
@@ -146,9 +147,14 @@ export default function HomeAvailableNowSection() {
           <View style={styles.liveDot} />
           <Text style={styles.title}>{t("availableNow")}</Text>
         </View>
-        <Text style={styles.seeAll} onPress={openAll}>
-          {t("seeAll")}
-        </Text>
+        <TouchableOpacity
+          onPress={openAll}
+          activeOpacity={0.75}
+          accessibilityRole="button"
+          hitSlop={12}
+        >
+          <Text style={styles.seeAll}>{t("seeAll")}</Text>
+        </TouchableOpacity>
       </View>
 
       {loading && items.length === 0 ? (

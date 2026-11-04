@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   ActivityIndicator,
   FlatList,
+  Keyboard,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -292,6 +293,7 @@ export default function CustomersList() {
 
   const handleCustomerPress = useCallback(
     (customer: BusinessCustomer) => {
+      Keyboard.dismiss();
       router.push({
         pathname: "/(main)/businessCustomerDetail",
         params: { id: customer.id.toString() },
@@ -388,6 +390,7 @@ export default function CustomersList() {
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
             contentContainerStyle={styles.filterScrollContent}
           >
             {FILTER_OPTIONS.map((option) => {
@@ -421,6 +424,7 @@ export default function CustomersList() {
           renderItem={renderCustomerRow}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
           onEndReached={handleLoadMore}
           onEndReachedThreshold={0.3}
           refreshControl={

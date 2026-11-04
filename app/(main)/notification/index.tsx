@@ -285,15 +285,18 @@ export default function NotificationsScreen() {
   const { showBanner } = useNotificationContext();
   const dispatch = useAppDispatch();
   const router = useRouter();
-  const user = useAppSelector((state) => state.user);
-  const userRole = user.userRole;
-  const isGuest = user.isGuest;
-  const accessToken = user.accessToken;
+  const userRole = useAppSelector((state) => state.user.userRole);
+  const isGuest = useAppSelector((state) => state.user.isGuest);
+  const accessToken = useAppSelector((state) => state.user.accessToken);
   // Same race as chat: after guest Sign In, logout clears isGuest before
   // navigation finishes — calling with only the env guest token 401s.
   const canFetchNotifications = !isGuest && Boolean(accessToken);
   // Business/Staff: only the active mode's notifications (+ legacy ones without a mode)
-  const notificationMode = getNotificationMode(user);
+  // Selector returns a primitive ("business" | "customer" | undefined), so
+  // unrelated user-slice updates don't re-render this screen.
+  const notificationMode = useAppSelector((state) =>
+    getNotificationMode(state.user),
+  );
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);

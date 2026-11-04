@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Modal,
@@ -8,6 +8,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
@@ -365,6 +366,7 @@ export default function PayAndTipModal({
   const [customAmount, setCustomAmount] = useState("");
   const [noTip, setNoTip] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
+  const amountInputRef = useRef<TextInput>(null);
 
   const resetLocalState = useCallback(() => {
     setTipDetails(null);
@@ -574,26 +576,33 @@ export default function PayAndTipModal({
                   </View>
                 ) : (
                   <>
-                    <View
-                      style={[
-                        styles.amountDisplay,
-                        hasAmount && styles.amountDisplayActive,
-                      ]}
+                    <TouchableWithoutFeedback
+                      accessible={false}
+                      focusable={false}
+                      onPress={() => amountInputRef.current?.focus()}
                     >
-                      <Text style={styles.amountPlaceholderLabel}>Your tip</Text>
-                      <View style={styles.amountInputRow}>
-                        <Text style={styles.currencyPrefix}>$</Text>
-                        <TextInput
-                          style={styles.customAmountInput}
-                          value={customAmount}
-                          onChangeText={handleCustomAmountChange}
-                          keyboardType="decimal-pad"
-                          placeholder="0"
-                          placeholderTextColor={theme.lightGreen5}
-                          selectionColor={theme.orangeBrown}
-                        />
+                      <View
+                        style={[
+                          styles.amountDisplay,
+                          hasAmount && styles.amountDisplayActive,
+                        ]}
+                      >
+                        <Text style={styles.amountPlaceholderLabel}>Your tip</Text>
+                        <View style={styles.amountInputRow}>
+                          <Text style={styles.currencyPrefix}>$</Text>
+                          <TextInput
+                            ref={amountInputRef}
+                            style={styles.customAmountInput}
+                            value={customAmount}
+                            onChangeText={handleCustomAmountChange}
+                            keyboardType="decimal-pad"
+                            placeholder="0"
+                            placeholderTextColor={theme.lightGreen5}
+                            selectionColor={theme.orangeBrown}
+                          />
+                        </View>
                       </View>
-                    </View>
+                    </TouchableWithoutFeedback>
 
                     <TouchableOpacity
                       style={styles.noTipButton}

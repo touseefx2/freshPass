@@ -136,6 +136,7 @@ export default function DatePickerDropdown({
           >
             <ScrollView
               nestedScrollEnabled
+              keyboardShouldPersistTaps="handled"
               showsVerticalScrollIndicator={false}
             >
               {options.map((option, index) => (

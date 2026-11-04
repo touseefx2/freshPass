@@ -4,9 +4,8 @@ import CalendarScreen from "@/src/components/dashboard/calendar";
 import BookingScreen from "@/src/components/dashboard/booking";
  
 export default function Home() {
-  const user = useAppSelector((state) => state.user);
-  const userRole = user.userRole;
-  const isGuest = user.isGuest;
+  const userRole = useAppSelector((state) => state.user.userRole);
+  const isGuest = useAppSelector((state) => state.user.isGuest);
   
   
   if (userRole === "customer" || isGuest) {

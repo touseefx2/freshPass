@@ -268,6 +268,8 @@ export default function LocationEnableModal({
               style={styles.skipButton}
               onPress={() => onClose(false)}
               activeOpacity={0.7}
+              // Enable button is only 12 above, so keep vertical slop small
+              hitSlop={{ top: 6, bottom: 6, left: 16, right: 16 }}
             >
               <Text style={styles.skipButtonText}>{t("skipForNow")}</Text>
             </TouchableOpacity>

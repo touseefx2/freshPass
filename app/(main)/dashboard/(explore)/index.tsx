@@ -4,9 +4,8 @@ import NotificationsScreen from "../../notification";
 import ExploreScreen from "./Explore";
 
 export default function Home() {
-  const user = useAppSelector((state) => state.user);
-  const userRole = user.userRole;
-  const isGuest = user.isGuest;
+  const userRole = useAppSelector((state) => state.user.userRole);
+  const isGuest = useAppSelector((state) => state.user.isGuest);
   const isCustomer = userRole === "customer" || isGuest;
 
   if (isCustomer) {

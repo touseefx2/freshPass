@@ -526,6 +526,7 @@ export default function CustomerDetail() {
                 style={styles.callNowButton}
                 onPress={handleEmailNow}
                 activeOpacity={0.7}
+                hitSlop={11}
               >
                 <Ionicons name="mail" size={widthScale(12)} color={theme.white} />
               </TouchableOpacity>
@@ -555,6 +556,7 @@ export default function CustomerDetail() {
                 style={styles.callNowButton}
                 onPress={handleCallNow}
                 activeOpacity={0.7}
+                hitSlop={11}
               >
                 <Ionicons
                   name="call"

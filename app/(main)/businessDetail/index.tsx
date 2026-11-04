@@ -4486,6 +4486,7 @@ export default function BusinessDetailScreen() {
 
   const renderTopHeader = (actionsEnabled: boolean) => (
     <View
+      pointerEvents="box-none"
       style={[
         styles.header,
         showViewerBanner && {

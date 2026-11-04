@@ -570,7 +570,11 @@ export default function BusinessEarningsScreen() {
       <View style={styles.card}>
         <View style={styles.sectionHeaderRow}>
           <Text style={styles.sectionTitleInline}>{t("earningsByStaff")}</Text>
-          <TouchableOpacity onPress={openStaffScreen} activeOpacity={0.7}>
+          <TouchableOpacity
+            onPress={openStaffScreen}
+            activeOpacity={0.7}
+            hitSlop={12}
+          >
             <Text style={styles.seeAll}>{t("seeAll")}</Text>
           </TouchableOpacity>
         </View>
@@ -780,7 +784,11 @@ export default function BusinessEarningsScreen() {
             <Text style={styles.sectionTitleInline}>
               {t("earningsTransactions")}
             </Text>
-            <TouchableOpacity onPress={openTransactions} activeOpacity={0.7}>
+            <TouchableOpacity
+              onPress={openTransactions}
+              activeOpacity={0.7}
+              hitSlop={12}
+            >
               <Text style={styles.seeAll}>{t("seeAll")}</Text>
             </TouchableOpacity>
           </View>

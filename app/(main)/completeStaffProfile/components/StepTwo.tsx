@@ -1,5 +1,11 @@
 import React, { useMemo, useState, useEffect } from "react";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import {
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  View,
+} from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
@@ -459,35 +465,41 @@ export default function StepTwo() {
 
       {salonBusinessHours && (
         <View style={styles.copyCheckboxContainer}>
-          <View style={styles.copyHoursSection}>
-            <TouchableOpacity
-              onPress={handleToggleCopySalonHours}
-            >
-              <View
-                style={[
-                  styles.checkbox,
-                  copySalonHours && styles.checkboxChecked,
-                ]}
+          <TouchableWithoutFeedback
+            accessible={false}
+            focusable={false}
+            onPress={handleToggleCopySalonHours}
+          >
+            <View style={styles.copyHoursSection}>
+              <TouchableOpacity
+                onPress={handleToggleCopySalonHours}
               >
-                {copySalonHours && (
-                  <Feather
-                    name="check"
-                    size={moderateWidthScale(14)}
-                    color={theme.white}
-                  />
-                )}
+                <View
+                  style={[
+                    styles.checkbox,
+                    copySalonHours && styles.checkboxChecked,
+                  ]}
+                >
+                  {copySalonHours && (
+                    <Feather
+                      name="check"
+                      size={moderateWidthScale(14)}
+                      color={theme.white}
+                    />
+                  )}
+                </View>
+              </TouchableOpacity>
+              <View style={{ gap: 3, width: "90%" }}>
+                <Text style={styles.checkboxLabel}>
+                  Copy {businessName} business hours
+                </Text>
+                <Text style={styles.sectionDescription}>
+                  This automatically sets their schedule to match the salon's
+                  open hours.
+                </Text>
               </View>
-            </TouchableOpacity>
-            <View style={{ gap: 3, width: "90%" }}>
-              <Text style={styles.checkboxLabel}>
-                Copy {businessName} business hours
-              </Text>
-              <Text style={styles.sectionDescription}>
-                This automatically sets their schedule to match the salon's open
-                hours.
-              </Text>
             </View>
-          </View>
+          </TouchableWithoutFeedback>
         </View>
       )}
 

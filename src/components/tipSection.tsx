@@ -1,9 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   StyleSheet,
   Text,
   TextInput,
+  TouchableWithoutFeedback,
   View,
 } from "react-native";
 import AppImage from "@/src/components/AppImage";
@@ -417,6 +418,7 @@ export default function TipSection({
   const [tipDetails, setTipDetails] = useState<TipDetails | null>(null);
   const [customAmount, setCustomAmount] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const amountInputRef = useRef<TextInput>(null);
 
   const paidTip = tipDetails?.tip ?? initialTip ?? null;
   const tipDeclined = tipDetails?.tipDeclined ?? false;
@@ -678,26 +680,33 @@ export default function TipSection({
       <View style={styles.tipFormPanel}>
         <Text style={styles.amountSectionTitle}>Amount</Text>
 
-        <View
-          style={[
-            styles.amountDisplay,
-            hasAmount && styles.amountDisplayActive,
-          ]}
+        <TouchableWithoutFeedback
+          accessible={false}
+          focusable={false}
+          onPress={() => amountInputRef.current?.focus()}
         >
-          <Text style={styles.amountPlaceholderLabel}>Your tip</Text>
-          <View style={styles.amountInputRow}>
-            <Text style={styles.currencyPrefix}>$</Text>
-            <TextInput
-              style={styles.customAmountInput}
-              value={customAmount}
-              onChangeText={handleCustomAmountChange}
-              keyboardType="decimal-pad"
-              placeholder="0"
-              placeholderTextColor={theme.lightGreen5}
-              selectionColor={theme.orangeBrown}
-            />
+          <View
+            style={[
+              styles.amountDisplay,
+              hasAmount && styles.amountDisplayActive,
+            ]}
+          >
+            <Text style={styles.amountPlaceholderLabel}>Your tip</Text>
+            <View style={styles.amountInputRow}>
+              <Text style={styles.currencyPrefix}>$</Text>
+              <TextInput
+                ref={amountInputRef}
+                style={styles.customAmountInput}
+                value={customAmount}
+                onChangeText={handleCustomAmountChange}
+                keyboardType="decimal-pad"
+                placeholder="0"
+                placeholderTextColor={theme.lightGreen5}
+                selectionColor={theme.orangeBrown}
+              />
+            </View>
           </View>
-        </View>
+        </TouchableWithoutFeedback>
 
         <View style={styles.sendButtonWrap}>
           <Button

@@ -1,6 +1,7 @@
 import React, { useMemo, useEffect, useRef } from "react";
 import {
   Dimensions,
+  Keyboard,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -46,6 +47,11 @@ interface ModalizeBottomSheetProps {
   usePortal?: boolean;
   showsVerticalScrollIndicator?: boolean;
 }
+
+// Module-level so Modalize's effect deps on scrollViewProps stay stable.
+// "handled": a tap on a row inside the sheet works on the first try even
+// while a keyboard is up (default "never" spends that tap closing it).
+const SHEET_SCROLL_PROPS = { keyboardShouldPersistTaps: "handled" as const };
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -147,6 +153,9 @@ export default function ModalizeBottomSheet({
 
   useEffect(() => {
     if (visible) {
+      // Picker sheets never open over a live keyboard (on Android the sheet
+      // would otherwise sit partly behind it).
+      Keyboard.dismiss();
       const timer = setTimeout(() => {
         modalizeRef.current?.open();
       }, 100);
@@ -191,6 +200,7 @@ export default function ModalizeBottomSheet({
         return true;
       }}
       avoidKeyboardLikeIOS
+      scrollViewProps={SHEET_SCROLL_PROPS}
       overlayStyle={styles.modalOverlay}
       modalStyle={[
         styles.bottomSheet,
@@ -204,6 +214,7 @@ export default function ModalizeBottomSheet({
             <Pressable
               onPress={onClose}
               disabled={!dismissible}
+              hitSlop={14}
               style={[styles.closeButton, !dismissible && { opacity: 0.4 }]}
             >
               <Feather
@@ -237,6 +248,7 @@ export default function ModalizeBottomSheet({
     >
       <ScrollView
         nestedScrollEnabled
+        keyboardShouldPersistTaps="handled"
         style={[
           styles.scrollView,
           { maxHeight: maxContentHeight },

@@ -82,6 +82,8 @@ export default function DashboardHeaderClient() {
       <TouchableOpacity
         onPress={() => router.push("/notification" as any)}
         style={styles.iconContainer}
+        // Left kept small so it never reaches the logo chevron's own slop
+        hitSlop={{ top: 8, bottom: 8, left: 4, right: 8 }}
       >
         <NotificationIcon width={24} height={22} color={theme.white} />
         {unreadCount > 0 && (

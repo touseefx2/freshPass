@@ -151,6 +151,7 @@ export default function GuestModeModal() {
             style={styles.skipContainer}
             onPress={handleSkip}
             activeOpacity={0.7}
+            hitSlop={12}
           >
             <Text style={styles.skipText}>{t("skipForNow")}</Text>
           </TouchableOpacity>

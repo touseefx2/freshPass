@@ -365,6 +365,7 @@ function DashboardHeader() {
       style={styles.avatarButton}
       onPress={handleProfilePress}
       activeOpacity={0.85}
+      hitSlop={6}
       accessibilityRole="button"
       accessibilityLabel={t("tabProfile")}
     >

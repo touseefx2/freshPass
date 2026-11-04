@@ -9,10 +9,9 @@ import HomeClientScreen from "@/src/components/dashboard/homeClient";
 
 export default function Home() {
   const router = useRouter();
-  const user = useAppSelector((state) => state.user);
-  const userRole = user.userRole;
-  const isGuest = user.isGuest;
-  const accessToken = user.accessToken;
+  const userRole = useAppSelector((state) => state.user.userRole);
+  const isGuest = useAppSelector((state) => state.user.isGuest);
+  const accessToken = useAppSelector((state) => state.user.accessToken);
 
   // Guard against stale/partially-restored local storage (e.g. an accessToken
   // surviving a reinstall/update without a matching userRole). Without this,

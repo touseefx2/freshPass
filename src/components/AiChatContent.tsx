@@ -328,7 +328,6 @@ export const AiChatContent: React.FC<AiChatContentProps> = ({
           maxLength={5000}
           returnKeyType="send"
           onSubmitEditing={handleSendMessage}
-          editable={!isInputDisabled}
         />
         {inputText.length > 0 && !isInputDisabled && (
           <TouchableOpacity

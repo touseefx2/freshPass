@@ -1,5 +1,11 @@
 import React, { useMemo, useState, useEffect, useRef } from "react";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import {
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  View,
+} from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
@@ -889,33 +895,39 @@ export default function BusinessHoursBottomSheet({
         ))}
 
         <View style={{ gap: 15 }}>
-          <View style={styles.copyHoursSection}>
-            <TouchableOpacity
-              onPress={() => setCopyHoursEnabled(!copyHoursEnabled)}
-            >
-              <View
-                style={[
-                  styles.checkbox,
-                  copyHoursEnabled && styles.checkboxChecked,
-                ]}
+          <TouchableWithoutFeedback
+            accessible={false}
+            focusable={false}
+            onPress={() => setCopyHoursEnabled(!copyHoursEnabled)}
+          >
+            <View style={styles.copyHoursSection}>
+              <TouchableOpacity
+                onPress={() => setCopyHoursEnabled(!copyHoursEnabled)}
               >
-                {copyHoursEnabled && (
-                  <Feather
-                    name="check"
-                    size={iconScale(14)}
-                    color={theme.white}
-                  />
-                )}
+                <View
+                  style={[
+                    styles.checkbox,
+                    copyHoursEnabled && styles.checkboxChecked,
+                  ]}
+                >
+                  {copyHoursEnabled && (
+                    <Feather
+                      name="check"
+                      size={iconScale(14)}
+                      color={theme.white}
+                    />
+                  )}
+                </View>
+              </TouchableOpacity>
+              <View style={{ gap: 3, width: "90%" }}>
+                <Text style={styles.checkboxLabel}>Copy hours</Text>
+                <Text style={styles.sectionDescription}>
+                  Apply these hours to multiple days. Select the ones that match
+                  your schedule.
+                </Text>
               </View>
-            </TouchableOpacity>
-            <View style={{ gap: 3, width: "90%" }}>
-              <Text style={styles.checkboxLabel}>Copy hours</Text>
-              <Text style={styles.sectionDescription}>
-                Apply these hours to multiple days. Select the ones that match
-                your schedule.
-              </Text>
             </View>
-          </View>
+          </TouchableWithoutFeedback>
           {copyHoursEnabled && (
             <View style={styles.daysContainer}>
               <TouchableOpacity

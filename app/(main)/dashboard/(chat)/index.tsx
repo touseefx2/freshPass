@@ -487,6 +487,7 @@ export default function ChatScreen() {
             style={styles.plusBox}
             onPress={openPotentialModal}
             activeOpacity={0.8}
+            hitSlop={12}
           >
             <Feather
               name="plus"

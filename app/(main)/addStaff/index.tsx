@@ -13,6 +13,8 @@ import {
   TextInput,
   Pressable,
   Dimensions,
+  Keyboard,
+  TouchableWithoutFeedback,
 } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import {
@@ -1072,6 +1074,7 @@ export default function AddStaffScreen() {
   }, []);
 
   const handleDayPress = (day: string) => {
+    Keyboard.dismiss();
     if (isBusinessDayClosed(day)) return;
     setSelectedDay(day);
     setBottomSheetVisible(true);
@@ -1492,6 +1495,7 @@ export default function AddStaffScreen() {
         style={styles.content}
         contentContainerStyle={styles.contentContainer}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
         {!isEditMode && (
           <View style={styles.titleSec}>
@@ -1539,7 +1543,10 @@ export default function AddStaffScreen() {
             </View>
             <TouchableOpacity
               activeOpacity={0.7}
-              onPress={() => setShowImagePickerModal(true)}
+              onPress={() => {
+                Keyboard.dismiss();
+                setShowImagePickerModal(true);
+              }}
               style={styles.uploadButton}
             >
               <Feather
@@ -1586,58 +1593,64 @@ export default function AddStaffScreen() {
         </View>
 
         <View style={styles.phoneField}>
-          <View style={styles.phoneFieldContainer}>
-            <Text style={styles.inputLabel}>Phone number</Text>
-            <View style={styles.phoneInputContainer}>
-              <Pressable
-                onPress={() => setPickerVisible(true)}
-                style={styles.countrySelector}
-                hitSlop={{
-                  top: moderateHeightScale(16),
-                  bottom: moderateHeightScale(16),
-                  left: moderateWidthScale(16),
-                  right: moderateWidthScale(16),
-                }}
-              >
-                <Text style={styles.countryCodeText}>{countryCode}</Text>
-                <AntDesign
-                  name="caret-down"
-                  size={moderateWidthScale(12)}
-                  color={theme.darkGreen}
-                />
-              </Pressable>
-              <View style={styles.segmentWrapper}>
-                <TextInput
-                  ref={phoneInputRef}
-                  style={styles.hiddenInput}
-                  value={formattedPhoneValue}
-                  onChangeText={handlePhoneChange}
-                  onSelectionChange={handleSelectionChange}
-                  selection={selection}
-                  keyboardType="phone-pad"
-                  returnKeyType="done"
-                  maxLength={phonePlaceholder.length}
-                  showSoftInputOnFocus
-                  caretHidden={false}
-                />
-                <View style={styles.segInputWrapper} pointerEvents="none">
-                  {segmentNodes}
-                </View>
-              </View>
-              {!!phoneNumber && (
+          <TouchableWithoutFeedback
+            accessible={false}
+            focusable={false}
+            onPress={() => phoneInputRef.current?.focus()}
+          >
+            <View style={styles.phoneFieldContainer}>
+              <Text style={styles.inputLabel}>Phone number</Text>
+              <View style={styles.phoneInputContainer}>
                 <Pressable
-                  onPress={() => {
-                    previousDigitCountRef.current = 0;
-                    setPhoneNumber("");
-                    setPhoneIsValid(false);
+                  onPress={() => setPickerVisible(true)}
+                  style={styles.countrySelector}
+                  hitSlop={{
+                    top: moderateHeightScale(16),
+                    bottom: moderateHeightScale(16),
+                    left: moderateWidthScale(16),
+                    right: moderateWidthScale(16),
                   }}
-                  hitSlop={moderateWidthScale(10)}
                 >
-                  <CloseIcon color={theme.darkGreen} />
+                  <Text style={styles.countryCodeText}>{countryCode}</Text>
+                  <AntDesign
+                    name="caret-down"
+                    size={moderateWidthScale(12)}
+                    color={theme.darkGreen}
+                  />
                 </Pressable>
-              )}
+                <View style={styles.segmentWrapper}>
+                  <TextInput
+                    ref={phoneInputRef}
+                    style={styles.hiddenInput}
+                    value={formattedPhoneValue}
+                    onChangeText={handlePhoneChange}
+                    onSelectionChange={handleSelectionChange}
+                    selection={selection}
+                    keyboardType="phone-pad"
+                    returnKeyType="done"
+                    maxLength={phonePlaceholder.length}
+                    showSoftInputOnFocus
+                    caretHidden={false}
+                  />
+                  <View style={styles.segInputWrapper} pointerEvents="none">
+                    {segmentNodes}
+                  </View>
+                </View>
+                {!!phoneNumber && (
+                  <Pressable
+                    onPress={() => {
+                      previousDigitCountRef.current = 0;
+                      setPhoneNumber("");
+                      setPhoneIsValid(false);
+                    }}
+                    hitSlop={moderateWidthScale(10)}
+                  >
+                    <CloseIcon color={theme.darkGreen} />
+                  </Pressable>
+                )}
+              </View>
             </View>
-          </View>
+          </TouchableWithoutFeedback>
           {formErrors.phone ? (
             <Text style={styles.errorText}>{formErrors.phone}</Text>
           ) : null}
@@ -1764,37 +1777,43 @@ export default function AddStaffScreen() {
 
         {salonBusinessHours && (
           <View style={styles.copyCheckboxContainer}>
-            <View style={styles.copyHoursSection}>
-              <TouchableOpacity
-                onPress={() => setCopySalonHours(!copySalonHours)}
-                activeOpacity={0.7}
-              >
-                <View
-                  style={[
-                    styles.checkbox,
-                    copySalonHours && styles.checkboxChecked,
-                  ]}
+            <TouchableWithoutFeedback
+              accessible={false}
+              focusable={false}
+              onPress={() => setCopySalonHours(!copySalonHours)}
+            >
+              <View style={styles.copyHoursSection}>
+                <TouchableOpacity
+                  onPress={() => setCopySalonHours(!copySalonHours)}
+                  activeOpacity={0.7}
                 >
-                  {copySalonHours && (
-                    <Feather
-                      name="check"
-                      size={moderateWidthScale(14)}
-                      color={theme.white}
-                    />
-                  )}
+                  <View
+                    style={[
+                      styles.checkbox,
+                      copySalonHours && styles.checkboxChecked,
+                    ]}
+                  >
+                    {copySalonHours && (
+                      <Feather
+                        name="check"
+                        size={moderateWidthScale(14)}
+                        color={theme.white}
+                      />
+                    )}
+                  </View>
+                </TouchableOpacity>
+                <View style={{ gap: 3, width: "90%" }}>
+                  <Text style={styles.checkboxLabel}>
+                    Copy business hours
+                    {businessName ? ` (${businessName})` : ""}
+                  </Text>
+                  <Text style={styles.sectionDescription}>
+                    Use the same working hours as your business for this staff
+                    member.
+                  </Text>
                 </View>
-              </TouchableOpacity>
-              <View style={{ gap: 3, width: "90%" }}>
-                <Text style={styles.checkboxLabel}>
-                  Copy business hours
-                  {businessName ? ` (${businessName})` : ""}
-                </Text>
-                <Text style={styles.sectionDescription}>
-                  Use the same working hours as your business for this staff
-                  member.
-                </Text>
               </View>
-            </View>
+            </TouchableWithoutFeedback>
           </View>
         )}
       </KeyboardAwareScrollView>

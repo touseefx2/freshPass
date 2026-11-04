@@ -11,6 +11,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   View,
 } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
@@ -295,6 +296,7 @@ export default function MusicLibrarySheet({
   const soundRef = useRef<Audio.Sound | null>(null);
   const requestIdRef = useRef(0);
   const mountedRef = useRef(true);
+  const searchInputRef = useRef<TextInput>(null);
 
   const showingDownloads = tab === DOWNLOADS_TAB && !debouncedSearch;
   const activeQuery = debouncedSearch
@@ -750,24 +752,32 @@ export default function MusicLibrarySheet({
             </TouchableOpacity>
           </View>
 
-          <View style={styles.searchBox}>
-            <MaterialIcons name="search" size={moderateWidthScale(20)} color={inkMuted} />
-            <TextInput
-              style={styles.searchInput}
-              value={searchText}
-              onChangeText={setSearchText}
-              placeholder={t("musicSearchPlaceholder")}
-              placeholderTextColor={inkFaint}
-              returnKeyType="search"
-              autoCorrect={false}
-              editable={!offline}
-            />
-            {searchText ? (
-              <TouchableOpacity onPress={() => setSearchText("")} hitSlop={8}>
-                <MaterialIcons name="cancel" size={moderateWidthScale(18)} color={inkMuted} />
-              </TouchableOpacity>
-            ) : null}
-          </View>
+          <TouchableWithoutFeedback
+            accessible={false}
+            focusable={false}
+            disabled={offline}
+            onPress={() => searchInputRef.current?.focus()}
+          >
+            <View style={styles.searchBox}>
+              <MaterialIcons name="search" size={moderateWidthScale(20)} color={inkMuted} />
+              <TextInput
+                ref={searchInputRef}
+                style={styles.searchInput}
+                value={searchText}
+                onChangeText={setSearchText}
+                placeholder={t("musicSearchPlaceholder")}
+                placeholderTextColor={inkFaint}
+                returnKeyType="search"
+                autoCorrect={false}
+                editable={!offline}
+              />
+              {searchText ? (
+                <TouchableOpacity onPress={() => setSearchText("")} hitSlop={8}>
+                  <MaterialIcons name="cancel" size={moderateWidthScale(18)} color={inkMuted} />
+                </TouchableOpacity>
+              ) : null}
+            </View>
+          </TouchableWithoutFeedback>
 
           <View>
             <ScrollView

@@ -14,6 +14,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   Keyboard,
   StatusBar,
   ActivityIndicator,
@@ -1635,6 +1636,7 @@ const ChatContent = ({
         data={messages}
         inverted={true}
         keyExtractor={(item) => item.id}
+        keyboardShouldPersistTaps="handled"
         onScrollBeginDrag={() => Keyboard.dismiss()}
         refreshControl={
           onRefresh ? (
@@ -1840,6 +1842,7 @@ const ChatContent = ({
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
             contentContainerStyle={{
               gap: moderateWidthScale(10),
               paddingHorizontal: moderateWidthScale(16),
@@ -1892,6 +1895,7 @@ const ChatContent = ({
                   )}
                   <TouchableOpacity
                     style={styles.attachmentThumbnailDelete}
+                    hitSlop={{ top: 6, right: 6, bottom: 2, left: 2 }}
                     onPress={(e) => {
                       e.stopPropagation?.();
                       onRemoveAttachment?.(idx);
@@ -1925,31 +1929,37 @@ const ChatContent = ({
           },
         ]}
       >
-        <View style={styles.inputRow}>
-          {/* Uncontrolled: a controlled value lags the keyboard on a busy Android JS thread, so Send got partial text */}
-          <TextInput
-            ref={inputRef}
-            style={styles.textInput}
-            placeholder="Enter message"
-            placeholderTextColor={theme.lightGreen4}
-            onChangeText={onInputChange}
-          />
-          {hasInputValue ? (
-            <TouchableOpacity
-              style={styles.inputClearButton}
-              onPress={onClearInput}
-              activeOpacity={0.7}
-              hitSlop={{
-                top: moderateHeightScale(8),
-                bottom: moderateHeightScale(8),
-                left: moderateWidthScale(8),
-                right: moderateWidthScale(8),
-              }}
-            >
-              <CloseIcon color={theme.darkGreen} />
-            </TouchableOpacity>
-          ) : null}
-        </View>
+        <TouchableWithoutFeedback
+          accessible={false}
+          focusable={false}
+          onPress={() => inputRef?.current?.focus()}
+        >
+          <View style={styles.inputRow}>
+            {/* Uncontrolled: a controlled value lags the keyboard on a busy Android JS thread, so Send got partial text */}
+            <TextInput
+              ref={inputRef}
+              style={styles.textInput}
+              placeholder="Enter message"
+              placeholderTextColor={theme.lightGreen4}
+              onChangeText={onInputChange}
+            />
+            {hasInputValue ? (
+              <TouchableOpacity
+                style={styles.inputClearButton}
+                onPress={onClearInput}
+                activeOpacity={0.7}
+                hitSlop={{
+                  top: moderateHeightScale(8),
+                  bottom: moderateHeightScale(8),
+                  left: moderateWidthScale(8),
+                  right: moderateWidthScale(8),
+                }}
+              >
+                <CloseIcon color={theme.darkGreen} />
+              </TouchableOpacity>
+            ) : null}
+          </View>
+        </TouchableWithoutFeedback>
         <TouchableOpacity
           style={[styles.attachmentButton, sending && { opacity: 0.5 }]}
           activeOpacity={0.8}
@@ -2473,6 +2483,7 @@ export default function ChatBoxScreen() {
           style={styles.backButton}
           onPress={() => router.back()}
           activeOpacity={0.7}
+          hitSlop={{ top: 10, bottom: 10, left: 12, right: 8 }}
         >
           <MaterialIcons
             name="keyboard-backspace"

@@ -115,6 +115,7 @@ export default function CustomToggle({
     <Pressable
       onPress={handlePress}
       disabled={disabled}
+      hitSlop={{ top: 10, bottom: 10, left: 8, right: 6 }}
       style={styles.container}
     >
       <Animated.View
