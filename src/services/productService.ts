@@ -7,6 +7,7 @@ import type {
 } from "@/src/types/shopProduct";
 import type { ProductFormDraft } from "@/src/components/productFormScreen";
 import Logger from "./logger";
+import { markGoldDone } from "@/src/utils/goldFrames";
 
 interface ProductListResponse {
   success: boolean;
@@ -128,6 +129,8 @@ export async function createProduct(
   );
 
   if (response.success && response.data) {
+    // Drafts aren't listed in the shop yet
+    if (response.data.published) markGoldDone("addProduct");
     return response.data;
   }
   throw new Error(response.message || "Failed to create product");
@@ -179,6 +182,7 @@ export async function updateProduct(
   );
 
   if (response.success && response.data) {
+    if (response.data.published) markGoldDone("addProduct");
     return response.data;
   }
   throw new Error(response.message || "Failed to update product");

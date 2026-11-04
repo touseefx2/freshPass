@@ -1,5 +1,6 @@
 import { ApiService } from "./api";
 import { jobEndpoints } from "./endpoints";
+import { markGoldDone } from "@/src/utils/goldFrames";
 import type {
   JobApplication,
   JobApplyForm,
@@ -203,6 +204,7 @@ export async function createJobPost(payload: JobPostPayload): Promise<JobPost> {
   );
   const post = normalizeJobPost(unwrap(response, "Failed to post job"));
   publishJobPostChange({ type: "saved", post });
+  markGoldDone("hiring");
   return post;
 }
 

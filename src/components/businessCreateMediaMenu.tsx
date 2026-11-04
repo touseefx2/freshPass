@@ -46,12 +46,8 @@ import {
   isSoloSubscription,
 } from "@/src/state/slices/userSlice";
 import { getReelUploadGate } from "@/src/utils/reelUploadGate";
-import PulseGlow from "@/src/components/PulseGlow";
-import {
-  useSetupReminder,
-  GROWTH_TO_FAB,
-  type GrowthReminderKey,
-} from "@/src/hooks/useSetupReminder";
+import GoldFrame from "@/src/components/GoldFrame";
+import { useGoldFrames } from "@/src/hooks/useGoldFrames";
 
 const androidBlurMethod =
   Platform.OS === "android" ? ("dimezisBlurView" as const) : ("none" as const);
@@ -233,6 +229,9 @@ const STAGGER_MS = 75;
 /** Low damping = the little hop past the spot before it settles */
 const HOP_SPRING = { damping: 10, stiffness: 200, mass: 0.7 };
 
+/** Pills are full capsules */
+const PILL_RADIUS = moderateWidthScale(999);
+
 function MenuPill({
   item,
   fromBottom,
@@ -240,6 +239,8 @@ function MenuPill({
   icon,
   styles,
   theme,
+  framed,
+  pulse,
   onPress,
 }: {
   item: MenuItem;
@@ -249,6 +250,9 @@ function MenuPill({
   icon: React.ReactNode;
   styles: Styles;
   theme: Theme;
+  /** Gold frame: this feature isn't done yet */
+  framed: boolean;
+  pulse: boolean;
   onPress: () => void;
 }) {
   const reduceMotion = useReducedMotion();
@@ -281,6 +285,7 @@ function MenuPill({
   const primary = !!item.highlighted;
   return (
     <Animated.View style={motion}>
+      <GoldFrame framed={framed} pulse={pulse} radius={PILL_RADIUS}>
       <TouchableOpacity
         style={[styles.menuOption, primary && styles.menuOptionPrimary]}
         onPress={onPress}
@@ -313,6 +318,7 @@ function MenuPill({
           importantForAccessibility="no"
         />
       </TouchableOpacity>
+      </GoldFrame>
     </Animated.View>
   );
 }
@@ -351,13 +357,7 @@ export default function BusinessCreateMediaMenu({
     planPromptVisible: hiringPlanPromptVisible,
   } = useHiringPlanGate();
 
-  const { currentReminder, isSetupStep } = useSetupReminder();
-  const glowFabId =
-    currentReminder != null &&
-    !isSetupStep &&
-    (currentReminder as string) in GROWTH_TO_FAB
-      ? GROWTH_TO_FAB[currentReminder as GrowthReminderKey]
-      : null;
+  const gold = useGoldFrames();
 
   /** Blur ends exactly at tab bar top — no clear gap strip. */
   const tabBarClearance = tabBarHeight;
@@ -611,29 +611,20 @@ export default function BusinessCreateMediaMenu({
             pointerEvents="box-none"
           >
             <View style={styles.menu}>
-              {menuItems.map((item, i) => {
-                const pill = (
-                  <MenuPill
-                    item={item}
-                    fromBottom={menuItems.length - 1 - i}
-                    label={t(item.labelKey)}
-                    icon={renderMenuIcon(item)}
-                    styles={styles}
-                    theme={theme}
-                    onPress={() => handleMenuAction(item.id)}
-                  />
-                );
-                if (glowFabId === item.id) {
-                  return (
-                    <PulseGlow key={item.id} borderRadius={999}>
-                      {pill}
-                    </PulseGlow>
-                  );
-                }
-                return (
-                  <React.Fragment key={item.id}>{pill}</React.Fragment>
-                );
-              })}
+              {menuItems.map((item, i) => (
+                <MenuPill
+                  key={item.id}
+                  item={item}
+                  fromBottom={menuItems.length - 1 - i}
+                  label={t(item.labelKey)}
+                  icon={renderMenuIcon(item)}
+                  styles={styles}
+                  theme={theme}
+                  framed={gold.isMenuItemFramed(item.id)}
+                  pulse={gold.pulseTarget === `menu:${item.id}`}
+                  onPress={() => handleMenuAction(item.id)}
+                />
+              ))}
             </View>
           </View>
         </Animated.View>

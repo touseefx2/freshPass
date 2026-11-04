@@ -63,7 +63,6 @@ const generalPersistConfig = {
     "recentLocations",
     "recentSearches",
     "dismissedSetupReminders",
-    "lastGrowthReminderIndex",
   ], // Only persist these fields
 };
 

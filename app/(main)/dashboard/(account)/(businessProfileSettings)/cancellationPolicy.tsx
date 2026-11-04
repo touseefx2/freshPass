@@ -28,6 +28,7 @@ import { ApiService } from "@/src/services/api";
 import { businessEndpoints } from "@/src/services/endpoints";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import Logger from "@/src/services/logger";
+import { markGoldDone } from "@/src/utils/goldFrames";
 import type { BusinessCancellationPolicy } from "@/src/types/cancellationPolicy";
 
 const createStyles = (theme: Theme) =>
@@ -326,6 +327,7 @@ export default function CancellationPolicyScreen() {
       });
 
       if (response.success) {
+        markGoldDone("cancellationPolicy");
         showBanner(
           "Success",
           response.message || t("cancellationPolicySaved"),

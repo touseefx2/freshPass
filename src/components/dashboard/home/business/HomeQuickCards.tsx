@@ -8,12 +8,16 @@ import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { useBusinessOrdersCount } from "@/src/hooks/useBusinessOrdersCount";
 import { setStripeConnectModalVisible } from "@/src/state/slices/generalSlice";
 import { isStripeOnboardingCompleted } from "@/src/state/slices/userSlice";
+import GoldFrame from "@/src/components/GoldFrame";
+import { useGoldFrames } from "@/src/hooks/useGoldFrames";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import {
   moderateHeightScale,
   moderateWidthScale,
 } from "@/src/theme/dimensions";
+
+const STRIPE_RADIUS = moderateHeightScale(26);
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -25,7 +29,9 @@ const createStyles = (theme: Theme) =>
     ordersSlot: {
       flex: 1,
     },
-    // Client sample: white pill, solid honey border + soft honey glow
+    stripeSlot: {
+      flex: 1.55,
+    },
     card: {
       flexDirection: "row",
       alignItems: "center",
@@ -35,25 +41,23 @@ const createStyles = (theme: Theme) =>
       gap: moderateWidthScale(12),
       backgroundColor: theme.white,
     },
+    // White pill; until connected the gold frame (GoldFrame) is drawn on its border
     stripeCard: {
-      flex: 1.55,
       justifyContent: "flex-start",
       paddingHorizontal: moderateWidthScale(18),
       gap: moderateWidthScale(14),
-      borderRadius: moderateHeightScale(26),
+      borderRadius: STRIPE_RADIUS,
       borderWidth: 2,
       borderColor: theme.orangeBrown,
-      shadowColor: theme.orangeBrown,
-      shadowOffset: { width: 0, height: 0 },
-      shadowOpacity: 0.55,
-      shadowRadius: 10,
-      elevation: 6,
+      shadowColor: theme.shadow,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.06,
+      shadowRadius: 6,
+      elevation: 2,
     },
-    // Done state: calm green outline instead of the "do this" honey glow
+    // Done state: calm green outline
     stripeCardConnected: {
       borderColor: theme.buttonBack,
-      shadowOpacity: 0,
-      elevation: 2,
     },
     ordersCard: {
       paddingHorizontal: moderateWidthScale(10),
@@ -111,6 +115,7 @@ export default function HomeQuickCards() {
   const dispatch = useAppDispatch();
   const businessStatus = useAppSelector((state) => state.user.businessStatus);
   const userRole = useAppSelector((state) => state.user.userRole);
+  const gold = useGoldFrames();
 
   const isOnboardedOwner =
     userRole === "business" && businessStatus?.onboarding_completed === true;
@@ -133,7 +138,9 @@ export default function HomeQuickCards() {
     ? t("stripeCardConnectedA11y")
     : stripeStatus === "action_required"
       ? stripeDeadline?.isValid()
-        ? t("stripeNeedsDetailsByDate", { date: stripeDeadline.format("MMM D") })
+        ? t("stripeNeedsDetailsByDate", {
+            date: stripeDeadline.format("MMM D"),
+          })
         : t("stripeNeedsDetails")
       : stripeStatus === "under_review"
         ? t("stripeReviewingDetails")
@@ -165,38 +172,48 @@ export default function HomeQuickCards() {
 
   return (
     <View style={styles.row}>
-      <TouchableOpacity
-        style={[
-          styles.card,
-          styles.stripeCard,
-          isStripeConnected && styles.stripeCardConnected,
-        ]}
-        onPress={handleStripePress}
-        activeOpacity={0.8}
-        accessibilityRole="button"
-        accessibilityLabel={`${stripeLabel}. ${stripeA11y}`}
+      <GoldFrame
+        framed={gold.isFramed("stripe")}
+        pulse={gold.pulseTarget === "stripe"}
+        radius={STRIPE_RADIUS}
+        style={styles.stripeSlot}
       >
-        <MaterialCommunityIcons
-          name={
-            isStripeConnected
-              ? "check-circle"
-              : stripeStatus === "action_required"
-                ? "alert-circle"
-                : stripeStatus === "under_review"
-                  ? "clock"
-                  : "credit-card"
-          }
-          size={moderateWidthScale(26)}
-          color={
-            !isStripeConnected && stripeStatus === "action_required"
-              ? theme.orangeBrownText
-              : theme.buttonBack
-          }
-        />
-        <Text style={[styles.cardText, styles.stripeCardText]} numberOfLines={1}>
-          {stripeLabel}
-        </Text>
-      </TouchableOpacity>
+        <TouchableOpacity
+          style={[
+            styles.card,
+            styles.stripeCard,
+            isStripeConnected && styles.stripeCardConnected,
+          ]}
+          onPress={handleStripePress}
+          activeOpacity={0.8}
+          accessibilityRole="button"
+          accessibilityLabel={`${stripeLabel}. ${stripeA11y}`}
+        >
+          <MaterialCommunityIcons
+            name={
+              isStripeConnected
+                ? "check-circle"
+                : stripeStatus === "action_required"
+                  ? "alert-circle"
+                  : stripeStatus === "under_review"
+                    ? "clock"
+                    : "credit-card"
+            }
+            size={moderateWidthScale(26)}
+            color={
+              !isStripeConnected && stripeStatus === "action_required"
+                ? theme.orangeBrownText
+                : theme.buttonBack
+            }
+          />
+          <Text
+            style={[styles.cardText, styles.stripeCardText]}
+            numberOfLines={1}
+          >
+            {stripeLabel}
+          </Text>
+        </TouchableOpacity>
+      </GoldFrame>
       <View style={styles.ordersSlot}>
         <TouchableOpacity
           style={[styles.card, styles.ordersCard]}

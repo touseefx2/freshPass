@@ -36,6 +36,7 @@ import {
 import EditSubscriptionBottomSheet from "@/src/components/EditSubscriptionBottomSheet";
 import GeneratedSubscriptionPlansModal from "@/src/components/GeneratedSubscriptionPlansModal";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
+import { markGoldDone } from "@/src/utils/goldFrames";
 import {
   setActionLoader,
   setActionLoaderTitle,
@@ -814,6 +815,7 @@ export default function ManageSubscriptionsScreen() {
       }>(businessEndpoints.profile, formData, config);
 
       if (response.success) {
+        if (payload.length > 0) markGoldDone("membership");
         showBanner(
           "Success",
           response.message || "Subscription plans updated successfully",

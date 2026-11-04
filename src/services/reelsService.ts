@@ -8,6 +8,7 @@ import {
   tryOnEndpoints,
 } from "@/src/services/endpoints";
 import Logger from "@/src/services/logger";
+import { markGoldDone } from "@/src/utils/goldFrames";
 import { prepareImageForUpload } from "@/src/utils/prepareImageForUpload";
 import type {
   AutoReel,
@@ -157,6 +158,7 @@ export async function publishAutoReel(
   if (!response?.data) {
     throw new Error(response?.message || "Failed to publish reel");
   }
+  markGoldDone("createReel");
   return response.data;
 }
 
@@ -236,6 +238,7 @@ export async function createReel(
   if (!response?.data) {
     throw new Error(response?.message || "Failed to create reel");
   }
+  if (response.data.status === "published") markGoldDone("createReel");
   return response.data;
 }
 
@@ -290,6 +293,7 @@ export async function publishReel(id: number | string): Promise<OwnerReel> {
   if (!response?.data) {
     throw new Error(response?.message || "Failed to publish reel");
   }
+  markGoldDone("createReel");
   return response.data;
 }
 

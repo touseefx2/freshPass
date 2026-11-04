@@ -317,8 +317,8 @@ const handleLogout = async (options?: { skipApi?: boolean }) => {
     } = store.getState().general;
 
     // Clear module-level caches
-    const { clearSetupCache } = require("@/src/hooks/useSetupReminder");
-    clearSetupCache();
+    const { clearGoldFramesCache } = require("@/src/hooks/useGoldFrames");
+    clearGoldFramesCache();
 
     // Clear Redux state (in-memory)
     store.dispatch(resetCompleteProfile());

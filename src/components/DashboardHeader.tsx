@@ -28,10 +28,12 @@ import { Feather } from "@expo/vector-icons";
 import { resolveApiImageUrl } from "@/src/utils/media";
 import ModeSwitchLogo from "@/src/components/ModeSwitchLogo";
 import { useBusinessTrialDaysLeft } from "@/src/hooks/useBusinessTrialDaysLeft";
-import PulseGlow from "@/src/components/PulseGlow";
-import { useSetupReminder } from "@/src/hooks/useSetupReminder";
+import GoldFrame from "@/src/components/GoldFrame";
+import { useGoldFrames, type GoldTarget } from "@/src/hooks/useGoldFrames";
 
 const AVATAR_SIZE = 36;
+/** Gold setup bars sit as rounded cards (client-approved sample 11-03) */
+const GOLD_BAR_RADIUS = moderateWidthScale(12);
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -156,16 +158,12 @@ const createStyles = (theme: Theme) =>
       height: heightScale(36),
       resizeMode: "contain",
     },
-    setupTag: {
-      fontSize: fontSize.size10,
-      fontFamily: fonts.fontBold,
-      color: theme.orangeBrownText,
-      letterSpacing: 0.3,
-      marginRight: moderateWidthScale(4),
+    goldBarFrame: {
+      marginHorizontal: moderateWidthScale(12),
+      marginTop: moderateHeightScale(8),
     },
-    dismissHit: {
-      paddingLeft: moderateWidthScale(8),
-      paddingVertical: moderateHeightScale(4),
+    actionBannerGold: {
+      borderRadius: GOLD_BAR_RADIUS,
     },
   });
 
@@ -208,7 +206,8 @@ function DashboardHeader() {
   const showBusinessSubscriptipn =
     isOnboardedOwner && businessStatus?.has_subscription === false;
 
-  // Guide banners clear once tapped (client 10-30); "Choose a plan" stays.
+  // Trial banner clears once tapped (client 10-30); "Choose a plan" stays.
+  // Membership / cancellation policy bars stay until done (gold frame, 11-03).
   // Stripe / Orders cards live in the home scroll (HomeQuickCards).
   // Persisted in dismissedSetupReminders, reset on logout.
   const dismissedReminders = useAppSelector(
@@ -218,8 +217,7 @@ function DashboardHeader() {
     dispatch(dismissSetupReminder(key));
     action();
   };
-  const { currentReminder, isSetupStep, dismiss: dismissReminder } =
-    useSetupReminder();
+  const gold = useGoldFrames();
 
   const handleMembershipSetup = useCallback(() => {
     router.push("/(main)/dashboard/(account)" as any);
@@ -257,7 +255,7 @@ function DashboardHeader() {
   const actionBanners = [
     showBusinessSubscriptipn && {
       key: "plan",
-      reminderKey: null as string | null,
+      gold: null as GoldTarget | null,
       icon: "briefcase" as const,
       title: t("pleaseBuyBusinessPlan"),
       cta: t("viewBusinessPlans"),
@@ -266,7 +264,7 @@ function DashboardHeader() {
     trialDaysLeft !== null &&
       !dismissedReminders.includes("banner:trial") && {
       key: "trial",
-      reminderKey: null as string | null,
+      gold: null as GoldTarget | null,
       icon: "clock" as const,
       title:
         trialDaysLeft === 0
@@ -275,30 +273,28 @@ function DashboardHeader() {
       cta: t("managePlanCta"),
       onPress: clearOnPress("banner:trial", handleTrialPress),
     },
-    currentReminder === "createMembership" &&
-      isOnboardedOwner && {
+    isOnboardedOwner &&
+      gold.isFramed("membership") && {
         key: "createMembership",
-        reminderKey: "createMembership" as string | null,
+        gold: "membershipBar" as GoldTarget | null,
         icon: "gift" as const,
         title: t("setupCreateMembership"),
         cta: t("setupCreateMembershipCta"),
-        onPress: clearOnPress("createMembership", handleMembershipSetup),
+        onPress: handleMembershipSetup,
       },
-    currentReminder === "cancellationPolicy" &&
-      isOnboardedOwner && {
+    isOnboardedOwner &&
+      gold.isFramed("cancellationPolicy") && {
         key: "cancellationPolicy",
-        reminderKey: "cancellationPolicy" as string | null,
+        gold: "policyBar" as GoldTarget | null,
         icon: "shield" as const,
         title: t("setupCancellationPolicy"),
         cta: t("setupCancellationPolicyCta"),
-        onPress: clearOnPress(
-          "cancellationPolicy",
-          handleCancellationPolicySetup,
-        ),
+        onPress: handleCancellationPolicySetup,
       },
   ].filter(Boolean) as {
     key: string;
-    reminderKey: string | null;
+    /** Set on bars that stay (gold frame) until the feature is done */
+    gold: GoldTarget | null;
     icon: "briefcase" | "clock" | "gift" | "shield";
     title: string;
     cta: string;
@@ -309,9 +305,7 @@ function DashboardHeader() {
     banner: (typeof actionBanners)[number],
     index: number,
   ) => {
-    const isGlowing =
-      currentReminder != null &&
-      banner.reminderKey === currentReminder;
+    const isGold = banner.gold != null;
 
     const bannerContent = (
       <TouchableOpacity
@@ -323,7 +317,8 @@ function DashboardHeader() {
         <View
           style={[
             styles.actionBanner,
-            index > 0 && !isGlowing && styles.actionBannerDivider,
+            isGold && styles.actionBannerGold,
+            index > 0 && !isGold && styles.actionBannerDivider,
           ]}
         >
           <View style={styles.actionIconWrap}>
@@ -333,11 +328,6 @@ function DashboardHeader() {
               color={theme.white}
             />
           </View>
-          {isGlowing && isSetupStep && (
-            <Text style={styles.setupTag}>
-              {t("setupFinishSetup")}
-            </Text>
-          )}
           <Text style={styles.actionTitle} numberOfLines={2}>
             {banner.title}
           </Text>
@@ -349,29 +339,20 @@ function DashboardHeader() {
               color={theme.white}
             />
           </View>
-          {isGlowing && (
-            <TouchableOpacity
-              onPress={dismissReminder}
-              style={styles.dismissHit}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              accessibilityRole="button"
-              accessibilityLabel={t("close")}
-            >
-              <Feather
-                name="x"
-                size={moderateWidthScale(14)}
-                color={theme.darkGreen}
-              />
-            </TouchableOpacity>
-          )}
         </View>
       </TouchableOpacity>
     );
 
-    return isGlowing ? (
-      <PulseGlow key={banner.key} borderRadius={0}>
+    return isGold ? (
+      <GoldFrame
+        key={banner.key}
+        framed
+        pulse={gold.pulseTarget === banner.gold}
+        radius={GOLD_BAR_RADIUS}
+        style={styles.goldBarFrame}
+      >
         {bannerContent}
-      </PulseGlow>
+      </GoldFrame>
     ) : (
       <React.Fragment key={banner.key}>
         {bannerContent}

@@ -25,6 +25,8 @@ import { fontSize, fonts } from "@/src/theme/fonts";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AiChatBot from "@/src/components/AiChatBot";
 import BusinessCreateMediaMenu from "@/src/components/businessCreateMediaMenu";
+import GoldFrame from "@/src/components/GoldFrame";
+import { GoldMenuOpenContext, useGoldFrames } from "@/src/hooks/useGoldFrames";
 import { setUserDetails } from "@/src/state/slices/userSlice";
 import {
   resetChatContacts,
@@ -98,14 +100,16 @@ const createStyles = (theme: Theme) =>
       includeFontPadding: false,
       lineHeight: widthScale(16),
     },
+    createTabFrame: {
+      marginTop: moderateHeightScale(-6),
+    },
     createTabIcon: {
       width: widthScale(44),
       height: heightScale(44),
-      borderRadius: moderateWidthScale(22),
+      borderRadius: CREATE_TAB_RADIUS,
       backgroundColor: theme.buttonBack,
       alignItems: "center",
       justifyContent: "center",
-      marginTop: moderateHeightScale(-6),
       borderWidth: 3,
       borderTopColor: theme.white,
       borderLeftColor: theme.white,
@@ -113,6 +117,8 @@ const createStyles = (theme: Theme) =>
       borderBottomColor: theme.orangeBrown,
     },
   });
+
+const CREATE_TAB_RADIUS = moderateWidthScale(22);
 
 export default function DashboardLayout() {
   const { colors } = useTheme();
@@ -138,6 +144,8 @@ export default function DashboardLayout() {
   const store = useStore<RootState>();
   const { showBanner } = useNotificationContext();
   const [createMenuOpen, setCreateMenuOpen] = useState(false);
+  // Gold frame on + while something inside the menu isn't done yet
+  const gold = useGoldFrames();
 
   const closeCreateMenu = useCallback(() => setCreateMenuOpen(false), []);
   const toggleCreateMenu = useCallback(
@@ -427,7 +435,7 @@ export default function DashboardLayout() {
   }, [shouldHideAiChat, createMenuOpen]);
 
   return (
-    <>
+    <GoldMenuOpenContext.Provider value={createMenuOpen}>
       <Tabs
         initialRouteName={"(home)"}
         screenOptions={{
@@ -518,13 +526,21 @@ export default function DashboardLayout() {
             title: "",
             tabBarLabel: () => null,
             tabBarIcon: () => (
-              <View style={styles.createTabIcon}>
-                <MaterialIcons
-                  name={createMenuOpen ? "close" : "add"}
-                  size={moderateWidthScale(28)}
-                  color={theme.buttonText}
-                />
-              </View>
+              <GoldFrame
+                framed={gold.plusFramed}
+                pulse={!createMenuOpen && gold.pulseTarget === "plus"}
+                radius={CREATE_TAB_RADIUS}
+                borderWidth={3}
+                style={styles.createTabFrame}
+              >
+                <View style={styles.createTabIcon}>
+                  <MaterialIcons
+                    name={createMenuOpen ? "close" : "add"}
+                    size={moderateWidthScale(28)}
+                    color={theme.buttonText}
+                  />
+                </View>
+              </GoldFrame>
             ),
           }}
           listeners={{
@@ -611,6 +627,6 @@ export default function DashboardLayout() {
       )}
       {/* Floating AI ChatBot Button */}
       {!shouldHideAiChat && <AiChatBot />}
-    </>
+    </GoldMenuOpenContext.Provider>
   );
 }
