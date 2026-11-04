@@ -11,6 +11,7 @@ import categoriesReducer from "./slices/categoriesSlice";
 import downloadReducer from "./slices/downloadSlice";
 import inventoryReducer from "./slices/inventorySlice";
 import shopCartReducer from "./slices/shopCartSlice";
+import marketCartReducer from "./slices/marketCartSlice";
 
 // ✅ Custom AsyncStorage adapter for redux-persist
 // Note: redux-persist supports async storage, but we need to ensure promises are properly handled
@@ -154,6 +155,7 @@ const rootReducer = combineReducers({
   download: downloadReducer, // Global download loader (not persisted)
   inventory: persistedInventoryReducer, // Business in-store products + salon delivery options
   shopCart: persistedShopCartReducer, // Customer product checkout (product being bought, saved address)
+  marketCart: marketCartReducer, // Marketplace cart + checkout draft (not persisted; the cart lives on the account)
 });
 
 // ✅ No root-level persistence needed - general is already persisted with nested config

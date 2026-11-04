@@ -40,6 +40,12 @@ import {
   setShippingMethod,
 } from "@/src/state/slices/shopCartSlice";
 import {
+  findProductVariant,
+  getProductGallery,
+  getUnitPrice,
+  productHasVariants,
+} from "@/src/utils/shopProductHelpers";
+import {
   canShip,
   getShippingCost,
   type ShopShippingMethod,
@@ -178,6 +184,11 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
     },
+    itemVariant: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontMedium,
+      color: theme.orangeBrownText,
+    },
     itemMeta: {
       fontSize: fontSize.size14,
       fontFamily: fonts.fontRegular,
@@ -272,6 +283,9 @@ export default function ShopCheckoutScreen() {
   const shippingMethod = useAppSelector((s) => s.shopCart.shippingMethod);
   const product = useAppSelector((s) => s.shopCart.product);
   const quantity = useAppSelector((s) => s.shopCart.quantity);
+  const variantId = useAppSelector((s) => s.shopCart.variantId);
+  const hasVariants = !!product && productHasVariants(product);
+  const variant = product ? findProductVariant(product, variantId) : null;
 
   const [step, setStep] = useState<Step>("delivery");
   const [paying, setPaying] = useState(false);
@@ -354,7 +368,10 @@ export default function ShopCheckoutScreen() {
 
   // No Stripe Connect yet: the salon can't take product payments in the app
   const paymentsOff = !!product && !isPaymentsEnabled(product.paymentsEnabled);
-  if (!product || !delivery?.configured || paymentsOff) {
+  // Options are required: the product step always picks one, so this only
+  // shows if the store lost it
+  const optionMissing = hasVariants && !variant;
+  if (!product || !delivery?.configured || paymentsOff || optionMissing) {
     return (
       <View style={styles.container}>
         {header}
@@ -367,7 +384,9 @@ export default function ShopCheckoutScreen() {
                 ? t("productNotFound")
                 : paymentsOff
                   ? t("peShopOffNote")
-                  : t("salonNotTakingOrders")
+                  : optionMissing
+                    ? t("mpReelChooseOptionNote")
+                    : t("salonNotTakingOrders")
             }
           />
         </View>
@@ -376,7 +395,10 @@ export default function ShopCheckoutScreen() {
   }
 
   const isShipping = shippingMethod === "standard";
-  const subtotal = product.sellingPrice * quantity;
+  // Buyer pays the sale / option price, not the regular one
+  const unitPrice = getUnitPrice(product, variant).price;
+  const subtotal = Math.round(unitPrice * quantity * 100) / 100;
+  const thumbUri = getProductGallery(product, variant)[0]?.url ?? null;
   const shipping = getShippingCost(delivery, shippingMethod);
   const totalBeforeTax = Math.round((subtotal + shipping) * 100) / 100;
   const selectedMethod = methodOptions.find((m) => m.key === shippingMethod);
@@ -420,7 +442,13 @@ export default function ShopCheckoutScreen() {
     setPaying(true);
     try {
       const result = await startProductCheckout({
-        items: [{ product_id: Number(product.id), quantity }],
+        items: [
+          {
+            product_id: Number(product.id),
+            ...(variant ? { variant_id: variant.id } : {}),
+            quantity,
+          },
+        ],
         shipping_method: shippingMethod!,
         ...(isShipping ? { shipping_address: address } : {}),
       });
@@ -480,8 +508,28 @@ export default function ShopCheckoutScreen() {
         ]);
         return;
       }
+      // 422 on items.N.variant_id: the option sold out or was removed (or the
+      // product's options changed). Show why and go back to pick again — the
+      // product step refreshes on focus and re-picks an option in stock.
+      const variantKey = fieldErrors
+        ? Object.keys(fieldErrors).find((k) => /^items\.\d+\.variant_id$/.test(k))
+        : undefined;
+      if (variantKey) {
+        showBanner(
+          t("checkout"),
+          fieldErrors![variantKey]?.[0] || t("mpReelOptionUnavailable"),
+          "error",
+        );
+        router.back();
+        return;
+      }
+      // 422 on items.N.quantity: e.g. 'Only 1 left of "Polish (Pink)".'
+      const quantityKey = fieldErrors
+        ? Object.keys(fieldErrors).find((k) => /^items\.\d+\.quantity$/.test(k))
+        : undefined;
       const first = fieldErrors
-        ? Object.values(fieldErrors).flat()[0]
+        ? (quantityKey ? fieldErrors[quantityKey]?.[0] : undefined) ??
+          Object.values(fieldErrors).flat()[0]
         : undefined;
       showBanner(
         t("checkout"),
@@ -643,9 +691,9 @@ export default function ShopCheckoutScreen() {
           </View>
           <View style={styles.itemRow}>
             <View style={styles.thumb}>
-              {product.imageUri ? (
+              {thumbUri ? (
                 <AppImage
-                  uri={product.imageUri}
+                  uri={thumbUri}
                   style={styles.thumbImage}
                   resizeMode="cover"
                 />
@@ -661,8 +709,13 @@ export default function ShopCheckoutScreen() {
               <Text style={styles.itemName} numberOfLines={2}>
                 {product.name}
               </Text>
+              {variant ? (
+                <Text style={styles.itemVariant} numberOfLines={1}>
+                  {t("mpReelOptionLine", { name: variant.name })}
+                </Text>
+              ) : null}
               <Text style={styles.itemMeta}>
-                {`${quantity} × ${formatShopPrice(product.sellingPrice)}`}
+                {`${quantity} × ${formatShopPrice(unitPrice)}`}
               </Text>
             </View>
             <Text style={styles.itemPrice}>{formatShopPrice(subtotal)}</Text>
@@ -725,6 +778,7 @@ export default function ShopCheckoutScreen() {
           </View>
         </FlowCard>
 
+        <InfoNote icon="assignment-return" text={t("mpRefundPolicyNote")} />
         <InfoNote icon="lock-outline" text={t("shopSecurePayment")} />
       </ScrollView>
       <FlowFooter

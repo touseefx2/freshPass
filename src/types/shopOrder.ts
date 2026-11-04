@@ -33,6 +33,9 @@ export interface ShopOrderItem {
   unitPrice: number;
   quantity: number;
   total: number;
+  /** Marketplace option (colour / model) bought, when the product has options. */
+  variantId?: number | null;
+  variantName?: string | null;
 }
 
 export type ShopOrderHistoryEvent = "status_changed" | "shipping_details_updated";
@@ -67,6 +70,54 @@ export interface ShopOrderCustomer {
   phone: string | null;
 }
 
+/** Customer-facing refund / cancellation state (null = nothing asked). */
+export type OrderRefundState =
+  | "cancellation_requested"
+  | "refund_requested"
+  | "refund_on_the_way"
+  | "refunded"
+  | "refund_declined"
+  | "under_review"
+  | "refunded_by_freshpass"
+  | "declined_reviewed"
+  | "cancelled_not_refunded";
+
+/** The customer's cancellation / refund request on an order. */
+export interface OrderRefundRequest {
+  id: number;
+  type: "cancellation" | "refund";
+  status: string;
+  reason: string | null;
+  reasonLabel: string | null;
+  note: string | null;
+  photoUrl: string | null;
+  sellerResponse: string | null;
+  respondedAt: string | null;
+  escalationNote: string | null;
+  escalationPhotoUrl: string | null;
+  escalatedAt: string | null;
+  adminNote: string | null;
+  resolvedAt: string | null;
+  createdAt: string;
+}
+
+/** Customer buttons: show each only when its flag is true. */
+export interface OrderRefundActions {
+  canRequestCancellation: boolean;
+  canRequestRefund: boolean;
+  /** End of the 7-day refund window (ISO). */
+  refundDeadline: string | null;
+  canEscalate: boolean;
+}
+
+/** Seller earnings. `stripeFee` / `net` are null until Stripe reports its fee ("Pending"). */
+export interface OrderEarnings {
+  gross: number;
+  platformFee: number;
+  stripeFee: number | null;
+  net: number | null;
+}
+
 /** Fields shared by the customer order (GET /api/orders/{order}) and the owner order. */
 export interface ShopOrder {
   id: string;
@@ -90,6 +141,12 @@ export interface ShopOrder {
   /** Null unless the payment was refunded automatically. */
   refund: ShopOrderRefund | null;
   createdAt: string;
+  /** Where the order came from (sets the platform fee). */
+  source?: "marketplace" | "reel" | null;
+  refundState?: OrderRefundState | null;
+  refundRequest?: OrderRefundRequest | null;
+  /** Customer responses only. */
+  refundActions?: OrderRefundActions | null;
 }
 
 /** Owner shape: business order list / detail, and the PATCH status / PUT shipping-details responses. */
@@ -99,6 +156,11 @@ export interface BusinessShopOrder extends ShopOrder {
   nextStatuses: ShopOrderNextStatus[];
   /** True when PUT /api/orders/{order}/shipping-details is allowed. */
   canEditShippingDetails: boolean;
+  earnings?: OrderEarnings | null;
+  /** Cancelled without a refund → "Refund" button. */
+  canRefund?: boolean;
+  /** Stripe refused the refund (e.g. low balance); retried automatically. */
+  refundError?: string | null;
 }
 
 /** GET /api/orders/business/stats */

@@ -1154,6 +1154,69 @@ export const orderEndpoints = {
   updateStatus: (id: string | number) => `/api/orders/${id}/status`,
   shippingDetails: (id: string | number) =>
     `/api/orders/${id}/shipping-details`,
+  /** Customer: request cancellation (before ship / pickup) or refund (7 days after). */
+  refundRequest: (id: string | number) => `/api/orders/${id}/refund-request`,
+  /** Customer: ask FreshPass to review a declined request (once). */
+  escalate: (id: string | number) =>
+    `/api/orders/${id}/refund-request/escalate`,
+  /** Seller: approve / decline the customer's request. */
+  businessRefundRequest: (id: string | number) =>
+    `/api/orders/business/${id}/refund-request`,
+  /** Seller: refund an order cancelled without a refund (`canRefund`). */
+  businessRefund: (id: string | number) =>
+    `/api/orders/business/${id}/refund`,
+};
+
+const marketplacePageQuery = (params?: {
+  search?: string;
+  category?: string;
+  filter?: string;
+  page?: number;
+  per_page?: number;
+}) => {
+  const q = new URLSearchParams();
+  if (params?.search) q.append("search", params.search);
+  if (params?.category) q.append("category", params.category);
+  if (params?.filter) q.append("filter", params.filter);
+  if (params?.page != null) q.append("page", String(params.page));
+  if (params?.per_page != null) q.append("per_page", String(params.per_page));
+  const query = q.toString();
+  return query ? `?${query}` : "";
+};
+
+/**
+ * Marketplace catalog, categories, favourites and product reviews.
+ * Catalog / categories / reviews work with the guest token too.
+ */
+export const marketplaceEndpoints = {
+  products: (params?: {
+    search?: string;
+    category?: string;
+    filter?: string;
+    page?: number;
+    per_page?: number;
+  }) => `/api/products${marketplacePageQuery(params)}`,
+  /** `inMarketplace` = only categories that have live Marketplace products. */
+  categories: (inMarketplace?: boolean) =>
+    `/api/product-categories${inMarketplace ? "?in_marketplace=1" : ""}`,
+  favorite: (id: string | number) => `/api/products/${id}/favorite`,
+  favorites: (params?: { page?: number; per_page?: number }) =>
+    `/api/products/favorites${marketplacePageQuery(params)}`,
+  reviews: (
+    id: string | number,
+    params?: { page?: number; per_page?: number },
+  ) => `/api/products/${id}/reviews${marketplacePageQuery(params)}`,
+  /** POST (multipart) writes / replaces, DELETE removes the own review. */
+  review: (id: string | number) => `/api/products/${id}/reviews`,
+};
+
+/** Account-saved Marketplace cart (signed-in customers only). */
+export const cartEndpoints = {
+  cart: `/api/cart`,
+  count: `/api/cart/count`,
+  items: `/api/cart/items`,
+  /** Cart line id, not the product id. */
+  item: (id: string | number) => `/api/cart/items/${id}`,
 };
 
 /**

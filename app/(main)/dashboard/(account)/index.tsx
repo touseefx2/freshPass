@@ -799,6 +799,8 @@ export default function AccountScreen() {
       }
     } else if (key === "myOrders") {
       router.push("/(main)/shop/myOrders" as any);
+    } else if (key === "savedProducts") {
+      router.push("/(main)/marketplace/saved" as any);
     } else if (key === "myJobApplications") {
       router.push("/(main)/jobs/myApplications" as any);
     } else if (key === "myLooks") {
@@ -882,6 +884,8 @@ export default function AccountScreen() {
         return { name: "star", family: "material" };
       case "myOrders":
         return { name: "receipt-long", family: "material" };
+      case "savedProducts":
+        return { name: "favorite-border", family: "material" };
       case "myJobApplications":
         return { name: "work-outline", family: "material" };
       case "myLooks":
@@ -1076,6 +1080,10 @@ export default function AccountScreen() {
     // Products bought from reels, with their tracking
     ...(isCustomer && !isGuest
       ? [{ key: "myOrders", title: t("myOrders") }]
+      : []),
+    // Marketplace products saved with the heart
+    ...(isCustomer && !isGuest
+      ? [{ key: "savedProducts", title: t("mpSavedTitle") }]
       : []),
     // Jobs applied for at salons (owner / staff too, from customer mode)
     ...(isCustomer && !isGuest

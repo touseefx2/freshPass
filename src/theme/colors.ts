@@ -10,6 +10,8 @@ export const themes = {
     green: "#91E630",
     toggleActive: "#27C840",
     darkGreen: "#283618",
+    /** Marketplace accent (client sample): chips, filters, add-to-cart */
+    marketGreen: "#2F5A1F",
     // Deepest brand green — gradient end on dark filled tiles
     darkGreenDeep: "#18210E",
     darkGreenLight: "rgba(96, 108, 56, 1)",

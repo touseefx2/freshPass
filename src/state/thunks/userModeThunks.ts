@@ -9,6 +9,7 @@ import {
   type UserMode,
 } from "../slices/userSlice";
 import { resetChatContacts } from "../slices/generalSlice";
+import { clearMarketCart } from "../slices/marketCartSlice";
 import { ApiService } from "@/src/services/api";
 import { userEndpoints } from "@/src/services/endpoints";
 import Logger from "@/src/services/logger";
@@ -63,6 +64,7 @@ export const switchActiveMode = createAsyncThunk<
     const nextMode = normalizeUserMode(data.active_mode) ?? mode;
 
     dispatch(setActiveMode(nextMode));
+    dispatch(clearMarketCart());
     dispatch(setCanSwitchMode(data.can_switch !== false));
     if (typeof data.ai_quota === "number") {
       dispatch(setUserDetails({ ai_quota: data.ai_quota }));
@@ -119,6 +121,7 @@ export const syncModeFromServer = createAsyncThunk<
   beginModeSwitch();
   try {
     dispatch(setActiveMode(serverMode));
+    dispatch(clearMarketCart());
     if (typeof server.can_switch === "boolean") {
       dispatch(setCanSwitchMode(server.can_switch));
     }

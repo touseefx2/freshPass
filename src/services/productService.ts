@@ -5,9 +5,17 @@ import type {
   ShopDeliveryShipping,
   ShopProduct,
 } from "@/src/types/shopProduct";
-import type { ProductFormDraft } from "@/src/components/productFormScreen";
+import type {
+  ProductDraftImage,
+  ProductFormDraft,
+} from "@/src/components/productFormScreen";
 import Logger from "./logger";
 import { markGoldDone } from "@/src/utils/goldFrames";
+import { normalizeShopProduct } from "@/src/utils/shopProductHelpers";
+
+// Product categories for the owner form come from the server (admin list):
+// fetchProductCategories() in marketplaceService. Keep sending the category
+// *name* as `category`; SHOP_PRODUCT_CATEGORIES is only an offline fallback.
 
 interface ProductListResponse {
   success: boolean;
@@ -60,7 +68,7 @@ export class ProductDeleteBlockedError extends Error {
 export async function fetchProduct(id: string | number): Promise<ShopProduct> {
   const response = await ApiService.get<ProductResponse>(productEndpoints.byId(id));
   if (response.success && response.data) {
-    return response.data;
+    return normalizeShopProduct(response.data);
   }
   throw new Error(response.message || "Failed to fetch product");
 }
@@ -76,7 +84,10 @@ export async function fetchMyProducts(params?: {
     productEndpoints.mine(params),
   );
   if (response.success && response.data) {
-    return { products: response.data.data, meta: response.data.meta };
+    return {
+      products: (response.data.data ?? []).map(normalizeShopProduct),
+      meta: response.data.meta,
+    };
   }
   throw new Error(response.message || "Failed to fetch products");
 }
@@ -88,9 +99,102 @@ export async function fetchProductById(
     productEndpoints.mineById(id),
   );
   if (response.success && response.data) {
-    return response.data;
+    return normalizeShopProduct(response.data);
   }
   throw new Error(response.message || "Failed to fetch product");
+}
+
+type ProductImageFile = { uri: string; name: string; type: string };
+
+function toImageFile(image: ProductDraftImage, index: number): ProductImageFile {
+  return {
+    uri: image.uri,
+    name: image.name || `product-${Date.now()}-${index}.jpg`,
+    type: image.type || "image/jpeg",
+  };
+}
+
+/**
+ * Marketplace seller fields (guide §6 Step 1). Only fields set on the draft
+ * are sent. `isUpdate` allows the "clear" forms (empty sale_price / benefits,
+ * remove_image_ids, remove_variants).
+ */
+function appendMarketplaceFields(
+  formData: FormData,
+  draft: Partial<ProductFormDraft>,
+  isUpdate: boolean,
+): void {
+  if (draft.salePrice !== undefined) {
+    if (draft.salePrice != null && draft.salePrice > 0) {
+      formData.append("sale_price", String(draft.salePrice));
+    } else if (isUpdate) {
+      formData.append("sale_price", "");
+    }
+  }
+
+  if (draft.benefits !== undefined) {
+    const benefits = draft.benefits.map((b) => b.trim()).filter(Boolean);
+    if (benefits.length > 0) {
+      benefits.forEach((b) => formData.append("benefits[]", b));
+    } else if (isUpdate) {
+      formData.append("benefits", "");
+    }
+  }
+
+  if (draft.showInMarketplace !== undefined) {
+    formData.append("show_in_marketplace", draft.showInMarketplace ? "1" : "0");
+  }
+  if (draft.featuredRequested !== undefined) {
+    formData.append("featured_requested", draft.featuredRequested ? "1" : "0");
+  }
+
+  // Gallery: new photos are added after the kept ones (4 in all)
+  (draft.images ?? [])
+    .filter((img) => img.isNew)
+    .forEach((img, i) => formData.append("images[]", toImageFile(img, i) as any));
+  if (isUpdate) {
+    (draft.removedImageIds ?? [])
+      .filter((id) => id > 0)
+      .forEach((id) => formData.append("remove_image_ids[]", String(id)));
+  }
+
+  if (draft.variants !== undefined) {
+    if (draft.variants.length === 0) {
+      // Multipart can't send an empty list
+      if (isUpdate) formData.append("remove_variants", "1");
+    } else {
+      // Full list: variants left out are removed
+      draft.variants.forEach((variant, n) => {
+        const prefix = `variants[${n}]`;
+        if (variant.id != null) formData.append(`${prefix}[id]`, String(variant.id));
+        formData.append(`${prefix}[name]`, variant.name.trim());
+        formData.append(
+          `${prefix}[selling_price]`,
+          variant.sellingPrice != null ? String(variant.sellingPrice) : "",
+        );
+        formData.append(
+          `${prefix}[sale_price]`,
+          variant.salePrice != null ? String(variant.salePrice) : "",
+        );
+        formData.append(
+          `${prefix}[inventory_count]`,
+          String(Math.max(0, Math.round(variant.inventoryCount || 0))),
+        );
+        variant.images
+          .filter((img) => img.isNew)
+          .forEach((img, i) =>
+            formData.append(`${prefix}[images][]`, toImageFile(img, i) as any),
+          );
+        if (variant.id != null) {
+          variant.removedImageIds
+            .filter((id) => id > 0)
+            .forEach((id) =>
+              formData.append(`${prefix}[remove_image_ids][]`, String(id)),
+            );
+        }
+      });
+    }
+  }
 }
 
 export async function createProduct(
@@ -113,6 +217,7 @@ export async function createProduct(
   formData.append("low_stock_threshold", String(draft.lowStockThreshold));
   formData.append("track_inventory", draft.trackInventory ? "1" : "0");
   formData.append("published", published ? "1" : "0");
+  appendMarketplaceFields(formData, draft, false);
 
   if (imageFile) {
     formData.append("image", {
@@ -131,7 +236,7 @@ export async function createProduct(
   if (response.success && response.data) {
     // Drafts aren't listed in the shop yet
     if (response.data.published) markGoldDone("addProduct");
-    return response.data;
+    return normalizeShopProduct(response.data);
   }
   throw new Error(response.message || "Failed to create product");
 }
@@ -166,6 +271,7 @@ export async function updateProduct(
     formData.append("track_inventory", draft.trackInventory ? "1" : "0");
   if (draft.published != null)
     formData.append("published", draft.published ? "1" : "0");
+  appendMarketplaceFields(formData, draft, true);
 
   if (imageFile) {
     formData.append("image", {
@@ -183,7 +289,7 @@ export async function updateProduct(
 
   if (response.success && response.data) {
     if (response.data.published) markGoldDone("addProduct");
-    return response.data;
+    return normalizeShopProduct(response.data);
   }
   throw new Error(response.message || "Failed to update product");
 }

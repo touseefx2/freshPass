@@ -21,7 +21,12 @@ import {
   widthScale,
 } from "@/src/theme/dimensions";
 import { formatShopPrice } from "@/src/constants/demoShopProduct";
-import type { ShopOrder, ShopOrderStatus } from "@/src/types/shopOrder";
+import type {
+  OrderRefundState,
+  ShopOrder,
+  ShopOrderItem,
+  ShopOrderStatus,
+} from "@/src/types/shopOrder";
 import type { ShopShippingMethod } from "@/src/types/shopProduct";
 import {
   formatOrderAddressLines,
@@ -82,6 +87,7 @@ const createStyles = (theme: Theme) =>
     badgeDoneText: { color: theme.darkGreen },
     badgeStopped: { backgroundColor: theme.lightRed },
     badgeStoppedText: { color: theme.red },
+    badgeIcon: { marginRight: moderateWidthScale(4) },
 
     // ── Cards
     card: {
@@ -297,6 +303,16 @@ const createStyles = (theme: Theme) =>
       color: theme.lightGreen,
       fontVariant: ["tabular-nums"],
     },
+    itemVariant: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontMedium,
+      color: theme.buttonBack,
+    },
+    itemFooter: {
+      // Lines up with the item name (thumb width + row gap)
+      marginTop: moderateHeightScale(8),
+      marginLeft: widthScale(52) + moderateWidthScale(12),
+    },
     itemTotal: {
       fontSize: fontSize.size16,
       fontFamily: fonts.fontBold,
@@ -429,6 +445,9 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontRegular,
       color: theme.lightGreen,
     },
+    summaryRefund: {
+      marginTop: moderateHeightScale(4),
+    },
     summaryItemText: {
       flex: 1,
       minWidth: 0,
@@ -531,6 +550,93 @@ export function OrderStatusBadge({
       accessible
       accessibilityLabel={t("orderStatusA11y", { status: label })}
     >
+      <Text style={[styles.badgeText, text]} numberOfLines={1}>
+        {label}
+      </Text>
+    </View>
+  );
+}
+
+/** Short label + icon for a cancellation / refund state (list rows, cards). */
+export function getRefundBadgeInfo(state: OrderRefundState): {
+  labelKey: string;
+  icon: IconName;
+  tone: "waiting" | "done" | "stopped";
+} {
+  switch (state) {
+    case "cancellation_requested":
+      return {
+        labelKey: "mpRefBadgeCancellationRequested",
+        icon: "hourglass-empty",
+        tone: "waiting",
+      };
+    case "refund_requested":
+      return {
+        labelKey: "mpRefBadgeRefundRequested",
+        icon: "hourglass-empty",
+        tone: "waiting",
+      };
+    case "refund_on_the_way":
+      return { labelKey: "mpRefundStateOnTheWay", icon: "sync", tone: "waiting" };
+    case "under_review":
+      return {
+        labelKey: "mpRefundStateUnderReview",
+        icon: "support-agent",
+        tone: "waiting",
+      };
+    case "refunded":
+      return {
+        labelKey: "orderStatusRefunded",
+        icon: "check-circle",
+        tone: "done",
+      };
+    case "refunded_by_freshpass":
+      return {
+        labelKey: "mpRefundStateRefundedByFreshpass",
+        icon: "check-circle",
+        tone: "done",
+      };
+    case "refund_declined":
+      return { labelKey: "mpRefundStateDeclined", icon: "block", tone: "stopped" };
+    case "declined_reviewed":
+      return {
+        labelKey: "mpRefBadgeDeclinedReviewed",
+        icon: "block",
+        tone: "stopped",
+      };
+    case "cancelled_not_refunded":
+      return {
+        labelKey: "mpRefBadgeCancelledNotRefunded",
+        icon: "money-off",
+        tone: "stopped",
+      };
+  }
+}
+
+/** Cancellation / refund pill: icon + text, the color only supports them. */
+export function OrderRefundBadge({ state }: { state: OrderRefundState }) {
+  const { theme, styles } = useOrderStyles();
+  const { t } = useTranslation();
+  const info = getRefundBadgeInfo(state);
+  const [box, text, iconColor] =
+    info.tone === "done"
+      ? [styles.badgeDone, styles.badgeDoneText, theme.darkGreen]
+      : info.tone === "stopped"
+        ? [styles.badgeStopped, styles.badgeStoppedText, theme.red]
+        : [styles.badgeWaiting, styles.badgeWaitingText, theme.apptBlueAccent];
+  const label = t(info.labelKey);
+  return (
+    <View
+      style={[styles.badge, box]}
+      accessible
+      accessibilityLabel={label}
+    >
+      <MaterialIcons
+        name={info.icon}
+        size={moderateWidthScale(15)}
+        color={iconColor}
+        style={styles.badgeIcon}
+      />
       <Text style={[styles.badgeText, text]} numberOfLines={1}>
         {label}
       </Text>
@@ -825,8 +931,17 @@ export function OrderItemThumb({ uri }: { uri: string | null }) {
   );
 }
 
-/** Items with quantities, then subtotal / shipping / tax / total. */
-export function OrderItemsAndTotals({ order }: { order: ShopOrder }) {
+/**
+ * Items with quantities (and the chosen option), then subtotal / shipping /
+ * tax / total. `itemFooter` adds something under an item (e.g. "Write a review").
+ */
+export function OrderItemsAndTotals({
+  order,
+  itemFooter,
+}: {
+  order: ShopOrder;
+  itemFooter?: (item: ShopOrderItem) => React.ReactNode;
+}) {
   const { styles } = useOrderStyles();
   const { t } = useTranslation();
   const pickup = isPickupOrder(order);
@@ -834,20 +949,33 @@ export function OrderItemsAndTotals({ order }: { order: ShopOrder }) {
   return (
     <View>
       <View style={styles.itemsGap}>
-        {order.items.map((item) => (
-          <View key={item.id || item.productId} style={styles.itemRow}>
-            <OrderItemThumb uri={item.productImageUrl} />
-            <View style={styles.itemBody}>
-              <Text style={styles.itemName} numberOfLines={2}>
-                {item.productName}
-              </Text>
-              <Text style={styles.itemMeta}>
-                {`${item.quantity} × ${formatShopPrice(item.unitPrice)}`}
-              </Text>
+        {order.items.map((item) => {
+          const footer = itemFooter ? itemFooter(item) : null;
+          return (
+            <View key={item.id || item.productId}>
+              <View style={styles.itemRow}>
+                <OrderItemThumb uri={item.productImageUrl} />
+                <View style={styles.itemBody}>
+                  <Text style={styles.itemName} numberOfLines={2}>
+                    {item.productName}
+                  </Text>
+                  {item.variantName ? (
+                    <Text style={styles.itemVariant} numberOfLines={1}>
+                      {item.variantName}
+                    </Text>
+                  ) : null}
+                  <Text style={styles.itemMeta}>
+                    {`${item.quantity} × ${formatShopPrice(item.unitPrice)}`}
+                  </Text>
+                </View>
+                <Text style={styles.itemTotal}>
+                  {formatShopPrice(item.total)}
+                </Text>
+              </View>
+              {footer ? <View style={styles.itemFooter}>{footer}</View> : null}
             </View>
-            <Text style={styles.itemTotal}>{formatShopPrice(item.total)}</Text>
-          </View>
-        ))}
+          );
+        })}
       </View>
       <View style={styles.divider} />
       <View style={styles.totals}>
@@ -921,24 +1049,31 @@ export function OrderHistoryTimeline({ order }: { order: ShopOrder }) {
 /**
  * Order row for the order lists: number + status, a meta line (customer /
  * date), the first item, delivery method + total, and an optional
- * "Next: …" strip for the owner.
+ * "Next: …" strip for the owner. `showRefundState` adds the cancellation /
+ * refund pill when the order has one.
  */
 export function OrderSummaryCard({
   order,
   meta,
   nextLabel,
   onPress,
+  showRefundState = false,
 }: {
   order: ShopOrder;
   meta: string;
   nextLabel?: string | null;
   onPress: () => void;
+  showRefundState?: boolean;
 }) {
   const { theme, styles } = useOrderStyles();
   const { t } = useTranslation();
   const { first, moreCount } = getItemsSummary(order.items);
   const pickup = isPickupOrder(order);
   const title = t("orderNumberTitle", { id: order.id });
+  const refundState = showRefundState ? (order.refundState ?? null) : null;
+  const refundLabel = refundState
+    ? t(getRefundBadgeInfo(refundState).labelKey)
+    : null;
 
   return (
     <TouchableOpacity
@@ -946,7 +1081,13 @@ export function OrderSummaryCard({
       activeOpacity={0.85}
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={[title, meta, formatShopPrice(order.total), nextLabel]
+      accessibilityLabel={[
+        title,
+        meta,
+        refundLabel,
+        formatShopPrice(order.total),
+        nextLabel,
+      ]
         .filter(Boolean)
         .join(", ")}
     >
@@ -967,6 +1108,11 @@ export function OrderSummaryCard({
               {meta}
             </Text>
           ) : null}
+          {refundState ? (
+            <View style={styles.summaryRefund}>
+              <OrderRefundBadge state={refundState} />
+            </View>
+          ) : null}
         </View>
 
         {first ? (
@@ -976,6 +1122,11 @@ export function OrderSummaryCard({
               <Text style={styles.summaryItemName} numberOfLines={1}>
                 {`${first.productName} × ${first.quantity}`}
               </Text>
+              {first.variantName ? (
+                <Text style={styles.summaryItemMore} numberOfLines={1}>
+                  {first.variantName}
+                </Text>
+              ) : null}
               {moreCount > 0 ? (
                 <Text style={styles.summaryItemMore}>
                   {t("orderItemsMore", { count: moreCount })}

@@ -40,6 +40,10 @@ import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { runOnJS } from "react-native-reanimated";
 import { LeafLogo } from "@/assets/icons";
 import { formatShopPrice } from "@/src/constants/demoShopProduct";
+import {
+  getUnitPrice,
+  normalizeShopProduct,
+} from "@/src/utils/shopProductHelpers";
 import { setShopProduct } from "@/src/state/slices/shopCartSlice";
 import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
@@ -618,6 +622,12 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontBold,
       color: theme.white,
       marginTop: moderateHeightScale(2),
+    },
+    productPriceRegular: {
+      fontSize: fontSize.size11,
+      fontFamily: fonts.fontRegular,
+      color: theme.white70,
+      textDecorationLine: "line-through",
     },
     shopBtn: {
       flexDirection: "row",
@@ -1398,9 +1408,12 @@ function ReelFeedItemBase({
   const postedByAvatarUri = resolveApiImageUrl(reel.posted_by?.image_url);
   const dispatch = useAppDispatch();
   const shopProduct = reel.product ?? null;
-  const productPrice = shopProduct
-    ? formatShopPrice(shopProduct.sellingPrice)
-    : "";
+  // Sale price is what the buyer pays; regular shown crossed out
+  const productUnit = useMemo(
+    () => (shopProduct ? getUnitPrice(normalizeShopProduct(shopProduct)) : null),
+    [shopProduct],
+  );
+  const productPrice = productUnit ? formatShopPrice(productUnit.price) : "";
   const router = useRouter();
 
   const distance =
@@ -1888,7 +1901,15 @@ function ReelFeedItemBase({
                     {shopProduct.description}
                   </Text>
                 )}
-                <Text style={styles.productPrice}>{productPrice}</Text>
+                <Text style={styles.productPrice}>
+                  {productPrice}
+                  {productUnit?.onSale ? "  " : null}
+                  {productUnit?.onSale ? (
+                    <Text style={styles.productPriceRegular}>
+                      {formatShopPrice(productUnit.regular)}
+                    </Text>
+                  ) : null}
+                </Text>
               </View>
               {showAsOwner ? (
                 <View style={styles.productOnReelPill}>

@@ -1,5 +1,9 @@
 import type {
   BusinessShopOrder,
+  OrderEarnings,
+  OrderRefundActions,
+  OrderRefundRequest,
+  OrderRefundState,
   ShopOrder,
   ShopOrderCustomer,
   ShopOrderFilter,
@@ -67,6 +71,12 @@ function toText(value: unknown): string | null {
   return typeof value === "string" && value.trim() !== "" ? value : null;
 }
 
+function toNullableNumber(value: unknown): number | null {
+  if (value == null || value === "") return null;
+  const n = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
 function toStatus(value: unknown): ShopOrderStatus {
   return ORDER_STATUSES.includes(value as ShopOrderStatus)
     ? (value as ShopOrderStatus)
@@ -99,6 +109,8 @@ function normalizeItem(value: unknown): ShopOrderItem {
     unitPrice: toNumber(raw.unitPrice),
     quantity: toNumber(raw.quantity),
     total: toNumber(raw.total),
+    variantId: toNullableNumber(raw.variantId),
+    variantName: toText(raw.variantName),
   };
 }
 
@@ -123,6 +135,68 @@ function normalizeRefund(value: unknown): ShopOrderRefund | null {
     status: raw.status === "refunded" ? "refunded" : "pending",
     reason: toText(raw.reason),
     refundedAt: toText(raw.refundedAt),
+  };
+}
+
+export const REFUND_STATES: OrderRefundState[] = [
+  "cancellation_requested",
+  "refund_requested",
+  "refund_on_the_way",
+  "refunded",
+  "refund_declined",
+  "under_review",
+  "refunded_by_freshpass",
+  "declined_reviewed",
+  "cancelled_not_refunded",
+];
+
+function toRefundState(value: unknown): OrderRefundState | null {
+  return REFUND_STATES.includes(value as OrderRefundState)
+    ? (value as OrderRefundState)
+    : null;
+}
+
+function normalizeRefundRequest(value: unknown): OrderRefundRequest | null {
+  const raw = asRecord(value);
+  if (!raw) return null;
+  return {
+    id: toNumber(raw.id),
+    type: raw.type === "cancellation" ? "cancellation" : "refund",
+    status: toText(raw.status) ?? "",
+    reason: toText(raw.reason),
+    reasonLabel: toText(raw.reasonLabel),
+    note: toText(raw.note),
+    photoUrl: toText(raw.photoUrl),
+    sellerResponse: toText(raw.sellerResponse),
+    respondedAt: toText(raw.respondedAt),
+    escalationNote: toText(raw.escalationNote),
+    escalationPhotoUrl: toText(raw.escalationPhotoUrl),
+    escalatedAt: toText(raw.escalatedAt),
+    adminNote: toText(raw.adminNote),
+    resolvedAt: toText(raw.resolvedAt),
+    createdAt: toId(raw.createdAt),
+  };
+}
+
+function normalizeRefundActions(value: unknown): OrderRefundActions | null {
+  const raw = asRecord(value);
+  if (!raw) return null;
+  return {
+    canRequestCancellation: raw.canRequestCancellation === true,
+    canRequestRefund: raw.canRequestRefund === true,
+    refundDeadline: toText(raw.refundDeadline),
+    canEscalate: raw.canEscalate === true,
+  };
+}
+
+function normalizeEarnings(value: unknown): OrderEarnings | null {
+  const raw = asRecord(value);
+  if (!raw) return null;
+  return {
+    gross: toNumber(raw.gross),
+    platformFee: toNumber(raw.platformFee),
+    stripeFee: toNullableNumber(raw.stripeFee),
+    net: toNullableNumber(raw.net),
   };
 }
 
@@ -161,6 +235,13 @@ export function normalizeShopOrder(value: unknown): ShopOrder {
     cancelledAt: toText(raw.cancelledAt),
     refund: normalizeRefund(raw.refund),
     createdAt: toId(raw.createdAt),
+    source:
+      raw.source === "marketplace" || raw.source === "reel"
+        ? raw.source
+        : null,
+    refundState: toRefundState(raw.refundState),
+    refundRequest: normalizeRefundRequest(raw.refundRequest),
+    refundActions: normalizeRefundActions(raw.refundActions),
   };
 }
 
@@ -177,6 +258,9 @@ export function normalizeBusinessOrder(value: unknown): BusinessShopOrder {
     customer: normalizeCustomer(raw.customer),
     nextStatuses,
     canEditShippingDetails: raw.canEditShippingDetails === true,
+    earnings: normalizeEarnings(raw.earnings),
+    canRefund: raw.canRefund === true,
+    refundError: toText(raw.refundError),
   };
 }
 
@@ -604,4 +688,100 @@ export function formatOrderAddressLines(
   const stateZip = [address.state, address.zip].filter(Boolean).join(" ");
   const cityLine = [address.city, stateZip].filter(Boolean).join(", ");
   return [address.fullName, address.street, cityLine].filter(Boolean);
+}
+
+// ── Cancellations and refunds ───────────────────────────────────────
+
+/** Customer status text for `refundState` (guide §6 Step 5). */
+export function getRefundStateLabelKey(state: OrderRefundState): string {
+  switch (state) {
+    case "cancellation_requested":
+      return "mpRefundStateCancellationRequested";
+    case "refund_requested":
+      return "mpRefundStateRefundRequested";
+    case "refund_on_the_way":
+      return "mpRefundStateOnTheWay";
+    case "refunded":
+      return "mpRefundStateRefunded";
+    case "refund_declined":
+      return "mpRefundStateDeclined";
+    case "under_review":
+      return "mpRefundStateUnderReview";
+    case "refunded_by_freshpass":
+      return "mpRefundStateRefundedByFreshpass";
+    case "declined_reviewed":
+      return "mpRefundStateDeclinedReviewed";
+    case "cancelled_not_refunded":
+      return "mpRefundStateCancelledNotRefunded";
+  }
+}
+
+/** Nothing more can happen to the request (money back, or decision final). */
+export function isRefundStateFinal(state: OrderRefundState | null | undefined): boolean {
+  return (
+    state === "refunded" ||
+    state === "refunded_by_freshpass" ||
+    state === "declined_reviewed"
+  );
+}
+
+/** Someone (seller, FreshPass or Stripe) still has to act. */
+export function isRefundStateWaiting(
+  state: OrderRefundState | null | undefined,
+): boolean {
+  return (
+    state === "cancellation_requested" ||
+    state === "refund_requested" ||
+    state === "under_review" ||
+    state === "refund_on_the_way"
+  );
+}
+
+/** Money went back to the customer. */
+export function isRefundStateRefunded(
+  state: OrderRefundState | null | undefined,
+): boolean {
+  return state === "refunded" || state === "refunded_by_freshpass";
+}
+
+/** Declined by the seller or upheld by FreshPass, or cancelled without money back. */
+export function isRefundStateNegative(
+  state: OrderRefundState | null | undefined,
+): boolean {
+  return (
+    state === "refund_declined" ||
+    state === "declined_reviewed" ||
+    state === "cancelled_not_refunded"
+  );
+}
+
+/** `reason` values for Request cancellation (optional). */
+export const CANCELLATION_REASONS = ["changed_mind", "other"] as const;
+/** `reason` values for Request refund (required). */
+export const REFUND_REASONS = [
+  "damaged",
+  "wrong_item",
+  "never_arrived",
+  "other",
+] as const;
+
+export type OrderCancellationReason = (typeof CANCELLATION_REASONS)[number];
+export type OrderRefundReason = (typeof REFUND_REASONS)[number];
+
+/** i18n key for a cancellation / refund reason value. */
+export function getRefundReasonLabelKey(
+  reason: OrderCancellationReason | OrderRefundReason | string,
+): string {
+  switch (reason) {
+    case "changed_mind":
+      return "mpRefundReasonChangedMind";
+    case "damaged":
+      return "mpRefundReasonDamaged";
+    case "wrong_item":
+      return "mpRefundReasonWrongItem";
+    case "never_arrived":
+      return "mpRefundReasonNeverArrived";
+    default:
+      return "mpRefundReasonOther";
+  }
 }

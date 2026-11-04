@@ -28,6 +28,11 @@ import {
   formatOrderDateTime,
 } from "@/src/components/shopOrderParts";
 import {
+  OrderRefundListBadge,
+  getOwnerListRefundBadge,
+  isRefundAwaitingSeller,
+} from "@/src/components/ownerOrderRefundParts";
+import {
   fetchBusinessOrderStats,
   fetchBusinessOrders,
   subscribeToBusinessOrderUpdates,
@@ -119,6 +124,10 @@ const createStyles = (theme: Theme) =>
       flex: 1,
       alignItems: "center",
       justifyContent: "center",
+    },
+    // Refund badge sits right above its card (closer than the next row)
+    row: {
+      gap: moderateHeightScale(6),
     },
     footerLoader: {
       paddingVertical: moderateHeightScale(16),
@@ -341,21 +350,30 @@ export default function BusinessOrdersScreen() {
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => {
             const next = splitNextStatuses(item.nextStatuses).forward[0];
-            return (
+            // A customer request comes before shipping (ship is blocked meanwhile)
+            const nextLabel = isRefundAwaitingSeller(item)
+              ? t("orderNextStep", { action: t("mpSelNextRespond") })
+              : next
+                ? t("orderNextStep", {
+                    action: t(getOrderActionLabelKey(next)),
+                  })
+                : null;
+            const card = (
               <OrderSummaryCard
                 order={item}
                 meta={[item.customer?.name, formatOrderDateTime(item.createdAt)]
                   .filter(Boolean)
                   .join(" · ")}
-                nextLabel={
-                  next
-                    ? t("orderNextStep", {
-                        action: t(getOrderActionLabelKey(next)),
-                      })
-                    : null
-                }
+                nextLabel={nextLabel}
                 onPress={() => openOrder(item)}
               />
+            );
+            if (!getOwnerListRefundBadge(item.refundState)) return card;
+            return (
+              <View style={styles.row}>
+                <OrderRefundListBadge refundState={item.refundState} />
+                {card}
+              </View>
             );
           }}
           contentContainerStyle={[

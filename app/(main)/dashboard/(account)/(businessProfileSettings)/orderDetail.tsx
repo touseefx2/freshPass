@@ -21,7 +21,7 @@ import {
 import FlowHeader from "@/src/components/reelFlow/flowHeader";
 import FlowFooter from "@/src/components/reelFlow/flowFooter";
 import FlowButton from "@/src/components/reelFlow/flowButton";
-import { FlowTitle } from "@/src/components/reelFlow/flowParts";
+import { FlowTitle, InfoNote } from "@/src/components/reelFlow/flowParts";
 import { FlowTextField } from "@/src/components/reelFlow/detailsFields";
 import EmptyState from "@/src/components/emptyState";
 import {
@@ -34,9 +34,23 @@ import {
   OrderStageCard,
   ShippingDetailsText,
 } from "@/src/components/shopOrderParts";
+import {
+  CancelChoiceCard,
+  OrderEarningsSection,
+  RefundRequestSection,
+  StripeFeeNote,
+  getOwnerRefundStageKeys,
+  isCancellationRequestOpen,
+  isRefundAwaitingSeller,
+} from "@/src/components/ownerOrderRefundParts";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
+import { useAppDispatch } from "@/src/hooks/hooks";
+import { openFullImageModal } from "@/src/state/slices/generalSlice";
+import { formatShopPrice } from "@/src/constants/demoShopProduct";
 import {
   fetchBusinessOrder,
+  refundBusinessOrder,
+  respondToRefundRequest,
   saveOrderShippingDetails,
   updateOrderStatus,
 } from "@/src/services/orderService";
@@ -61,10 +75,22 @@ import {
  * overview ("what now" card + one button per `nextStatuses` value) →
  * "Mark as shipped" step with the shipping details box (sent in the same call),
  * or the shipping details step on its own (PUT, any time it's allowed).
+ * Cancel opens a step to choose "Cancel and refund" / "Cancel without refund";
+ * a customer's cancellation / refund request is answered from the overview
+ * (Approve & refund) or the decline step (reason required).
  */
-type OrderView = "overview" | "ship" | "details";
+type OrderView = "overview" | "ship" | "details" | "cancel" | "decline";
 
-type Busy = ShopOrderNextStatus | "details" | null;
+type Busy =
+  | ShopOrderNextStatus
+  | "details"
+  | "approve"
+  | "decline"
+  | "refund"
+  | null;
+
+/** Max length of the decline reason the customer sees. */
+const DECLINE_RESPONSE_MAX_LENGTH = 1000;
 
 const SUCCESS_KEYS: Record<ShopOrderNextStatus, string> = {
   shipped: "orderShippedSuccess",
@@ -108,6 +134,9 @@ const createStyles = (theme: Theme) =>
       paddingBottom: moderateHeightScale(24),
       gap: moderateHeightScale(22),
     },
+    stepGap: {
+      gap: moderateHeightScale(12),
+    },
     // Same frame as FlowFooter, with one button per next status
     actions: {
       paddingHorizontal: moderateWidthScale(20),
@@ -128,6 +157,7 @@ function BusinessOrderDetail({ orderId }: { orderId: string }) {
   const styles = useMemo(() => createStyles(theme), [theme]);
   const insets = useSafeAreaInsets();
   const { showBanner } = useNotificationContext();
+  const dispatch = useAppDispatch();
 
   const [order, setOrder] = useState<BusinessShopOrder | null>(null);
   const [loading, setLoading] = useState(true);
@@ -136,6 +166,9 @@ function BusinessOrderDetail({ orderId }: { orderId: string }) {
   const [view, setView] = useState<OrderView>("overview");
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState<Busy>(null);
+  // Cancel step choice; the server's default is a refund
+  const [cancelRefund, setCancelRefund] = useState(true);
+  const [declineDraft, setDeclineDraft] = useState("");
 
   const busyRef = useRef<Busy>(null);
   // Which step the draft was typed for; going back and in again keeps it
@@ -178,6 +211,17 @@ function BusinessOrderDetail({ orderId }: { orderId: string }) {
     void load("initial");
   }, [load]);
 
+  // A reload moved the order on (request answered elsewhere, already
+  // cancelled): leave a step that no longer applies
+  useEffect(() => {
+    if (!order) return;
+    if (view === "decline" && !isRefundAwaitingSeller(order)) {
+      setView("overview");
+    } else if (view === "cancel" && !order.nextStatuses.includes("cancelled")) {
+      setView("overview");
+    }
+  }, [order, view]);
+
   const startBusy = (value: Exclude<Busy, null>) => {
     busyRef.current = value;
     setBusy(value);
@@ -204,6 +248,7 @@ function BusinessOrderDetail({ orderId }: { orderId: string }) {
   const runStatusUpdate = async (
     status: ShopOrderNextStatus,
     shippingDetails?: string,
+    options?: { refund?: boolean },
   ) => {
     const current = orderRef.current;
     if (!current || busyRef.current) return;
@@ -213,11 +258,18 @@ function BusinessOrderDetail({ orderId }: { orderId: string }) {
         current.id,
         status,
         shippingDetails,
+        options,
       );
       setOrder(updated);
       draftStepRef.current = null;
       setView("overview");
-      showBanner(t("orderUpdatedTitle"), t(SUCCESS_KEYS[status]), "success");
+      showBanner(
+        t("orderUpdatedTitle"),
+        status === "cancelled" && options?.refund
+          ? t("mpSelCancelRefundSuccess")
+          : t(SUCCESS_KEYS[status]),
+        "success",
+      );
     } catch (err) {
       onUpdateFailed(err);
     } finally {
@@ -245,6 +297,134 @@ function BusinessOrderDetail({ orderId }: { orderId: string }) {
     } finally {
       endBusy();
     }
+  };
+
+  /** Approve (full refund) or decline (reason shown to the customer). */
+  const answerRequest = async (decision: "approve" | "decline") => {
+    const current = orderRef.current;
+    if (!current || busyRef.current) return;
+    const response = declineDraft.trim();
+    if (decision === "decline" && !response) return;
+    startBusy(decision);
+    try {
+      const updated = await respondToRefundRequest(current.id, {
+        decision,
+        response: decision === "decline" ? response : undefined,
+      });
+      setOrder(updated);
+      if (decision === "decline") setDeclineDraft("");
+      setView("overview");
+      showBanner(
+        t("orderUpdatedTitle"),
+        decision === "approve"
+          ? t("mpSelApproveSuccess")
+          : t("mpSelDeclineSuccess"),
+        "success",
+      );
+    } catch (err) {
+      const fieldError = (
+        err as { data?: { errors?: { response?: unknown } } } | null
+      )?.data?.errors?.response;
+      if (decision === "decline" && fieldError) {
+        // Reason rejected (e.g. too long): stay on the step to fix it
+        showBanner(
+          t("orderUpdateFailed"),
+          Array.isArray(fieldError)
+            ? String(fieldError[0])
+            : String(fieldError),
+          "error",
+        );
+      } else {
+        onUpdateFailed(err);
+      }
+    } finally {
+      endBusy();
+    }
+  };
+
+  /** Refund later: cancelled without a refund (`canRefund`). */
+  const runRefund = async () => {
+    const current = orderRef.current;
+    if (!current || busyRef.current) return;
+    startBusy("refund");
+    try {
+      const updated = await refundBusinessOrder(current.id);
+      setOrder(updated);
+      showBanner(t("orderUpdatedTitle"), t("mpSelRefundSuccess"), "success");
+    } catch (err) {
+      onUpdateFailed(err);
+    } finally {
+      endBusy();
+    }
+  };
+
+  const confirmApprove = () => {
+    const current = orderRef.current;
+    if (!current || busyRef.current) return;
+    const amount = formatShopPrice(current.total);
+    Alert.alert(
+      t("mpSelConfirmApproveTitle"),
+      `${t(
+        current.refundRequest?.type === "cancellation"
+          ? "mpSelConfirmApproveCancelMessage"
+          : "mpSelConfirmApproveRefundMessage",
+        { id: current.id, amount },
+      )}\n\n${t("mpStripeFeeNotRefunded")}`,
+      [
+        { text: t("notNow"), style: "cancel" },
+        {
+          text: t("mpSelApproveAndRefund"),
+          onPress: () => void answerRequest("approve"),
+        },
+      ],
+    );
+  };
+
+  const confirmRefund = () => {
+    const current = orderRef.current;
+    if (!current || busyRef.current) return;
+    Alert.alert(
+      t("mpSelConfirmRefundTitle"),
+      `${t("mpSelConfirmRefundMessage", {
+        id: current.id,
+        amount: formatShopPrice(current.total),
+      })}\n\n${t("mpStripeFeeNotRefunded")}`,
+      [
+        { text: t("notNow"), style: "cancel" },
+        {
+          text: t("mpSelRefund"),
+          onPress: () => void runRefund(),
+        },
+      ],
+    );
+  };
+
+  const confirmCancel = () => {
+    const current = orderRef.current;
+    if (!current || busyRef.current) return;
+    const refund = cancelRefund;
+    const params = { id: current.id, amount: formatShopPrice(current.total) };
+    Alert.alert(
+      t("orderConfirmCancelTitle"),
+      refund
+        ? `${t("mpSelConfirmCancelRefundMessage", params)}\n\n${t(
+            "mpStripeFeeNotRefunded",
+          )}`
+        : t("mpSelConfirmCancelNoRefundMessage", params),
+      [
+        { text: t("orderKeepOrder"), style: "cancel" },
+        {
+          text: refund ? t("mpSelCancelAndRefund") : t("mpSelCancelNoRefund"),
+          style: "destructive",
+          onPress: () =>
+            void runStatusUpdate("cancelled", undefined, { refund }),
+        },
+      ],
+    );
+  };
+
+  const openPhoto = (uri: string) => {
+    dispatch(openFullImageModal({ images: [uri] }));
   };
 
   const openDetailsStep = (next: "ship" | "details") => {
@@ -289,18 +469,9 @@ function BusinessOrderDetail({ orderId }: { orderId: string }) {
         );
         return;
       case "cancelled":
-        Alert.alert(
-          t("orderConfirmCancelTitle"),
-          t("orderConfirmCancelMessage", params),
-          [
-            { text: t("orderKeepOrder"), style: "cancel" },
-            {
-              text: t("orderActionCancel"),
-              style: "destructive",
-              onPress: () => void runStatusUpdate("cancelled"),
-            },
-          ],
-        );
+        // Choose refund or not on its own step (refund preselected)
+        setCancelRefund(true);
+        setView("cancel");
         return;
     }
   };
@@ -331,11 +502,73 @@ function BusinessOrderDetail({ orderId }: { orderId: string }) {
       ? t("orderActionMarkShipped")
       : view === "details"
         ? t("orderShippingDetails")
-        : orderId
+        : view === "cancel"
+          ? t("orderActionCancel")
+          : view === "decline"
+            ? t("mpSelDeclineTitle")
+            : orderId
           ? t("orderNumberTitle", { id: orderId })
           : t("ordersTitle");
 
+  const actionsFrame = (children: React.ReactNode) => (
+    <View
+      style={[
+        styles.actions,
+        {
+          paddingBottom:
+            Math.max(insets.bottom, moderateHeightScale(14)) +
+            moderateHeightScale(4),
+        },
+      ]}
+    >
+      {children}
+    </View>
+  );
+
   const renderActions = (current: BusinessShopOrder) => {
+    // The customer asked: answer first (ship / ready stay blocked meanwhile)
+    if (isRefundAwaitingSeller(current)) {
+      return actionsFrame(
+        <>
+          <FlowButton
+            label={t("mpSelDecline")}
+            variant="outline"
+            icon="close"
+            trailingIcon="chevron-right"
+            disabled={busy !== null}
+            onPress={() => {
+              if (busyRef.current) return;
+              setView("decline");
+            }}
+          />
+          <FlowButton
+            label={t("mpSelApproveAndRefund")}
+            icon="check"
+            loading={busy === "approve"}
+            disabled={busy !== null && busy !== "approve"}
+            onPress={confirmApprove}
+          />
+          <StripeFeeNote />
+        </>,
+      );
+    }
+    // Cancelled without a refund: refund later
+    if (current.canRefund) {
+      return actionsFrame(
+        <>
+          <FlowButton
+            label={t("mpSelRefundAmount", {
+              amount: formatShopPrice(current.total),
+            })}
+            icon="currency-exchange"
+            loading={busy === "refund"}
+            disabled={busy !== null && busy !== "refund"}
+            onPress={confirmRefund}
+          />
+          <StripeFeeNote />
+        </>,
+      );
+    }
     const { forward, canCancel } = splitNextStatuses(current.nextStatuses);
     // No buttons when nothing is left to do
     if (forward.length === 0 && !canCancel) return null;
@@ -352,17 +585,8 @@ function BusinessOrderDetail({ orderId }: { orderId: string }) {
         onPress={() => onAction(status)}
       />
     );
-    return (
-      <View
-        style={[
-          styles.actions,
-          {
-            paddingBottom:
-              Math.max(insets.bottom, moderateHeightScale(14)) +
-              moderateHeightScale(4),
-          },
-        ]}
-      >
+    return actionsFrame(
+      <>
         {forward.map(buttonFor)}
         {canCancel ? (
           <FlowButton
@@ -375,12 +599,12 @@ function BusinessOrderDetail({ orderId }: { orderId: string }) {
             onPress={() => onAction("cancelled")}
           />
         ) : null}
-      </View>
+      </>,
     );
   };
 
   const renderOverview = (current: BusinessShopOrder) => {
-    const stage = getOwnerStageKeys(current);
+    const stage = getOwnerRefundStageKeys(current) ?? getOwnerStageKeys(current);
     const shipping = !isPickupOrder(current);
     const showShippingDetails =
       shipping && (!!current.shippingDetails || current.canEditShippingDetails);
@@ -409,11 +633,36 @@ function BusinessOrderDetail({ orderId }: { orderId: string }) {
             />
           }
         >
+          {current.refundError ? (
+            <InfoNote
+              tone="error"
+              icon="error-outline"
+              title={t("mpSelRefundFailedTitle")}
+              text={`${current.refundError}\n${t("mpRefundErrorRetry")}`}
+            />
+          ) : null}
+
           <OrderStageCard
             order={current}
             title={t(stage.title)}
             text={t(stage.text)}
           />
+
+          {isCancellationRequestOpen(current) ? (
+            <InfoNote
+              tone="warm"
+              icon="pan-tool"
+              text={t("mpSelCancelRequestBlocksShipping")}
+            />
+          ) : null}
+
+          {current.refundRequest ? (
+            <RefundRequestSection
+              request={current.refundRequest}
+              refundState={current.refundState}
+              onOpenPhoto={openPhoto}
+            />
+          ) : null}
 
           {showShippingDetails ? (
             <OrderSection
@@ -469,6 +718,13 @@ function BusinessOrderDetail({ orderId }: { orderId: string }) {
           <OrderSection title={t("orderItemsSection")}>
             <OrderItemsAndTotals order={current} />
           </OrderSection>
+
+          {current.earnings ? (
+            <OrderEarningsSection
+              earnings={current.earnings}
+              source={current.source}
+            />
+          ) : null}
 
           {current.history.length > 0 ? (
             <OrderSection title={t("orderHistory")}>
@@ -563,6 +819,140 @@ function BusinessOrderDetail({ orderId }: { orderId: string }) {
     );
   };
 
+  const renderCancelStep = (current: BusinessShopOrder) => {
+    const amount = formatShopPrice(current.total);
+    const choosing = busy === null;
+    return (
+      <>
+        <ScrollView
+          style={styles.flex}
+          contentContainerStyle={styles.stepContent}
+          showsVerticalScrollIndicator={false}
+        >
+          <FlowTitle
+            title={t("orderConfirmCancelTitle")}
+            subtitle={t("mpSelCancelStepSubtitle", { id: current.id, amount })}
+          />
+          <View style={styles.stepGap} accessibilityRole="radiogroup">
+            <CancelChoiceCard
+              icon="currency-exchange"
+              title={t("mpSelCancelAndRefund")}
+              text={t("mpSelCancelAndRefundText", { amount })}
+              tag={t("recommended")}
+              selected={cancelRefund}
+              disabled={!choosing}
+              onPress={() => setCancelRefund(true)}
+            />
+            <CancelChoiceCard
+              icon="money-off"
+              title={t("mpSelCancelNoRefund")}
+              text={t("mpSelCancelNoRefundText")}
+              selected={!cancelRefund}
+              disabled={!choosing}
+              onPress={() => setCancelRefund(false)}
+            />
+          </View>
+          <InfoNote
+            icon={cancelRefund ? "inventory-2" : "undo"}
+            tone={cancelRefund ? "info" : "warm"}
+            text={
+              cancelRefund
+                ? t("mpSelCancelStockNote")
+                : `${t("mpSelCancelNoRefundNote")} ${t("mpSelCancelStockNote")}`
+            }
+          />
+        </ScrollView>
+        <View>
+          <FlowFooter
+            primary={{
+              label: cancelRefund
+                ? t("mpSelCancelAndRefund")
+                : t("mpSelCancelNoRefund"),
+              icon: cancelRefund ? "currency-exchange" : "cancel",
+              loading: busy === "cancelled",
+              onPress: confirmCancel,
+            }}
+            tertiary={{
+              label: t("orderKeepOrder"),
+              disabled: busy !== null,
+              onPress: () => {
+                if (busyRef.current) return;
+                setView("overview");
+              },
+            }}
+            hint={cancelRefund ? t("mpStripeFeeNotRefunded") : null}
+          />
+        </View>
+      </>
+    );
+  };
+
+  const renderDeclineStep = (current: BusinessShopOrder) => {
+    const request = current.refundRequest;
+    const canSend = declineDraft.trim().length > 0;
+    return (
+      <>
+        <KeyboardAwareScrollView
+          style={styles.flex}
+          contentContainerStyle={styles.stepContent}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="interactive"
+          showsVerticalScrollIndicator={false}
+          bottomOffset={moderateHeightScale(32)}
+        >
+          <FlowTitle
+            title={
+              request?.type === "cancellation"
+                ? t("mpSelDeclineCancellationTitle")
+                : t("mpSelDeclineRefundTitle")
+            }
+            subtitle={t("mpSelDeclineSubtitle")}
+          />
+          <FlowTextField
+            label={t("mpSelDeclineReasonLabel")}
+            required
+            value={declineDraft}
+            onChangeText={setDeclineDraft}
+            multiline
+            maxCount={DECLINE_RESPONSE_MAX_LENGTH}
+            placeholder={t("mpSelDeclineReasonPlaceholder")}
+            editable={busy === null}
+            autoFocus
+          />
+          <InfoNote
+            icon="gavel"
+            text={t("mpSelDeclineEscalationNote")}
+          />
+        </KeyboardAwareScrollView>
+        <View>
+          <FlowFooter
+            primary={{
+              label: t("mpSelDeclineSend"),
+              icon: "block",
+              loading: busy === "decline",
+              disabled: !canSend,
+              onPress: () => void answerRequest("decline"),
+            }}
+            hint={canSend ? null : t("mpSelDeclineReasonRequired")}
+          />
+        </View>
+      </>
+    );
+  };
+
+  const renderView = (current: BusinessShopOrder) => {
+    switch (view) {
+      case "overview":
+        return renderOverview(current);
+      case "cancel":
+        return renderCancelStep(current);
+      case "decline":
+        return renderDeclineStep(current);
+      default:
+        return renderDetailsStep(current);
+    }
+  };
+
   return (
     <View style={styles.root}>
       <FlowHeader
@@ -583,10 +973,8 @@ function BusinessOrderDetail({ orderId }: { orderId: string }) {
           actionTitle={orderId ? t("orderRetry") : undefined}
           onActionPress={orderId ? () => void load("initial") : undefined}
         />
-      ) : view === "overview" ? (
-        renderOverview(order)
       ) : (
-        renderDetailsStep(order)
+        renderView(order)
       )}
     </View>
   );

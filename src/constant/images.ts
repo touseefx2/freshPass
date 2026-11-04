@@ -19,4 +19,5 @@ export const IMAGES = {
   anyoneStaff: require("@/assets/images/anyone-staff.png"),
   tryOnBefore: require("@/assets/images/tryOnBefore.png"),
   tryOnAfter: require("@/assets/images/tryOnAfter.png"),
+  marketplaceBanner: require("@/assets/images/marketplaceBanner.png"),
 };

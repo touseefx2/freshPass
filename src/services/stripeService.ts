@@ -471,11 +471,16 @@ import type { ShopShippingMethod } from "@/src/types/shopProduct";
 
 export interface ProductCheckoutItem {
   product_id: number;
+  /** Required when the product has options (variants). */
+  variant_id?: number | null;
+  /** 1–99 (was 10). */
   quantity: number;
 }
 
 export interface ProductCheckoutBody {
   items: ProductCheckoutItem[];
+  /** `marketplace` for a cart group or Marketplace Buy Now; leave out for a Reel's Shop Now. */
+  source?: "marketplace" | "reel";
   shipping_method: ShopShippingMethod;
   shipping_address?: {
     fullName: string;

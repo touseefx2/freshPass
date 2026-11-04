@@ -32,13 +32,16 @@ import {
 } from "@/src/theme/dimensions";
 import StackHeader from "@/src/components/StackHeader";
 import Button from "@/src/components/button";
+import ProductPrice from "@/src/components/marketplace/ProductPrice";
 import { formatShopPrice } from "@/src/constants/demoShopProduct";
 import {
   removeProduct,
   setDeliveryOptions,
   setProducts,
 } from "@/src/state/slices/inventorySlice";
-import { describeDelivery } from "@/src/utils/shopProductHelpers";
+import { setBusinessPlansModalVisible } from "@/src/state/slices/generalSlice";
+import { isBusinessSubscriptionActive } from "@/src/state/slices/userSlice";
+import { describeDelivery, getUnitPrice } from "@/src/utils/shopProductHelpers";
 import {
   getStockFilterMatch,
   isLowStock,
@@ -342,6 +345,24 @@ const createStyles = (theme: Theme) =>
       fontSize: fontSize.size11,
       fontFamily: fonts.fontBold,
     },
+    badges: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: moderateWidthScale(5),
+      marginTop: moderateHeightScale(2),
+    },
+    badge: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(3),
+      paddingHorizontal: moderateWidthScale(7),
+      paddingVertical: moderateHeightScale(2),
+      borderRadius: moderateWidthScale(8),
+    },
+    badgeText: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontBold,
+    },
     actions: {
       alignSelf: "stretch",
       justifyContent: "space-between",
@@ -382,6 +403,10 @@ export default function ProductsInventoryScreen() {
   const insets = useSafeAreaInsets();
   const products = useAppSelector((s) => s.inventory.products);
   const delivery = useAppSelector((s) => s.inventory.deliveryOptions);
+  const businessStatus = useAppSelector((s) => s.user.businessStatus);
+  // Business owners on a plan (Business or Solo) add products; unknown → server decides.
+  const canAddProducts =
+    !businessStatus || isBusinessSubscriptionActive(businessStatus);
   const deliveryLines = describeDelivery(delivery, t);
 
   const [search, setSearch] = useState("");
@@ -567,6 +592,84 @@ export default function ProductsInventoryScreen() {
     setRefreshing(true);
     await loadProducts();
     setRefreshing(false);
+  };
+
+  const openAdd = () => {
+    if (!canAddProducts) {
+      // Existing products stay editable; new ones need a plan.
+      dispatch(setBusinessPlansModalVisible(true));
+      return;
+    }
+    router.push("./addProduct" as any);
+  };
+
+  type Badge = {
+    key: string;
+    icon: React.ComponentProps<typeof MaterialIcons>["name"];
+    label: string;
+    bg: string;
+    fg: string;
+  };
+
+  /** Marketplace / sale / options / moderation tags under a product's name. */
+  const getBadges = (item: ShopProduct): Badge[] => {
+    const badges: Badge[] = [];
+    const status = item.moderation?.status;
+    if (status === "flagged") {
+      badges.push({
+        key: "flagged",
+        icon: "flag",
+        label: t("mpPfBadgeFlagged"),
+        bg: theme.upcomingCard,
+        fg: theme.selectCard,
+      });
+    } else if (status === "removed") {
+      badges.push({
+        key: "removed",
+        icon: "remove-shopping-cart",
+        label: t("mpPfBadgeRemoved"),
+        bg: theme.lightRed,
+        fg: theme.red,
+      });
+    }
+    if (item.showInMarketplace) {
+      badges.push({
+        key: "marketplace",
+        icon: "storefront",
+        label: t("mpPfBadgeInMarketplace"),
+        bg: "rgba(96, 108, 56, 0.12)",
+        fg: theme.buttonBack,
+      });
+    }
+    if (item.featuredRequested && !item.moderation?.featuredBlocked) {
+      badges.push({
+        key: "featured",
+        icon: "star",
+        label: t("mpPfBadgeFeatured"),
+        bg: theme.orangeBrown01,
+        fg: theme.orangeBrownText,
+      });
+    }
+    if (item.onSale) {
+      badges.push({
+        key: "sale",
+        icon: "local-offer",
+        label: t("mpSale"),
+        bg: theme.orangeBrown01,
+        fg: theme.selectCard,
+      });
+    }
+    const options = item.variants?.length ?? 0;
+    if (options > 0) {
+      badges.push({
+        key: "options",
+        icon: "layers",
+        label: t("mpPfBadgeOptions", { count: options }),
+        bg: theme.lightGreen07,
+        fg: theme.darkGreen,
+      });
+    }
+    return badges;
   };
 
   const openEdit = (item: ShopProduct) =>
@@ -808,13 +911,18 @@ export default function ProductsInventoryScreen() {
           renderItem={({ item }) => {
             const status = getStockStatus(item);
             const tone = toneColors[status.tone];
+            const badges = getBadges(item);
+            const unit = getUnitPrice(item);
             return (
               <TouchableOpacity
                 style={styles.card}
                 activeOpacity={0.85}
                 onPress={() => openEdit(item)}
                 accessibilityRole="button"
-                accessibilityLabel={`${t("editProduct")}: ${item.name}`}
+                accessibilityLabel={[
+                  `${t("editProduct")}: ${item.name}`,
+                  ...badges.map((b) => b.label),
+                ].join(", ")}
               >
                 <View style={styles.thumb}>
                   {item.imageUri ? (
@@ -845,10 +953,42 @@ export default function ProductsInventoryScreen() {
                   <Text style={styles.cardMeta} numberOfLines={1}>
                     {[item.brand, item.category].filter(Boolean).join(" · ")}
                   </Text>
+                  {badges.length ? (
+                    <View style={styles.badges}>
+                      {badges.map((b) => (
+                        <View
+                          key={b.key}
+                          style={[styles.badge, { backgroundColor: b.bg }]}
+                        >
+                          <MaterialIcons
+                            name={b.icon}
+                            size={moderateWidthScale(12)}
+                            color={b.fg}
+                          />
+                          <Text
+                            style={[styles.badgeText, { color: b.fg }]}
+                            numberOfLines={1}
+                          >
+                            {b.label}
+                          </Text>
+                        </View>
+                      ))}
+                    </View>
+                  ) : null}
                   <View style={styles.cardFooter}>
-                    <Text style={styles.cardPrice}>
-                      {formatShopPrice(item.sellingPrice)}
-                    </Text>
+                    {unit.onSale ? (
+                      <ProductPrice
+                        price={unit.price}
+                        regular={unit.regular}
+                        onSale
+                        size="sm"
+                        style={{ flexShrink: 1 }}
+                      />
+                    ) : (
+                      <Text style={styles.cardPrice}>
+                        {formatShopPrice(item.sellingPrice)}
+                      </Text>
+                    )}
                     <View style={[styles.stockPill, { backgroundColor: tone.bg }]}>
                       <View
                         style={[styles.stockDot, { backgroundColor: tone.fg }]}
@@ -899,12 +1039,12 @@ export default function ProductsInventoryScreen() {
               title={t("addProductCta")}
               leftIcon={
                 <MaterialIcons
-                  name="add"
+                  name={canAddProducts ? "add" : "lock-outline"}
                   size={moderateWidthScale(20)}
                   color={theme.buttonText}
                 />
               }
-              onPress={() => router.push("./addProduct" as any)}
+              onPress={openAdd}
             />
           </View>
         ) : null}

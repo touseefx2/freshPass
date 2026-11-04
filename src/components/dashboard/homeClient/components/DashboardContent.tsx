@@ -35,7 +35,6 @@ import {
   setCategoriesError,
   setSelectedCategory,
 } from "@/src/state/slices/categoriesSlice";
-import SearchBar from "./SearchBar";
 import CategorySection from "./CategorySection";
 import ShowBusiness from "./ShowBusiness";
 import ShowFavorites, {
@@ -47,6 +46,7 @@ import HomeReelsSection from "@/src/components/homeReelsSection";
 import HomeAvailableNowSection from "@/src/components/homeAvailableNowSection";
 import HomeSlotOffersSection from "@/src/components/homeSlotOffersSection";
 import FreshyTryOnBanner from "@/src/components/FreshyTryOnBanner";
+import MarketplaceBanner from "@/src/components/marketplace/MarketplaceBanner";
 import { fetchFollowing } from "@/src/services/followService";
 import { setGuestModeModalVisible } from "@/src/state/slices/generalSlice";
 import {
@@ -63,7 +63,8 @@ const createStyles = (theme: Theme) =>
       backgroundColor: theme.background,
     },
     contentContainer: {
-      paddingTop: moderateHeightScale(18),
+      // Search bar moved into the Marketplace — categories keep their own top margin
+      paddingTop: 0,
       paddingBottom: moderateHeightScale(40),
     },
 
@@ -1061,18 +1062,6 @@ export default function DashboardContent() {
         updateReelsInView();
       }}
     >
-      <SearchBar
-        onSearchPress={() => {
-          router.push("/dashboard/(explore)" as any);
-          setTimeout(() => {
-            router.push({
-              pathname: "./search",
-              params: { popularServices: [] },
-            });
-          }, 300);
-        }}
-      />
-
       <CategorySection
         selectedCategory={selectedCategory}
         onCategorySelect={(categoryId) => {
@@ -1113,6 +1102,16 @@ export default function DashboardContent() {
             businessesError={dealsError}
             verifiedSalons={verifiedSalonsDeals}
             onRetry={fetchBusinessesDeals}
+          />
+        </View>
+      )}
+
+      {isCusotmerandGuest && (
+        <View style={styles.section}>
+          <MarketplaceBanner
+            onPress={() =>
+              router.push("/(main)/marketplace" as any)
+            }
           />
         </View>
       )}

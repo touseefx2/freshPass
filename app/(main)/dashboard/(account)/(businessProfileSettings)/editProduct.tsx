@@ -11,9 +11,15 @@ import StackHeader from "@/src/components/StackHeader";
 // import ProductFormScreen from "@/src/components/productFormScreen";
 import type { ProductFormDraft } from "@/src/components/productFormScreen";
 import ProductStepFlow from "@/src/components/productStepFlow";
+import {
+  productSaveErrorMessage,
+  toProductServerError,
+  type ProductServerError,
+} from "@/src/components/productEditor/editorUtils";
 import { updateProduct as updateProductRedux } from "@/src/state/slices/inventorySlice";
 import { updateProduct as updateProductApi } from "@/src/services/productService";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
+import { productToFormDraft } from "@/src/utils/shopProductHelpers";
 
 export default function EditProductScreen() {
   const { t } = useTranslation();
@@ -27,18 +33,10 @@ export default function EditProductScreen() {
     s.inventory.products.find((p) => p.id === id),
   );
   const [submitting, setSubmitting] = useState(false);
-
+  const [serverError, setServerError] = useState<ProductServerError | null>(null);
   const initial = useMemo((): ProductFormDraft | null => {
     if (!product) return null;
-    const {
-      id: _id,
-      createdAt: _c,
-      updatedAt: _u,
-      published: _p,
-      delivery: _d,
-      ...draft
-    } = product;
-    return draft;
+    return productToFormDraft(product);
   }, [product]);
 
   const handleSubmit = useCallback(
@@ -46,27 +44,22 @@ export default function EditProductScreen() {
       if (!product || submitting) return;
       setSubmitting(true);
       try {
-        const imageChanged =
-          draft.imageUri !== product.imageUri && draft.imageUri;
-        const imageFile = imageChanged
-          ? {
-              uri: draft.imageUri!,
-              name: `product-${Date.now()}.jpg`,
-              type: "image/jpeg",
-            }
-          : null;
+        // Photos go as images[] / remove_image_ids[] (draft.images); the old
+        // single `image` would replace the main photo, so it isn't sent.
         // Live products keep their status; drafts publish or stay drafts.
         const updated = await updateProductApi(
           product.id,
           product.published ? draft : { ...draft, published: publish },
-          imageFile,
+          null,
         );
         dispatch(updateProductRedux(updated));
         router.back();
       } catch (err: any) {
+        const fieldError = toProductServerError(err);
+        if (fieldError) setServerError(fieldError);
         showBanner(
           t("editProduct"),
-          err?.message || t("somethingWentWrong"),
+          productSaveErrorMessage(err, fieldError) || t("somethingWentWrong"),
           "error",
         );
         // Only on failure: router.back() runs on a later tick, and dropping
@@ -106,7 +99,9 @@ export default function EditProductScreen() {
       mode="edit"
       initial={initial}
       published={product.published}
+      moderation={product.moderation}
       submitting={submitting}
+      serverError={serverError}
       onSubmit={handleSubmit}
     />
   );

@@ -30,6 +30,7 @@ import { resetCategories } from "../state/slices/categoriesSlice";
 import { resetBusiness } from "../state/slices/bsnsSlice";
 import { resetChat } from "../state/slices/chatSlice";
 import { clearInventory } from "../state/slices/inventorySlice";
+import { clearMarketCart } from "../state/slices/marketCartSlice";
 import {
   isAppointmentWriteUrl,
   notifyAppointmentsChanged,
@@ -323,6 +324,7 @@ const handleLogout = async (options?: { skipApi?: boolean }) => {
     store.dispatch(resetBusiness());
     store.dispatch(resetChat());
     store.dispatch(clearInventory());
+    store.dispatch(clearMarketCart());
     store.dispatch(resetUser());
     // Next login must re-register the device push token
     try {

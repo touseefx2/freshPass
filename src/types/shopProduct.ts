@@ -19,6 +19,10 @@ export type ShopProductCategory =
   | "Tools"
   | "Other";
 
+/**
+ * Offline fallback only: the real list comes from GET /api/product-categories
+ * (fetchProductCategories in marketplaceService).
+ */
 export const SHOP_PRODUCT_CATEGORIES: ShopProductCategory[] = [
   "Hair Styling",
   "Hair Care",
@@ -26,6 +30,48 @@ export const SHOP_PRODUCT_CATEGORIES: ShopProductCategory[] = [
   "Tools",
   "Other",
 ];
+
+/** Gallery photo (main image first). */
+export interface ShopProductImage {
+  id: number;
+  url: string;
+}
+
+/** Option (colour / model) with its own stock and optional own price. */
+export interface ShopProductVariant {
+  id: number;
+  name: string;
+  /** Own regular price; null = follows the product's price. */
+  sellingPrice: number | null;
+  salePrice: number | null;
+  /** What the buyer pays for one. */
+  price: number;
+  onSale: boolean;
+  hasOwnPrice: boolean;
+  inventoryCount: number;
+  inStock: boolean;
+  images: ShopProductImage[];
+}
+
+/** Selling business (open its profile with `id`). */
+export interface ShopSeller {
+  id: number;
+  name: string;
+  imageUrl: string | null;
+}
+
+/** `average` null = no reviews → "No reviews yet", never 0 stars. */
+export interface ShopRating {
+  average: number | null;
+  count: number;
+}
+
+/** Owner only: FreshPass admin moderation of a Marketplace product. */
+export interface ShopProductModeration {
+  status: "active" | "flagged" | "removed";
+  note: string | null;
+  featuredBlocked: boolean;
+}
 
 export interface ShopProduct {
   id: string;
@@ -49,6 +95,29 @@ export interface ShopProduct {
   published: boolean;
   createdAt: string;
   updatedAt: string;
+
+  // ── Marketplace fields (older payloads may lack them; see normalizeShopProduct)
+  /** Set when on sale; show `sellingPrice` crossed out. */
+  salePrice?: number | null;
+  /** What the buyer pays for one (salePrice ?? sellingPrice). */
+  price?: number;
+  onSale?: boolean;
+  /** false → "Out of stock", no add to cart. */
+  inStock?: boolean;
+  benefits?: string[];
+  /** Up to 4, main image first (`imageUri` is the first one). */
+  images?: ShopProductImage[];
+  variants?: ShopProductVariant[];
+  seller?: ShopSeller | null;
+  /** Signed-in customers only. */
+  isFavorite?: boolean;
+  rating?: ShopRating;
+  /** Owner only. */
+  showInMarketplace?: boolean;
+  /** Owner only: seller nominated it for Featured. */
+  featuredRequested?: boolean;
+  /** Owner only. */
+  moderation?: ShopProductModeration | null;
 }
 
 export type ShopStockFilter = "all" | "in_stock" | "low_stock";

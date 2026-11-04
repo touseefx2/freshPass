@@ -30,8 +30,9 @@ import {
 } from "@/src/utils/shopOrderHelpers";
 
 /**
- * Customer's "My orders": every product order with its status; tapping one
- * opens the order screen (tracking, shipping details, history).
+ * Customer's "My orders": every product order with its status (and its
+ * cancellation / refund state); tapping one opens the order screen
+ * (tracking, shipping details, history, requests).
  */
 const PAGE_SIZE = 20;
 
@@ -211,6 +212,7 @@ export default function CustomerOrdersScreen() {
               order={item}
               meta={formatOrderDateTime(item.createdAt)}
               onPress={() => openOrder(item)}
+              showRefundState
             />
           )}
           contentContainerStyle={[

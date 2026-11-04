@@ -86,8 +86,15 @@ export default function OrderConfirmedScreen() {
   const { colors } = useTheme();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [theme]);
-  const { orderId: paramOrderId } = useLocalSearchParams<{ orderId?: string }>();
-  const lastOrderId = useAppSelector((s) => s.shopCart.lastOrderId);
+  const { orderId: paramOrderId, source } = useLocalSearchParams<{
+    orderId?: string;
+    /** "marketplace" from the Marketplace checkout; absent for a reel's Shop Now. */
+    source?: string;
+  }>();
+  const isMarketplace = source === "marketplace";
+  const shopLastOrderId = useAppSelector((s) => s.shopCart.lastOrderId);
+  const marketLastOrderId = useAppSelector((s) => s.marketCart.lastOrderId);
+  const lastOrderId = isMarketplace ? marketLastOrderId : shopLastOrderId;
   const orderId = paramOrderId || lastOrderId || "FP000000";
 
   // The last unit can sell out while the sheet is open: the server then
@@ -108,9 +115,28 @@ export default function OrderConfirmedScreen() {
 
   const goHome = () => resetToDashboardHome();
 
+  // Back to the catalog: pop the whole buy flow off the (main) stack, then
+  // open the Marketplace again (main stack, no tab bar) so Back lands on Home.
+  const continueMarketplace = () => {
+    if (router.canDismiss()) router.dismissAll();
+    router.navigate("/(main)/marketplace" as any);
+  };
+
+  const viewOrder = () =>
+    paramOrderId || lastOrderId
+      ? router.push({
+          pathname: "/(main)/shop/orderDetail" as any,
+          params: { orderId },
+        })
+      : showBanner(t("viewOrder"), t("paymentMockNote"), "info");
+
   return (
     <View style={styles.container}>
-      <FlowHeader title={t("shopFlowTitle")} onBack={goHome} backIcon="close" />
+      <FlowHeader
+        title={isMarketplace ? t("checkout") : t("shopFlowTitle")}
+        onBack={goHome}
+        backIcon="close"
+      />
       <ScrollView
         style={styles.content}
         contentContainerStyle={styles.contentContainer}
@@ -135,6 +161,7 @@ export default function OrderConfirmedScreen() {
         </View>
         <InfoNote
           icon="notifications-none"
+          title={isMarketplace && !refund ? t("staffOnboardingNextTitle") : null}
           text={
             refund
               ? t(
@@ -142,28 +169,43 @@ export default function OrderConfirmedScreen() {
                     ? "orderStageAutoRefundedCustomer"
                     : "orderStageAutoRefundPendingCustomer",
                 )
-              : t("shopConfirmedNote")
+              : isMarketplace
+                ? t("mpCoConfirmedNote")
+                : t("shopConfirmedNote")
           }
           style={styles.note}
         />
       </ScrollView>
-      <FlowFooter
-        secondary={{
-          label: t("viewOrder"),
-          onPress: () =>
-            paramOrderId || lastOrderId
-              ? router.push({
-                  pathname: "/(main)/shop/orderDetail" as any,
-                  params: { orderId },
-                })
-              : showBanner(t("viewOrder"), t("paymentMockNote"), "info"),
-          icon: "receipt-long",
-        }}
-        primary={{
-          label: t("continueShopping"),
-          onPress: goHome,
-        }}
-      />
+      {isMarketplace ? (
+        <FlowFooter
+          secondary={{
+            label: t("viewOrder"),
+            onPress: viewOrder,
+            icon: "receipt-long",
+          }}
+          primary={{
+            label: t("continueShopping"),
+            onPress: continueMarketplace,
+            icon: "storefront",
+          }}
+          tertiary={{
+            label: t("mpCoReturnHome"),
+            onPress: goHome,
+          }}
+        />
+      ) : (
+        <FlowFooter
+          secondary={{
+            label: t("viewOrder"),
+            onPress: viewOrder,
+            icon: "receipt-long",
+          }}
+          primary={{
+            label: t("continueShopping"),
+            onPress: goHome,
+          }}
+        />
+      )}
     </View>
   );
 }

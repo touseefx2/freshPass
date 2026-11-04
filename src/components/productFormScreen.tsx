@@ -38,10 +38,58 @@ import {
   type ShopProductCategory,
 } from "@/src/types/shopProduct";
 
+/** A gallery photo in the editor: kept from the server (id) or newly picked (isNew). */
+export type ProductDraftImage = {
+  id?: number;
+  uri: string;
+  isNew: boolean;
+  name?: string;
+  type?: string;
+};
+
+/** An option in the editor. `key` is a stable list key (new variants have no id yet). */
+export type ProductDraftVariant = {
+  id?: number;
+  key: string;
+  name: string;
+  sellingPrice: number | null;
+  salePrice: number | null;
+  inventoryCount: number;
+  images: ProductDraftImage[];
+  removedImageIds: number[];
+};
+
+/**
+ * Editor draft. The Marketplace fields are optional so the old single-photo
+ * form keeps working; productToFormDraft (shopProductHelpers) builds one from
+ * a product, and createProduct / updateProduct send only what is set.
+ * `variants: []` on update = the seller removed every option (remove_variants).
+ */
 export type ProductFormDraft = Omit<
   ShopProduct,
-  "id" | "createdAt" | "updatedAt" | "published" | "delivery"
->;
+  | "id"
+  | "createdAt"
+  | "updatedAt"
+  | "published"
+  | "delivery"
+  | "price"
+  | "onSale"
+  | "inStock"
+  | "images"
+  | "variants"
+  | "seller"
+  | "isFavorite"
+  | "rating"
+  | "moderation"
+> & {
+  salePrice?: number | null;
+  benefits?: string[];
+  showInMarketplace?: boolean;
+  featuredRequested?: boolean;
+  images?: ProductDraftImage[];
+  removedImageIds?: number[];
+  variants?: ProductDraftVariant[];
+};
 
 type Props = {
   initial: ProductFormDraft;

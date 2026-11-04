@@ -1,13 +1,18 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  FlatList,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
+  useWindowDimensions,
+  type LayoutChangeEvent,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
 } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { isOwnBusinessInCustomerMode } from "@/src/state/slices/userSlice";
@@ -27,21 +32,37 @@ import {
   InfoNote,
   SectionLabel,
 } from "@/src/components/reelFlow/flowParts";
+import ProductRating from "@/src/components/marketplace/ProductRating";
+import VariantChips from "@/src/components/marketplace/detail/VariantChips";
 import { formatShopPrice } from "@/src/constants/demoShopProduct";
 import {
   setShippingMethod,
   setShopProduct,
   setShopQuantity,
+  setShopVariant,
 } from "@/src/state/slices/shopCartSlice";
+import { openFullImageModal } from "@/src/state/slices/generalSlice";
 import { fetchProduct } from "@/src/services/productService";
 import Logger from "@/src/services/logger";
-import { describeDelivery } from "@/src/utils/shopProductHelpers";
+import {
+  describeDelivery,
+  findProductVariant,
+  getMaxQuantity,
+  getProductGallery,
+  getUnitPrice,
+  isProductPurchasable,
+  productHasVariants,
+} from "@/src/utils/shopProductHelpers";
 import { isPaymentsEnabled } from "@/src/utils/paymentsEnabled";
 
-const MAX_QTY_PER_ITEM = 10;
 /** Show "Only N left" at or below this stock. */
 const LOW_STOCK = 5;
 const SHOP_STEP_TOTAL = 3;
+/** Product and option galleries hold up to 4 photos. */
+const MAX_GALLERY = 4;
+const HERO_HEIGHT = heightScale(260);
+/** Hero card border (1pt each side) — the photo pages fill the inside. */
+const HERO_BORDER = 2;
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -59,7 +80,7 @@ const createStyles = (theme: Theme) =>
       gap: moderateHeightScale(16),
     },
     hero: {
-      height: heightScale(260),
+      height: HERO_HEIGHT,
       borderRadius: moderateWidthScale(22),
       overflow: "hidden",
       backgroundColor: theme.white,
@@ -71,6 +92,28 @@ const createStyles = (theme: Theme) =>
     heroImage: {
       width: "100%",
       height: "100%",
+    },
+    dots: {
+      position: "absolute",
+      bottom: moderateHeightScale(12),
+      alignSelf: "center",
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(6),
+      paddingHorizontal: moderateWidthScale(10),
+      paddingVertical: moderateHeightScale(6),
+      borderRadius: moderateWidthScale(12),
+      backgroundColor: "rgba(40, 54, 24, 0.35)",
+    },
+    dot: {
+      width: widthScale(7),
+      height: widthScale(7),
+      borderRadius: widthScale(4),
+      backgroundColor: "rgba(255, 255, 255, 0.55)",
+    },
+    dotOn: {
+      width: widthScale(18),
+      backgroundColor: theme.white,
     },
     heroEmpty: {
       width: widthScale(96),
@@ -96,11 +139,53 @@ const createStyles = (theme: Theme) =>
       color: theme.darkGreen,
       lineHeight: fontSize.size32,
     },
+    priceRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      flexWrap: "wrap",
+      gap: moderateWidthScale(8),
+    },
     price: {
       fontSize: fontSize.size24,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
       fontVariant: ["tabular-nums"],
+    },
+    regularPrice: {
+      fontSize: fontSize.size16,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen5,
+      textDecorationLine: "line-through",
+      fontVariant: ["tabular-nums"],
+    },
+    saleBadge: {
+      paddingHorizontal: moderateWidthScale(10),
+      paddingVertical: moderateHeightScale(3),
+      borderRadius: moderateWidthScale(10),
+      backgroundColor: theme.selectCard,
+    },
+    saleBadgeText: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontBold,
+      color: theme.white,
+      letterSpacing: 0.4,
+      textTransform: "uppercase",
+    },
+    benefitsCard: {
+      padding: moderateWidthScale(16),
+      gap: moderateHeightScale(10),
+    },
+    benefitRow: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: moderateWidthScale(10),
+    },
+    benefitText: {
+      flex: 1,
+      fontSize: fontSize.size15,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
+      lineHeight: fontSize.size20,
     },
     description: {
       marginTop: moderateHeightScale(4),
@@ -223,39 +308,93 @@ export default function ProductDetailScreen() {
   const { productId } = useLocalSearchParams<{ productId?: string }>();
   const shopProduct = useAppSelector((s) => s.shopCart.product);
   const quantity = useAppSelector((s) => s.shopCart.quantity);
+  const variantId = useAppSelector((s) => s.shopCart.variantId);
   // Compare as strings: the feed has sent numeric ids before; route params are strings
   const product =
     shopProduct && String(shopProduct.id) === String(productId) ? shopProduct : null;
   /** Deleted or unpublished since the feed loaded (404 on refresh) */
   const [unavailable, setUnavailable] = useState(false);
 
-  // The feed's copy can be stale — refresh price, stock and delivery. On other
-  // errors keep the feed copy; checkout validates again on the server.
-  useEffect(() => {
-    if (!productId) return;
-    let cancelled = false;
-    fetchProduct(productId)
-      .then((fresh) => {
-        if (!cancelled) dispatch(setShopProduct(fresh));
-      })
-      .catch((err: any) => {
-        if (cancelled) return;
-        if (err?.status === 404) setUnavailable(true);
-        else Logger.error("Failed to refresh product:", err);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [dispatch, productId]);
+  // The feed's copy can be stale — refresh price, stock, options and delivery
+  // (again when coming back from checkout, e.g. after an option sold out).
+  // On other errors keep the feed copy; checkout validates again on the server.
+  useFocusEffect(
+    useCallback(() => {
+      if (!productId) return;
+      let cancelled = false;
+      fetchProduct(productId)
+        .then((fresh) => {
+          if (cancelled) return;
+          setUnavailable(false);
+          dispatch(setShopProduct(fresh));
+        })
+        .catch((err: any) => {
+          if (cancelled) return;
+          if (err?.status === 404) setUnavailable(true);
+          else Logger.error("Failed to refresh product:", err);
+        });
+      return () => {
+        cancelled = true;
+      };
+    }, [dispatch, productId]),
+  );
 
-  // Stock may have dropped below the chosen quantity
-  const stockCap =
-    product?.trackInventory && product.inventoryCount > 0
-      ? Math.min(product.inventoryCount, MAX_QTY_PER_ITEM)
-      : MAX_QTY_PER_ITEM;
+  const hasVariants = !!product && productHasVariants(product);
+  const variant = product ? findProductVariant(product, variantId) : null;
+
+  // Options are required: keep a valid one picked (first in stock), drop a
+  // stale id when the product has none.
+  useEffect(() => {
+    if (!product) return;
+    let next: number | null = null;
+    if (hasVariants) {
+      next =
+        variant && variant.inStock
+          ? variant.id
+          : (product.variants?.find((v) => v.inStock)?.id ?? null);
+    }
+    if (next !== variantId) dispatch(setShopVariant(next));
+  }, [dispatch, hasVariants, product, variant, variantId]);
+
+  // Stock (of the chosen option) may have dropped below the chosen quantity
+  const maxQty = product
+    ? hasVariants && !variant
+      ? 0
+      : getMaxQuantity(product, variant)
+    : 0;
+  const stockCap = Math.max(1, maxQty);
   useEffect(() => {
     if (quantity > stockCap) dispatch(setShopQuantity(stockCap));
   }, [dispatch, quantity, stockCap]);
+
+  // Gallery: the option's own photos when it has them, else the product's
+  const gallery = useMemo(
+    () => (product ? getProductGallery(product, variant).slice(0, MAX_GALLERY) : []),
+    [product, variant],
+  );
+  const galleryKey = gallery.map((img) => img.url).join("|");
+  const { width: windowWidth } = useWindowDimensions();
+  const [heroWidth, setHeroWidth] = useState(
+    windowWidth - moderateWidthScale(20) * 2 - HERO_BORDER,
+  );
+  const [photoIndex, setPhotoIndex] = useState(0);
+  const galleryRef = useRef<FlatList<{ id: number; url: string }>>(null);
+  useEffect(() => {
+    setPhotoIndex(0);
+    galleryRef.current?.scrollToOffset({ offset: 0, animated: false });
+  }, [galleryKey]);
+  const onHeroLayout = useCallback((e: LayoutChangeEvent) => {
+    const w = Math.round(e.nativeEvent.layout.width) - HERO_BORDER;
+    if (w > 0) setHeroWidth(w);
+  }, []);
+  const onGalleryScrollEnd = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      if (heroWidth <= 0) return;
+      const next = Math.round(e.nativeEvent.contentOffset.x / heroWidth);
+      setPhotoIndex(Math.max(0, Math.min(next, gallery.length - 1)));
+    },
+    [gallery.length, heroWidth],
+  );
 
   // Customer mode: the server refuses buying from your own business
   const isOwnProduct = useAppSelector((s) =>
@@ -282,20 +421,36 @@ export default function ProductDetailScreen() {
     );
   }
 
-  const outOfStock = product.trackInventory && product.inventoryCount <= 0;
+  // With options: out of stock only when every option is (server `inStock`)
+  const outOfStock =
+    product.inStock === false || (!!variant && !variant.inStock);
+  const needsOption = hasVariants && !variant && !outOfStock;
   const takingOrders = !!product.delivery?.configured;
   // No Stripe Connect yet: the salon can't take product payments in the app
   const paymentsOff = !isPaymentsEnabled(product.paymentsEnabled);
   const canBuy =
-    takingOrders && !outOfStock && !unavailable && !isOwnProduct && !paymentsOff;
+    takingOrders &&
+    !outOfStock &&
+    !unavailable &&
+    !isOwnProduct &&
+    !paymentsOff &&
+    isProductPurchasable(product, variant);
+  const stock = variant ? variant.inventoryCount : product.inventoryCount;
   const lowStock =
     product.trackInventory &&
-    product.inventoryCount > 0 &&
-    product.inventoryCount <= LOW_STOCK;
-  const maxQty = product.trackInventory
-    ? Math.min(product.inventoryCount, MAX_QTY_PER_ITEM)
-    : MAX_QTY_PER_ITEM;
+    (!hasVariants || !!variant) &&
+    stock > 0 &&
+    stock <= LOW_STOCK;
+  const unit = getUnitPrice(product, variant);
+  const showRegular = unit.onSale && unit.regular > unit.price;
+  const benefits = product.benefits ?? [];
   const deliveryLines = describeDelivery(product.delivery, t);
+  const openPhoto = (index: number) => {
+    const urls = gallery.map((img) => img.url);
+    if (urls.length > 0) {
+      dispatch(openFullImageModal({ images: urls, initialIndex: index }));
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -305,13 +460,56 @@ export default function ProductDetailScreen() {
         contentContainerStyle={styles.contentContainer}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.hero}>
-          {product.imageUri ? (
-            <AppImage
-              uri={product.imageUri}
-              style={styles.heroImage}
-              resizeMode="cover"
-            />
+        <View style={styles.hero} onLayout={onHeroLayout}>
+          {gallery.length > 0 ? (
+            <>
+              <FlatList
+                ref={galleryRef}
+                data={gallery}
+                horizontal
+                pagingEnabled
+                bounces={false}
+                showsHorizontalScrollIndicator={false}
+                keyExtractor={(img, i) => `${img.id}-${i}`}
+                onMomentumScrollEnd={onGalleryScrollEnd}
+                getItemLayout={(_, i) => ({
+                  length: heroWidth,
+                  offset: heroWidth * i,
+                  index: i,
+                })}
+                style={{ width: heroWidth, height: HERO_HEIGHT - HERO_BORDER }}
+                renderItem={({ item, index }) => (
+                  <TouchableOpacity
+                    activeOpacity={0.95}
+                    onPress={() => openPhoto(index)}
+                    style={{ width: heroWidth, height: HERO_HEIGHT - HERO_BORDER }}
+                    accessibilityRole="imagebutton"
+                    accessibilityLabel={t("mpReelPhotoA11y", {
+                      name: product.name,
+                      current: index + 1,
+                      total: gallery.length,
+                    })}
+                  >
+                    <AppImage
+                      uri={item.url}
+                      style={styles.heroImage}
+                      resizeMode="cover"
+                      recyclingKey={`shop-pd-${item.url}`}
+                    />
+                  </TouchableOpacity>
+                )}
+              />
+              {gallery.length > 1 ? (
+                <View style={styles.dots} pointerEvents="none">
+                  {gallery.map((img, i) => (
+                    <View
+                      key={`${img.id}-${i}`}
+                      style={[styles.dot, i === photoIndex && styles.dotOn]}
+                    />
+                  ))}
+                </View>
+              ) : null}
+            </>
           ) : (
             <View style={styles.heroEmpty}>
               <MaterialIcons
@@ -328,11 +526,58 @@ export default function ProductDetailScreen() {
           <Text style={styles.name} accessibilityRole="header">
             {product.name}
           </Text>
-          <Text style={styles.price}>{formatShopPrice(product.sellingPrice)}</Text>
+          <ProductRating rating={product.rating} />
+          <View
+            style={styles.priceRow}
+            accessible
+            accessibilityLabel={
+              showRegular
+                ? t("mpPriceOnSaleA11y", {
+                    price: formatShopPrice(unit.price),
+                    regular: formatShopPrice(unit.regular),
+                  })
+                : formatShopPrice(unit.price)
+            }
+          >
+            <Text style={styles.price}>{formatShopPrice(unit.price)}</Text>
+            {showRegular ? (
+              <>
+                <Text style={styles.regularPrice}>
+                  {formatShopPrice(unit.regular)}
+                </Text>
+                <View style={styles.saleBadge}>
+                  <Text style={styles.saleBadgeText}>{t("mpSale")}</Text>
+                </View>
+              </>
+            ) : null}
+          </View>
           {!!product.description && (
             <Text style={styles.description}>{product.description}</Text>
           )}
         </View>
+
+        {benefits.length > 0 ? (
+          <FlowCard style={styles.benefitsCard}>
+            {benefits.map((line, i) => (
+              <View key={`${i}-${line}`} style={styles.benefitRow}>
+                <MaterialIcons
+                  name="check-circle"
+                  size={moderateWidthScale(20)}
+                  color={theme.successGreen}
+                />
+                <Text style={styles.benefitText}>{line}</Text>
+              </View>
+            ))}
+          </FlowCard>
+        ) : null}
+
+        {hasVariants && !unavailable ? (
+          <VariantChips
+            variants={product.variants ?? []}
+            selectedId={variant?.id ?? null}
+            onSelect={(v) => dispatch(setShopVariant(v.id))}
+          />
+        ) : null}
 
         {deliveryLines.length > 0 ? (
           <FlowCard style={styles.deliveryCard}>
@@ -370,11 +615,12 @@ export default function ProductDetailScreen() {
             <FlowCard style={styles.qtyCard}>
               <View style={styles.qtyRow}>
                 <Text style={styles.qtyLabel}>
-                  {formatShopPrice(product.sellingPrice)}
+                  {formatShopPrice(unit.price)}
                 </Text>
                 <View style={styles.stepper}>
                   <TouchableOpacity
                     style={[styles.qtyBtn, quantity <= 1 && styles.qtyBtnDisabled]}
+                    activeOpacity={0.7}
                     disabled={quantity <= 1}
                     onPress={() => dispatch(setShopQuantity(quantity - 1))}
                     accessibilityRole="button"
@@ -394,6 +640,7 @@ export default function ProductDetailScreen() {
                       styles.qtyBtn,
                       quantity >= maxQty && styles.qtyBtnDisabled,
                     ]}
+                    activeOpacity={0.7}
                     disabled={quantity >= maxQty}
                     onPress={() => dispatch(setShopQuantity(quantity + 1))}
                     accessibilityRole="button"
@@ -410,7 +657,9 @@ export default function ProductDetailScreen() {
               <View style={styles.totalRow}>
                 <Text style={styles.totalLabel}>{t("total")}</Text>
                 <Text style={styles.totalValue}>
-                  {formatShopPrice(product.sellingPrice * quantity)}
+                  {formatShopPrice(
+                    Math.round(unit.price * quantity * 100) / 100,
+                  )}
                 </Text>
               </View>
             </FlowCard>
@@ -420,9 +669,10 @@ export default function ProductDetailScreen() {
               <InfoNote
                 tone="warm"
                 icon="inventory-2"
-                text={t("shopOnlyLeft", { count: product.inventoryCount })}
+                text={t("shopOnlyLeft", { count: stock })}
               />
             ) : null}
+            <InfoNote icon="assignment-return" text={t("mpRefundPolicyNote")} />
           </>
         )}
       </ScrollView>
@@ -436,8 +686,10 @@ export default function ProductDetailScreen() {
               : paymentsOff
                 ? t("peShopOffTitle")
                 : outOfStock
-                ? t("outOfStock")
-                : t("shopNextDelivery"),
+                  ? t("outOfStock")
+                  : needsOption
+                    ? t("mpReelChooseOption")
+                    : t("shopNextDelivery"),
           disabled: !canBuy,
           trailingIcon: canBuy ? "chevron-right" : undefined,
           onPress: () => {
