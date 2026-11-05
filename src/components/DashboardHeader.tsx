@@ -1,11 +1,21 @@
-import React, { useMemo, useCallback, memo } from "react";
+import React, {
+  useMemo,
+  useCallback,
+  memo,
+  useEffect,
+  useRef,
+  useSyncExternalStore,
+} from "react";
 import {
   StyleSheet,
   Text,
   View,
   TouchableOpacity,
   Image,
+  ScrollView,
+  useWindowDimensions,
 } from "react-native";
+import Animated, { LinearTransition } from "react-native-reanimated";
 import AppImage from "@/src/components/AppImage";
 import { useRouter } from "expo-router";
 import { useTheme, useAppDispatch, useAppSelector } from "@/src/hooks/hooks";
@@ -35,6 +45,26 @@ const AVATAR_SIZE = 36;
 /** Gold setup bars sit as rounded cards (client-approved sample 11-03) */
 const GOLD_BAR_RADIUS = moderateWidthScale(12);
 
+/**
+ * Which setup banner is on show. Every tab mounts its own header, so this
+ * lives outside the component to keep Home / Profile / Calendar in step.
+ */
+let selectedSetupBanner: string | null = null;
+const setupBannerListeners = new Set<() => void>();
+const setupBannerStore = {
+  get: () => selectedSetupBanner,
+  set: (key: string) => {
+    if (key === selectedSetupBanner) return;
+    selectedSetupBanner = key;
+    setupBannerListeners.forEach((listener) => listener());
+  },
+  subscribe: (listener: () => void) => {
+    setupBannerListeners.add(listener);
+    return () => {
+      setupBannerListeners.delete(listener);
+    };
+  },
+};
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
     headerContainer: {
@@ -164,6 +194,39 @@ const createStyles = (theme: Theme) =>
     },
     actionBannerGold: {
       borderRadius: GOLD_BAR_RADIUS,
+    },
+    // 2+ setup items: one banner at a time, swipe / auto-slide + dots
+    slide: {
+      paddingHorizontal: moderateWidthScale(12),
+      paddingVertical: moderateHeightScale(8),
+    },
+    slideFill: {
+      flexGrow: 1,
+    },
+    slideBanner: {
+      flexGrow: 1,
+      borderRadius: GOLD_BAR_RADIUS,
+    },
+    slidePlain: {
+      borderWidth: 1,
+      borderColor: theme.orangeBrown30,
+    },
+    dots: {
+      flexDirection: "row",
+      justifyContent: "center",
+      alignItems: "center",
+      gap: moderateWidthScale(6),
+      marginBottom: moderateHeightScale(4),
+    },
+    dot: {
+      width: moderateWidthScale(8),
+      height: moderateWidthScale(8),
+      borderRadius: moderateWidthScale(4),
+      backgroundColor: theme.lightGreen2,
+    },
+    dotActive: {
+      width: moderateWidthScale(24),
+      backgroundColor: theme.darkGreen,
     },
   });
 
@@ -360,6 +423,129 @@ function DashboardHeader() {
     );
   };
 
+  // 2+ banners share one slot (user 11-05): the owner swipes, dots below.
+  // No auto-slide (user 11-05). The banner on show is shared by every tab's
+  // header, so coming back from a banner's screen keeps that banner.
+  const { width: screenWidth } = useWindowDimensions();
+  const carouselRef = useRef<ScrollView>(null);
+  const offsetRef = useRef(0);
+  const selectedKey = useSyncExternalStore(
+    setupBannerStore.subscribe,
+    setupBannerStore.get,
+  );
+  const slideCount = actionBanners.length;
+  // A banner that went away (feature done) falls back to the first one
+  const activeSlide = Math.max(
+    0,
+    actionBanners.findIndex((b) => b.key === selectedKey),
+  );
+
+  const syncCarousel = useCallback(() => {
+    const x = activeSlide * screenWidth;
+    if (Math.abs(offsetRef.current - x) < 1) return;
+    carouselRef.current?.scrollTo({ x, animated: false });
+    offsetRef.current = x;
+  }, [activeSlide, screenWidth]);
+
+  // Another tab's header changed the banner, or one was removed
+  useEffect(() => {
+    syncCarousel();
+  }, [syncCarousel, slideCount]);
+
+  const renderSlide = (banner: (typeof actionBanners)[number]) => {
+    const isGold = banner.gold != null;
+    const body = (
+      <TouchableOpacity
+        onPress={() => {
+          setupBannerStore.set(banner.key);
+          banner.onPress();
+        }}
+        activeOpacity={0.85}
+        accessibilityRole="button"
+        accessibilityLabel={`${banner.title}. ${banner.cta}`}
+        style={styles.slideFill}
+      >
+        <View
+          style={[
+            styles.actionBanner,
+            styles.slideBanner,
+            !isGold && styles.slidePlain,
+          ]}
+        >
+          <View style={styles.actionIconWrap}>
+            <Feather
+              name={banner.icon}
+              size={moderateWidthScale(15)}
+              color={theme.white}
+            />
+          </View>
+          <Text style={styles.actionTitle} numberOfLines={2}>
+            {banner.title}
+          </Text>
+          <View style={styles.actionCta}>
+            <Text style={styles.actionCtaText}>{banner.cta}</Text>
+            <Feather
+              name="chevron-right"
+              size={moderateWidthScale(14)}
+              color={theme.white}
+            />
+          </View>
+        </View>
+      </TouchableOpacity>
+    );
+
+    return (
+      <View key={banner.key} style={[styles.slide, { width: screenWidth }]}>
+        {isGold ? (
+          <GoldFrame
+            framed
+            pulse={gold.pulseTarget === banner.gold}
+            radius={GOLD_BAR_RADIUS}
+            style={styles.slideFill}
+          >
+            {body}
+          </GoldFrame>
+        ) : (
+          body
+        )}
+      </View>
+    );
+  };
+
+  const bannerCarousel = (
+    <View>
+      <ScrollView
+        ref={carouselRef}
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        contentOffset={{ x: activeSlide * screenWidth, y: 0 }}
+        onContentSizeChange={() => {
+          // First layout: a fresh header (other tab) opens on the shared one
+          offsetRef.current = -1;
+          syncCarousel();
+        }}
+        onMomentumScrollEnd={(e) => {
+          const x = e.nativeEvent.contentOffset.x;
+          offsetRef.current = x;
+          const key = actionBanners[Math.round(x / screenWidth)]?.key;
+          if (key) setupBannerStore.set(key);
+        }}
+      >
+        {actionBanners.map(renderSlide)}
+      </ScrollView>
+      <View style={styles.dots} pointerEvents="none">
+        {actionBanners.map((banner, i) => (
+          <Animated.View
+            key={banner.key}
+            layout={LinearTransition.duration(250)}
+            style={[styles.dot, i === activeSlide && styles.dotActive]}
+          />
+        ))}
+      </View>
+    </View>
+  );
+
   const profileButton = (
     <TouchableOpacity
       style={styles.avatarButton}
@@ -430,7 +616,12 @@ function DashboardHeader() {
       </View>
       <View style={styles.line} />
 
-      {userRole === "business" && actionBanners.map(renderBanner)}
+      {userRole === "business" &&
+        (actionBanners.length > 1 ? (
+          bannerCarousel
+        ) : (
+          actionBanners.map(renderBanner)
+        ))}
     </View>
   );
 }
