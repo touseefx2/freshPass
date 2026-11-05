@@ -103,8 +103,12 @@ interface RemovePromotionConfirmModalProps {
   mode?: "remove" | "promote";
   /** promote: formatted add-on price, e.g. "$20" */
   promotionPrice?: string | null;
-  /** promote: formatted monthly total with the promotion, e.g. "$80" */
-  totalWithPromotion?: string | null;
+  /** promote: next renewal (or trial end) date, already formatted */
+  startDate?: string;
+  /** promote during a free trial: shows in Deals at once, billed after the trial */
+  isTrial?: boolean;
+  /** remove: promoted but not in Deals yet (starts at the renewal) */
+  notStarted?: boolean;
   /** Already formatted, e.g. "November 23, 2026" */
   endDate: string;
   /** Already formatted base price, e.g. "$60.00" */
@@ -118,7 +122,9 @@ export default function RemovePromotionConfirmModal({
   visible,
   mode = "remove",
   promotionPrice,
-  totalWithPromotion,
+  startDate,
+  isTrial = false,
+  notStarted = false,
   endDate,
   basePrice,
   onClose,
@@ -155,11 +161,14 @@ export default function RemovePromotionConfirmModal({
             <>
               <Text style={styles.title}>{t("promoteConfirmTitle")}</Text>
               <Text style={styles.message}>
-                {promotionPrice && totalWithPromotion
-                  ? t("promoteConfirmMessage", {
-                      price: promotionPrice,
-                      total: totalWithPromotion,
-                    })
+                {/* Nothing is charged today (backend guide 11-05) */}
+                {promotionPrice && startDate
+                  ? t(
+                      isTrial
+                        ? "promoteConfirmMessageTrial"
+                        : "promoteConfirmMessage",
+                      { price: promotionPrice, date: startDate },
+                    )
                   : t("promoteConfirmMessageNoPrice")}
               </Text>
               <View style={styles.buttonContainer}>
@@ -186,10 +195,12 @@ export default function RemovePromotionConfirmModal({
               <Text style={styles.title}>{t("removePromotionConfirmTitle")}</Text>
 
               <Text style={styles.message}>
-                {t("removePromotionConfirmMessage", {
-                  date: endDate,
-                  price: basePrice,
-                })}
+                {t(
+                  notStarted
+                    ? "removePromotionNotStartedMessage"
+                    : "removePromotionConfirmMessage",
+                  { date: endDate, price: basePrice },
+                )}
               </Text>
 
               <View style={styles.buttonContainer}>

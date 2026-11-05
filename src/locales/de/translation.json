@@ -3429,9 +3429,9 @@
   "reviewBillingBeforeConfirming": "Prüfen Sie die Rechnungsdetails vor dem Bestätigen.",
   "appleAddPromotionDesc": "Öffnet Apples Abo-Bildschirm. Wählen Sie den Tarif mit dem Promotion-Add-on.",
   "promoteConfirmTitle": "Unternehmen bewerben?",
-  "promoteConfirmMessage": "Ihr Unternehmen wird für {{price}}/Monat in FreshPass Deals hervorgehoben. Ihr Tarif verlängert sich zu {{total}}/Monat, abgebucht von Ihrer hinterlegten Karte.",
+  "promoteConfirmMessage": "Ab Ihrer nächsten Verlängerung am {{date}} kommen {{price}}/Monat hinzu. Ab dann erscheint Ihr Unternehmen in FreshPass Deals. Heute wird nichts berechnet.",
   "promoteConfirmMessageNoPrice": "Ihr Unternehmen wird in FreshPass Deals hervorgehoben. Die Promotion verlängert sich monatlich mit Ihrem Tarif und wird von Ihrer hinterlegten Karte abgebucht.",
-  "promotionAddedFallback": "Ihr Unternehmen wird jetzt in FreshPass Deals hervorgehoben.",
+  "promotionAddedFallback": "Ihre Promotion beginnt mit Ihrer nächsten Verlängerung.",
   "cardEndingIn": "{{brand}} mit Endziffern {{last4}}",
   "cardEndingInNoBrand": "Karte mit Endziffern {{last4}}",
   "paymentMethodTitle": "Zahlungsmethode",
@@ -3442,5 +3442,12 @@
   "securelyProcessedByStripe": "Sicher verarbeitet von Stripe",
   "cardUpdatedTitle": "Karte aktualisiert",
   "cardUpdatedMessage": "{{card}} wird für künftige Verlängerungen verwendet.",
-  "failedToUpdateCard": "Ihre Karte konnte nicht aktualisiert werden. Bitte versuchen Sie es erneut."
+  "failedToUpdateCard": "Ihre Karte konnte nicht aktualisiert werden. Bitte versuchen Sie es erneut.",
+  "promoteConfirmMessageTrial": "Ihr Unternehmen erscheint sofort in FreshPass Deals. {{price}}/Monat werden zu Ihrer ersten Zahlung nach dem Ende Ihres Testzeitraums am {{date}} hinzugefügt.",
+  "promotionStartsCardTitle": "Promotion beginnt am {{date}}",
+  "promotionStartsCardBody": "Ihr Unternehmen erscheint ab Ihrer nächsten Verlängerung in FreshPass Deals.",
+  "removePromotionNotStartedMessage": "Ihre Promotion wird nicht beginnen. Ihr Tarif verlängert sich am {{date}} zu {{price}} pro Monat.",
+  "promotionLineLabel": "Promotion",
+  "perMonthCompact": "/Monat",
+  "expiryPlaceholder": "MM / JJ"
 }

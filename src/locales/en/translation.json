@@ -4214,9 +4214,9 @@
   "reviewBillingBeforeConfirming": "Review billing details before confirming.",
   "appleAddPromotionDesc": "Opens Apple's subscription screen. Choose the plan with the Promotion Add-on.",
   "promoteConfirmTitle": "Promote your business?",
-  "promoteConfirmMessage": "Your business will be featured in FreshPass Deals for {{price}}/month. Your plan will renew at {{total}}/month, charged to your card on file.",
+  "promoteConfirmMessage": "{{price}}/month will be added from your next renewal on {{date}}. Your business will appear in FreshPass Deals from then. Nothing is charged today.",
   "promoteConfirmMessageNoPrice": "Your business will be featured in FreshPass Deals. The promotion renews monthly with your plan and is charged to your card on file.",
-  "promotionAddedFallback": "Your business is now featured in FreshPass Deals.",
+  "promotionAddedFallback": "Your promotion starts with your next renewal.",
   "cardEndingIn": "{{brand}} ending {{last4}}",
   "cardEndingInNoBrand": "Card ending {{last4}}",
   "paymentMethodTitle": "Payment Method",
@@ -4227,5 +4227,12 @@
   "securelyProcessedByStripe": "Securely processed by Stripe",
   "cardUpdatedTitle": "Card updated",
   "cardUpdatedMessage": "{{card}} will be used for future renewals.",
-  "failedToUpdateCard": "We couldn't update your card. Please try again."
+  "failedToUpdateCard": "We couldn't update your card. Please try again.",
+  "promoteConfirmMessageTrial": "Your business will appear in FreshPass Deals right away. {{price}}/month is added to your first payment after your trial ends on {{date}}.",
+  "promotionStartsCardTitle": "Promotion starts {{date}}",
+  "promotionStartsCardBody": "Your business will appear in FreshPass Deals from your next renewal.",
+  "removePromotionNotStartedMessage": "Your promotion won't start. Your plan renews at {{price}} per month on {{date}}.",
+  "promotionLineLabel": "Promotion",
+  "perMonthCompact": "/month",
+  "expiryPlaceholder": "MM / YY"
 }

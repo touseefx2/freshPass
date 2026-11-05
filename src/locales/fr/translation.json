@@ -3432,9 +3432,9 @@
   "reviewBillingBeforeConfirming": "Vérifiez les détails de facturation avant de confirmer.",
   "appleAddPromotionDesc": "Ouvre l'écran des abonnements d'Apple. Choisissez le forfait avec l'option Promotion.",
   "promoteConfirmTitle": "Promouvoir votre entreprise ?",
-  "promoteConfirmMessage": "Votre entreprise sera mise en avant dans FreshPass Deals pour {{price}}/mois. Votre forfait sera renouvelé à {{total}}/mois, débité sur votre carte enregistrée.",
+  "promoteConfirmMessage": "{{price}}/mois seront ajoutés à partir de votre prochain renouvellement le {{date}}. Votre entreprise apparaîtra dans FreshPass Deals à partir de cette date. Rien n'est débité aujourd'hui.",
   "promoteConfirmMessageNoPrice": "Votre entreprise sera mise en avant dans FreshPass Deals. La promotion se renouvelle chaque mois avec votre forfait et est débitée sur votre carte enregistrée.",
-  "promotionAddedFallback": "Votre entreprise est maintenant mise en avant dans FreshPass Deals.",
+  "promotionAddedFallback": "Votre promotion commence à votre prochain renouvellement.",
   "cardEndingIn": "{{brand}} se terminant par {{last4}}",
   "cardEndingInNoBrand": "Carte se terminant par {{last4}}",
   "paymentMethodTitle": "Moyen de paiement",
@@ -3445,5 +3445,12 @@
   "securelyProcessedByStripe": "Traitement sécurisé par Stripe",
   "cardUpdatedTitle": "Carte mise à jour",
   "cardUpdatedMessage": "{{card}} sera utilisée pour les prochains renouvellements.",
-  "failedToUpdateCard": "Impossible de mettre à jour votre carte. Veuillez réessayer."
+  "failedToUpdateCard": "Impossible de mettre à jour votre carte. Veuillez réessayer.",
+  "promoteConfirmMessageTrial": "Votre entreprise apparaîtra tout de suite dans FreshPass Deals. {{price}}/mois seront ajoutés à votre premier paiement après la fin de votre essai le {{date}}.",
+  "promotionStartsCardTitle": "La promotion commence le {{date}}",
+  "promotionStartsCardBody": "Votre entreprise apparaîtra dans FreshPass Deals à partir de votre prochain renouvellement.",
+  "removePromotionNotStartedMessage": "Votre promotion ne commencera pas. Votre forfait sera renouvelé à {{price}} par mois le {{date}}.",
+  "promotionLineLabel": "Promotion",
+  "perMonthCompact": "/mois",
+  "expiryPlaceholder": "MM / AA"
 }

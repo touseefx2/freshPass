@@ -27,7 +27,11 @@ import { ApiService } from "@/src/services/api";
 import { businessEndpoints } from "@/src/services/endpoints";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import Button from "@/src/components/button";
-import { Feather } from "@expo/vector-icons";
+import {
+  Feather,
+  Ionicons,
+  MaterialCommunityIcons,
+} from "@expo/vector-icons";
 import { useRouter, useFocusEffect } from "expo-router";
 import { Skeleton } from "@/src/components/skeletons";
 import RetryButton from "@/src/components/retryButton";
@@ -95,6 +99,8 @@ interface SubscriptionData {
   appStoreProductId?: string | null;
   /** Still in FreshPass Deals (stays true until promotionEndsAt) */
   hasFeaturedAddOn?: boolean;
+  /** Actually shown in Deals now; false after Promote until the renewal is paid */
+  businessIsFeatured?: boolean;
   /** Promotion removal pending: Deals ends on this date */
   promotionEndsAt?: string | null;
   /** Next renewal amount after any pending change; null = won't renew */
@@ -170,35 +176,32 @@ const createStyles = (theme: Theme) =>
       paddingBottom: moderateHeightScale(30),
     },
     headerCard: {
-      marginHorizontal: moderateWidthScale(20),
-      marginTop: moderateHeightScale(20),
+      marginHorizontal: moderateWidthScale(16),
+      marginTop: moderateHeightScale(16),
       borderRadius: moderateWidthScale(12),
       overflow: "hidden",
-      marginBottom: moderateHeightScale(12),
+      marginBottom: moderateHeightScale(16),
     },
     headerGradient: {
-      padding: moderateWidthScale(24),
-      paddingTop: moderateHeightScale(28),
-      paddingBottom: moderateHeightScale(28),
+      paddingHorizontal: moderateWidthScale(18),
+      paddingVertical: moderateHeightScale(18),
     },
     headerTop: {
       flexDirection: "row",
       justifyContent: "space-between",
-      alignItems: "flex-start",
-      marginBottom: moderateHeightScale(16),
+      alignItems: "center",
+      marginBottom: moderateHeightScale(14),
     },
     statusBadge: {
-      paddingHorizontal: moderateWidthScale(14),
-      paddingVertical: moderateHeightScale(8),
-      borderRadius: moderateWidthScale(20),
-      backgroundColor: theme.white,
-      opacity: 0.95,
+      paddingHorizontal: moderateWidthScale(12),
+      paddingVertical: moderateHeightScale(5),
+      borderRadius: moderateWidthScale(14),
+      backgroundColor: theme.surfaceRaised,
     },
     statusText: {
-      fontSize: fontSize.size11,
+      fontSize: fontSize.size13,
       fontFamily: fonts.fontBold,
-      color: theme.buttonBack,
-      letterSpacing: 0.5,
+      color: theme.darkGreen,
     },
     planName: {
       fontSize: fontSize.size22,
@@ -213,23 +216,21 @@ const createStyles = (theme: Theme) =>
       marginBottom: moderateHeightScale(4),
     },
     currencySymbol: {
-      fontSize: fontSize.size20,
+      fontSize: fontSize.size26,
       fontFamily: fonts.fontBold,
       color: theme.white,
-      marginRight: moderateWidthScale(4),
-      opacity: 0.9,
+      marginRight: moderateWidthScale(2),
     },
     planPrice: {
-      fontSize: fontSize.size30,
+      fontSize: fontSize.size40,
       fontFamily: fonts.fontExtraBold,
       color: theme.white,
     },
     pricePeriod: {
-      fontSize: fontSize.size16,
+      fontSize: fontSize.size20,
       fontFamily: fonts.fontRegular,
       color: theme.white,
-      opacity: 0.85,
-      marginLeft: moderateWidthScale(4),
+      marginLeft: moderateWidthScale(6),
     },
     planDescription: {
       fontSize: fontSize.size15,
@@ -240,7 +241,8 @@ const createStyles = (theme: Theme) =>
       marginTop: moderateHeightScale(8),
     },
     infoSection: {
-      marginHorizontal: moderateWidthScale(20),
+      marginHorizontal: moderateWidthScale(16),
+      marginTop: moderateHeightScale(8),
       marginBottom: moderateHeightScale(20),
     },
     sectionTitle: {
@@ -275,8 +277,9 @@ const createStyles = (theme: Theme) =>
     infoIconContainer: {
       width: moderateWidthScale(40),
       height: moderateWidthScale(40),
-      borderRadius: moderateWidthScale(10),
-      backgroundColor: theme.orangeBrown30,
+      borderRadius: moderateWidthScale(12),
+      // Same cream tiles as the cards above (client sample 11-05)
+      backgroundColor: theme.tileGoldCream,
       alignItems: "center",
       justifyContent: "center",
       marginBottom: moderateHeightScale(8),
@@ -707,19 +710,25 @@ const createStyles = (theme: Theme) =>
       flexDirection: "row",
       justifyContent: "space-between",
       alignItems: "center",
-      marginBottom: moderateHeightScale(8),
+      marginBottom: moderateHeightScale(6),
     },
     addOnName: {
       fontSize: fontSize.size15,
-      fontFamily: fonts.fontMedium,
+      fontFamily: fonts.fontRegular,
       color: theme.white,
       flex: 1,
       marginRight: moderateWidthScale(12),
     },
     addOnPrice: {
       fontSize: fontSize.size15,
-      fontFamily: fonts.fontBold,
+      fontFamily: fonts.fontRegular,
       color: theme.white,
+    },
+    breakdownDivider: {
+      height: 1,
+      backgroundColor: theme.white50,
+      marginTop: moderateHeightScale(6),
+      marginBottom: moderateHeightScale(10),
     },
     addOnNote: {
       fontSize: fontSize.size12,
@@ -749,13 +758,13 @@ const createStyles = (theme: Theme) =>
       color: theme.white,
     },
     noticeCard: {
-      marginHorizontal: moderateWidthScale(20),
-      marginBottom: moderateHeightScale(12),
+      marginHorizontal: moderateWidthScale(16),
+      marginBottom: moderateHeightScale(16),
       padding: moderateWidthScale(16),
       borderRadius: moderateWidthScale(16),
       borderWidth: 1.5,
-      borderColor: theme.goldenBuy,
-      backgroundColor: theme.surfaceRaised,
+      borderColor: theme.goldBorder,
+      backgroundColor: theme.noticeCream,
     },
     noticeTop: {
       flexDirection: "row",
@@ -766,9 +775,12 @@ const createStyles = (theme: Theme) =>
       width: moderateWidthScale(40),
       height: moderateWidthScale(40),
       borderRadius: moderateWidthScale(12),
-      backgroundColor: theme.tilePeach,
+      backgroundColor: theme.background,
       alignItems: "center",
       justifyContent: "center",
+    },
+    goldIconTileNotice: {
+      backgroundColor: theme.tileGoldCream,
     },
     flexCopy: {
       flex: 1,
@@ -782,12 +794,12 @@ const createStyles = (theme: Theme) =>
     noticeText: {
       fontSize: fontSize.size14,
       fontFamily: fonts.fontRegular,
-      color: theme.lightGreen,
+      color: theme.textMuted,
       lineHeight: fontSize.size20,
     },
     noticeDivider: {
-      height: 1,
-      backgroundColor: theme.orangeBrown30,
+      height: StyleSheet.hairlineWidth * 2,
+      backgroundColor: theme.goldenBuy,
       marginTop: moderateHeightScale(14),
       marginBottom: moderateHeightScale(12),
     },
@@ -798,8 +810,8 @@ const createStyles = (theme: Theme) =>
       textAlign: "center",
     },
     promoCard: {
-      marginHorizontal: moderateWidthScale(20),
-      marginBottom: moderateHeightScale(12),
+      marginHorizontal: moderateWidthScale(16),
+      marginBottom: moderateHeightScale(16),
       padding: moderateWidthScale(16),
       borderRadius: moderateWidthScale(16),
       backgroundColor: theme.white,
@@ -811,7 +823,10 @@ const createStyles = (theme: Theme) =>
     },
     promoCardGold: {
       borderWidth: 1.5,
-      borderColor: theme.goldenBuy,
+      borderColor: theme.goldBorder,
+    },
+    promoButtonText: {
+      fontSize: fontSize.size17,
     },
     promoTitle: {
       fontSize: fontSize.size17,
@@ -822,23 +837,23 @@ const createStyles = (theme: Theme) =>
       marginTop: moderateHeightScale(16),
     },
     promoPriceLine: {
-      fontSize: fontSize.size14,
+      fontSize: fontSize.size15,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
       textAlign: "center",
       marginTop: moderateHeightScale(12),
     },
     promoFootnote: {
-      fontSize: fontSize.size13,
+      fontSize: fontSize.size12,
       fontFamily: fonts.fontRegular,
-      color: theme.lightGreen,
+      color: theme.textMuted,
       textAlign: "center",
-      lineHeight: fontSize.size18,
-      marginTop: moderateHeightScale(6),
+      lineHeight: fontSize.size17,
+      marginTop: moderateHeightScale(4),
     },
     manageCard: {
-      marginHorizontal: moderateWidthScale(20),
-      marginBottom: moderateHeightScale(12),
+      marginHorizontal: moderateWidthScale(16),
+      marginBottom: moderateHeightScale(16),
       backgroundColor: theme.white,
       borderRadius: moderateWidthScale(16),
       paddingHorizontal: moderateWidthScale(16),
@@ -858,7 +873,7 @@ const createStyles = (theme: Theme) =>
       width: moderateWidthScale(40),
       height: moderateWidthScale(40),
       borderRadius: moderateWidthScale(12),
-      backgroundColor: theme.lightGreen05,
+      backgroundColor: theme.background,
       alignItems: "center",
       justifyContent: "center",
     },
@@ -867,15 +882,15 @@ const createStyles = (theme: Theme) =>
       gap: moderateHeightScale(3),
     },
     manageRowTitle: {
-      fontSize: fontSize.size15,
+      fontSize: fontSize.size17,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
     },
     manageRowText: {
-      fontSize: fontSize.size13,
+      fontSize: fontSize.size14,
       fontFamily: fonts.fontRegular,
-      color: theme.lightGreen,
-      lineHeight: fontSize.size18,
+      color: theme.textMuted,
+      lineHeight: fontSize.size19,
     },
     manageDivider: {
       height: StyleSheet.hairlineWidth,
@@ -1276,6 +1291,16 @@ export default function SubscriptionScreen() {
     return parsed.format("MMMM D, YYYY");
   };
 
+  /** Cards (client sample): "November 20"; the year only when it isn't this year */
+  const formatShortDate = (dateString: string | null | undefined) => {
+    if (!dateString) return "";
+    const parsed = parseSubscriptionDate(dateString);
+    if (!parsed) return dateString;
+    return parsed.year() === dayjs().year()
+      ? parsed.format("MMMM D")
+      : parsed.format("MMMM D, YYYY");
+  };
+
   /** Days left until next payment / trial end — calculated on device, not from API. */
   const calculateRemainingDays = (
     targetDate: string | null | undefined,
@@ -1315,9 +1340,10 @@ export default function SubscriptionScreen() {
 
   const statusBadgeLabel = useMemo(() => {
     if (!subscription) return "";
-    if (isTrialing) return t("active").toUpperCase();
-    if (isCancelled) return t("cancelled").toUpperCase();
-    return getDisplayStatus(subscription.status).toUpperCase();
+    // Sentence case pill, like the client sample ("Active")
+    if (isTrialing) return t("active");
+    if (isCancelled) return t("cancelled");
+    return getDisplayStatus(subscription.status);
   }, [subscription, isTrialing, isCancelled, t]);
 
   const formattedScheduleDate = dateDisplay?.date
@@ -1337,10 +1363,16 @@ export default function SubscriptionScreen() {
   const promotionPending = !!subscription?.promotionEndsAt;
   // "2026-11-28T19:00:00-05:00": keep the server's calendar day so it matches
   // nextPaymentDate (converting to the phone's zone can show the 29th)
-  const promotionEndDate = formatTrialEndDate(
+  const promotionEndsAtDay =
     subscription?.promotionEndsAt?.match(/^\d{4}-\d{2}-\d{2}(?=T)/)?.[0] ??
-      subscription?.promotionEndsAt ??
-      null,
+    subscription?.promotionEndsAt ??
+    null;
+  const promotionEndDate = formatTrialEndDate(promotionEndsAtDay);
+  const promotionEndShort = formatShortDate(promotionEndsAtDay);
+  /** "FreshPass Business" → "Business" (sample: "Your Business plan continues…") */
+  const planShortName = (subscription?.subscriptionPlan ?? "").replace(
+    /^FreshPass\s+/i,
+    "",
   );
   const renewalPriceText = formatMoney(
     subscription?.renewalPrice,
@@ -1406,17 +1438,33 @@ export default function SubscriptionScreen() {
     : null;
   /** Apple-billed on Android: nothing can be changed here */
   const appleOnAndroid = isApplePayment && !isIosDevice;
+  /**
+   * Stripe "Promote My Business" done, not in Deals yet: the add-on is on the
+   * plan but Deals starts once the next renewal is paid (backend 11-05:
+   * hasFeaturedAddOn true + businessIsFeatured false; trial = featured at once).
+   */
+  const promotionStartsPending =
+    isRenewing &&
+    !isApplePayment &&
+    subscription?.hasFeaturedAddOn === true &&
+    subscription?.businessIsFeatured === false &&
+    !promotionPending;
   const showPendingNotice =
-    isRenewing && (promotionPending || !!subscription?.pendingPlanName);
+    isRenewing &&
+    (promotionPending ||
+      promotionStartsPending ||
+      !!subscription?.pendingPlanName);
   /** "keep" while removal is pending, "promote" once the promotion is gone */
   const promoCardMode: "keep" | "promote" | null =
     !subscription || !isRenewing || appleOnAndroid
       ? null
       : promotionPending
         ? "keep"
-        : !hasPromotion
+        : !hasPromotion && !promotionStartsPending
           ? "promote"
           : null;
+  // Not paying for the add-on yet: keep it out of "Current total"
+  const breakdownAddOns = promotionStartsPending ? [] : activeAddOns;
 
   /** Manage plan rows — what each one shows depends on who bills the plan */
   const manageRows = (() => {
@@ -1655,7 +1703,7 @@ export default function SubscriptionScreen() {
           {/* Header Card with Gradient */}
           <View style={styles.headerCard}>
             <LinearGradient
-              colors={[theme.darkGreen, theme.darkGreenLight]}
+              colors={[theme.darkGreen, theme.darkGreen]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={styles.headerGradient}
@@ -1668,7 +1716,7 @@ export default function SubscriptionScreen() {
                   <Text style={styles.statusText}>{statusBadgeLabel}</Text>
                 </View>
               </View>
-              {activeAddOns.length > 0 ? (
+              {breakdownAddOns.length > 0 ? (
                 <View style={styles.breakdown}>
                   <View style={styles.addOnRow}>
                     <Text style={styles.addOnName}>{t("basePlanLabel")}</Text>
@@ -1676,9 +1724,15 @@ export default function SubscriptionScreen() {
                       {t("pricePerMonth", { price: basePriceText })}
                     </Text>
                   </View>
-                  {activeAddOns.map((service) => (
+                  {breakdownAddOns.map((service) => (
                     <View key={service.id} style={styles.addOnRow}>
-                      <Text style={styles.addOnName}>{service.name}</Text>
+                      <Text style={styles.addOnName}>
+                        {/* Business add-on = the Deals promotion (sample: "Promotion") */}
+                        {subscription.hasFeaturedAddOn &&
+                        breakdownAddOns.length === 1
+                          ? t("promotionLineLabel")
+                          : service.name}
+                      </Text>
                       <Text style={styles.addOnPrice}>
                         {t("pricePerMonth", {
                           price:
@@ -1688,12 +1742,7 @@ export default function SubscriptionScreen() {
                       </Text>
                     </View>
                   ))}
-                  {promotionPending && isRenewing && (
-                    <Text style={styles.addOnNote}>
-                      {t("promotionEndsShort", { date: promotionEndDate })}
-                    </Text>
-                  )}
-                  <View style={styles.addOnDivider} />
+                  <View style={styles.breakdownDivider} />
                   <View style={[styles.addOnRow, styles.totalRow]}>
                     <Text style={styles.totalLabel}>
                       {t("currentTotalLabel")}
@@ -1705,8 +1754,14 @@ export default function SubscriptionScreen() {
                 </View>
               ) : (
                 <View style={styles.planPriceContainer}>
-                  <Text style={styles.planPrice}>{basePriceText}</Text>
-                  <Text style={styles.pricePeriod}>{t("perMonth")}</Text>
+                  {/* Sample: small "$", big "60", then "/month" */}
+                  <Text style={styles.currencySymbol}>
+                    {basePriceText.match(/^[^\d]*/)?.[0]?.trim()}
+                  </Text>
+                  <Text style={styles.planPrice}>
+                    {basePriceText.replace(/^[^\d]*/, "")}
+                  </Text>
+                  <Text style={styles.pricePeriod}>{t("perMonthCompact")}</Text>
                 </View>
               )}
             </LinearGradient>
@@ -1716,18 +1771,24 @@ export default function SubscriptionScreen() {
           {showPendingNotice && (
             <View style={styles.noticeCard}>
               <View style={styles.noticeTop}>
-                <View style={styles.goldIconTile}>
-                  <Feather
-                    name="calendar"
-                    size={iconScale(20)}
-                    color={theme.orangeBrownText}
+                <View style={[styles.goldIconTile, styles.goldIconTileNotice]}>
+                  <MaterialCommunityIcons
+                    name="calendar-month-outline"
+                    size={iconScale(22)}
+                    color={theme.apptGoldAccent}
                   />
                 </View>
                 <View style={styles.flexCopy}>
                   <Text style={styles.noticeTitle}>
                     {subscription.pendingPlanName
                       ? t("planChangeScheduledTitle")
-                      : t("promotionEndsCardTitle", { date: promotionEndDate })}
+                      : promotionStartsPending
+                        ? t("promotionStartsCardTitle", {
+                            date: formatShortDate(subscription.nextPaymentDate),
+                          })
+                        : t("promotionEndsCardTitle", {
+                            date: promotionEndShort,
+                          })}
                   </Text>
                   {subscription.pendingPlanName ? (
                     pendingChangeLines.map((line) => (
@@ -1735,10 +1796,14 @@ export default function SubscriptionScreen() {
                         {line}
                       </Text>
                     ))
+                  ) : promotionStartsPending ? (
+                    <Text style={styles.noticeText}>
+                      {t("promotionStartsCardBody")}
+                    </Text>
                   ) : (
                     <Text style={styles.noticeText}>
                       {t("promotionEndsCardBody", {
-                        plan: subscription.subscriptionPlan,
+                        plan: planShortName,
                         price: renewalPriceText ?? basePriceText,
                       })}
                     </Text>
@@ -1750,7 +1815,7 @@ export default function SubscriptionScreen() {
                   <View style={styles.noticeDivider} />
                   <Text style={styles.noticeFooter}>
                     {t("nextRenewalLine", {
-                      date: formatTrialEndDate(subscription.nextPaymentDate),
+                      date: formatShortDate(subscription.nextPaymentDate),
                       price: renewalPriceText,
                     })}
                   </Text>
@@ -1768,11 +1833,19 @@ export default function SubscriptionScreen() {
             >
               <View style={styles.noticeTop}>
                 <View style={styles.goldIconTile}>
-                  <Feather
-                    name={promoCardMode === "keep" ? "volume-2" : "tag"}
-                    size={iconScale(20)}
-                    color={theme.orangeBrownText}
-                  />
+                  {promoCardMode === "keep" ? (
+                    <Ionicons
+                      name="megaphone-outline"
+                      size={iconScale(22)}
+                      color={theme.darkGreen}
+                    />
+                  ) : (
+                    <Feather
+                      name="tag"
+                      size={iconScale(20)}
+                      color={theme.darkGreen}
+                    />
+                  )}
                 </View>
                 <View style={styles.flexCopy}>
                   <Text style={styles.promoTitle}>
@@ -1806,6 +1879,7 @@ export default function SubscriptionScreen() {
                 backgroundColor={theme.bookNowButton}
                 textColor={theme.darkGreen}
                 containerStyle={styles.promoButton}
+                textStyle={styles.promoButtonText}
               />
               {isApplePayment ? (
                 <Text style={styles.promoFootnote}>
@@ -1843,8 +1917,8 @@ export default function SubscriptionScreen() {
                 <View style={styles.manageRowIcon}>
                   <Feather
                     name={row.icon}
-                    size={moderateWidthScale(18)}
-                    color={theme.darkGreenLight}
+                    size={moderateWidthScale(20)}
+                    color={theme.darkGreen}
                   />
                 </View>
                 <View style={styles.manageRowCopy}>
@@ -1856,8 +1930,8 @@ export default function SubscriptionScreen() {
                 {row.onPress ? (
                   <Feather
                     name="chevron-right"
-                    size={moderateWidthScale(18)}
-                    color={theme.lightGreen}
+                    size={moderateWidthScale(20)}
+                    color={theme.darkGreen}
                   />
                 ) : null}
               </>
@@ -2119,6 +2193,7 @@ export default function SubscriptionScreen() {
       />
       <RemovePromotionConfirmModal
         visible={removePromotionVisible}
+        notStarted={promotionStartsPending}
         endDate={formatTrialEndDate(subscription?.nextPaymentDate ?? null)}
         basePrice={
           formatMoney(subscription?.subscriptionPlanPrice, "USD") ??
@@ -2133,7 +2208,12 @@ export default function SubscriptionScreen() {
         endDate=""
         basePrice={basePriceText}
         promotionPrice={promotionPriceText}
-        totalWithPromotion={totalWithPromotionText}
+        isTrial={isTrialing}
+        startDate={formatTrialEndDate(
+          (isTrialing
+            ? subscription?.trialEndsAt
+            : subscription?.nextPaymentDate) ?? null,
+        )}
         onClose={() => setPromoteVisible(false)}
         onConfirm={handleConfirmPromote}
       />

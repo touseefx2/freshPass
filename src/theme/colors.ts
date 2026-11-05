@@ -105,6 +105,15 @@ export const themes = {
     // Staff Overview card: soft photo panel + avatar disc
     staffPhotoPanel: "#EEEEE7",
     staffAvatarDisc: "#DFDFD7",
+    // Manage Subscription (client sample 11-05): body text, gold outline,
+    // cream notice + tile, card-updated success card
+    textMuted: "rgba(40, 54, 24, 0.85)",
+    goldBorder: "#C9A548",
+    noticeCream: "#FCF5DE",
+    tileGoldCream: "#F9EDCC",
+    successCardBg: "#F4F7E6",
+    successCardBorder: "#BAC6A6",
+    successCheck: "#789C38",
   },
   dark: {},
   blue: {},

@@ -3432,9 +3432,9 @@
   "reviewBillingBeforeConfirming": "Revisa los detalles de facturación antes de confirmar.",
   "appleAddPromotionDesc": "Abre la pantalla de suscripciones de Apple. Elige el plan con el complemento de promoción.",
   "promoteConfirmTitle": "¿Promocionar tu negocio?",
-  "promoteConfirmMessage": "Tu negocio aparecerá destacado en FreshPass Deals por {{price}}/mes. Tu plan se renovará a {{total}}/mes, con cargo a tu tarjeta registrada.",
+  "promoteConfirmMessage": "Se añadirán {{price}}/mes desde tu próxima renovación el {{date}}. Tu negocio aparecerá en FreshPass Deals a partir de entonces. Hoy no se cobra nada.",
   "promoteConfirmMessageNoPrice": "Tu negocio aparecerá destacado en FreshPass Deals. La promoción se renueva cada mes con tu plan y se cobra a tu tarjeta registrada.",
-  "promotionAddedFallback": "Tu negocio ahora está destacado en FreshPass Deals.",
+  "promotionAddedFallback": "Tu promoción empieza con tu próxima renovación.",
   "cardEndingIn": "{{brand}} terminada en {{last4}}",
   "cardEndingInNoBrand": "Tarjeta terminada en {{last4}}",
   "paymentMethodTitle": "Método de pago",
@@ -3445,5 +3445,12 @@
   "securelyProcessedByStripe": "Procesado de forma segura por Stripe",
   "cardUpdatedTitle": "Tarjeta actualizada",
   "cardUpdatedMessage": "{{card}} se usará para las próximas renovaciones.",
-  "failedToUpdateCard": "No pudimos actualizar tu tarjeta. Inténtalo de nuevo."
+  "failedToUpdateCard": "No pudimos actualizar tu tarjeta. Inténtalo de nuevo.",
+  "promoteConfirmMessageTrial": "Tu negocio aparecerá en FreshPass Deals de inmediato. Se añadirán {{price}}/mes a tu primer pago cuando termine tu prueba el {{date}}.",
+  "promotionStartsCardTitle": "La promoción empieza el {{date}}",
+  "promotionStartsCardBody": "Tu negocio aparecerá en FreshPass Deals desde tu próxima renovación.",
+  "removePromotionNotStartedMessage": "Tu promoción no empezará. Tu plan se renueva a {{price}} al mes el {{date}}.",
+  "promotionLineLabel": "Promoción",
+  "perMonthCompact": "/mes",
+  "expiryPlaceholder": "MM / AA"
 }

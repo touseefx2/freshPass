@@ -3441,9 +3441,9 @@
   "reviewBillingBeforeConfirming": "راجع تفاصيل الفوترة قبل التأكيد.",
   "appleAddPromotionDesc": "يفتح شاشة اشتراكات Apple. اختر الخطة التي تتضمن إضافة العرض الترويجي.",
   "promoteConfirmTitle": "هل تريد الترويج لنشاطك التجاري؟",
-  "promoteConfirmMessage": "سيظهر نشاطك التجاري بشكل مميز في FreshPass Deals مقابل {{price}} شهريًا. ستتجدد خطتك بسعر {{total}} شهريًا وتُخصم من بطاقتك المحفوظة.",
+  "promoteConfirmMessage": "ستتم إضافة {{price}} شهريًا بدءًا من تجديدك القادم في {{date}}. سيظهر نشاطك التجاري في FreshPass Deals من ذلك الحين. لن يتم خصم أي مبلغ اليوم.",
   "promoteConfirmMessageNoPrice": "سيظهر نشاطك التجاري بشكل مميز في FreshPass Deals. يتجدد العرض الترويجي شهريًا مع خطتك ويُخصم من بطاقتك المحفوظة.",
-  "promotionAddedFallback": "نشاطك التجاري الآن مميز في FreshPass Deals.",
+  "promotionAddedFallback": "يبدأ عرضك الترويجي مع تجديدك القادم.",
   "cardEndingIn": "{{brand}} المنتهية بـ {{last4}}",
   "cardEndingInNoBrand": "البطاقة المنتهية بـ {{last4}}",
   "paymentMethodTitle": "طريقة الدفع",
@@ -3454,5 +3454,12 @@
   "securelyProcessedByStripe": "معالجة آمنة بواسطة Stripe",
   "cardUpdatedTitle": "تم تحديث البطاقة",
   "cardUpdatedMessage": "ستُستخدم {{card}} في التجديدات القادمة.",
-  "failedToUpdateCard": "تعذّر تحديث بطاقتك. يُرجى المحاولة مرة أخرى."
+  "failedToUpdateCard": "تعذّر تحديث بطاقتك. يُرجى المحاولة مرة أخرى.",
+  "promoteConfirmMessageTrial": "سيظهر نشاطك التجاري في FreshPass Deals فورًا. ستتم إضافة {{price}} شهريًا إلى أول دفعة بعد انتهاء فترتك التجريبية في {{date}}.",
+  "promotionStartsCardTitle": "يبدأ العرض الترويجي في {{date}}",
+  "promotionStartsCardBody": "سيظهر نشاطك التجاري في FreshPass Deals بدءًا من تجديدك القادم.",
+  "removePromotionNotStartedMessage": "لن يبدأ عرضك الترويجي. تتجدد خطتك بسعر {{price}} شهريًا في {{date}}.",
+  "promotionLineLabel": "العرض الترويجي",
+  "perMonthCompact": "شهريًا",
+  "expiryPlaceholder": "MM / YY"
 }

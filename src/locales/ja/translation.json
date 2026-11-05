@@ -3426,9 +3426,9 @@
   "reviewBillingBeforeConfirming": "確定する前に請求内容をご確認ください。",
   "appleAddPromotionDesc": "Appleのサブスクリプション画面が開きます。プロモーションアドオン付きのプランを選択してください。",
   "promoteConfirmTitle": "お店をプロモーションしますか？",
-  "promoteConfirmMessage": "お店がFreshPass Dealsに月額{{price}}で注目掲載されます。プランは月額{{total}}で更新され、登録済みのカードに請求されます。",
+  "promoteConfirmMessage": "次回更新日の{{date}}から月額{{price}}が追加されます。その日からお店がFreshPass Dealsに掲載されます。本日の請求はありません。",
   "promoteConfirmMessageNoPrice": "お店がFreshPass Dealsに注目掲載されます。プロモーションはプランと一緒に毎月更新され、登録済みのカードに請求されます。",
-  "promotionAddedFallback": "お店がFreshPass Dealsに注目掲載されました。",
+  "promotionAddedFallback": "プロモーションは次回の更新から開始します。",
   "cardEndingIn": "末尾{{last4}}の{{brand}}",
   "cardEndingInNoBrand": "末尾{{last4}}のカード",
   "paymentMethodTitle": "お支払い方法",
@@ -3439,5 +3439,12 @@
   "securelyProcessedByStripe": "Stripeにより安全に処理されます",
   "cardUpdatedTitle": "カードを更新しました",
   "cardUpdatedMessage": "今後の更新には{{card}}が使用されます。",
-  "failedToUpdateCard": "カードを更新できませんでした。もう一度お試しください。"
+  "failedToUpdateCard": "カードを更新できませんでした。もう一度お試しください。",
+  "promoteConfirmMessageTrial": "お店はすぐにFreshPass Dealsに掲載されます。月額{{price}}は、{{date}}のトライアル終了後の初回のお支払いに追加されます。",
+  "promotionStartsCardTitle": "プロモーションは{{date}}に開始します",
+  "promotionStartsCardBody": "次回の更新からお店がFreshPass Dealsに掲載されます。",
+  "removePromotionNotStartedMessage": "プロモーションは開始されません。プランは{{date}}に月額{{price}}で更新されます。",
+  "promotionLineLabel": "プロモーション",
+  "perMonthCompact": "/月",
+  "expiryPlaceholder": "MM / YY"
 }

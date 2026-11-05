@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import { StyleSheet, View, Text, Platform } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
@@ -23,14 +23,18 @@ import { formatCardLabel } from "@/src/utils/cardLabel";
 
 type SavedCard = { lastFour: string; brand?: string | null };
 
-/** Brand colors flattened to solid hex (darkGreen, lightGreen on white, borderMedium on white, red) */
+/**
+ * Stripe's field only takes #RRGGBB on Android (rgba() / 8-digit theme tokens
+ * crash Color.parseColor): darkGreen text, muted placeholder, light neutral
+ * border like the client sample, red errors.
+ */
 const CARD_FIELD_STYLE = {
   backgroundColor: "#FFFFFF",
   textColor: "#283618",
   placeholderColor: "#7E8674",
-  borderColor: "#B4B9AC",
+  borderColor: "#D9D7D3",
   borderWidth: 1,
-  borderRadius: 12,
+  borderRadius: 10,
   fontSize: 16,
   cursorColor: "#283618",
   textErrorColor: "#BA1A1A",
@@ -40,8 +44,8 @@ const createStyles = (theme: Theme) =>
   StyleSheet.create({
     container: { flex: 1, backgroundColor: theme.background },
     scroll: {
-      paddingHorizontal: moderateWidthScale(20),
-      paddingTop: moderateHeightScale(20),
+      paddingHorizontal: moderateWidthScale(16),
+      paddingTop: moderateHeightScale(16),
       paddingBottom: moderateHeightScale(32),
       gap: moderateHeightScale(20),
     },
@@ -56,39 +60,25 @@ const createStyles = (theme: Theme) =>
       elevation: 2,
     },
     title: {
-      fontSize: fontSize.size22,
-      fontFamily: fonts.fontBold,
+      fontSize: fontSize.size24,
+      fontFamily: fonts.fontExtraBold,
       color: theme.darkGreen,
     },
     subtitle: {
-      fontSize: fontSize.size14,
+      fontSize: fontSize.size15,
       fontFamily: fonts.fontRegular,
-      color: theme.lightGreen,
-      marginTop: moderateHeightScale(4),
+      color: theme.textMuted,
+      marginTop: moderateHeightScale(6),
       lineHeight: fontSize.size20,
     },
-    currentCard: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: moderateWidthScale(8),
-      marginTop: moderateHeightScale(14),
-      paddingVertical: moderateHeightScale(10),
-      paddingHorizontal: moderateWidthScale(12),
-      borderRadius: moderateWidthScale(10),
-      backgroundColor: theme.lightGreen05,
-    },
-    currentCardText: {
-      fontSize: fontSize.size13,
-      fontFamily: fonts.fontMedium,
-      color: theme.darkGreen,
-    },
-    cardForm: {
+    cardField: {
       width: "100%",
-      // Stripe's native field needs a fixed height (number, MM/YY, CVC, ZIP)
-      height: Platform.OS === "ios" ? 52 : 56,
-      marginTop: moderateHeightScale(18),
+      // Stripe's native field needs a fixed height (number, MM / YY, CVC, ZIP)
+      height: Platform.OS === "ios" ? 54 : 58,
+      marginTop: moderateHeightScale(20),
     },
     saveButton: { marginTop: moderateHeightScale(20) },
+    saveButtonText: { fontSize: fontSize.size17 },
     secureRow: {
       flexDirection: "row",
       alignItems: "center",
@@ -97,47 +87,52 @@ const createStyles = (theme: Theme) =>
       marginTop: moderateHeightScale(14),
     },
     secureText: {
-      fontSize: fontSize.size12,
+      fontSize: fontSize.size13,
       fontFamily: fonts.fontRegular,
-      color: theme.lightGreen,
+      color: theme.textMuted,
     },
     successCard: {
       flexDirection: "row",
-      alignItems: "flex-start",
-      gap: moderateWidthScale(14),
-      backgroundColor: theme.mintTint,
+      alignItems: "center",
+      gap: moderateWidthScale(16),
+      backgroundColor: theme.successCardBg,
       borderWidth: 1,
-      borderColor: theme.mintTintStrong,
+      borderColor: theme.successCardBorder,
       borderRadius: moderateWidthScale(16),
-      padding: moderateWidthScale(18),
+      paddingVertical: moderateHeightScale(18),
+      paddingHorizontal: moderateWidthScale(18),
     },
     successIcon: {
-      width: moderateWidthScale(40),
-      height: moderateWidthScale(40),
-      borderRadius: moderateWidthScale(20),
-      backgroundColor: theme.successGreen,
+      width: moderateWidthScale(44),
+      height: moderateWidthScale(44),
+      borderRadius: moderateWidthScale(22),
+      backgroundColor: theme.successCheck,
       alignItems: "center",
       justifyContent: "center",
     },
     successCopy: { flex: 1, gap: moderateHeightScale(4) },
     successTitle: {
-      fontSize: fontSize.size16,
+      fontSize: fontSize.size18,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
     },
     successText: {
       fontSize: fontSize.size14,
       fontFamily: fonts.fontRegular,
-      color: theme.lightGreen,
+      color: theme.textMuted,
       lineHeight: fontSize.size20,
     },
   });
 
 /**
  * Stripe-billed plans only: update the renewal card in-app with Stripe's own
- * card form (card data never touches our code or server).
+ * card field (card data never touches our code or server).
  * Flow: SetupIntent from server → confirm in Stripe SDK → server makes the
  * new card the default for the subscription.
+ *
+ * One-line CardField on purpose: Stripe RN 0.76 has no separate-box fields
+ * (CardForm is one grouped box + a Country row, and crashes on Android
+ * without a MaterialComponents theme), and raw card numbers can't be sent.
  */
 export default function PaymentMethodScreen() {
   const { colors } = useTheme();
@@ -147,20 +142,14 @@ export default function PaymentMethodScreen() {
   const router = useRouter();
   const { showBanner } = useNotificationContext();
   const { confirmSetupIntent } = useStripe();
-  const params = useLocalSearchParams<{
-    subscriptionId?: string;
-    cardLastFour?: string;
-    cardBrand?: string;
-  }>();
+  const params = useLocalSearchParams<{ subscriptionId?: string }>();
   const subscriptionId = Number(params.subscriptionId);
 
   const [complete, setComplete] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState<SavedCard | null>(null);
-
-  const currentCard = params.cardLastFour
-    ? formatCardLabel(t, params.cardLastFour, params.cardBrand)
-    : null;
+  /** Brand Stripe detected while typing ("Visa"), used if the server sends none */
+  const typedBrandRef = useRef<string | null>(null);
 
   const handleSave = async () => {
     if (!complete || saving || !Number.isFinite(subscriptionId)) return;
@@ -195,7 +184,7 @@ export default function PaymentMethodScreen() {
       }
       setSaved({
         lastFour: result.data.cardLastFour,
-        brand: result.data.cardBrand,
+        brand: result.data.cardBrand ?? typedBrandRef.current,
       });
     } catch (err: any) {
       showBanner(
@@ -221,7 +210,7 @@ export default function PaymentMethodScreen() {
           <>
             <View style={styles.successCard} accessibilityRole="summary">
               <View style={styles.successIcon}>
-                <Feather name="check" size={iconScale(22)} color={theme.white} />
+                <Feather name="check" size={iconScale(24)} color={theme.white} />
               </View>
               <View style={styles.successCopy}>
                 <Text style={styles.successTitle}>{t("cardUpdatedTitle")}</Text>
@@ -232,38 +221,34 @@ export default function PaymentMethodScreen() {
                 </Text>
               </View>
             </View>
-            <Button title={t("done")} onPress={() => router.back()} />
+            <Button
+              title={t("done")}
+              onPress={() => router.back()}
+              backgroundColor={theme.darkGreen}
+              textStyle={styles.saveButtonText}
+            />
           </>
         ) : (
           <View style={styles.card}>
             <Text style={styles.title}>{t("updateYourCard")}</Text>
             <Text style={styles.subtitle}>{t("updateCardSubtitle")}</Text>
-            {currentCard ? (
-              <View style={styles.currentCard}>
-                <Feather
-                  name="credit-card"
-                  size={iconScale(16)}
-                  color={theme.darkGreenLight}
-                />
-                <Text style={styles.currentCardText}>
-                  {t("currentCardLabel", { card: currentCard })}
-                </Text>
-              </View>
-            ) : null}
 
-            {/* CardField, not CardForm: CardForm crashes on Android without a
-                MaterialComponents app theme (InflateException, 11-05) */}
             <CardField
-              style={styles.cardForm}
+              style={styles.cardField}
               disabled={saving}
               postalCodeEnabled
               placeholders={{
                 number: t("cardNumber"),
+                expiration: t("expiryPlaceholder"),
+                cvc: t("cvc"),
                 postalCode: t("zipCode"),
               }}
-              onCardChange={(details) => setComplete(!!details?.complete)}
-              // Android's Color.parseColor only takes #RRGGBB here: rgba() and
-              // 8-digit theme tokens crash it ("Unknown color")
+              onCardChange={(details) => {
+                setComplete(!!details?.complete);
+                const brand = details?.brand;
+                typedBrandRef.current =
+                  brand && brand !== "Unknown" ? brand : null;
+              }}
               cardStyle={CARD_FIELD_STYLE}
             />
 
@@ -272,10 +257,12 @@ export default function PaymentMethodScreen() {
               onPress={() => void handleSave()}
               disabled={!complete}
               loading={saving}
+              backgroundColor={theme.darkGreen}
               containerStyle={styles.saveButton}
+              textStyle={styles.saveButtonText}
             />
             <View style={styles.secureRow}>
-              <Feather name="lock" size={iconScale(13)} color={theme.lightGreen} />
+              <Feather name="lock" size={iconScale(15)} color={theme.textMuted} />
               <Text style={styles.secureText}>
                 {t("securelyProcessedByStripe")}
               </Text>
