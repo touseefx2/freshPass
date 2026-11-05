@@ -3461,5 +3461,7 @@
   "removePromotionNotStartedMessage": "Tu promoción no empezará. Tu plan se renueva a {{price}} al mes el {{date}}.",
   "promotionLineLabel": "Promoción",
   "perMonthCompact": "/mes",
-  "expiryPlaceholder": "MM / AA"
+  "expiryPlaceholder": "MM / AA",
+  "proPlanLabel": "Plan Pro",
+  "soloPlanLabel": "Plan Solo"
 }

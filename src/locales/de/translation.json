@@ -3458,5 +3458,7 @@
   "removePromotionNotStartedMessage": "Ihre Promotion wird nicht beginnen. Ihr Tarif verlängert sich am {{date}} zu {{price}} pro Monat.",
   "promotionLineLabel": "Promotion",
   "perMonthCompact": "/Monat",
-  "expiryPlaceholder": "MM / JJ"
+  "expiryPlaceholder": "MM / JJ",
+  "proPlanLabel": "Pro-Tarif",
+  "soloPlanLabel": "Solo-Tarif"
 }

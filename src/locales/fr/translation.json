@@ -3461,5 +3461,7 @@
   "removePromotionNotStartedMessage": "Votre promotion ne commencera pas. Votre forfait sera renouvelé à {{price}} par mois le {{date}}.",
   "promotionLineLabel": "Promotion",
   "perMonthCompact": "/mois",
-  "expiryPlaceholder": "MM / AA"
+  "expiryPlaceholder": "MM / AA",
+  "proPlanLabel": "Forfait Pro",
+  "soloPlanLabel": "Forfait Solo"
 }

@@ -4243,5 +4243,7 @@
   "removePromotionNotStartedMessage": "Your promotion won't start. Your plan renews at {{price}} per month on {{date}}.",
   "promotionLineLabel": "Promotion",
   "perMonthCompact": "/month",
-  "expiryPlaceholder": "MM / YY"
+  "expiryPlaceholder": "MM / YY",
+  "proPlanLabel": "Pro plan",
+  "soloPlanLabel": "Solo plan"
 }

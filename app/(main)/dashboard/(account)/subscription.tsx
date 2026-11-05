@@ -1719,7 +1719,12 @@ export default function SubscriptionScreen() {
               {breakdownAddOns.length > 0 ? (
                 <View style={styles.breakdown}>
                   <View style={styles.addOnRow}>
-                    <Text style={styles.addOnName}>{t("basePlanLabel")}</Text>
+                    {/* Client 11-05: "Pro plan" for Business, "Solo plan" for Solo */}
+                    <Text style={styles.addOnName}>
+                      {/solo/i.test(subscription.subscriptionPlan ?? "")
+                        ? t("soloPlanLabel")
+                        : t("proPlanLabel")}
+                    </Text>
                     <Text style={styles.addOnPrice}>
                       {t("pricePerMonth", { price: basePriceText })}
                     </Text>

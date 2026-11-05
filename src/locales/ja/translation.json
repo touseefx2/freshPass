@@ -3455,5 +3455,7 @@
   "removePromotionNotStartedMessage": "プロモーションは開始されません。プランは{{date}}に月額{{price}}で更新されます。",
   "promotionLineLabel": "プロモーション",
   "perMonthCompact": "/月",
-  "expiryPlaceholder": "MM / YY"
+  "expiryPlaceholder": "MM / YY",
+  "proPlanLabel": "Proプラン",
+  "soloPlanLabel": "Soloプラン"
 }
