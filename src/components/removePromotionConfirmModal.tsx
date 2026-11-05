@@ -92,10 +92,19 @@ const createStyles = (theme: Theme) =>
       color: theme.red,
       textAlign: "center",
     },
+    neutralText: {
+      color: theme.lightGreen,
+    },
   });
 
 interface RemovePromotionConfirmModalProps {
   visible: boolean;
+  /** "promote" = add the promotion back (Stripe) */
+  mode?: "remove" | "promote";
+  /** promote: formatted add-on price, e.g. "$20" */
+  promotionPrice?: string | null;
+  /** promote: formatted monthly total with the promotion, e.g. "$80" */
+  totalWithPromotion?: string | null;
   /** Already formatted, e.g. "November 23, 2026" */
   endDate: string;
   /** Already formatted base price, e.g. "$60.00" */
@@ -107,6 +116,9 @@ interface RemovePromotionConfirmModalProps {
 /** Stripe only: Apple customers make this change in Apple's own sheet. */
 export default function RemovePromotionConfirmModal({
   visible,
+  mode = "remove",
+  promotionPrice,
+  totalWithPromotion,
   endDate,
   basePrice,
   onClose,
@@ -132,31 +144,69 @@ export default function RemovePromotionConfirmModal({
           onPress={(e) => e.stopPropagation()}
         >
           <View style={styles.iconCircle}>
-            <Feather name="tag" size={iconScale(30)} color={theme.darkGreen} />
+            <Feather
+              name={mode === "promote" ? "trending-up" : "tag"}
+              size={iconScale(30)}
+              color={theme.darkGreen}
+            />
           </View>
 
-          <Text style={styles.title}>{t("removePromotionConfirmTitle")}</Text>
-
-          <Text style={styles.message}>
-            {t("removePromotionConfirmMessage", {
-              date: endDate,
-              price: basePrice,
-            })}
-          </Text>
-
-          <View style={styles.buttonContainer}>
-            <Button title={t("keepPromotionAddOn")} onPress={onClose} />
-            <TouchableOpacity
-              style={styles.secondaryButton}
-              onPress={onConfirm}
-              activeOpacity={0.7}
-              accessibilityRole="button"
-            >
-              <Text style={styles.secondaryButtonText}>
-                {t("removePromotionAddOn")}
+          {mode === "promote" ? (
+            <>
+              <Text style={styles.title}>{t("promoteConfirmTitle")}</Text>
+              <Text style={styles.message}>
+                {promotionPrice && totalWithPromotion
+                  ? t("promoteConfirmMessage", {
+                      price: promotionPrice,
+                      total: totalWithPromotion,
+                    })
+                  : t("promoteConfirmMessageNoPrice")}
               </Text>
-            </TouchableOpacity>
-          </View>
+              <View style={styles.buttonContainer}>
+                <Button
+                  title={t("promoteMyBusiness")}
+                  onPress={onConfirm}
+                  backgroundColor={theme.bookNowButton}
+                  textColor={theme.darkGreen}
+                />
+                <TouchableOpacity
+                  style={styles.secondaryButton}
+                  onPress={onClose}
+                  activeOpacity={0.7}
+                  accessibilityRole="button"
+                >
+                  <Text style={[styles.secondaryButtonText, styles.neutralText]}>
+                    {t("notNow")}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </>
+          ) : (
+            <>
+              <Text style={styles.title}>{t("removePromotionConfirmTitle")}</Text>
+
+              <Text style={styles.message}>
+                {t("removePromotionConfirmMessage", {
+                  date: endDate,
+                  price: basePrice,
+                })}
+              </Text>
+
+              <View style={styles.buttonContainer}>
+                <Button title={t("keepMyBusinessFeatured")} onPress={onClose} />
+                <TouchableOpacity
+                  style={styles.secondaryButton}
+                  onPress={onConfirm}
+                  activeOpacity={0.7}
+                  accessibilityRole="button"
+                >
+                  <Text style={styles.secondaryButtonText}>
+                    {t("removePromotionAddOn")}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </>
+          )}
         </Pressable>
       </View>
     </Modal>

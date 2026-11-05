@@ -141,6 +141,12 @@ export const businessEndpoints = {
   /** POST, Stripe only → { url }: card-update-only Stripe page */
   subscriptionBillingPortal: (subscriptionId: number) =>
     `/api/subscriptions/${subscriptionId}/billing-portal`,
+  /** POST, Stripe only → { clientSecret }: SetupIntent for the in-app card form (pending backend) */
+  subscriptionSetupIntent: (subscriptionId: number) =>
+    `/api/subscriptions/${subscriptionId}/setup-intent`,
+  /** POST { payment_method_id } → { cardLastFour, cardBrand }: default card for renewals (pending backend) */
+  subscriptionPaymentMethod: (subscriptionId: number) =>
+    `/api/subscriptions/${subscriptionId}/payment-method`,
   businessDetails: (businessId: string | number) =>
     `/api/business/details?business_id=${businessId}`,
   ownerWorkImages: (

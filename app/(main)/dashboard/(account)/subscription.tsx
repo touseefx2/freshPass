@@ -37,6 +37,7 @@ import CancelSubscriptionConfirmModal from "@/src/components/cancelSubscriptionC
 import RemovePromotionConfirmModal from "@/src/components/removePromotionConfirmModal";
 import { showAppleManageSubscriptions } from "@/src/services/iapService";
 import { setActionLoader } from "@/src/state/slices/generalSlice";
+import { formatCardLabel } from "@/src/utils/cardLabel";
 import { useTranslation } from "react-i18next";
 import dayjs from "dayjs";
 import customParseFormat from "dayjs/plugin/customParseFormat";
@@ -88,6 +89,8 @@ interface SubscriptionData {
   stripePaymentIntentId: string;
   stripePaymentUrl: string;
   cardLastFour: string | null;
+  /** "visa", "mastercard"... (pending backend; label falls back to "Card ending") */
+  cardBrand?: string | null;
   paymentProvider: string | null;
   appStoreProductId?: string | null;
   /** Still in FreshPass Deals (stays true until promotionEndsAt) */
@@ -96,6 +99,8 @@ interface SubscriptionData {
   promotionEndsAt?: string | null;
   /** Next renewal amount after any pending change; null = won't renew */
   renewalPrice?: string | null;
+  /** Monthly price of the Deals promotion, also when it isn't on the plan (pending backend) */
+  promotionPrice?: string | null;
   /** Apple can bill in local currency (e.g. PKR); Stripe is USD */
   renewalCurrency?: string | null;
   /** Apple only: plan the subscription switches to at renewal */
@@ -118,7 +123,7 @@ type SubscriptionActionResponse = {
 /** Delay before re-reading after Apple's sheet: the server hears from Apple a few seconds later */
 const APPLE_SYNC_REFETCH_MS = 5000;
 
-/** "60.00" + "USD" → "$60.00"; "16900.00" + "PKR" → "PKR 16,900.00" */
+/** "60.00" + "USD" → "$60"; "19.99" → "$19.99"; "16900.00" + "PKR" → "PKR 16,900" */
 const formatMoney = (
   amount: string | null | undefined,
   currency: string | null | undefined,
@@ -130,7 +135,9 @@ const formatMoney = (
     return new Intl.NumberFormat("en-US", {
       style: "currency",
       currency: code,
-    }).format(value);
+    })
+      .format(value)
+      .replace(/\.00$/, "");
   } catch {
     return `${code} ${amount}`;
   }
@@ -725,7 +732,113 @@ const createStyles = (theme: Theme) =>
       marginTop: moderateHeightScale(8),
       marginBottom: moderateHeightScale(20),
     },
+    planNameRow: {
+      flex: 1,
+      marginRight: moderateWidthScale(12),
+      marginBottom: 0,
+    },
+    breakdown: {
+      marginTop: moderateHeightScale(4),
+    },
+    totalRow: {
+      marginBottom: 0,
+    },
+    totalLabel: {
+      fontSize: fontSize.size16,
+      fontFamily: fonts.fontBold,
+      color: theme.white,
+    },
+    noticeCard: {
+      marginHorizontal: moderateWidthScale(20),
+      marginBottom: moderateHeightScale(12),
+      padding: moderateWidthScale(16),
+      borderRadius: moderateWidthScale(16),
+      borderWidth: 1.5,
+      borderColor: theme.goldenBuy,
+      backgroundColor: theme.surfaceRaised,
+    },
+    noticeTop: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: moderateWidthScale(12),
+    },
+    goldIconTile: {
+      width: moderateWidthScale(40),
+      height: moderateWidthScale(40),
+      borderRadius: moderateWidthScale(12),
+      backgroundColor: theme.tilePeach,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    flexCopy: {
+      flex: 1,
+      gap: moderateHeightScale(4),
+    },
+    noticeTitle: {
+      fontSize: fontSize.size17,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    noticeText: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+      lineHeight: fontSize.size20,
+    },
+    noticeDivider: {
+      height: 1,
+      backgroundColor: theme.orangeBrown30,
+      marginTop: moderateHeightScale(14),
+      marginBottom: moderateHeightScale(12),
+    },
+    noticeFooter: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+      textAlign: "center",
+    },
+    promoCard: {
+      marginHorizontal: moderateWidthScale(20),
+      marginBottom: moderateHeightScale(12),
+      padding: moderateWidthScale(16),
+      borderRadius: moderateWidthScale(16),
+      backgroundColor: theme.white,
+      shadowColor: theme.shadow,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.06,
+      shadowRadius: 8,
+      elevation: 2,
+    },
+    promoCardGold: {
+      borderWidth: 1.5,
+      borderColor: theme.goldenBuy,
+    },
+    promoTitle: {
+      fontSize: fontSize.size17,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    promoButton: {
+      marginTop: moderateHeightScale(16),
+    },
+    promoPriceLine: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+      textAlign: "center",
+      marginTop: moderateHeightScale(12),
+    },
+    promoFootnote: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+      textAlign: "center",
+      lineHeight: fontSize.size18,
+      marginTop: moderateHeightScale(6),
+    },
     manageCard: {
+      marginHorizontal: moderateWidthScale(20),
+      marginBottom: moderateHeightScale(12),
       backgroundColor: theme.white,
       borderRadius: moderateWidthScale(16),
       paddingHorizontal: moderateWidthScale(16),
@@ -792,6 +905,7 @@ export default function SubscriptionScreen() {
     useState(false);
   const [cancelConfirmVisible, setCancelConfirmVisible] = useState(false);
   const [removePromotionVisible, setRemovePromotionVisible] = useState(false);
+  const [promoteVisible, setPromoteVisible] = useState(false);
   const [managing, setManaging] = useState(false);
 
   const businessStatus = useAppSelector((state) => state.user.businessStatus);
@@ -995,38 +1109,29 @@ export default function SubscriptionScreen() {
     );
   };
 
-  /** Stripe card-update page; a fresh link every tap (they expire). */
-  const handleChangeCard = async () => {
+  const handleConfirmPromote = () => {
+    setPromoteVisible(false);
+    void runSubscriptionAction(
+      () =>
+        ApiService.post<SubscriptionActionResponse>(
+          businessEndpoints.keepPromotionAddOn,
+          {},
+        ),
+      t("promotionAddedFallback"),
+    );
+  };
+
+  /** Stripe-billed: in-app Stripe card form (client 11-05, no browser) */
+  const handleChangeCard = () => {
     if (!subscription || managing) return;
-    setManaging(true);
-    dispatch(setActionLoader(true));
-    try {
-      const response = await ApiService.post<{
-        success: boolean;
-        message?: string;
-        data?: { url?: string };
-      }>(businessEndpoints.subscriptionBillingPortal(subscription.id), {});
-      const url = response.data?.url;
-      if (!response.success || !url) {
-        throw new Error(response.message || t("failedToOpenBillingPortal"));
-      }
-      // Real browser (not a WebView). The return link lands back here and the
-      // foreground refetch picks up the new card.
-      await Linking.openURL(url);
-    } catch (err: any) {
-      showBanner(
-        t("error"),
-        err?.message || t("failedToOpenBillingPortal"),
-        "error",
-        3000,
-      );
-      if (err?.data?.data?.error_code === "billed_by_apple") {
-        void fetchSubscription();
-      }
-    } finally {
-      setManaging(false);
-      dispatch(setActionLoader(false));
-    }
+    router.push({
+      pathname: "/(main)/dashboard/(account)/paymentMethod",
+      params: {
+        subscriptionId: String(subscription.id),
+        cardLastFour: subscription.cardLastFour ?? "",
+        cardBrand: subscription.cardBrand ?? "",
+      },
+    } as any);
   };
 
   /**
@@ -1138,13 +1243,6 @@ export default function SubscriptionScreen() {
   const handleConfirmCancel = () => {
     setCancelConfirmVisible(false);
     void cancelCurrentSubscription();
-  };
-
-  const formatCardNumber = (lastFour: string | null) => {
-    if (!lastFour) {
-      return "**** **** **** ----";
-    }
-    return `**** **** **** ${lastFour}`;
   };
 
   const capitalizeFirstLetter = (text: string | null) => {
@@ -1279,6 +1377,47 @@ export default function SubscriptionScreen() {
     return lines;
   })();
 
+  /** Prices for the plan card + promotion card ("$60", "$20", "$80") */
+  const basePriceValue = Number(subscription?.subscriptionPlanPrice) || 0;
+  const activeAddOnTotal = activeAddOns.reduce(
+    (sum, service) => sum + (Number(service.price) || 0),
+    0,
+  );
+  const basePriceText =
+    formatMoney(subscription?.subscriptionPlanPrice, "USD") ??
+    `$${subscription?.subscriptionPlanPrice ?? ""}`;
+  const currentTotalText = formatMoney(
+    String(subscription?.totalPrice ?? basePriceValue + activeAddOnTotal),
+    "USD",
+  );
+  // An ended promotion can still come back as an inactive add-on row
+  const promotionPriceRaw =
+    subscription?.promotionPrice ??
+    activeAddOns[0]?.price ??
+    subscription?.additionalServices?.[0]?.price ??
+    null;
+  const promotionPriceText = formatMoney(promotionPriceRaw, "USD");
+  const totalWithPromotionText =
+    promotionPriceRaw != null && Number.isFinite(Number(promotionPriceRaw))
+      ? formatMoney(String(basePriceValue + Number(promotionPriceRaw)), "USD")
+      : null;
+  const cardLabel = subscription?.cardLastFour
+    ? formatCardLabel(t, subscription.cardLastFour, subscription.cardBrand)
+    : null;
+  /** Apple-billed on Android: nothing can be changed here */
+  const appleOnAndroid = isApplePayment && !isIosDevice;
+  const showPendingNotice =
+    isRenewing && (promotionPending || !!subscription?.pendingPlanName);
+  /** "keep" while removal is pending, "promote" once the promotion is gone */
+  const promoCardMode: "keep" | "promote" | null =
+    !subscription || !isRenewing || appleOnAndroid
+      ? null
+      : promotionPending
+        ? "keep"
+        : !hasPromotion
+          ? "promote"
+          : null;
+
   /** Manage plan rows — what each one shows depends on who bills the plan */
   const manageRows = (() => {
     type ManageRow = {
@@ -1291,7 +1430,7 @@ export default function SubscriptionScreen() {
     if (!subscription || !isRenewing) return [] as ManageRow[];
     const rows: ManageRow[] = [];
 
-    if (isApplePayment && !isIosDevice) {
+    if (appleOnAndroid) {
       rows.push({
         key: "apple-android",
         icon: "smartphone",
@@ -1300,57 +1439,37 @@ export default function SubscriptionScreen() {
       return rows;
     }
 
-    if (isApplePayment) {
-      if (promotionPending) {
-        rows.push({
-          key: "keep",
-          icon: "tag",
-          title: t("keepPromotionAddOn"),
-          text: t("appleKeepPromotionDesc"),
-          onPress: () => void handleOpenAppleSheet(),
-        });
-      } else if (hasPromotion) {
-        rows.push({
-          key: "remove",
-          icon: "tag",
-          title: t("removePromotionAddOn"),
-          text: t("appleRemovePromotionDesc"),
-          onPress: () => void handleOpenAppleSheet(),
-        });
-      }
-      rows.push({
-        key: "card",
-        icon: "credit-card",
-        title: t("paymentManagedByApple"),
-        text: t("paymentManagedByAppleSteps"),
-      });
-      return rows;
-    }
-
-    if (promotionPending) {
-      rows.push({
-        key: "keep",
-        icon: "tag",
-        title: t("keepPromotionAddOn"),
-        text: t("keepPromotionAddOnDesc"),
-        onPress: handleKeepPromotion,
-      });
-    } else if (hasPromotion) {
+    // Keep / Promote live in the promotion card above; only Remove stays here
+    if (hasPromotion && !promotionPending) {
       rows.push({
         key: "remove",
         icon: "tag",
         title: t("removePromotionAddOn"),
-        text: t("removePromotionAddOnDesc"),
-        onPress: () => setRemovePromotionVisible(true),
+        text: isApplePayment
+          ? t("appleRemovePromotionDesc")
+          : t("removePromotionAddOnDesc"),
+        onPress: isApplePayment
+          ? () => void handleOpenAppleSheet()
+          : () => setRemovePromotionVisible(true),
       });
     }
-    rows.push({
-      key: "card",
-      icon: "credit-card",
-      title: t("changePaymentMethod"),
-      text: t("changePaymentMethodDesc"),
-      onPress: () => void handleChangeCard(),
-    });
+
+    rows.push(
+      isApplePayment
+        ? {
+            key: "card",
+            icon: "credit-card",
+            title: t("paymentManagedByApple"),
+            text: t("paymentManagedByAppleSteps"),
+          }
+        : {
+            key: "card",
+            icon: "credit-card",
+            title: t("changePaymentMethod"),
+            text: cardLabel ?? t("changePaymentMethodDesc"),
+            onPress: handleChangeCard,
+          },
+    );
     return rows;
   })();
 
@@ -1504,37 +1623,6 @@ export default function SubscriptionScreen() {
             </View>
           )}
 
-          {pendingChangeLines.length > 0 && (
-            <View style={styles.trialBanner}>
-              <LinearGradient
-                colors={[theme.darkGreenLight, theme.darkGreen]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.trialBannerGradient}
-              >
-                <View style={styles.trialBannerLeft}>
-                  <Text style={styles.trialBannerTitle}>
-                    {subscription.pendingPlanName
-                      ? t("planChangeScheduledTitle")
-                      : t("promotionRemovedTitle")}
-                  </Text>
-                  {pendingChangeLines.map((line) => (
-                    <Text key={line} style={styles.trialBannerSubtitle}>
-                      {line}
-                    </Text>
-                  ))}
-                </View>
-                <View style={styles.trialBannerIcon}>
-                  <Feather
-                    name="calendar"
-                    size={moderateWidthScale(24)}
-                    color={theme.white}
-                  />
-                </View>
-              </LinearGradient>
-            </View>
-          )}
-
           {subscription.teamPaused && (
             <View style={styles.trialBanner}>
               <LinearGradient
@@ -1573,40 +1661,30 @@ export default function SubscriptionScreen() {
               style={styles.headerGradient}
             >
               <View style={styles.headerTop}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.planName}>
-                    {subscription.subscriptionPlan}
-                  </Text>
-                  <View style={styles.planPriceContainer}>
-                    <Text style={styles.currencySymbol}>$</Text>
-                    <Text style={styles.planPrice}>
-                      {subscription.subscriptionPlanPrice}
-                    </Text>
-                    <Text style={styles.pricePeriod}>{t("perMonth")}</Text>
-                  </View>
-                </View>
+                <Text style={[styles.planName, styles.planNameRow]}>
+                  {subscription.subscriptionPlan}
+                </Text>
                 <View style={styles.statusBadge}>
                   <Text style={styles.statusText}>{statusBadgeLabel}</Text>
                 </View>
               </View>
-              {subscription.subscriptionPlanDescription && (
-                <Text style={styles.planDescription}>
-                  {capitalizeFirstLetter(
-                    subscription.subscriptionPlanDescription,
-                  )}
-                </Text>
-              )}
-              {activeAddOns.length > 0 && (
-                <>
-                  <View style={styles.addOnDivider} />
-                  <Text style={styles.addOnSectionTitle}>
-                    {t("addOnServices")}
-                  </Text>
+              {activeAddOns.length > 0 ? (
+                <View style={styles.breakdown}>
+                  <View style={styles.addOnRow}>
+                    <Text style={styles.addOnName}>{t("basePlanLabel")}</Text>
+                    <Text style={styles.addOnPrice}>
+                      {t("pricePerMonth", { price: basePriceText })}
+                    </Text>
+                  </View>
                   {activeAddOns.map((service) => (
                     <View key={service.id} style={styles.addOnRow}>
                       <Text style={styles.addOnName}>{service.name}</Text>
                       <Text style={styles.addOnPrice}>
-                        $ {service.price} {t("perMonth")}
+                        {t("pricePerMonth", {
+                          price:
+                            formatMoney(service.price, "USD") ??
+                            `$${service.price}`,
+                        })}
                       </Text>
                     </View>
                   ))}
@@ -1615,59 +1693,192 @@ export default function SubscriptionScreen() {
                       {t("promotionEndsShort", { date: promotionEndDate })}
                     </Text>
                   )}
-                </>
+                  <View style={styles.addOnDivider} />
+                  <View style={[styles.addOnRow, styles.totalRow]}>
+                    <Text style={styles.totalLabel}>
+                      {t("currentTotalLabel")}
+                    </Text>
+                    <Text style={styles.totalLabel}>
+                      {t("pricePerMonth", { price: currentTotalText })}
+                    </Text>
+                  </View>
+                </View>
+              ) : (
+                <View style={styles.planPriceContainer}>
+                  <Text style={styles.planPrice}>{basePriceText}</Text>
+                  <Text style={styles.pricePeriod}>{t("perMonth")}</Text>
+                </View>
               )}
             </LinearGradient>
           </View>
 
-          {/* Apple Payment Provider Banner */}
-          {isApplePayment && (
-            <View style={styles.applePaymentBanner}>
-              <LinearGradient
-                colors={[theme.darkGreenLight, theme.darkGreen]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.applePaymentBannerGradient}
-              >
-                <View style={styles.applePaymentBannerIcon}>
+          {/* Stays on screen until the change happens (client 11-05) */}
+          {showPendingNotice && (
+            <View style={styles.noticeCard}>
+              <View style={styles.noticeTop}>
+                <View style={styles.goldIconTile}>
                   <Feather
-                    name="smartphone"
-                    size={moderateWidthScale(22)}
-                    color={theme.white}
+                    name="calendar"
+                    size={iconScale(20)}
+                    color={theme.orangeBrownText}
                   />
                 </View>
-                <View style={styles.applePaymentBannerContent}>
-                  <Text style={styles.applePaymentBannerLabel}>
-                    {t("paymentProvider")}
+                <View style={styles.flexCopy}>
+                  <Text style={styles.noticeTitle}>
+                    {subscription.pendingPlanName
+                      ? t("planChangeScheduledTitle")
+                      : t("promotionEndsCardTitle", { date: promotionEndDate })}
                   </Text>
-                  <Text style={styles.applePaymentBannerValue}>
-                    {getPaymentProviderLabel(subscription.paymentProvider)}
-                  </Text>
+                  {subscription.pendingPlanName ? (
+                    pendingChangeLines.map((line) => (
+                      <Text key={line} style={styles.noticeText}>
+                        {line}
+                      </Text>
+                    ))
+                  ) : (
+                    <Text style={styles.noticeText}>
+                      {t("promotionEndsCardBody", {
+                        plan: subscription.subscriptionPlan,
+                        price: renewalPriceText ?? basePriceText,
+                      })}
+                    </Text>
+                  )}
                 </View>
-              </LinearGradient>
+              </View>
+              {renewalPriceText && subscription.nextPaymentDate ? (
+                <>
+                  <View style={styles.noticeDivider} />
+                  <Text style={styles.noticeFooter}>
+                    {t("nextRenewalLine", {
+                      date: formatTrialEndDate(subscription.nextPaymentDate),
+                      price: renewalPriceText,
+                    })}
+                  </Text>
+                </>
+              ) : null}
             </View>
           )}
 
-          {/* Card Last 4 Digits — hidden for Apple In-App Purchase */}
-          {!isApplePayment && (
-            <View style={styles.daysRemainingCard}>
-              <LinearGradient
-                colors={[theme.darkGreenLight, theme.darkGreen]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.cardGradient}
-              >
-                <View style={styles.cardMiddle}>
-                  <Text style={styles.cardLabel}>{t("cardLast4Digits")}</Text>
-                  <View style={styles.cardNumberContainer}>
-                    <Text style={styles.cardNumberText}>
-                      {formatCardNumber(subscription.cardLastFour)}
-                    </Text>
-                  </View>
+          {promoCardMode && (
+            <View
+              style={[
+                styles.promoCard,
+                promoCardMode === "promote" && styles.promoCardGold,
+              ]}
+            >
+              <View style={styles.noticeTop}>
+                <View style={styles.goldIconTile}>
+                  <Feather
+                    name={promoCardMode === "keep" ? "volume-2" : "tag"}
+                    size={iconScale(20)}
+                    color={theme.orangeBrownText}
+                  />
                 </View>
-              </LinearGradient>
+                <View style={styles.flexCopy}>
+                  <Text style={styles.promoTitle}>
+                    {promoCardMode === "keep"
+                      ? t("keepReachingTitle")
+                      : t("getDiscoveredTitle")}
+                  </Text>
+                  <Text style={styles.noticeText}>
+                    {promoCardMode === "keep"
+                      ? t("keepReachingSubtitle")
+                      : t("getDiscoveredSubtitle")}
+                  </Text>
+                </View>
+              </View>
+              <Button
+                title={
+                  promoCardMode === "keep"
+                    ? t("keepMyBusinessFeatured")
+                    : promotionPriceText
+                      ? t("promoteMyBusinessPrice", {
+                          price: promotionPriceText,
+                        })
+                      : t("promoteMyBusiness")
+                }
+                onPress={() => {
+                  if (isApplePayment) void handleOpenAppleSheet();
+                  else if (promoCardMode === "keep") handleKeepPromotion();
+                  else setPromoteVisible(true);
+                }}
+                disabled={managing}
+                backgroundColor={theme.bookNowButton}
+                textColor={theme.darkGreen}
+                containerStyle={styles.promoButton}
+              />
+              {isApplePayment ? (
+                <Text style={styles.promoFootnote}>
+                  {promoCardMode === "keep"
+                    ? t("appleKeepPromotionDesc")
+                    : t("appleAddPromotionDesc")}
+                </Text>
+              ) : (
+                <>
+                  {promotionPriceText && totalWithPromotionText ? (
+                    <Text style={styles.promoPriceLine}>
+                      {promoCardMode === "keep"
+                        ? t("keepFeaturedPriceLine", {
+                            price: promotionPriceText,
+                            total: totalWithPromotionText,
+                          })
+                        : t("withPromotionTotal", {
+                            total: totalWithPromotionText,
+                          })}
+                    </Text>
+                  ) : null}
+                  <Text style={styles.promoFootnote}>
+                    {promoCardMode === "keep"
+                      ? t("keepFeaturedNoCharge")
+                      : t("reviewBillingBeforeConfirming")}
+                  </Text>
+                </>
+              )}
             </View>
           )}
+
+          {manageRows.map((row) => {
+            const content = (
+              <>
+                <View style={styles.manageRowIcon}>
+                  <Feather
+                    name={row.icon}
+                    size={moderateWidthScale(18)}
+                    color={theme.darkGreenLight}
+                  />
+                </View>
+                <View style={styles.manageRowCopy}>
+                  {row.title ? (
+                    <Text style={styles.manageRowTitle}>{row.title}</Text>
+                  ) : null}
+                  <Text style={styles.manageRowText}>{row.text}</Text>
+                </View>
+                {row.onPress ? (
+                  <Feather
+                    name="chevron-right"
+                    size={moderateWidthScale(18)}
+                    color={theme.lightGreen}
+                  />
+                ) : null}
+              </>
+            );
+            return row.onPress ? (
+              <TouchableOpacity
+                key={row.key}
+                style={[styles.manageCard, styles.manageRow]}
+                onPress={row.onPress}
+                disabled={managing}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+              >
+                {content}
+              </TouchableOpacity>
+            ) : (
+              <View key={row.key} style={[styles.manageCard, styles.manageRow]}>
+                {content}
+              </View>
+            );
+          })}
 
           {/* Subscription Details */}
           <View style={styles.infoSection}>
@@ -1743,78 +1954,46 @@ export default function SubscriptionScreen() {
                 </Text>
               </View>
             </View>
-            {!isApplePayment && (
+            <View style={styles.paymentProviderRow}>
+              <View style={styles.infoIconContainer}>
+                <Feather
+                  name={isApplePayment ? "smartphone" : "credit-card"}
+                  size={moderateWidthScale(20)}
+                  color={theme.darkGreenLight}
+                />
+              </View>
+              <View style={styles.paymentProviderContent}>
+                <Text style={styles.paymentProviderLabel}>
+                  {t("paymentProvider")}
+                </Text>
+                <Text style={styles.paymentProviderValue}>
+                  {getPaymentProviderLabel(subscription.paymentProvider)}
+                  {!isApplePayment && cardLabel ? ` · ${cardLabel}` : ""}
+                </Text>
+              </View>
+            </View>
+            {subscription.subscriptionPlanDescription ? (
               <View style={styles.paymentProviderRow}>
                 <View style={styles.infoIconContainer}>
                   <Feather
-                    name="credit-card"
+                    name="info"
                     size={moderateWidthScale(20)}
                     color={theme.darkGreenLight}
                   />
                 </View>
                 <View style={styles.paymentProviderContent}>
                   <Text style={styles.paymentProviderLabel}>
-                    {t("paymentProvider")}
+                    {subscription.subscriptionPlan}
                   </Text>
-                  <Text style={styles.paymentProviderValue}>
-                    {getPaymentProviderLabel(subscription.paymentProvider)}
+                  <Text style={styles.manageRowText}>
+                    {capitalizeFirstLetter(
+                      subscription.subscriptionPlanDescription,
+                    )}
                   </Text>
                 </View>
               </View>
-            )}
+            ) : null}
           </View>
-
-          {manageRows.length > 0 && (
-            <View style={styles.manageSection}>
-              <Text style={styles.sectionTitle}>{t("managePlan")}</Text>
-              <View style={styles.manageCard}>
-                {manageRows.map((row, index) => {
-                  const content = (
-                    <>
-                      <View style={styles.manageRowIcon}>
-                        <Feather
-                          name={row.icon}
-                          size={moderateWidthScale(18)}
-                          color={theme.darkGreenLight}
-                        />
-                      </View>
-                      <View style={styles.manageRowCopy}>
-                        {row.title ? (
-                          <Text style={styles.manageRowTitle}>{row.title}</Text>
-                        ) : null}
-                        <Text style={styles.manageRowText}>{row.text}</Text>
-                      </View>
-                      {row.onPress ? (
-                        <Feather
-                          name="chevron-right"
-                          size={moderateWidthScale(18)}
-                          color={theme.lightGreen}
-                        />
-                      ) : null}
-                    </>
-                  );
-                  return (
-                    <React.Fragment key={row.key}>
-                      {index > 0 ? <View style={styles.manageDivider} /> : null}
-                      {row.onPress ? (
-                        <TouchableOpacity
-                          style={styles.manageRow}
-                          onPress={row.onPress}
-                          disabled={managing}
-                          activeOpacity={0.7}
-                          accessibilityRole="button"
-                        >
-                          {content}
-                        </TouchableOpacity>
-                      ) : (
-                        <View style={styles.manageRow}>{content}</View>
-                      )}
-                    </React.Fragment>
-                  );
-                })}
-              </View>
-            </View>
-          )}
 
           {(hasPrimaryPlanAction || canCancel || showAppleCancelHelp) && (
             <View style={styles.actionsSection}>
@@ -1947,6 +2126,16 @@ export default function SubscriptionScreen() {
         }
         onClose={() => setRemovePromotionVisible(false)}
         onConfirm={handleConfirmRemovePromotion}
+      />
+      <RemovePromotionConfirmModal
+        visible={promoteVisible}
+        mode="promote"
+        endDate=""
+        basePrice={basePriceText}
+        promotionPrice={promotionPriceText}
+        totalWithPromotion={totalWithPromotionText}
+        onClose={() => setPromoteVisible(false)}
+        onConfirm={handleConfirmPromote}
       />
     </SafeAreaView>
   );

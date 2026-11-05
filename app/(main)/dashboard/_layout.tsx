@@ -364,7 +364,7 @@ export default function DashboardLayout() {
   const isSubscriptionScreen =
     Array.isArray(segments) &&
     segments.includes("(account)") &&
-    segments.includes("subscription");
+    (segments.includes("subscription") || segments.includes("paymentMethod"));
   const isSubscriptionCustomerScreen =
     Array.isArray(segments) &&
     segments.includes("(account)") &&
