@@ -433,15 +433,21 @@ export default function PostDealScreen() {
           ),
         ]);
       const [staff, services] = await Promise.all([
-        isSolo ? Promise.resolve([]) : withTimeout(fetchOwnerBookingStaff(businessId)),
+        // Solo owners still have their own staff row — slots need its id.
+        withTimeout(fetchOwnerBookingStaff(businessId)),
         withTimeout(fetchOwnerBookingServices(businessId)),
       ]);
       setStaffList(staff);
       setServiceList(services);
-      if (params.staff_id) {
-        const pre = staff.find((s) => s.id === Number(params.staff_id));
-        if (pre) setSelectedStaff(pre);
-      }
+      const pre =
+        (params.staff_id
+          ? staff.find((s) => s.id === Number(params.staff_id))
+          : undefined) ??
+        // Solo / one barber: no choice to make, pick them.
+        (isSolo || staff.length === 1
+          ? staff.find((s) => s.isOwner) ?? staff[0]
+          : undefined);
+      if (pre) setSelectedStaff(pre);
     } catch (err) {
       Logger.error("PostDeal: load data failed", err);
       setLoadError(true);
@@ -461,7 +467,7 @@ export default function PostDealScreen() {
     fetchOwnerFreeTimes({
       businessId,
       date: selectedDate,
-      staffId: selectedStaff?.id ?? 0,
+      staffId: selectedStaff?.id,
       serviceIds: [selectedService.id],
     })
       .then(({ times }) => {
@@ -479,7 +485,7 @@ export default function PostDealScreen() {
 
   const steps = useMemo<StepKey[]>(() => {
     const s: StepKey[] = ["service"];
-    if (!isSolo && staffList.length > 0) s.push("staff");
+    if (!isSolo && staffList.length > 1) s.push("staff");
     s.push("time", "price", "preview");
     return s;
   }, [isSolo, staffList.length]);

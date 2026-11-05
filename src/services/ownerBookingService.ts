@@ -179,7 +179,8 @@ export async function fetchOwnerBookingServices(
 export async function fetchOwnerFreeTimes(params: {
   businessId: number;
   date: string;
-  staffId: number;
+  /** Left out when there is no staff row (never send 0 — server rejects it). */
+  staffId?: number;
   serviceIds: number[];
   /** Gap between start times (the "30 min slots" menu) */
   slotMinutes?: number;
