@@ -3464,5 +3464,12 @@
   "daysLeftCount_one": "Noch {{count}} Tag",
   "daysLeftCount_other": "Noch {{count}} Tage",
   "whatsIncluded": "Was enthalten ist",
-  "paymentMethod": "Zahlungsmethode"
+  "paymentMethod": "Zahlungsmethode",
+  "currentBillingPeriod": "Aktueller Abrechnungszeitraum",
+  "trialPeriodTitle": "Kostenloser Testzeitraum",
+  "lastPaymentLabel": "Letzte Zahlung",
+  "renewsOnLabel": "Verlängert sich am",
+  "subscribedSince": "Abonniert seit {{date}}",
+  "paymentFailedStatus": "Zahlung fehlgeschlagen",
+  "paymentFailedUpdateCard": "Ihre letzte Zahlung ist fehlgeschlagen. Aktualisieren Sie Ihre Karte."
 }

@@ -114,6 +114,9 @@ export const themes = {
     successCardBg: "#F4F7E6",
     successCardBorder: "#BAC6A6",
     successCheck: "#789C38",
+    // Gold text on tileGoldCream (≈5.5:1) and solid pale red pill on the green card
+    goldTextDark: "#6E5810",
+    lightRedSolid: "#F8DEDB",
   },
   dark: {},
   blue: {},

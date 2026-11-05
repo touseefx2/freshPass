@@ -3478,7 +3478,14 @@
   "daysLeftCount_two": "يتبقى يومان",
   "daysLeftCount_few": "يتبقى {{count}} أيام",
   "daysLeftCount_many": "يتبقى {{count}} يومًا",
-  "daysLeftCount_other": "يتبقى {{count}} يوم",
+  "daysLeftCount_other": "الأيام المتبقية: {{count}}",
   "whatsIncluded": "ما الذي تتضمنه الخطة",
-  "paymentMethod": "طريقة الدفع"
+  "paymentMethod": "طريقة الدفع",
+  "currentBillingPeriod": "فترة الفوترة الحالية",
+  "trialPeriodTitle": "فترة تجريبية مجانية",
+  "lastPaymentLabel": "آخر دفعة",
+  "renewsOnLabel": "يتجدد في",
+  "subscribedSince": "مشترك منذ {{date}}",
+  "paymentFailedStatus": "فشل الدفع",
+  "paymentFailedUpdateCard": "لم تتم آخر دفعة. يُرجى تحديث بطاقتك."
 }

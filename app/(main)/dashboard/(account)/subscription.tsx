@@ -203,6 +203,12 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
     },
+    statusBadgeFailed: {
+      backgroundColor: theme.lightRedSolid,
+    },
+    statusTextFailed: {
+      color: theme.red,
+    },
     planName: {
       fontSize: fontSize.size22,
       fontFamily: fonts.fontBold,
@@ -898,11 +904,21 @@ const createStyles = (theme: Theme) =>
     },
     // Green card: "What's included" checklist
     includesBlock: {
-      marginTop: moderateHeightScale(16),
-      paddingTop: moderateHeightScale(14),
+      marginTop: moderateHeightScale(14),
       borderTopWidth: 1,
       borderTopColor: theme.white15,
+    },
+    includesHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      minHeight: moderateHeightScale(44),
+      paddingTop: moderateHeightScale(10),
+      marginBottom: -moderateHeightScale(4),
+    },
+    includesBody: {
       gap: moderateHeightScale(8),
+      paddingTop: moderateHeightScale(8),
     },
     includesTitle: {
       fontSize: fontSize.size12,
@@ -939,64 +955,81 @@ const createStyles = (theme: Theme) =>
       color: theme.white,
       lineHeight: fontSize.size20,
     },
-    includesToggle: {
-      flexDirection: "row",
-      alignItems: "center",
-      alignSelf: "flex-start",
-      gap: moderateWidthScale(4),
-      marginTop: moderateHeightScale(2),
-      minHeight: moderateHeightScale(28),
-    },
-    includesToggleText: {
-      fontSize: fontSize.size14,
-      fontFamily: fonts.fontBold,
-      color: theme.goldenBuy,
-    },
     // Subscription details card
     detailsCard: {
       backgroundColor: theme.white,
       borderRadius: moderateWidthScale(16),
-      paddingHorizontal: moderateWidthScale(16),
+      padding: moderateWidthScale(16),
+      gap: moderateHeightScale(12),
       shadowColor: theme.shadow,
       shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.06,
       shadowRadius: 8,
       elevation: 2,
     },
-    periodBlock: {
-      paddingVertical: moderateHeightScale(16),
-      gap: moderateHeightScale(12),
-    },
-    periodTop: {
+    periodHeader: {
       flexDirection: "row",
       alignItems: "center",
+      justifyContent: "space-between",
       gap: moderateWidthScale(12),
     },
-    detailLabel: {
-      fontSize: fontSize.size13,
-      fontFamily: fonts.fontMedium,
-      color: theme.textMuted,
-    },
-    periodDate: {
-      fontSize: fontSize.size18,
+    periodTitle: {
+      flex: 1,
+      fontSize: fontSize.size16,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
     },
+    sinceRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(8),
+      marginTop: moderateHeightScale(2),
+      paddingTop: moderateHeightScale(12),
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: theme.borderNormal,
+    },
+    sinceText: {
+      flex: 1,
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontRegular,
+      color: theme.textMuted,
+    },
     daysChip: {
       paddingHorizontal: moderateWidthScale(12),
-      paddingVertical: moderateHeightScale(6),
+      paddingVertical: moderateHeightScale(5),
       borderRadius: moderateWidthScale(14),
       backgroundColor: theme.tileGoldCream,
     },
     daysChipText: {
       fontSize: fontSize.size13,
       fontFamily: fonts.fontBold,
-      color: theme.apptGoldAccent,
+      // Darker gold for AA contrast on the cream chip (apptGoldAccent was 3.9:1)
+      color: theme.goldTextDark,
+    },
+    timelineBar: {
+      flexDirection: "row",
+      alignItems: "center",
+    },
+    timelineDotStart: {
+      width: moderateWidthScale(12),
+      height: moderateWidthScale(12),
+      borderRadius: moderateWidthScale(6),
+      backgroundColor: theme.buttonBack,
+    },
+    timelineDotEnd: {
+      width: moderateWidthScale(12),
+      height: moderateWidthScale(12),
+      borderRadius: moderateWidthScale(6),
+      borderWidth: 2,
+      borderColor: theme.goldBorder,
+      backgroundColor: theme.white,
     },
     progressTrack: {
+      flex: 1,
       height: moderateHeightScale(6),
+      marginHorizontal: moderateWidthScale(4),
       borderRadius: moderateHeightScale(3),
-      backgroundColor: theme.lightGreen07,
+      backgroundColor: theme.lightGreen1,
       overflow: "hidden",
     },
     progressFill: {
@@ -1004,51 +1037,23 @@ const createStyles = (theme: Theme) =>
       borderRadius: moderateHeightScale(3),
       backgroundColor: theme.buttonBack,
     },
-    detailRow: {
+    timelineDates: {
       flexDirection: "row",
-      alignItems: "center",
-      gap: moderateWidthScale(12),
-      paddingVertical: moderateHeightScale(14),
-      borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: theme.borderNormal,
+      gap: moderateWidthScale(16),
     },
-    detailIcon: {
-      width: moderateWidthScale(34),
-      height: moderateWidthScale(34),
-      borderRadius: moderateWidthScale(10),
-      backgroundColor: theme.background,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    detailLabelRow: {
-      flex: 1,
-      fontSize: fontSize.size14,
-      fontFamily: fonts.fontRegular,
+    detailLabel: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontMedium,
       color: theme.textMuted,
     },
-    detailValue: {
-      flexShrink: 1,
-      maxWidth: "55%",
+    timelineDate: {
+      fontSize: fontSize.size15,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    textEnd: {
       textAlign: "right",
-      fontSize: fontSize.size14,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
     },
-    statusPill: {
-      paddingHorizontal: moderateWidthScale(10),
-      paddingVertical: moderateHeightScale(4),
-      borderRadius: moderateWidthScale(12),
-      backgroundColor: theme.lightGreen07,
-    },
-    statusPillGood: { backgroundColor: theme.successCardBg },
-    statusPillBad: { backgroundColor: theme.lightRed },
-    statusPillText: {
-      fontSize: fontSize.size13,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-    },
-    statusPillTextGood: { color: theme.successGreen },
-    statusPillTextBad: { color: theme.red },
   });
 
 export default function SubscriptionScreen() {
@@ -1419,14 +1424,6 @@ export default function SubscriptionScreen() {
     return text.charAt(0).toUpperCase() + text.slice(1);
   };
 
-  const getPaymentProviderLabel = (provider: string | null | undefined) => {
-    if (!provider) return t("notAvailable");
-    const normalized = provider.toLowerCase();
-    if (normalized === "apple") return t("appleInAppPurchase");
-    if (normalized === "stripe") return t("cardPayment");
-    return capitalizeFirstLetter(provider);
-  };
-
   /** Parse API dates: "MM/DD/YYYY" or ISO. Hermes rejects bare MM/DD/YYYY via `new Date()`. */
   const parseSubscriptionDate = (dateString: string) => {
     const slashFormat = dayjs(dateString, "MM/DD/YYYY", true);
@@ -1492,17 +1489,25 @@ export default function SubscriptionScreen() {
     return capitalizeFirstLetter(status);
   };
 
+  /**
+   * Stripe renewal charge failed but access continues during retries
+   * (status stays "active"): say so in the header badge.
+   */
+  const paymentFailed = [
+    "past_due",
+    "unpaid",
+    "incomplete",
+  ].includes((subscription?.stripeStatus ?? "").toLowerCase());
+
   const statusBadgeLabel = useMemo(() => {
     if (!subscription) return "";
+    if (paymentFailed) return t("paymentFailedStatus");
     // Sentence case pill, like the client sample ("Active")
     if (isTrialing) return t("active");
     if (isCancelled) return t("cancelled");
     return getDisplayStatus(subscription.status);
-  }, [subscription, isTrialing, isCancelled, t]);
+  }, [subscription, isTrialing, isCancelled, paymentFailed, t]);
 
-  const formattedScheduleDate = dateDisplay?.date
-    ? formatTrialEndDate(dateDisplay.date)
-    : t("notAvailable");
 
   /**
    * Plan description from the backend: "Designed for …\n\nIncludes:\nItem\nItem"
@@ -1529,37 +1534,39 @@ export default function SubscriptionScreen() {
         .filter(Boolean),
     };
   })();
-  const INCLUDES_PREVIEW = 4;
-  const visibleIncludes =
-    includesExpanded || planInfo.items.length <= INCLUDES_PREVIEW + 1
-      ? planInfo.items
-      : planInfo.items.slice(0, INCLUDES_PREVIEW);
-
-  /** Share of the current billing period (or trial) already used, 0–1 */
+  /**
+   * Details card = the CURRENT billing period (client 11-05): last payment
+   * (or trial start) on the left, renewal / trial end / access-until on the
+   * right. The first purchase date is a separate "Subscribed since" line.
+   */
+  const periodEnd = dateDisplay?.date
+    ? parseSubscriptionDate(dateDisplay.date)
+    : null;
+  const periodStart = (() => {
+    const raw = isTrialing
+      ? subscription?.trialStartsAt
+      : subscription?.paymentDate;
+    const parsed = raw ? parseSubscriptionDate(raw) : null;
+    if (parsed) return parsed;
+    // Monthly plans: no payment date yet → one month before the renewal
+    return !isTrialing && periodEnd ? periodEnd.subtract(1, "month") : null;
+  })();
+  const periodStartLabel = isTrialing
+    ? t("trialStarted")
+    : t("lastPaymentLabel");
+  const periodEndLabel =
+    dateDisplay?.kind === "nextPayment" ? t("renewsOnLabel") : dateLabel;
+  /** Share of the period already passed, 0–1 (null = no bar) */
   const periodProgress = (() => {
-    if (!subscription || !dateDisplay?.date) return null;
-    const startRaw = isTrialing
-      ? subscription.trialStartsAt
-      : subscription.paymentDate;
-    const start = startRaw ? parseSubscriptionDate(startRaw) : null;
-    const end = parseSubscriptionDate(dateDisplay.date);
-    if (!start || !end) return null;
-    const total = end.diff(start, "day");
+    if (!periodStart || !periodEnd) return null;
+    const total = periodEnd.diff(periodStart, "day");
     if (total <= 0) return null;
-    const used = dayjs().startOf("day").diff(start, "day");
+    const used = dayjs().startOf("day").diff(periodStart, "day");
     return Math.min(1, Math.max(0, used / total));
   })();
-
-  /** Status pill colors: green when active, red when it won't renew / failed */
-  const statusTone = (() => {
-    const s = (subscription?.stripeStatus ?? "").toLowerCase();
-    if (["active", "trialing"].includes(s)) return "good" as const;
-    if (
-      ["cancelled", "canceled", "past_due", "unpaid", "incomplete", "incomplete_expired"].includes(s)
-    )
-      return "bad" as const;
-    return "neutral" as const;
-  })();
+  const subscribedSinceText = formatTrialEndDate(
+    subscription?.createdAt ?? null,
+  );
 
   const activeAddOns = useMemo(
     () =>
@@ -1725,7 +1732,9 @@ export default function SubscriptionScreen() {
             key: "card",
             icon: "credit-card",
             title: t("changePaymentMethod"),
-            text: cardLabel ?? t("changePaymentMethodDesc"),
+            text: paymentFailed
+              ? t("paymentFailedUpdateCard")
+              : (cardLabel ?? t("changePaymentMethodDesc")),
             onPress: handleChangeCard,
           },
     );
@@ -1923,8 +1932,20 @@ export default function SubscriptionScreen() {
                 <Text style={[styles.planName, styles.planNameRow]}>
                   {subscription.subscriptionPlan}
                 </Text>
-                <View style={styles.statusBadge}>
-                  <Text style={styles.statusText}>{statusBadgeLabel}</Text>
+                <View
+                  style={[
+                    styles.statusBadge,
+                    paymentFailed && styles.statusBadgeFailed,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.statusText,
+                      paymentFailed && styles.statusTextFailed,
+                    ]}
+                  >
+                    {statusBadgeLabel}
+                  </Text>
                 </View>
               </View>
               {breakdownAddOns.length > 0 ? (
@@ -1982,44 +2003,48 @@ export default function SubscriptionScreen() {
               )}
 
               {/* Client 11-05: what the plan includes, inside the plan card */}
+              {/* Closed by default; tap the heading row to open (client 11-05) */}
               {planInfo.intro || planInfo.items.length > 0 ? (
                 <View style={styles.includesBlock}>
-                  <Text style={styles.includesTitle}>{t("whatsIncluded")}</Text>
-                  {planInfo.intro ? (
-                    <Text style={styles.includesIntro}>{planInfo.intro}</Text>
-                  ) : null}
-                  {visibleIncludes.map((item, index) => (
-                    <View key={`${index}-${item}`} style={styles.includesRow}>
-                      <View style={styles.includesCheck}>
-                        <Feather
-                          name="check"
-                          size={iconScale(12)}
-                          color={theme.darkGreen}
-                        />
-                      </View>
-                      <Text style={styles.includesText}>{item}</Text>
+                  <TouchableOpacity
+                    onPress={() => setIncludesExpanded((v) => !v)}
+                    style={styles.includesHeader}
+                    activeOpacity={0.7}
+                    accessibilityRole="button"
+                    accessibilityState={{ expanded: includesExpanded }}
+                  >
+                    <Text style={styles.includesTitle}>
+                      {t("whatsIncluded")}
+                    </Text>
+                    <Feather
+                      name={includesExpanded ? "chevron-up" : "chevron-down"}
+                      size={iconScale(20)}
+                      color={theme.goldenBuy}
+                    />
+                  </TouchableOpacity>
+                  {includesExpanded ? (
+                    <View style={styles.includesBody}>
+                      {planInfo.intro ? (
+                        <Text style={styles.includesIntro}>
+                          {planInfo.intro}
+                        </Text>
+                      ) : null}
+                      {planInfo.items.map((item, index) => (
+                        <View
+                          key={`${index}-${item}`}
+                          style={styles.includesRow}
+                        >
+                          <View style={styles.includesCheck}>
+                            <Feather
+                              name="check"
+                              size={iconScale(12)}
+                              color={theme.darkGreen}
+                            />
+                          </View>
+                          <Text style={styles.includesText}>{item}</Text>
+                        </View>
+                      ))}
                     </View>
-                  ))}
-                  {planInfo.items.length > visibleIncludes.length ||
-                  includesExpanded ? (
-                    <TouchableOpacity
-                      onPress={() => setIncludesExpanded((v) => !v)}
-                      style={styles.includesToggle}
-                      activeOpacity={0.7}
-                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                      accessibilityRole="button"
-                    >
-                      <Text style={styles.includesToggleText}>
-                        {includesExpanded
-                          ? t("showLess")
-                          : `${t("seeAll")} (${planInfo.items.length})`}
-                      </Text>
-                      <Feather
-                        name={includesExpanded ? "chevron-up" : "chevron-down"}
-                        size={iconScale(16)}
-                        color={theme.goldenBuy}
-                      />
-                    </TouchableOpacity>
                   ) : null}
                 </View>
               ) : null}
@@ -2217,33 +2242,34 @@ export default function SubscriptionScreen() {
           <View style={styles.infoSection}>
             <Text style={styles.sectionTitle}>{t("subscriptionDetails")}</Text>
             <View style={styles.detailsCard}>
-              {/* Billing period: next payment / trial end + days left + bar */}
-              <View style={styles.periodBlock}>
-                <View style={styles.periodTop}>
-                  <View style={styles.flexCopy}>
-                    <Text style={styles.detailLabel}>{dateLabel}</Text>
-                    <Text style={styles.periodDate}>
-                      {formattedScheduleDate}
+              {/* Current billing period (client 11-05): last payment ●━━━○
+                  renews on. Status + payment method already show above. */}
+              <View style={styles.periodHeader}>
+                <Text style={styles.periodTitle}>
+                  {isTrialing
+                    ? t("trialPeriodTitle")
+                    : t("currentBillingPeriod")}
+                </Text>
+                {remainingDays != null ? (
+                  <View style={styles.daysChip}>
+                    <Text style={styles.daysChipText}>
+                      {t("daysLeftCount", { count: remainingDays })}
                     </Text>
                   </View>
-                  {remainingDays != null ? (
-                    <View style={styles.daysChip}>
-                      <Text style={styles.daysChipText}>
-                        {t("daysLeftCount", { count: remainingDays })}
-                      </Text>
-                    </View>
-                  ) : null}
-                </View>
-                {periodProgress != null ? (
-                  <View
-                    style={styles.progressTrack}
-                    accessibilityRole="progressbar"
-                    accessibilityValue={{
-                      min: 0,
-                      max: 100,
-                      now: Math.round(periodProgress * 100),
-                    }}
-                  >
+                ) : null}
+              </View>
+              {periodProgress != null ? (
+                <View
+                  style={styles.timelineBar}
+                  accessibilityRole="progressbar"
+                  accessibilityValue={{
+                    min: 0,
+                    max: 100,
+                    now: Math.round(periodProgress * 100),
+                  }}
+                >
+                  <View style={styles.timelineDotStart} />
+                  <View style={styles.progressTrack}>
                     <View
                       style={[
                         styles.progressFill,
@@ -2251,84 +2277,41 @@ export default function SubscriptionScreen() {
                       ]}
                     />
                   </View>
-                ) : null}
-              </View>
-
-              {(
-                [
-                  {
-                    key: "status",
-                    icon: "check-circle",
-                    label: isTrialing
-                      ? t("trialStatus")
-                      : t("subscriptionStatus"),
-                    value:
-                      getDisplayStatus(subscription.stripeStatus) ||
-                      t("notAvailable"),
-                    pill: true,
-                  },
-                  {
-                    key: "started",
-                    icon: "clock",
-                    label: isTrialing
-                      ? t("trialStarted")
-                      : t("subscriptionStarted"),
-                    value:
-                      formatTrialEndDate(
-                        (isTrialing
-                          ? subscription.trialStartsAt
-                          : subscription.createdAt) || subscription.createdAt,
-                      ) || t("notAvailable"),
-                  },
-                  {
-                    key: "payment",
-                    icon: isApplePayment ? "smartphone" : "credit-card",
-                    label: t("paymentMethod"),
-                    value:
-                      !isApplePayment && cardLabel
-                        ? cardLabel
-                        : getPaymentProviderLabel(subscription.paymentProvider),
-                  },
-                ] as {
-                  key: string;
-                  icon: React.ComponentProps<typeof Feather>["name"];
-                  label: string;
-                  value: string;
-                  pill?: boolean;
-                }[]
-              ).map((row) => (
-                <View key={row.key} style={styles.detailRow}>
-                  <View style={styles.detailIcon}>
-                    <Feather
-                      name={row.icon}
-                      size={iconScale(17)}
-                      color={theme.darkGreen}
-                    />
-                  </View>
-                  <Text style={styles.detailLabelRow}>{row.label}</Text>
-                  {row.pill ? (
-                    <View
-                      style={[
-                        styles.statusPill,
-                        statusTone === "good" && styles.statusPillGood,
-                        statusTone === "bad" && styles.statusPillBad,
-                      ]}
-                    >
-                      <Text
-                        style={[
-                          styles.statusPillText,
-                          statusTone === "good" && styles.statusPillTextGood,
-                          statusTone === "bad" && styles.statusPillTextBad,
-                        ]}
-                      >
-                        {row.value}
-                      </Text>
-                    </View>
-                  ) : (
-                    <Text style={styles.detailValue}>{row.value}</Text>
-                  )}
+                  <View style={styles.timelineDotEnd} />
                 </View>
-              ))}
+              ) : null}
+              <View style={styles.timelineDates}>
+                <View style={styles.flexCopy}>
+                  <Text style={styles.detailLabel}>{periodStartLabel}</Text>
+                  <Text style={styles.timelineDate}>
+                    {periodStart
+                      ? formatShortDate(periodStart.format("YYYY-MM-DD"))
+                      : t("notAvailable")}
+                  </Text>
+                </View>
+                <View style={styles.flexCopy}>
+                  <Text style={[styles.detailLabel, styles.textEnd]}>
+                    {periodEndLabel}
+                  </Text>
+                  <Text style={[styles.timelineDate, styles.textEnd]}>
+                    {dateDisplay?.date
+                      ? formatShortDate(dateDisplay.date)
+                      : t("notAvailable")}
+                  </Text>
+                </View>
+              </View>
+              {subscribedSinceText ? (
+                <View style={styles.sinceRow}>
+                  <Feather
+                    name="calendar"
+                    size={iconScale(15)}
+                    color={theme.textMuted}
+                  />
+                  <Text style={styles.sinceText}>
+                    {t("subscribedSince", { date: subscribedSinceText })}
+                  </Text>
+                </View>
+              ) : null}
             </View>
           </View>
 

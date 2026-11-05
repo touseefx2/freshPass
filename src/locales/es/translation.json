@@ -3467,5 +3467,12 @@
   "daysLeftCount_one": "Queda {{count}} día",
   "daysLeftCount_other": "Quedan {{count}} días",
   "whatsIncluded": "Qué incluye",
-  "paymentMethod": "Método de pago"
+  "paymentMethod": "Método de pago",
+  "currentBillingPeriod": "Periodo de facturación actual",
+  "trialPeriodTitle": "Prueba gratuita",
+  "lastPaymentLabel": "Último pago",
+  "renewsOnLabel": "Se renueva el",
+  "subscribedSince": "Suscrito desde el {{date}}",
+  "paymentFailedStatus": "Pago fallido",
+  "paymentFailedUpdateCard": "Tu último pago no se completó. Actualiza tu tarjeta."
 }

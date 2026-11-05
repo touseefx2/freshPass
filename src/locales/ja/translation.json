@@ -3460,5 +3460,13 @@
   "soloPlanLabel": "Soloプラン",
   "daysLeftCount_other": "残り{{count}}日",
   "whatsIncluded": "プランの内容",
-  "paymentMethod": "お支払い方法"
+  "paymentMethod": "お支払い方法",
+  "currentBillingPeriod": "現在の請求期間",
+  "trialPeriodTitle": "無料トライアル",
+  "lastPaymentLabel": "前回のお支払い",
+  "renewsOnLabel": "更新日",
+  "subscribedSince": "{{date}}から登録中",
+  "paymentFailedStatus": "支払い失敗",
+  "paymentFailedUpdateCard": "前回のお支払いが完了しませんでした。カードを更新してください。",
+  "daysLeftCount_one": "残り{{count}}日"
 }

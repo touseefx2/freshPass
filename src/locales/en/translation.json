@@ -4247,5 +4247,12 @@
   "proPlanLabel": "Pro plan",
   "soloPlanLabel": "Solo plan",
   "daysLeftCount_one": "{{count}} day left",
-  "daysLeftCount_other": "{{count}} days left"
+  "daysLeftCount_other": "{{count}} days left",
+  "currentBillingPeriod": "Current billing period",
+  "trialPeriodTitle": "Free trial",
+  "lastPaymentLabel": "Last payment",
+  "renewsOnLabel": "Renews on",
+  "subscribedSince": "Subscribed since {{date}}",
+  "paymentFailedStatus": "Payment failed",
+  "paymentFailedUpdateCard": "Your last payment didn't go through. Update your card."
 }
