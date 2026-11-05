@@ -3472,5 +3472,13 @@
   "perMonthCompact": "شهريًا",
   "expiryPlaceholder": "MM / YY",
   "proPlanLabel": "خطة Pro",
-  "soloPlanLabel": "خطة Solo"
+  "soloPlanLabel": "خطة Solo",
+  "daysLeftCount_zero": "لم يتبقَّ أي يوم",
+  "daysLeftCount_one": "يتبقى يوم واحد",
+  "daysLeftCount_two": "يتبقى يومان",
+  "daysLeftCount_few": "يتبقى {{count}} أيام",
+  "daysLeftCount_many": "يتبقى {{count}} يومًا",
+  "daysLeftCount_other": "يتبقى {{count}} يوم",
+  "whatsIncluded": "ما الذي تتضمنه الخطة",
+  "paymentMethod": "طريقة الدفع"
 }

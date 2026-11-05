@@ -3463,5 +3463,9 @@
   "perMonthCompact": "/mois",
   "expiryPlaceholder": "MM / AA",
   "proPlanLabel": "Forfait Pro",
-  "soloPlanLabel": "Forfait Solo"
+  "soloPlanLabel": "Forfait Solo",
+  "daysLeftCount_one": "{{count}} jour restant",
+  "daysLeftCount_other": "{{count}} jours restants",
+  "whatsIncluded": "Ce qui est inclus",
+  "paymentMethod": "Moyen de paiement"
 }

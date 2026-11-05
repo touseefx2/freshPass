@@ -3460,5 +3460,9 @@
   "perMonthCompact": "/Monat",
   "expiryPlaceholder": "MM / JJ",
   "proPlanLabel": "Pro-Tarif",
-  "soloPlanLabel": "Solo-Tarif"
+  "soloPlanLabel": "Solo-Tarif",
+  "daysLeftCount_one": "Noch {{count}} Tag",
+  "daysLeftCount_other": "Noch {{count}} Tage",
+  "whatsIncluded": "Was enthalten ist",
+  "paymentMethod": "Zahlungsmethode"
 }

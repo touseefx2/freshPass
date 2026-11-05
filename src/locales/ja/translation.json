@@ -3457,5 +3457,8 @@
   "perMonthCompact": "/月",
   "expiryPlaceholder": "MM / YY",
   "proPlanLabel": "Proプラン",
-  "soloPlanLabel": "Soloプラン"
+  "soloPlanLabel": "Soloプラン",
+  "daysLeftCount_other": "残り{{count}}日",
+  "whatsIncluded": "プランの内容",
+  "paymentMethod": "お支払い方法"
 }

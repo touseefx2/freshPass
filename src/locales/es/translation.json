@@ -3463,5 +3463,9 @@
   "perMonthCompact": "/mes",
   "expiryPlaceholder": "MM / AA",
   "proPlanLabel": "Plan Pro",
-  "soloPlanLabel": "Plan Solo"
+  "soloPlanLabel": "Plan Solo",
+  "daysLeftCount_one": "Queda {{count}} día",
+  "daysLeftCount_other": "Quedan {{count}} días",
+  "whatsIncluded": "Qué incluye",
+  "paymentMethod": "Método de pago"
 }

@@ -896,6 +896,159 @@ const createStyles = (theme: Theme) =>
       height: StyleSheet.hairlineWidth,
       backgroundColor: theme.borderLight,
     },
+    // Green card: "What's included" checklist
+    includesBlock: {
+      marginTop: moderateHeightScale(16),
+      paddingTop: moderateHeightScale(14),
+      borderTopWidth: 1,
+      borderTopColor: theme.white15,
+      gap: moderateHeightScale(8),
+    },
+    includesTitle: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontBold,
+      color: theme.goldenBuy,
+      letterSpacing: 0.8,
+      textTransform: "uppercase",
+    },
+    includesIntro: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontRegular,
+      color: theme.white80,
+      lineHeight: fontSize.size18,
+      marginBottom: moderateHeightScale(2),
+    },
+    includesRow: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: moderateWidthScale(10),
+    },
+    includesCheck: {
+      width: moderateWidthScale(18),
+      height: moderateWidthScale(18),
+      borderRadius: moderateWidthScale(9),
+      backgroundColor: theme.goldenBuy,
+      alignItems: "center",
+      justifyContent: "center",
+      marginTop: moderateHeightScale(1),
+    },
+    includesText: {
+      flex: 1,
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontRegular,
+      color: theme.white,
+      lineHeight: fontSize.size20,
+    },
+    includesToggle: {
+      flexDirection: "row",
+      alignItems: "center",
+      alignSelf: "flex-start",
+      gap: moderateWidthScale(4),
+      marginTop: moderateHeightScale(2),
+      minHeight: moderateHeightScale(28),
+    },
+    includesToggleText: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontBold,
+      color: theme.goldenBuy,
+    },
+    // Subscription details card
+    detailsCard: {
+      backgroundColor: theme.white,
+      borderRadius: moderateWidthScale(16),
+      paddingHorizontal: moderateWidthScale(16),
+      shadowColor: theme.shadow,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.06,
+      shadowRadius: 8,
+      elevation: 2,
+    },
+    periodBlock: {
+      paddingVertical: moderateHeightScale(16),
+      gap: moderateHeightScale(12),
+    },
+    periodTop: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(12),
+    },
+    detailLabel: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontMedium,
+      color: theme.textMuted,
+    },
+    periodDate: {
+      fontSize: fontSize.size18,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    daysChip: {
+      paddingHorizontal: moderateWidthScale(12),
+      paddingVertical: moderateHeightScale(6),
+      borderRadius: moderateWidthScale(14),
+      backgroundColor: theme.tileGoldCream,
+    },
+    daysChipText: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontBold,
+      color: theme.apptGoldAccent,
+    },
+    progressTrack: {
+      height: moderateHeightScale(6),
+      borderRadius: moderateHeightScale(3),
+      backgroundColor: theme.lightGreen07,
+      overflow: "hidden",
+    },
+    progressFill: {
+      height: "100%",
+      borderRadius: moderateHeightScale(3),
+      backgroundColor: theme.buttonBack,
+    },
+    detailRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(12),
+      paddingVertical: moderateHeightScale(14),
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: theme.borderNormal,
+    },
+    detailIcon: {
+      width: moderateWidthScale(34),
+      height: moderateWidthScale(34),
+      borderRadius: moderateWidthScale(10),
+      backgroundColor: theme.background,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    detailLabelRow: {
+      flex: 1,
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontRegular,
+      color: theme.textMuted,
+    },
+    detailValue: {
+      flexShrink: 1,
+      maxWidth: "55%",
+      textAlign: "right",
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    statusPill: {
+      paddingHorizontal: moderateWidthScale(10),
+      paddingVertical: moderateHeightScale(4),
+      borderRadius: moderateWidthScale(12),
+      backgroundColor: theme.lightGreen07,
+    },
+    statusPillGood: { backgroundColor: theme.successCardBg },
+    statusPillBad: { backgroundColor: theme.lightRed },
+    statusPillText: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    statusPillTextGood: { color: theme.successGreen },
+    statusPillTextBad: { color: theme.red },
   });
 
 export default function SubscriptionScreen() {
@@ -921,6 +1074,7 @@ export default function SubscriptionScreen() {
   const [cancelConfirmVisible, setCancelConfirmVisible] = useState(false);
   const [removePromotionVisible, setRemovePromotionVisible] = useState(false);
   const [promoteVisible, setPromoteVisible] = useState(false);
+  const [includesExpanded, setIncludesExpanded] = useState(false);
   const [managing, setManaging] = useState(false);
 
   const businessStatus = useAppSelector((state) => state.user.businessStatus);
@@ -1350,6 +1504,63 @@ export default function SubscriptionScreen() {
     ? formatTrialEndDate(dateDisplay.date)
     : t("notAvailable");
 
+  /**
+   * Plan description from the backend: "Designed for …\n\nIncludes:\nItem\nItem"
+   * → intro line + checklist for the green card. No "Includes:" line → intro only.
+   */
+  const planInfo = (() => {
+    const raw = subscription?.subscriptionPlanDescription?.trim();
+    if (!raw) return { intro: null as string | null, items: [] as string[] };
+    const lines = raw
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean);
+    const includesAt = lines.findIndex((line) =>
+      /^(includes|what'?s included)\s*:?$/i.test(line),
+    );
+    if (includesAt === -1) {
+      return { intro: capitalizeFirstLetter(raw), items: [] as string[] };
+    }
+    return {
+      intro: lines.slice(0, includesAt).join(" ") || null,
+      items: lines
+        .slice(includesAt + 1)
+        .map((line) => line.replace(/^[-•*✓✔]\s*/, ""))
+        .filter(Boolean),
+    };
+  })();
+  const INCLUDES_PREVIEW = 4;
+  const visibleIncludes =
+    includesExpanded || planInfo.items.length <= INCLUDES_PREVIEW + 1
+      ? planInfo.items
+      : planInfo.items.slice(0, INCLUDES_PREVIEW);
+
+  /** Share of the current billing period (or trial) already used, 0–1 */
+  const periodProgress = (() => {
+    if (!subscription || !dateDisplay?.date) return null;
+    const startRaw = isTrialing
+      ? subscription.trialStartsAt
+      : subscription.paymentDate;
+    const start = startRaw ? parseSubscriptionDate(startRaw) : null;
+    const end = parseSubscriptionDate(dateDisplay.date);
+    if (!start || !end) return null;
+    const total = end.diff(start, "day");
+    if (total <= 0) return null;
+    const used = dayjs().startOf("day").diff(start, "day");
+    return Math.min(1, Math.max(0, used / total));
+  })();
+
+  /** Status pill colors: green when active, red when it won't renew / failed */
+  const statusTone = (() => {
+    const s = (subscription?.stripeStatus ?? "").toLowerCase();
+    if (["active", "trialing"].includes(s)) return "good" as const;
+    if (
+      ["cancelled", "canceled", "past_due", "unpaid", "incomplete", "incomplete_expired"].includes(s)
+    )
+      return "bad" as const;
+    return "neutral" as const;
+  })();
+
   const activeAddOns = useMemo(
     () =>
       (subscription?.additionalServices ?? []).filter(
@@ -1769,6 +1980,49 @@ export default function SubscriptionScreen() {
                   <Text style={styles.pricePeriod}>{t("perMonthCompact")}</Text>
                 </View>
               )}
+
+              {/* Client 11-05: what the plan includes, inside the plan card */}
+              {planInfo.intro || planInfo.items.length > 0 ? (
+                <View style={styles.includesBlock}>
+                  <Text style={styles.includesTitle}>{t("whatsIncluded")}</Text>
+                  {planInfo.intro ? (
+                    <Text style={styles.includesIntro}>{planInfo.intro}</Text>
+                  ) : null}
+                  {visibleIncludes.map((item, index) => (
+                    <View key={`${index}-${item}`} style={styles.includesRow}>
+                      <View style={styles.includesCheck}>
+                        <Feather
+                          name="check"
+                          size={iconScale(12)}
+                          color={theme.darkGreen}
+                        />
+                      </View>
+                      <Text style={styles.includesText}>{item}</Text>
+                    </View>
+                  ))}
+                  {planInfo.items.length > visibleIncludes.length ||
+                  includesExpanded ? (
+                    <TouchableOpacity
+                      onPress={() => setIncludesExpanded((v) => !v)}
+                      style={styles.includesToggle}
+                      activeOpacity={0.7}
+                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                      accessibilityRole="button"
+                    >
+                      <Text style={styles.includesToggleText}>
+                        {includesExpanded
+                          ? t("showLess")
+                          : `${t("seeAll")} (${planInfo.items.length})`}
+                      </Text>
+                      <Feather
+                        name={includesExpanded ? "chevron-up" : "chevron-down"}
+                        size={iconScale(16)}
+                        color={theme.goldenBuy}
+                      />
+                    </TouchableOpacity>
+                  ) : null}
+                </View>
+              ) : null}
             </LinearGradient>
           </View>
 
@@ -1962,116 +2216,120 @@ export default function SubscriptionScreen() {
           {/* Subscription Details */}
           <View style={styles.infoSection}>
             <Text style={styles.sectionTitle}>{t("subscriptionDetails")}</Text>
-            <View style={styles.infoCard}>
-              <View style={styles.infoRow}>
-                <View style={styles.infoIconContainer}>
-                  <Feather
-                    name="calendar"
-                    size={moderateWidthScale(20)}
-                    color={theme.darkGreenLight}
-                  />
+            <View style={styles.detailsCard}>
+              {/* Billing period: next payment / trial end + days left + bar */}
+              <View style={styles.periodBlock}>
+                <View style={styles.periodTop}>
+                  <View style={styles.flexCopy}>
+                    <Text style={styles.detailLabel}>{dateLabel}</Text>
+                    <Text style={styles.periodDate}>
+                      {formattedScheduleDate}
+                    </Text>
+                  </View>
+                  {remainingDays != null ? (
+                    <View style={styles.daysChip}>
+                      <Text style={styles.daysChipText}>
+                        {t("daysLeftCount", { count: remainingDays })}
+                      </Text>
+                    </View>
+                  ) : null}
                 </View>
-                <View style={styles.infoContent}>
-                  <Text style={styles.infoLabel}>{t("daysRemaining")}</Text>
-                  <Text style={styles.infoValue}>
-                    {remainingDays ?? t("notAvailable")}
-                  </Text>
-                </View>
+                {periodProgress != null ? (
+                  <View
+                    style={styles.progressTrack}
+                    accessibilityRole="progressbar"
+                    accessibilityValue={{
+                      min: 0,
+                      max: 100,
+                      now: Math.round(periodProgress * 100),
+                    }}
+                  >
+                    <View
+                      style={[
+                        styles.progressFill,
+                        { width: `${Math.round(periodProgress * 100)}%` },
+                      ]}
+                    />
+                  </View>
+                ) : null}
               </View>
-              <View style={styles.divider} />
-              <View style={styles.infoRow}>
-                <View style={styles.infoIconContainer}>
-                  <Feather
-                    name="clock"
-                    size={moderateWidthScale(20)}
-                    color={theme.darkGreenLight}
-                  />
+
+              {(
+                [
+                  {
+                    key: "status",
+                    icon: "check-circle",
+                    label: isTrialing
+                      ? t("trialStatus")
+                      : t("subscriptionStatus"),
+                    value:
+                      getDisplayStatus(subscription.stripeStatus) ||
+                      t("notAvailable"),
+                    pill: true,
+                  },
+                  {
+                    key: "started",
+                    icon: "clock",
+                    label: isTrialing
+                      ? t("trialStarted")
+                      : t("subscriptionStarted"),
+                    value:
+                      formatTrialEndDate(
+                        (isTrialing
+                          ? subscription.trialStartsAt
+                          : subscription.createdAt) || subscription.createdAt,
+                      ) || t("notAvailable"),
+                  },
+                  {
+                    key: "payment",
+                    icon: isApplePayment ? "smartphone" : "credit-card",
+                    label: t("paymentMethod"),
+                    value:
+                      !isApplePayment && cardLabel
+                        ? cardLabel
+                        : getPaymentProviderLabel(subscription.paymentProvider),
+                  },
+                ] as {
+                  key: string;
+                  icon: React.ComponentProps<typeof Feather>["name"];
+                  label: string;
+                  value: string;
+                  pill?: boolean;
+                }[]
+              ).map((row) => (
+                <View key={row.key} style={styles.detailRow}>
+                  <View style={styles.detailIcon}>
+                    <Feather
+                      name={row.icon}
+                      size={iconScale(17)}
+                      color={theme.darkGreen}
+                    />
+                  </View>
+                  <Text style={styles.detailLabelRow}>{row.label}</Text>
+                  {row.pill ? (
+                    <View
+                      style={[
+                        styles.statusPill,
+                        statusTone === "good" && styles.statusPillGood,
+                        statusTone === "bad" && styles.statusPillBad,
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.statusPillText,
+                          statusTone === "good" && styles.statusPillTextGood,
+                          statusTone === "bad" && styles.statusPillTextBad,
+                        ]}
+                      >
+                        {row.value}
+                      </Text>
+                    </View>
+                  ) : (
+                    <Text style={styles.detailValue}>{row.value}</Text>
+                  )}
                 </View>
-                <View style={styles.infoContent}>
-                  <Text style={styles.infoLabel}>
-                    {isTrialing ? t("trialStarted") : t("subscriptionStarted")}
-                  </Text>
-                  <Text style={styles.infoValue}>
-                    {formatTrialEndDate(
-                      (isTrialing
-                        ? subscription.trialStartsAt
-                        : subscription.createdAt) || subscription.createdAt,
-                    ) || t("notAvailable")}
-                  </Text>
-                </View>
-              </View>
-              <View style={styles.divider} />
-              <View style={styles.infoRow}>
-                <View style={styles.infoIconContainer}>
-                  <Feather
-                    name="calendar"
-                    size={moderateWidthScale(20)}
-                    color={theme.darkGreenLight}
-                  />
-                </View>
-                <View style={styles.infoContent}>
-                  <Text style={styles.infoLabel}>{dateLabel}</Text>
-                  <Text style={styles.infoValue}>{formattedScheduleDate}</Text>
-                </View>
-              </View>
+              ))}
             </View>
-            <View style={styles.paymentProviderRow}>
-              <View style={styles.infoIconContainer}>
-                <Feather
-                  name="check-circle"
-                  size={moderateWidthScale(20)}
-                  color={theme.darkGreenLight}
-                />
-              </View>
-              <View style={styles.paymentProviderContent}>
-                <Text style={styles.paymentProviderLabel}>
-                  {isTrialing ? t("trialStatus") : t("subscriptionStatus")}
-                </Text>
-                <Text style={styles.paymentProviderValue}>
-                  {getDisplayStatus(subscription.stripeStatus) ||
-                    t("notAvailable")}
-                </Text>
-              </View>
-            </View>
-            <View style={styles.paymentProviderRow}>
-              <View style={styles.infoIconContainer}>
-                <Feather
-                  name={isApplePayment ? "smartphone" : "credit-card"}
-                  size={moderateWidthScale(20)}
-                  color={theme.darkGreenLight}
-                />
-              </View>
-              <View style={styles.paymentProviderContent}>
-                <Text style={styles.paymentProviderLabel}>
-                  {t("paymentProvider")}
-                </Text>
-                <Text style={styles.paymentProviderValue}>
-                  {getPaymentProviderLabel(subscription.paymentProvider)}
-                  {!isApplePayment && cardLabel ? ` · ${cardLabel}` : ""}
-                </Text>
-              </View>
-            </View>
-            {subscription.subscriptionPlanDescription ? (
-              <View style={styles.paymentProviderRow}>
-                <View style={styles.infoIconContainer}>
-                  <Feather
-                    name="info"
-                    size={moderateWidthScale(20)}
-                    color={theme.darkGreenLight}
-                  />
-                </View>
-                <View style={styles.paymentProviderContent}>
-                  <Text style={styles.paymentProviderLabel}>
-                    {subscription.subscriptionPlan}
-                  </Text>
-                  <Text style={styles.manageRowText}>
-                    {capitalizeFirstLetter(
-                      subscription.subscriptionPlanDescription,
-                    )}
-                  </Text>
-                </View>
-              </View>
-            ) : null}
           </View>
 
           {(hasPrimaryPlanAction || canCancel || showAppleCancelHelp) && (

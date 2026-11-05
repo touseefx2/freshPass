@@ -4245,5 +4245,7 @@
   "perMonthCompact": "/month",
   "expiryPlaceholder": "MM / YY",
   "proPlanLabel": "Pro plan",
-  "soloPlanLabel": "Solo plan"
+  "soloPlanLabel": "Solo plan",
+  "daysLeftCount_one": "{{count}} day left",
+  "daysLeftCount_other": "{{count}} days left"
 }
