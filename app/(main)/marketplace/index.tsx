@@ -157,7 +157,9 @@ export default function MarketplaceCatalogScreen() {
 
   const loadCategories = useCallback(async () => {
     try {
-      setCategories(await fetchProductCategories({ inMarketplace: true }));
+      // Every category, even with no products yet (client 11-05) — an empty
+      // one shows the "no products" state with Clear filters
+      setCategories(await fetchProductCategories());
     } catch (error) {
       // Chips fall back to "All" only; the grid still works
       Logger.error("Marketplace categories failed:", error);

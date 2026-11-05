@@ -1,8 +1,5 @@
-import React, { memo, useMemo, useState } from "react";
+import React, { memo, useMemo } from "react";
 import {
-  LayoutChangeEvent,
-  NativeScrollEvent,
-  NativeSyntheticEvent,
   ScrollView,
   StyleSheet,
   Text,
@@ -10,7 +7,6 @@ import {
   View,
 } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
@@ -77,9 +73,6 @@ function getCategoryVisual(name: string) {
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
-    wrap: {
-      position: "relative",
-    },
     scroll: {
       alignItems: "flex-start",
       paddingHorizontal: moderateWidthScale(12),
@@ -143,17 +136,6 @@ const createStyles = (theme: Theme) =>
       borderRadius: 4,
       backgroundColor: theme.lightGreen07,
     },
-    // "More this way" hint at the right edge while chips overflow
-    moreHint: {
-      position: "absolute",
-      top: 0,
-      right: 0,
-      bottom: LABEL_HEIGHT + LABEL_GAP,
-      width: widthScale(44),
-      alignItems: "flex-end",
-      justifyContent: "center",
-      paddingRight: moderateWidthScale(4),
-    },
   });
 
 function Chip({
@@ -211,15 +193,12 @@ function Chip({
   );
 }
 
-/** Round icon chips: All + categories that have Marketplace products. */
+/** Round icon chips: All + every product category (client 11-05: no edge arrow). */
 function CategoryChips({ categories, selected, onSelect, loading }: Props) {
   const { colors } = useTheme();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
   const { t } = useTranslation();
-  const [viewWidth, setViewWidth] = useState(0);
-  const [contentWidth, setContentWidth] = useState(0);
-  const [atEnd, setAtEnd] = useState(false);
 
   // A chosen category stays visible even if a refresh no longer lists it
   const list = useMemo(() => {
@@ -229,89 +208,53 @@ function CategoryChips({ categories, selected, onSelect, loading }: Props) {
     return [{ id: -1, name: selected }, ...categories];
   }, [categories, selected]);
 
-  const overflows = contentWidth > viewWidth + 4;
-  const showMoreHint = overflows && !atEnd;
-
-  const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const { contentOffset, layoutMeasurement, contentSize } = e.nativeEvent;
-    const end =
-      contentOffset.x + layoutMeasurement.width >= contentSize.width - 8;
-    setAtEnd((prev) => (prev === end ? prev : end));
-  };
-
   return (
-    <View
-      style={styles.wrap}
-      onLayout={(e: LayoutChangeEvent) =>
-        setViewWidth(e.nativeEvent.layout.width)
-      }
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      contentContainerStyle={styles.scroll}
+      keyboardShouldPersistTaps="handled"
     >
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.scroll}
-        keyboardShouldPersistTaps="handled"
-        onContentSizeChange={(w) => setContentWidth(w)}
-        onScroll={onScroll}
-        scrollEventThrottle={64}
-      >
-        <Chip
-          label={t("all")}
-          icon="view-grid-outline"
-          iconColor={theme.darkGreen}
-          active={selected == null}
-          onPress={() => onSelect(null)}
-          styles={styles}
-          theme={theme}
-        />
-        {list.map((category) => {
-          const visual = getCategoryVisual(category.name);
-          return (
-            <Chip
-              key={`${category.id}-${category.name}`}
-              label={category.name}
-              icon={visual.icon}
-              iconColor={visual.color}
-              active={selected === category.name}
-              onPress={() =>
-                onSelect(selected === category.name ? null : category.name)
-              }
-              styles={styles}
-              theme={theme}
-            />
-          );
-        })}
-        {loading && list.length === 0
-          ? [0, 1, 2, 3].map((i) => (
-              <View
-                key={`placeholder-${i}`}
-                style={styles.chip}
-                accessibilityElementsHidden
-                importantForAccessibility="no-hide-descendants"
-              >
-                <View style={styles.placeholderCircle} />
-                <View style={styles.placeholderLabel} />
-              </View>
-            ))
-          : null}
-      </ScrollView>
-
-      {showMoreHint ? (
-        <LinearGradient
-          colors={["rgba(254, 250, 224, 0)", theme.background]}
-          start={{ x: 0, y: 0.5 }}
-          end={{ x: 0.6, y: 0.5 }}
-          style={styles.moreHint}
-          pointerEvents="none"
-        >
-          <MaterialCommunityIcons
-            name="chevron-right"
-            size={moderateWidthScale(22)}
-            color={theme.darkGreen}
+      <Chip
+        label={t("all")}
+        icon="view-grid-outline"
+        iconColor={theme.darkGreen}
+        active={selected == null}
+        onPress={() => onSelect(null)}
+        styles={styles}
+        theme={theme}
+      />
+      {list.map((category) => {
+        const visual = getCategoryVisual(category.name);
+        return (
+          <Chip
+            key={`${category.id}-${category.name}`}
+            label={category.name}
+            icon={visual.icon}
+            iconColor={visual.color}
+            active={selected === category.name}
+            onPress={() =>
+              onSelect(selected === category.name ? null : category.name)
+            }
+            styles={styles}
+            theme={theme}
           />
-        </LinearGradient>
-      ) : null}
-    </View>
+        );
+      })}
+      {loading && list.length === 0
+        ? [0, 1, 2, 3].map((i) => (
+            <View
+              key={`placeholder-${i}`}
+              style={styles.chip}
+              accessibilityElementsHidden
+              importantForAccessibility="no-hide-descendants"
+            >
+              <View style={styles.placeholderCircle} />
+              <View style={styles.placeholderLabel} />
+            </View>
+          ))
+        : null}
+    </ScrollView>
   );
 }
 

@@ -122,9 +122,9 @@ export async function fetchMarketplaceProducts(params: {
 }
 
 /**
- * GET /api/product-categories. `inMarketplace` = chips for the catalog (only
- * categories with live products; put "All" first yourself). Without it = the
- * full admin list for the seller's product form.
+ * GET /api/product-categories — the full admin list (catalog chips + the
+ * seller's product form). `inMarketplace` = only categories with live
+ * products; unused since the client wants every chip shown (11-05).
  */
 export async function fetchProductCategories(options?: {
   inMarketplace?: boolean;
