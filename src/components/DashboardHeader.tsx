@@ -15,7 +15,6 @@ import {
   ScrollView,
   useWindowDimensions,
 } from "react-native";
-import Animated, { LinearTransition } from "react-native-reanimated";
 import AppImage from "@/src/components/AppImage";
 import { useRouter } from "expo-router";
 import { useTheme, useAppDispatch, useAppSelector } from "@/src/hooks/hooks";
@@ -33,6 +32,7 @@ import {
   widthScale,
 } from "@/src/theme/dimensions";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import Animated, { LinearTransition } from "react-native-reanimated";
 import { IMAGES } from "../constant/images";
 import { Feather } from "@expo/vector-icons";
 import { resolveApiImageUrl } from "@/src/utils/media";
@@ -151,10 +151,6 @@ const createStyles = (theme: Theme) =>
       paddingVertical: moderateHeightScale(10),
       gap: moderateWidthScale(10),
     },
-    actionBannerDivider: {
-      borderTopWidth: 1,
-      borderTopColor: theme.orangeBrown30,
-    },
     actionIconWrap: {
       width: moderateWidthScale(32),
       height: moderateWidthScale(32),
@@ -188,14 +184,7 @@ const createStyles = (theme: Theme) =>
       height: heightScale(36),
       resizeMode: "contain",
     },
-    goldBarFrame: {
-      marginHorizontal: moderateWidthScale(12),
-      marginTop: moderateHeightScale(8),
-    },
-    actionBannerGold: {
-      borderRadius: GOLD_BAR_RADIUS,
-    },
-    // 2+ setup items: one banner at a time, swipe / auto-slide + dots
+    // Setup banners: one card at a time, swipe + honey dots (user 11-05)
     slide: {
       paddingHorizontal: moderateWidthScale(12),
       paddingVertical: moderateHeightScale(8),
@@ -207,10 +196,6 @@ const createStyles = (theme: Theme) =>
       flexGrow: 1,
       borderRadius: GOLD_BAR_RADIUS,
     },
-    slidePlain: {
-      borderWidth: 1,
-      borderColor: theme.orangeBrown30,
-    },
     dots: {
       flexDirection: "row",
       justifyContent: "center",
@@ -218,15 +203,18 @@ const createStyles = (theme: Theme) =>
       gap: moderateWidthScale(6),
       marginBottom: moderateHeightScale(4),
     },
+    // Matches the banner's honey border: rings, the current one a filled pill
     dot: {
       width: moderateWidthScale(8),
       height: moderateWidthScale(8),
       borderRadius: moderateWidthScale(4),
-      backgroundColor: theme.lightGreen2,
+      borderWidth: 1.5,
+      borderColor: theme.orangeBrown,
     },
     dotActive: {
-      width: moderateWidthScale(24),
-      backgroundColor: theme.darkGreen,
+      width: moderateWidthScale(22),
+      borderColor: theme.selectCard,
+      backgroundColor: theme.selectCard,
     },
   });
 
@@ -364,68 +352,11 @@ function DashboardHeader() {
     onPress: () => void;
   }[];
 
-  const renderBanner = (
-    banner: (typeof actionBanners)[number],
-    index: number,
-  ) => {
-    const isGold = banner.gold != null;
-
-    const bannerContent = (
-      <TouchableOpacity
-        onPress={banner.onPress}
-        activeOpacity={0.85}
-        accessibilityRole="button"
-        accessibilityLabel={`${banner.title}. ${banner.cta}`}
-      >
-        <View
-          style={[
-            styles.actionBanner,
-            isGold && styles.actionBannerGold,
-            index > 0 && !isGold && styles.actionBannerDivider,
-          ]}
-        >
-          <View style={styles.actionIconWrap}>
-            <Feather
-              name={banner.icon}
-              size={moderateWidthScale(15)}
-              color={theme.white}
-            />
-          </View>
-          <Text style={styles.actionTitle} numberOfLines={2}>
-            {banner.title}
-          </Text>
-          <View style={styles.actionCta}>
-            <Text style={styles.actionCtaText}>{banner.cta}</Text>
-            <Feather
-              name="chevron-right"
-              size={moderateWidthScale(14)}
-              color={theme.white}
-            />
-          </View>
-        </View>
-      </TouchableOpacity>
-    );
-
-    return isGold ? (
-      <GoldFrame
-        key={banner.key}
-        framed
-        pulse={gold.pulseTarget === banner.gold}
-        radius={GOLD_BAR_RADIUS}
-        style={styles.goldBarFrame}
-      >
-        {bannerContent}
-      </GoldFrame>
-    ) : (
-      <React.Fragment key={banner.key}>
-        {bannerContent}
-      </React.Fragment>
-    );
-  };
-
-  // 2+ banners share one slot (user 11-05): the owner swipes, dots below.
-  // No auto-slide (user 11-05). The banner on show is shared by every tab's
-  // header, so coming back from a banner's screen keeps that banner.
+  // All setup banners share one slot (user 11-05): one card at a time, the
+  // owner swipes (no auto-slide), honey dots below when there are 2+.
+  // Every card has the same honey border; only the gold-frame task pulses.
+  // The card on show is shared by every tab's header, so coming back from a
+  // banner's screen keeps that banner.
   const { width: screenWidth } = useWindowDimensions();
   const carouselRef = useRef<ScrollView>(null);
   const offsetRef = useRef(0);
@@ -439,78 +370,61 @@ function DashboardHeader() {
     0,
     actionBanners.findIndex((b) => b.key === selectedKey),
   );
+  const activeOffset = activeSlide * screenWidth;
 
   const syncCarousel = useCallback(() => {
-    const x = activeSlide * screenWidth;
-    if (Math.abs(offsetRef.current - x) < 1) return;
-    carouselRef.current?.scrollTo({ x, animated: false });
-    offsetRef.current = x;
-  }, [activeSlide, screenWidth]);
+    if (Math.abs(offsetRef.current - activeOffset) < 1) return;
+    carouselRef.current?.scrollTo({ x: activeOffset, animated: false });
+    offsetRef.current = activeOffset;
+  }, [activeOffset]);
 
   // Another tab's header changed the banner, or one was removed
   useEffect(() => {
     syncCarousel();
   }, [syncCarousel, slideCount]);
 
-  const renderSlide = (banner: (typeof actionBanners)[number]) => {
-    const isGold = banner.gold != null;
-    const body = (
-      <TouchableOpacity
-        onPress={() => {
-          setupBannerStore.set(banner.key);
-          banner.onPress();
-        }}
-        activeOpacity={0.85}
-        accessibilityRole="button"
-        accessibilityLabel={`${banner.title}. ${banner.cta}`}
+  const renderSlide = (banner: (typeof actionBanners)[number]) => (
+    <View key={banner.key} style={[styles.slide, { width: screenWidth }]}>
+      <GoldFrame
+        framed
+        pulse={banner.gold != null && gold.pulseTarget === banner.gold}
+        radius={GOLD_BAR_RADIUS}
         style={styles.slideFill}
       >
-        <View
-          style={[
-            styles.actionBanner,
-            styles.slideBanner,
-            !isGold && styles.slidePlain,
-          ]}
+        <TouchableOpacity
+          onPress={() => {
+            setupBannerStore.set(banner.key);
+            banner.onPress();
+          }}
+          activeOpacity={0.85}
+          accessibilityRole="button"
+          accessibilityLabel={`${banner.title}. ${banner.cta}`}
+          style={styles.slideFill}
         >
-          <View style={styles.actionIconWrap}>
-            <Feather
-              name={banner.icon}
-              size={moderateWidthScale(15)}
-              color={theme.white}
-            />
+          <View style={[styles.actionBanner, styles.slideBanner]}>
+            <View style={styles.actionIconWrap}>
+              <Feather
+                name={banner.icon}
+                size={moderateWidthScale(15)}
+                color={theme.white}
+              />
+            </View>
+            <Text style={styles.actionTitle} numberOfLines={2}>
+              {banner.title}
+            </Text>
+            <View style={styles.actionCta}>
+              <Text style={styles.actionCtaText}>{banner.cta}</Text>
+              <Feather
+                name="chevron-right"
+                size={moderateWidthScale(14)}
+                color={theme.white}
+              />
+            </View>
           </View>
-          <Text style={styles.actionTitle} numberOfLines={2}>
-            {banner.title}
-          </Text>
-          <View style={styles.actionCta}>
-            <Text style={styles.actionCtaText}>{banner.cta}</Text>
-            <Feather
-              name="chevron-right"
-              size={moderateWidthScale(14)}
-              color={theme.white}
-            />
-          </View>
-        </View>
-      </TouchableOpacity>
-    );
-
-    return (
-      <View key={banner.key} style={[styles.slide, { width: screenWidth }]}>
-        {isGold ? (
-          <GoldFrame
-            framed
-            pulse={gold.pulseTarget === banner.gold}
-            radius={GOLD_BAR_RADIUS}
-            style={styles.slideFill}
-          >
-            {body}
-          </GoldFrame>
-        ) : (
-          body
-        )}
-      </View>
-    );
-  };
+        </TouchableOpacity>
+      </GoldFrame>
+    </View>
+  );
 
   const bannerCarousel = (
     <View>
@@ -518,8 +432,9 @@ function DashboardHeader() {
         ref={carouselRef}
         horizontal
         pagingEnabled
+        scrollEnabled={slideCount > 1}
         showsHorizontalScrollIndicator={false}
-        contentOffset={{ x: activeSlide * screenWidth, y: 0 }}
+        contentOffset={{ x: activeOffset, y: 0 }}
         onContentSizeChange={() => {
           // First layout: a fresh header (other tab) opens on the shared one
           offsetRef.current = -1;
@@ -534,15 +449,17 @@ function DashboardHeader() {
       >
         {actionBanners.map(renderSlide)}
       </ScrollView>
-      <View style={styles.dots} pointerEvents="none">
-        {actionBanners.map((banner, i) => (
-          <Animated.View
-            key={banner.key}
-            layout={LinearTransition.duration(250)}
-            style={[styles.dot, i === activeSlide && styles.dotActive]}
-          />
-        ))}
-      </View>
+      {slideCount > 1 && (
+        <View style={styles.dots} pointerEvents="none">
+          {actionBanners.map((banner, i) => (
+            <Animated.View
+              key={banner.key}
+              layout={LinearTransition.duration(250)}
+              style={[styles.dot, i === activeSlide && styles.dotActive]}
+            />
+          ))}
+        </View>
+      )}
     </View>
   );
 
@@ -616,12 +533,7 @@ function DashboardHeader() {
       </View>
       <View style={styles.line} />
 
-      {userRole === "business" &&
-        (actionBanners.length > 1 ? (
-          bannerCarousel
-        ) : (
-          actionBanners.map(renderBanner)
-        ))}
+      {userRole === "business" && slideCount > 0 && bannerCarousel}
     </View>
   );
 }
