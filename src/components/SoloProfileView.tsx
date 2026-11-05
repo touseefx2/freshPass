@@ -40,9 +40,11 @@ export type SoloRowKey =
   | "products"
   | "orders"
   | "hiring"
+  | "myDeals"
   | "socialMedia"
   | "cancellationPolicy"
   | "team"
+  | "affiliation"
   | "publicProfile"
   | "availability"
   | "myAppointments"
@@ -237,6 +239,13 @@ export default function SoloProfileView({
       : t("noReviewsYet");
 
   const dark = { tileBg: theme.darkGreen, iconColor: theme.white };
+  const affiliatedShop = user.working_with_business?.title;
+  const pendingShop = user.working_with_business_request?.host_business?.title;
+  const affiliationSubtitle = affiliatedShop
+    ? t("soloAffiliationWorkingAt", { name: affiliatedShop })
+    : pendingShop
+      ? t("soloAffiliationPending", { name: pendingShop })
+      : t("soloAffiliationSub");
 
   const staffAccountRows: SoloRow[] = [
     {
@@ -379,6 +388,14 @@ export default function SoloProfileView({
       iconColor: theme.successGreen,
     },
     {
+      key: "myDeals",
+      title: t("sdMyDeals"),
+      subtitle: t("soloDealsSub"),
+      icon: "tag-outline",
+      tileBg: theme.apptGoldBg,
+      iconColor: theme.selectCard,
+    },
+    {
       key: "socialMedia",
       title: t("socialMediaTitle"),
       subtitle: t("soloSocialMediaSub"),
@@ -401,6 +418,15 @@ export default function SoloProfileView({
       icon: "account-group-outline",
       tileBg: theme.apptLavenderBg,
       iconColor: theme.apptLavenderAccent,
+    },
+    {
+      // Solo side of affiliation: link yourself to the shop you work at
+      key: "affiliation",
+      title: t("soloAffiliationTitle"),
+      subtitle: affiliationSubtitle,
+      icon: "handshake-outline",
+      tileBg: theme.apptPeachBg,
+      iconColor: theme.orangeBrownText,
     },
     {
       key: "publicProfile",

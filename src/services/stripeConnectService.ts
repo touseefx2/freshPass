@@ -52,6 +52,10 @@ interface ConnectStatusApiResponse {
   data: ConnectStatusData;
 }
 
+/** Stripe's sheet never fails a slow secret on its own — cap it so the screen can show Retry. */
+const ACCOUNT_SESSION_TIMEOUT_MS = 30000;
+const CONNECT_STATUS_TIMEOUT_MS = 15000;
+
 let lastAccountSessionError: StripeConnectApiError | null = null;
 
 export function getLastAccountSessionError(): StripeConnectApiError | null {
@@ -72,14 +76,22 @@ export function isConnectOnboardingCompleted(
   return status?.stripe_onboarding_status === "completed";
 }
 
-/** Never cache — the SDK calls this again when the session expires. */
-export async function createAccountSessionClientSecret(): Promise<string> {
+/**
+ * Never cache — the SDK calls this again when the session expires.
+ * Pass modeHeaders when the caller already has the key (skips a config round trip).
+ */
+export async function createAccountSessionClientSecret(
+  modeHeaders?: Record<string, string>,
+): Promise<string> {
   try {
     lastAccountSessionError = null;
     const response = await ApiService.post<AccountSessionApiResponse>(
       stripeEndpoints.connectAccountSession,
       {},
-      { headers: await getStripeModeHeaders() },
+      {
+        headers: modeHeaders ?? (await getStripeModeHeaders()),
+        timeout: ACCOUNT_SESSION_TIMEOUT_MS,
+      },
     );
 
     const clientSecret = response?.data?.client_secret?.trim();
@@ -97,11 +109,16 @@ export async function createAccountSessionClientSecret(): Promise<string> {
   }
 }
 
-export async function fetchConnectStatus(): Promise<ConnectStatusData> {
+export async function fetchConnectStatus(
+  modeHeaders?: Record<string, string>,
+): Promise<ConnectStatusData> {
   try {
     const response = await ApiService.get<ConnectStatusApiResponse>(
       stripeEndpoints.connectStatus,
-      { headers: await getStripeModeHeaders() },
+      {
+        headers: modeHeaders ?? (await getStripeModeHeaders()),
+        timeout: CONNECT_STATUS_TIMEOUT_MS,
+      },
     );
 
     if (response.success && response.data) {

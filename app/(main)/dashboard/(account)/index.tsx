@@ -19,6 +19,7 @@ import {
 } from "@/src/theme/dimensions";
 import BuyBusinessPlanModal from "@/src/components/BuyBusinessPlanModal";
 import { useHiringPlanGate } from "@/src/hooks/useHiringPlanGate";
+import { useDealsPlanGate } from "@/src/hooks/useDealsPlanGate";
 import DashboardHeader from "@/src/components/DashboardHeader";
 import { MaterialIcons, MaterialCommunityIcons, Entypo } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -33,6 +34,7 @@ import {
 } from "@/src/state/slices/generalSlice";
 import {
   isBusinessSubscriptionActive,
+  isSoloSubscription,
   usesSoloProfileLayout,
 } from "@/src/state/slices/userSlice";
 import SoloProfileView from "@/src/components/SoloProfileView";
@@ -672,6 +674,7 @@ export default function AccountScreen() {
   const { showBanner } = useNotificationContext();
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [buyPlanModalVisible, setBuyPlanModalVisible] = useState(false);
+  const [affiliationPlanVisible, setAffiliationPlanVisible] = useState(false);
 
   const user = useAppSelector((state) => state.user);
   const userRole = user.userRole;
@@ -682,6 +685,7 @@ export default function AccountScreen() {
   const businessStatus = useAppSelector((state) => state.user.businessStatus);
 
   const { ensureCanHire, planModals: hiringPlanModals } = useHiringPlanGate();
+  const { ensureCanPostDeals, planModal: dealsPlanModal } = useDealsPlanGate();
 
   const handleViewPlans = useCallback(() => {
     setBuyPlanModalVisible(false);
@@ -829,6 +833,20 @@ export default function AccountScreen() {
       );
     } else if (key === "hiring" && !ensureCanHire()) {
       return;
+    } else if (key === "affiliation") {
+      // Solo plan links to a shop (Edit Profile). No plan: ask for one first;
+      // a Business plan gets the host side (Affiliation requests) instead.
+      if (!isSoloSubscription(businessStatus)) {
+        setAffiliationPlanVisible(true);
+        return;
+      }
+      router.push({
+        pathname: "/(main)/dashboard/(account)/(profile)/editProfile",
+        params: { focus: "barbershop" },
+      } as any);
+    } else if (key === "myDeals") {
+      // Deals need a plan (user 11-05): the row stays, a tap asks for one
+      if (ensureCanPostDeals()) router.push("/(main)/myDeals" as any);
     } else if (key in SOLO_BUSINESS_ROUTES) {
       router.push(
         `/(main)/dashboard/(account)/(businessProfileSettings)/${SOLO_BUSINESS_ROUTES[key]}` as any,
@@ -928,6 +946,17 @@ export default function AccountScreen() {
           onViewPlans={handleViewPlans}
         />
         {hiringPlanModals}
+        {dealsPlanModal}
+        <BuyBusinessPlanModal
+          visible={affiliationPlanVisible}
+          onClose={() => setAffiliationPlanVisible(false)}
+          onViewPlans={() => {
+            setAffiliationPlanVisible(false);
+            dispatch(setBusinessPlansModalVisible(true));
+          }}
+          subtitle={t("buyPlanAffiliationSubtitle")}
+          message={t("buyPlanBeforeAffiliation")}
+        />
       </View>
     );
   }

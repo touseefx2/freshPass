@@ -26,6 +26,7 @@ import {
 import StackHeader from "@/src/components/StackHeader";
 import RetryButton from "@/src/components/retryButton";
 import Logger from "@/src/services/logger";
+import { useDealsPlanGate } from "@/src/hooks/useDealsPlanGate";
 import {
   fetchMySlotOffers,
   patchSlotOffer,
@@ -218,6 +219,11 @@ export default function MyDealsScreen() {
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [theme]);
   const router = useRouter();
+  // Posting a deal needs a plan (user 11-05)
+  const { ensureCanPostDeals, planModal: dealsPlanModal } = useDealsPlanGate();
+  const openPostDeal = () => {
+    if (ensureCanPostDeals()) router.push("/(main)/postDeal" as any);
+  };
 
   const [items, setItems] = useState<SlotOffer[]>([]);
   const [summary, setSummary] = useState<SlotOfferMineSummary | null>(null);
@@ -490,7 +496,7 @@ export default function MyDealsScreen() {
         <TouchableOpacity
           style={styles.emptyBtn}
           activeOpacity={0.75}
-          onPress={() => router.push("/(main)/postDeal" as any)}
+          onPress={openPostDeal}
         >
           <Text style={styles.emptyBtnText}>{t("sdPostADeal")}</Text>
         </TouchableOpacity>
@@ -508,7 +514,7 @@ export default function MyDealsScreen() {
           )
         }
         onRightPress={
-          forbidden ? undefined : () => router.push("/(main)/postDeal" as any)
+          forbidden ? undefined : openPostDeal
         }
         rightAccessibilityLabel={t("sdPostADeal")}
       />
@@ -546,6 +552,7 @@ export default function MyDealsScreen() {
           }
         />
       )}
+      {dealsPlanModal}
     </View>
   );
 }

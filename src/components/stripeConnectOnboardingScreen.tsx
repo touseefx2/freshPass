@@ -31,7 +31,10 @@ import {
   StripeConnectApiError,
   type ConnectStatusData,
 } from "@/src/services/stripeConnectService";
-import { resolveStripePublishableKey } from "@/src/services/stripeService";
+import {
+  resolveStripePublishableKey,
+  stripeModeFromKey,
+} from "@/src/services/stripeService";
 import { checkInternetConnection } from "@/src/services/api";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import Logger from "@/src/services/logger";
@@ -57,8 +60,11 @@ const STRIPE_LOCALE: Record<string, string> = {
 
 /** Let any prior RN Modal finish dismissing before Stripe UIKit present(). */
 const IOS_PRESENT_DELAY_MS = 450;
-/** If Connect sheet never reports load, leave the infinite spinner. */
-const CONNECT_LOAD_TIMEOUT_MS = 30000;
+/**
+ * If the Stripe sheet never shows its UI, leave the infinite spinner.
+ * Longer than the account-session timeout (30s) so that error wins when the API is slow.
+ */
+const CONNECT_LOAD_TIMEOUT_MS = 45000;
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -194,6 +200,9 @@ export default function StripeConnectOnboardingScreen() {
 
   const connectInstanceRef = useRef<StripeConnectInstance | null>(null);
   const exitingRef = useRef(false);
+  /** X-Stripe-Mode from the key resolved once in init — no extra config call per request */
+  const modeHeadersRef = useRef<Record<string, string> | undefined>(undefined);
+  const connectUiReadyRef = useRef(false);
   const [phase, setPhase] = useState<ScreenPhase>("loading");
   const [errorMessage, setErrorMessage] = useState("");
   const [requirementsDeadline, setRequirementsDeadline] = useState<
@@ -226,6 +235,7 @@ export default function StripeConnectOnboardingScreen() {
       setErrorMessage("");
       setShowStripeModal(false);
       setConnectUiReady(false);
+      connectUiReadyRef.current = false;
       setConnectInstance(null);
       connectInstanceRef.current = null;
       exitingRef.current = false;
@@ -253,10 +263,30 @@ export default function StripeConnectOnboardingScreen() {
           throw new Error(t("stripeConnectLoadError"));
         }
 
+        const mode = stripeModeFromKey(publishableKey);
+        const modeHeaders: Record<string, string> = mode
+          ? { "X-Stripe-Mode": mode }
+          : {};
+        modeHeadersRef.current = modeHeaders;
+
         const locale = STRIPE_LOCALE[i18n.language] ?? "en-US";
         const instance = loadConnectAndInitialize({
           publishableKey,
-          fetchClientSecret: createAccountSessionClientSecret,
+          fetchClientSecret: async () => {
+            try {
+              return await createAccountSessionClientSecret(modeHeaders);
+            } catch (error) {
+              // The SDK only console.errors a failed secret and keeps its
+              // spinner forever — close the sheet and show Retry ourselves.
+              if (!cancelled && !exitingRef.current) {
+                Logger.warn("[StripeConnect] Account session failed", error);
+                setShowStripeModal(false);
+                setErrorMessage(mapSessionError(error));
+                setPhase("error");
+              }
+              throw error;
+            }
+          },
           locale,
           appearance: {
             variables: {
@@ -333,10 +363,17 @@ export default function StripeConnectOnboardingScreen() {
     if (exitingRef.current) return;
     exitingRef.current = true;
     setShowStripeModal(false);
+
+    // Closed before Stripe's form ever appeared — nothing was submitted.
+    if (!connectUiReadyRef.current) {
+      if (router.canGoBack()) router.back();
+      return;
+    }
+
     setPhase("checking");
 
     try {
-      const status = await fetchConnectStatus();
+      const status = await fetchConnectStatus(modeHeadersRef.current);
       applyConnectStatus(status);
 
       if (isConnectOnboardingCompleted(status)) {
@@ -378,6 +415,7 @@ export default function StripeConnectOnboardingScreen() {
         : error?.message || t("stripeConnectLoadError");
       setShowStripeModal(false);
       setConnectUiReady(false);
+      connectUiReadyRef.current = false;
       setErrorMessage(message);
       setPhase("error");
     },
@@ -385,6 +423,7 @@ export default function StripeConnectOnboardingScreen() {
   );
 
   const markConnectUiReady = useCallback(() => {
+    connectUiReadyRef.current = true;
     setConnectUiReady(true);
   }, []);
 
@@ -393,6 +432,7 @@ export default function StripeConnectOnboardingScreen() {
     setConnectInstance(null);
     setShowStripeModal(false);
     setConnectUiReady(false);
+    connectUiReadyRef.current = false;
     setRetryToken((value) => value + 1);
   };
 
@@ -558,7 +598,6 @@ export default function StripeConnectOnboardingScreen() {
               void handleExit();
             }}
             onLoaderStart={markConnectUiReady}
-            onPageDidLoad={markConnectUiReady}
             onLoadError={handleLoadError}
           />
         </ConnectComponentsProvider>

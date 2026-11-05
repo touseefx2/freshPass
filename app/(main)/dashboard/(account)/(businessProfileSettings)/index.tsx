@@ -17,6 +17,7 @@ import {
   moderateWidthScale,
 } from "@/src/theme/dimensions";
 import { useHiringPlanGate } from "@/src/hooks/useHiringPlanGate";
+import { useDealsPlanGate } from "@/src/hooks/useDealsPlanGate";
 import StackHeader from "@/src/components/StackHeader";
 import { MaterialIcons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -346,6 +347,7 @@ export default function BusinessProfileSettingsScreen() {
   // Same live count as the home Orders card
   const pendingOrdersCount = useBusinessOrdersCount(isBusinessOwner) ?? 0;
   const { ensureCanHire, planModals: hiringPlanModals } = useHiringPlanGate();
+  const { ensureCanPostDeals, planModal: dealsPlanModal } = useDealsPlanGate();
 
   const handleRowPress = (key: SettingKey) => {
     if (key === "businessProfile") {
@@ -366,6 +368,7 @@ export default function BusinessProfileSettingsScreen() {
       if (!ensureCanHire()) return;
       router.push("./jobPosts" as any);
     } else if (key === "myDeals") {
+      if (!ensureCanPostDeals()) return;
       router.push("/(main)/myDeals" as any);
     } else if (key === "allAppointments") {
       router.push("/(main)/dashboard/(account)/allAppointments" as any);
@@ -504,6 +507,7 @@ export default function BusinessProfileSettingsScreen() {
         </View>
       </ScrollView>
       {hiringPlanModals}
+      {dealsPlanModal}
     </View>
   );
 }

@@ -68,6 +68,7 @@ import {
   staffEndpoints,
 } from "@/src/services/endpoints";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
+import { useDealsPlanGate } from "@/src/hooks/useDealsPlanGate";
 import { useRouter, useFocusEffect } from "expo-router";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { runOnJS } from "react-native-reanimated";
@@ -1384,6 +1385,7 @@ export default function CalendarScreen() {
 
   const canManageLeaves = userRole === "staff" || userRole === "business";
   const isOwner = userRole === "business";
+  const { ensureCanPostDeals, planModal: dealsPlanModal } = useDealsPlanGate();
   // Solo owners are the only provider: their time off always closes the
   // business and there is no team to filter by.
   const hasTeamFeatures = isOwner && !isSoloSubscription(businessStatus);
@@ -3311,6 +3313,8 @@ export default function CalendarScreen() {
                         if (!slotMenu) return;
                         const { day, minutes } = slotMenu;
                         setSlotMenu(null);
+                        // Deals need a plan (user 11-05)
+                        if (!ensureCanPostDeals()) return;
                         router.push({
                           pathname: "/(main)/postDeal" as any,
                           params: {
@@ -3719,6 +3723,8 @@ export default function CalendarScreen() {
           onSelect={setStaffFilterId}
         />
       )}
+
+      {dealsPlanModal}
     </View>
   );
 }

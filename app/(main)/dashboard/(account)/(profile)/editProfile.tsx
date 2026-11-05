@@ -72,7 +72,7 @@ import {
   SafeAreaView,
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import type {
   AffiliatedBusiness,
@@ -774,6 +774,10 @@ export default function EditProfileScreen() {
   const styles = useMemo(() => createStyles(theme), [colors]);
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  // Solo profile "Barbershop" row opens here scrolled to that section (11-05)
+  const { focus } = useLocalSearchParams<{ focus?: string }>();
+  const scrollRef = useRef<React.ElementRef<typeof KeyboardAwareScrollView>>(null);
+  const focusedRef = useRef(false);
   const user = useAppSelector((state) => state.user);
   const dispatch = useAppDispatch();
   const { showBanner } = useNotificationContext();
@@ -1593,6 +1597,7 @@ export default function EditProfileScreen() {
     <SafeAreaView edges={["bottom"]} style={styles.container}>
       <StackHeader title={t("editProfile")} />
       <KeyboardAwareScrollView
+        ref={scrollRef}
         style={styles.content}
         contentContainerStyle={styles.contentContainer}
         showsVerticalScrollIndicator={false}
@@ -1881,7 +1886,17 @@ export default function EditProfileScreen() {
         </View>
 
         {isSoloPlan && (
-          <View style={styles.barbershopSection}>
+          <View
+            style={styles.barbershopSection}
+            onLayout={(e) => {
+              if (focus !== "barbershop" || focusedRef.current) return;
+              focusedRef.current = true;
+              scrollRef.current?.scrollTo({
+                y: Math.max(0, e.nativeEvent.layout.y - moderateHeightScale(16)),
+                animated: true,
+              });
+            }}
+          >
             <Text style={styles.barbershopSectionTitle}>
               {t("selectYourBarbershop")}
             </Text>
