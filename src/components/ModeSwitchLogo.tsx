@@ -30,27 +30,18 @@ const createStyles = (theme: Theme) =>
       alignItems: "center",
       justifyContent: "center",
     },
-    // Mirrors the chevron so a centered logo stays centered
-    spacer: {
-      width: moderateWidthScale(CHEVRON_SIZE),
-    },
   });
 
 interface ModeSwitchLogoProps {
   /** The header's own logo element */
   children: React.ReactNode;
-  /** Logo is centered in its header (client header) */
-  centered?: boolean;
 }
 
 /**
  * Header logo. For Business/Staff accounts (`canUseModeSwitch`) it opens the
  * business ↔ customer mode switch; for everyone else it's just the logo.
  */
-export default function ModeSwitchLogo({
-  children,
-  centered = false,
-}: ModeSwitchLogoProps) {
+export default function ModeSwitchLogo({ children }: ModeSwitchLogoProps) {
   const { colors } = useTheme();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
@@ -105,7 +96,6 @@ export default function ModeSwitchLogo({
       accessibilityState={{ expanded: menuOpen }}
     >
       <View style={styles.row}>
-        {centered && <View style={styles.spacer} />}
         {children}
         <View ref={chevronRef} collapsable={false} style={styles.chevron}>
           <Feather
