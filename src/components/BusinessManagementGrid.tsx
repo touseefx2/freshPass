@@ -46,6 +46,10 @@ const TILE_META = {
   mediaLibrary: { titleKey: "mediaLibrary", icon: "video-library", family: "material", variant: "dark" },
   aiTools: { titleKey: "aiTools", icon: "smart-toy", family: "material", variant: "dark" },
   publicProfile: { titleKey: "viewBusinessProfile", icon: "visibility", family: "material", variant: "cream" },
+  availability: { titleKey: "mySchedule", icon: "event-available", family: "material", variant: "dark" },
+  myAppointments: { titleKey: "myAppointments", icon: "event-note", family: "material", variant: "accent" },
+  uploadWork: { titleKey: "myPortfolio", icon: "photo-library", family: "material", variant: "dark" },
+  leaveRequest: { titleKey: "leaveRequest", icon: "event-busy", family: "material", variant: "accent" },
 } as const satisfies Record<
   string,
   {
@@ -95,7 +99,9 @@ export function ManagementTileGrid({
       tapOwner != null &&
       !!s.general.goldTapped?.[tapOwner]?.includes(MASTER_CLASSES_OPENED_KEY),
   );
-  const ordersCount = useBusinessOrdersCount(true) ?? 0;
+  // Orders API is owner-only: staff have no Orders tile, so no call for them
+  const ordersCount =
+    useBusinessOrdersCount(tiles.some((tile) => tile.key === "orders")) ?? 0;
 
   const gap = moderateWidthScale(8);
   // Fixed width (not space-between) so a short last row stays left aligned

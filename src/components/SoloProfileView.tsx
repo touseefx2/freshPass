@@ -254,62 +254,21 @@ export default function SoloProfileView({
       ? t("soloAffiliationPending", { name: pendingShop })
       : undefined;
 
-  const staffAccountRows: SoloRow[] = [
-    {
-      key: "availability",
-      title: t("mySchedule"),
-      subtitle: t("soloScheduleSub"),
-      icon: "calendar-blank-outline",
-      ...dark,
-    },
-    {
-      key: "myAppointments",
-      title: t("myAppointments"),
-      subtitle: t("soloAppointmentsSub"),
-      icon: "calendar-check-outline",
-      tileBg: theme.apptBlueBg,
-      iconColor: theme.apptBlueAccent,
-    },
-    {
-      key: "uploadWork",
-      title: t("myPortfolio"),
-      subtitle: t("soloPortfolioSub"),
-      icon: "image-outline",
-      tileBg: theme.mintTintStrong,
-      iconColor: theme.apptMintAccent,
-    },
-    {
-      key: "mediaLibrary",
-      title: t("myReels"),
-      subtitle: t("soloReelsSub"),
-      icon: "play-box-outline",
-      tileBg: theme.apptPinkBg,
-      iconColor: theme.apptPinkAccent,
-    },
-    {
-      key: "aiTools",
-      title: t("aiTools"),
-      subtitle: t("soloAiToolsSub"),
-      icon: "creation",
-      tileBg: theme.apptLavenderBg,
-      iconColor: theme.apptLavenderAccent,
-    },
-    {
-      key: "leaveRequest",
-      title: t("leaveRequest"),
-      subtitle: t("staffLeaveRequestSub"),
-      icon: "calendar-remove-outline",
-      tileBg: theme.apptPeachBg,
-      iconColor: theme.orangeBrownText,
-    },
-  ];
-
-  // Every owner item as a tile, same design as the Business plan Profile.
-  // Order follows the client's sample, with the solo-only items first.
+  // Every item as a tile, same design as the Business plan Profile. Owner
+  // order follows the client's sample, with the solo-only items first.
   const soloTile = (key: ManagementTileKey & SoloRowKey): ManagementTile => ({
     key,
     onPress: () => onRowPress(key),
   });
+  // Staff keep their own names
+  const staffTiles: ManagementTile[] = [
+    soloTile("availability"),
+    soloTile("myAppointments"),
+    soloTile("uploadWork"),
+    { ...soloTile("mediaLibrary"), title: t("myReels") },
+    soloTile("aiTools"),
+    soloTile("leaveRequest"),
+  ];
   const ownerTiles: ManagementTile[] = [
     soloTile("barberProfile"),
     soloTile("schedule"),
@@ -471,26 +430,24 @@ export default function SoloProfileView({
         />
       </TouchableOpacity>
 
-      {isStaff ? (
-        <Section
-          title={t("profileSectionAccount")}
-          rows={staffAccountRows}
-          onRowPress={onRowPress}
-          theme={theme}
-          styles={styles}
-        />
-      ) : (
-        <View style={styles.section}>
-          <Text style={styles.gridTitle} accessibilityRole="header">
-            {t("businessManagement")}
+      <View style={styles.section}>
+        {isStaff ? (
+          <Text style={styles.sectionTitle} accessibilityRole="header">
+            {t("profileSectionAccount")}
           </Text>
-          <Text style={styles.gridSubtitle}>{t("bmSubtitle")}</Text>
-          <ManagementTileGrid
-            tiles={ownerTiles}
-            horizontalPadding={moderateWidthScale(16)}
-          />
-        </View>
-      )}
+        ) : (
+          <>
+            <Text style={styles.gridTitle} accessibilityRole="header">
+              {t("businessManagement")}
+            </Text>
+            <Text style={styles.gridSubtitle}>{t("bmSubtitle")}</Text>
+          </>
+        )}
+        <ManagementTileGrid
+          tiles={isStaff ? staffTiles : ownerTiles}
+          horizontalPadding={moderateWidthScale(16)}
+        />
+      </View>
       <Section
         title={t("profileSectionSettings")}
         rows={settingsRows}
