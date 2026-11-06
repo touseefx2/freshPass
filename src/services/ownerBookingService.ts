@@ -276,6 +276,78 @@ export async function fetchOwnerBookingSchedule(
   };
 }
 
+/** One weekday's hours: "HH:mm" salon clock; open/close null when closed. */
+export type DayHours = {
+  day: string;
+  closed: boolean;
+  open: string | null;
+  close: string | null;
+  breaks: { start: string; end: string }[];
+};
+
+export type OwnerBusinessHours = {
+  timezone: string | null;
+  /** Salon hours by lowercase day name; empty when the salon never set hours */
+  hours: Record<string, DayHours>;
+  /** Each barber's hours (staff id → day name → hours) */
+  staffHours: Record<number, Record<string, DayHours>>;
+};
+
+const hhmm = (v: unknown): string | null =>
+  typeof v === "string" && /^\d{1,2}:\d{2}/.test(v)
+    ? `${v.split(":")[0].padStart(2, "0")}:${v.split(":")[1].slice(0, 2)}`
+    : null;
+
+function parseDayHours(rows: unknown): Record<string, DayHours> {
+  const out: Record<string, DayHours> = {};
+  if (!Array.isArray(rows)) return out;
+  rows.forEach((row: any) => {
+    if (typeof row?.day !== "string") return;
+    const breaks = (Array.isArray(row.break_hours) ? row.break_hours : [])
+      .map((b: any) => ({
+        start: hhmm(b?.start ?? b?.start_time),
+        end: hhmm(b?.end ?? b?.end_time),
+      }))
+      .filter((b: { start: string | null; end: string | null }) => b.start && b.end);
+    out[row.day.toLowerCase()] = {
+      day: row.day.toLowerCase(),
+      closed: !!row.closed,
+      open: hhmm(row.opening_time),
+      close: hhmm(row.closing_time),
+      breaks,
+    };
+  });
+  return out;
+}
+
+/** Opening / closing / break times for the salon and each barber. */
+export async function fetchOwnerBusinessHours(
+  businessId: number,
+): Promise<OwnerBusinessHours> {
+  const res = await ApiService.get<{
+    data?: {
+      business?: {
+        timezone?: string | null;
+        hours?: unknown;
+        staff?: { id?: number; working_hours?: unknown }[] | null;
+      };
+    };
+  }>(businessEndpoints.businessDetails(businessId));
+  const business = res?.data?.business;
+  const staffHours: Record<number, Record<string, DayHours>> = {};
+  (business?.staff ?? []).forEach((row) => {
+    if (row?.id != null) staffHours[row.id] = parseDayHours(row.working_hours);
+  });
+  return {
+    timezone:
+      typeof business?.timezone === "string" && business.timezone
+        ? business.timezone
+        : null,
+    hours: parseDayHours(business?.hours),
+    staffHours,
+  };
+}
+
 export type OwnerBookingResult = {
   id: number;
   customerHasAppAccount?: boolean | null;

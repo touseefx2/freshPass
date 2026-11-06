@@ -14,6 +14,7 @@ import {
   ActivityIndicator,
   Pressable,
   GestureResponderEvent,
+  Alert,
 } from "react-native";
 import { useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { useTranslation } from "react-i18next";
@@ -69,6 +70,12 @@ import {
 } from "@/src/services/endpoints";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { useDealsPlanGate } from "@/src/hooks/useDealsPlanGate";
+import {
+  fetchOwnerBusinessHours,
+  type OwnerBusinessHours,
+} from "@/src/services/ownerBookingService";
+import { formatSlotTime, slotProblem } from "@/src/utils/dealSlotCheck";
+import { salonNow } from "@/src/utils/salonTimezone";
 import { useRouter, useFocusEffect } from "expo-router";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { runOnJS } from "react-native-reanimated";
@@ -1386,6 +1393,23 @@ export default function CalendarScreen() {
   const canManageLeaves = userRole === "staff" || userRole === "business";
   const isOwner = userRole === "business";
   const { ensureCanPostDeals, planModal: dealsPlanModal } = useDealsPlanGate();
+  const ownerBusinessId = useAppSelector((state: any) =>
+    Number(state.user.business_id),
+  );
+  // Salon hours for the Post a Deal check: fetched when the slot menu opens,
+  // reused for 5 min.
+  const dealHoursRef = useRef<{
+    at: number;
+    promise: Promise<OwnerBusinessHours | null>;
+  } | null>(null);
+  const loadDealHours = useCallback(() => {
+    if (!ownerBusinessId) return Promise.resolve(null);
+    const cached = dealHoursRef.current;
+    if (cached && Date.now() - cached.at < 5 * 60_000) return cached.promise;
+    const promise = fetchOwnerBusinessHours(ownerBusinessId).catch(() => null);
+    dealHoursRef.current = { at: Date.now(), promise };
+    return promise;
+  }, [ownerBusinessId]);
   // Solo owners are the only provider: their time off always closes the
   // business and there is no team to filter by.
   const hasTeamFeatures = isOwner && !isSoloSubscription(businessStatus);
@@ -2447,6 +2471,7 @@ export default function CalendarScreen() {
         setSelectedDate(day);
       }
       setSlotMenu({ day, minutes: snapped });
+      loadDealHours();
       return;
     }
 
@@ -2467,6 +2492,72 @@ export default function CalendarScreen() {
         ...(staffFilterId !== "all" ? { staff_id: String(staffFilterId) } : {}),
       },
     });
+  };
+
+  /**
+   * Post a Deal from the slot menu. A time the salon (or the barber on screen)
+   * isn't open is refused here with the reason, not after 4 steps (11-06).
+   */
+  const openPostDealFromMenu = async () => {
+    if (!slotMenu) return;
+    const { day, minutes } = slotMenu;
+    setSlotMenu(null);
+    // Deals need a plan (user 11-05)
+    if (!ensureCanPostDeals()) return;
+    const date = day.format("YYYY-MM-DD");
+    const time = `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
+    const staffParam =
+      staffFilterId !== "all" ? { staff_id: String(staffFilterId) } : {};
+
+    const hours = await Promise.race([
+      loadDealHours(),
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), 4000)),
+    ]);
+    // No hours (offline / slow) → let the Post a Deal screen check it.
+    const now = hours ? salonNow(null, hours.timezone) : null;
+    const problem =
+      hours && now
+        ? slotProblem(
+            {
+              date,
+              time,
+              hours,
+              now,
+              staffId: staffFilterId !== "all" ? Number(staffFilterId) : null,
+              staffName:
+                staffOptions.find((o) => o.staffId === staffFilterId)?.name ??
+                null,
+            },
+            t,
+          )
+        : null;
+
+    if (!problem) {
+      router.push({
+        pathname: "/(main)/postDeal" as any,
+        params: { date, time, ...staffParam },
+      });
+      return;
+    }
+    Alert.alert(
+      t("sdSlotCantPostTitle", { time: formatSlotTime(time) }),
+      `${problem}\n\n${t("sdSlotCalendarHint")}`,
+      [
+        { text: t("cancel"), style: "cancel" },
+        {
+          text: t("sdPickAnotherTime"),
+          onPress: () =>
+            router.push({
+              pathname: "/(main)/postDeal" as any,
+              params: {
+                // A passed day isn't in the date strip — start on today.
+                ...(now && date >= now.day ? { date } : {}),
+                ...staffParam,
+              },
+            }),
+        },
+      ],
+    );
   };
 
   const openTimeOffFromMenu = () => {
@@ -3309,21 +3400,7 @@ export default function CalendarScreen() {
                   {isOwner && (
                     <TouchableOpacity
                       style={styles.slotMenuRow}
-                      onPress={() => {
-                        if (!slotMenu) return;
-                        const { day, minutes } = slotMenu;
-                        setSlotMenu(null);
-                        // Deals need a plan (user 11-05)
-                        if (!ensureCanPostDeals()) return;
-                        router.push({
-                          pathname: "/(main)/postDeal" as any,
-                          params: {
-                            date: day.format("YYYY-MM-DD"),
-                            time: `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`,
-                            ...(staffFilterId !== "all" ? { staff_id: String(staffFilterId) } : {}),
-                          },
-                        });
-                      }}
+                      onPress={openPostDealFromMenu}
                       activeOpacity={0.75}
                       accessibilityRole="button"
                     >

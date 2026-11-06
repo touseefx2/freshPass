@@ -41,6 +41,8 @@ import {
   fetchOwnerBookingStaff,
   fetchOwnerBookingServices,
   fetchOwnerFreeTimes,
+  fetchOwnerBusinessHours,
+  type OwnerBusinessHours,
   type OwnerBookingStaff,
   type OwnerBookingService,
 } from "@/src/services/ownerBookingService";
@@ -48,6 +50,12 @@ import { createSlotOffer } from "@/src/services/slotOfferService";
 import { resolveApiImageUrl } from "@/src/utils/media";
 import { resetToDashboardHome } from "@/src/utils/navigation";
 import { isSoloSubscription } from "@/src/state/slices/userSlice";
+import { formatSlotTime, slotProblem } from "@/src/utils/dealSlotCheck";
+import {
+  parseSalonClock,
+  salonNow,
+  type SalonClock,
+} from "@/src/utils/salonTimezone";
 
 type StepKey = "service" | "staff" | "time" | "price" | "preview";
 
@@ -371,6 +379,39 @@ const createStyles = (theme: Theme) =>
       color: theme.lightGreen5,
       textAlign: "center",
       marginTop: moderateHeightScale(8),
+    },    slotProblemBox: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: moderateWidthScale(10),
+      backgroundColor: theme.orangeBrown015,
+      borderWidth: 1,
+      borderColor: theme.orangeBrown30,
+      borderRadius: moderateWidthScale(12),
+      padding: moderateWidthScale(12),
+      marginBottom: moderateHeightScale(14),
+    },
+    slotProblemTitle: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontBold,
+      color: theme.orangeBrownText,
+      marginBottom: moderateHeightScale(4),
+    },
+    slotProblemText: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontRegular,
+      color: theme.darkGreen,
+      lineHeight: moderateHeightScale(19),
+    },
+    previewTimeRight: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(10),
+    },
+    previewChange: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontBold,
+      color: theme.selectCard,
+      textDecorationLine: "underline",
     },
   });
 
@@ -416,6 +457,17 @@ export default function PostDealScreen() {
   // Time slots
   const [freeTimes, setFreeTimes] = useState<string[]>([]);
   const [timesLoading, setTimesLoading] = useState(false);
+  /** Which date|service|staff `freeTimes` belongs to (stale list ≠ ready) */
+  const [timesFor, setTimesFor] = useState("");
+  const [salonClock, setSalonClock] = useState<SalonClock | null>(null);
+  const [hours, setHours] = useState<OwnerBusinessHours | null>(null);
+
+  // Time tapped on the calendar: skip the time step when it's free for the
+  // picked service; otherwise show the step with the reason (client 11-06).
+  const presetTime = params.time ?? null;
+  const [presetProblem, setPresetProblem] = useState<string | null>(null);
+  /** "Change" on preview brings the time step back */
+  const [forceTimeStep, setForceTimeStep] = useState(false);
 
   const loadInitial = useCallback(async () => {
     if (!businessId) {
@@ -432,11 +484,14 @@ export default function PostDealScreen() {
             setTimeout(() => rej(new Error("timeout")), 10_000),
           ),
         ]);
-      const [staff, services] = await Promise.all([
+      const [staff, services, hoursRes] = await Promise.all([
         // Solo owners still have their own staff row — slots need its id.
         withTimeout(fetchOwnerBookingStaff(businessId)),
         withTimeout(fetchOwnerBookingServices(businessId)),
+        // Only explains a refused calendar time — never blocks the flow.
+        withTimeout(fetchOwnerBusinessHours(businessId)).catch(() => null),
       ]);
+      setHours(hoursRes);
       setStaffList(staff);
       setServiceList(services);
       const pre =
@@ -458,11 +513,14 @@ export default function PostDealScreen() {
 
   useEffect(() => { loadInitial(); }, [loadInitial]);
 
+  const timesKey = `${selectedDate}|${selectedService?.id ?? ""}|${selectedStaff?.id ?? ""}`;
+
   // Load free times when service + staff + date are set
   useEffect(() => {
     if (!selectedService || !selectedDate || !businessId) return;
     if (staffList.length > 0 && !selectedStaff) return;
     let active = true;
+    const key = timesKey;
     setTimesLoading(true);
     fetchOwnerFreeTimes({
       businessId,
@@ -470,28 +528,42 @@ export default function PostDealScreen() {
       staffId: selectedStaff?.id,
       serviceIds: [selectedService.id],
     })
-      .then(({ times }) => {
-        if (active) setFreeTimes(times);
+      .then(({ times, now }) => {
+        if (!active) return;
+        setFreeTimes(times);
+        setSalonClock(parseSalonClock(now));
+        setTimesFor(key);
       })
       .catch((err) => {
         Logger.error("PostDeal: free times failed", err);
-        if (active) setFreeTimes([]);
+        if (!active) return;
+        setFreeTimes([]);
+        setTimesFor(key);
       })
       .finally(() => {
         if (active) setTimesLoading(false);
       });
     return () => { active = false; };
+    // timesKey is derived from date/service/staff below
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [businessId, staffList.length, selectedDate, selectedService, selectedStaff]);
+
+  const timesReady = !timesLoading && timesFor === timesKey;
+
+  const showTimeStep = !presetTime || !!presetProblem || forceTimeStep;
 
   const steps = useMemo<StepKey[]>(() => {
     const s: StepKey[] = ["service"];
     if (!isSolo && staffList.length > 1) s.push("staff");
-    s.push("time", "price", "preview");
+    if (showTimeStep) s.push("time");
+    s.push("price", "preview");
     return s;
-  }, [isSolo, staffList.length]);
+  }, [isSolo, staffList.length, showTimeStep]);
 
   const stepIndex = steps.indexOf(step);
   const stepNumber = stepIndex + 1;
+  /** Next goes straight to price on the calendar time: check it first */
+  const checksPresetOnNext = !showTimeStep && steps[stepIndex + 1] === "price";
 
   const closesAtTime = useMemo(() => {
     if (!selectedTime || closesBeforeMinutes == null) return "";
@@ -524,11 +596,12 @@ export default function PostDealScreen() {
   const canNext = useMemo(() => {
     switch (step) {
       case "service":
-        return !!selectedService;
+        return !!selectedService && (!checksPresetOnNext || timesReady);
       case "staff":
-        return !!selectedStaff;
+        return !!selectedStaff && (!checksPresetOnNext || timesReady);
       case "time":
-        return !!selectedTime;
+        // Only a time that is in the list — a hidden pick can't slip through
+        return !!selectedTime && timesReady && freeTimes.includes(selectedTime);
       case "price": {
         if (!closesAtTime) return false;
         if (offerPriceText.trim() !== "" && !Number.isFinite(Number(offerPriceText))) return false;
@@ -539,9 +612,49 @@ export default function PostDealScreen() {
       default:
         return false;
     }
-  }, [step, selectedService, selectedStaff, selectedTime, closesAtTime, offerPriceText]);
+  }, [
+    step,
+    selectedService,
+    selectedStaff,
+    selectedTime,
+    closesAtTime,
+    offerPriceText,
+    checksPresetOnNext,
+    timesReady,
+    freeTimes,
+  ]);
 
   const goNext = () => {
+    if (checksPresetOnNext && presetTime && params.date) {
+      if (!timesReady) return;
+      if (selectedDate === params.date && freeTimes.includes(presetTime)) {
+        setSelectedTime(presetTime);
+        setStep("price");
+        return;
+      }
+      // Not free for this service: say why, clear the pick, show the time step.
+      const reason =
+        slotProblem(
+          {
+            date: params.date,
+            time: presetTime,
+            hours,
+            now: salonNow(salonClock, hours?.timezone),
+            staffId: selectedStaff?.id,
+            staffName: selectedStaff?.name,
+            serviceName: selectedService?.name,
+            durationMinutes: selectedService?.durationMinutes,
+          },
+          t,
+        ) ??
+        (selectedStaff && staffList.length > 1
+          ? t("sdSlotBookedStaff", { name: selectedStaff.name })
+          : t("sdSlotBooked"));
+      setPresetProblem(reason);
+      setSelectedTime(null);
+      setStep("time");
+      return;
+    }
     const next = steps[stepIndex + 1];
     if (next) setStep(next);
   };
@@ -746,6 +859,26 @@ export default function PostDealScreen() {
           {step === "time" && (
             <>
               <Text style={styles.stepTitle}>{t("sdPickTime")}</Text>
+              {presetProblem && presetTime && selectedDate === params.date && !selectedTime ? (
+                <View style={styles.slotProblemBox}>
+                  <MaterialIcons
+                    name="event-busy"
+                    size={iconScale(20)}
+                    color={theme.selectCard}
+                  />
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.slotProblemTitle}>
+                      {t("sdSlotNotFreeTitle", {
+                        time: formatSlotTime(presetTime),
+                        service: selectedService?.name ?? "",
+                      })}
+                    </Text>
+                    <Text style={styles.slotProblemText}>
+                      {presetProblem} {t("sdSlotPickAnother")}
+                    </Text>
+                  </View>
+                </View>
+              ) : null}
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
@@ -917,7 +1050,21 @@ export default function PostDealScreen() {
                 <View style={styles.divider} />
                 <View style={styles.previewRow}>
                   <Text style={styles.previewLabel}>{t("sdTime")}</Text>
-                  <Text style={styles.previewValue}>{selectedTime}</Text>
+                  <View style={styles.previewTimeRight}>
+                    <Text style={styles.previewValue}>
+                      {selectedTime ? formatSlotTime(selectedTime) : ""}
+                    </Text>
+                    <TouchableOpacity
+                      onPress={() => {
+                        setForceTimeStep(true);
+                        setStep("time");
+                      }}
+                      activeOpacity={0.75}
+                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    >
+                      <Text style={styles.previewChange}>{t("change")}</Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
                 <View style={styles.divider} />
                 <View style={styles.previewRow}>
