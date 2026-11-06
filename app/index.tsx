@@ -2,7 +2,7 @@ import { router } from "expo-router";
 import { MAIN_ROUTES } from "@/src/constant/routes";
 import { resetToDashboardHome } from "@/src/utils/navigation";
 import { useAppSelector, useTheme } from "@/src/hooks/hooks";
-import { ImageBackground, StatusBar, StyleSheet } from "react-native";
+import { StatusBar, StyleSheet, View } from "react-native";
 import { Theme } from "@/src/theme/colors";
 import LottieView from "lottie-react-native";
 import { IMAGES } from "@/src/constant/images";
@@ -22,10 +22,6 @@ import {
 // Animation is ~3.8s and can take ~1s to load on Android, so keep this well above 5s.
 const SPLASH_FALLBACK_TIMEOUT_MS = 7000;
 
-// Client 11-06: cream/gold background + bigger green/orange logo.
-// Set to false to go back to the old dark green splash (white logo).
-const USE_LIGHT_SPLASH = true;
-
 // Memoized so splash re-renders (user state updating at startup) never
 // re-send the animation JSON to LottieView (that resets it on Android).
 const SplashLogo = memo(function SplashLogo({
@@ -37,7 +33,7 @@ const SplashLogo = memo(function SplashLogo({
 }) {
   return (
     <LottieView
-      source={USE_LIGHT_SPLASH ? IMAGES.welcomeLogoLight : IMAGES.welcomeLogo}
+      source={IMAGES.welcomeLogo}
       autoPlay
       loop={false}
       onAnimationFinish={onFinish}
@@ -106,22 +102,14 @@ export default function Index() {
   }, []);
 
   return (
-    <ImageBackground
-      source={USE_LIGHT_SPLASH ? IMAGES.splashBackground : undefined}
-      resizeMode="cover"
-      fadeDuration={0}
-      style={styles.container}
-    >
+    <View style={styles.container}>
       <StatusBar
-        barStyle={USE_LIGHT_SPLASH ? "dark-content" : "light-content"}
-        backgroundColor={USE_LIGHT_SPLASH ? "transparent" : theme.darkGreen}
+        barStyle="light-content"
+        backgroundColor={theme.darkGreen}
         translucent
       />
-      <SplashLogo
-        style={USE_LIGHT_SPLASH ? styles.logoLarge : styles.logo}
-        onFinish={onSplashFinish}
-      />
-    </ImageBackground>
+      <SplashLogo style={styles.logo} onFinish={onSplashFinish} />
+    </View>
   );
 }
 
@@ -129,16 +117,12 @@ const createStyles = (theme: Theme) =>
   StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: USE_LIGHT_SPLASH ? "#FBF1E8" : theme.darkGreen,
+      backgroundColor: theme.darkGreen,
       alignItems: "center",
       justifyContent: "center",
     },
     logo: {
       width: moderateWidthScale(500),
       height: moderateWidthScale(500),
-    },
-    logoLarge: {
-      width: moderateWidthScale(900),
-      height: moderateWidthScale(900),
     },
   });
