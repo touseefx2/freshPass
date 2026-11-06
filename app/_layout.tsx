@@ -122,10 +122,10 @@ export default function RootLayout() {
               }
             }}
           >
-            <StripeProvider
-              key={stripePublishableKey || "stripe-pending"}
-              publishableKey={stripePublishableKey}
-            >
+            {/* No `key` here: changing it when the remote key arrived remounted the
+                whole app ~1s after launch (splash logo animation restarted).
+                StripeProvider re-runs initStripe itself when publishableKey changes. */}
+            <StripeProvider publishableKey={stripePublishableKey}>
               <PortalProvider>
                 <I18nextProvider i18n={i18n}>
                   <NotificationProvider>

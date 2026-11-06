@@ -7,7 +7,7 @@ import { Theme } from "@/src/theme/colors";
 import LottieView from "lottie-react-native";
 import { IMAGES } from "@/src/constant/images";
 import { moderateWidthScale } from "@/src/theme/dimensions";
-import { useEffect, useMemo, useRef } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef } from "react";
 import Logger from "@/src/services/logger";
 import {
   consumePendingNotificationNavigation,
@@ -19,11 +19,36 @@ import {
 // onAnimationFailure on some devices (seen intermittently on certain
 // Android/iOS builds), which would otherwise leave the user stuck on the
 // splash screen forever.
-const SPLASH_FALLBACK_TIMEOUT_MS = 4000;
+// Animation is ~3.8s and can take ~1s to load on Android, so keep this well above 5s.
+const SPLASH_FALLBACK_TIMEOUT_MS = 7000;
 
 // Client 11-06: cream/gold background + bigger green/orange logo.
 // Set to false to go back to the old dark green splash (white logo).
 const USE_LIGHT_SPLASH = true;
+
+// Memoized so splash re-renders (user state updating at startup) never
+// re-send the animation JSON to LottieView (that resets it on Android).
+const SplashLogo = memo(function SplashLogo({
+  style,
+  onFinish,
+}: {
+  style: any;
+  onFinish: () => void;
+}) {
+  return (
+    <LottieView
+      source={USE_LIGHT_SPLASH ? IMAGES.welcomeLogoLight : IMAGES.welcomeLogo}
+      autoPlay
+      loop={false}
+      onAnimationFinish={onFinish}
+      onAnimationFailure={(error) => {
+        Logger.error("Animation failed:", error);
+        onFinish();
+      }}
+      style={style}
+    />
+  );
+});
 
 export default function Index() {
   const { colors } = useTheme();
@@ -64,9 +89,16 @@ export default function Index() {
     }
   };
 
+  // Always run the latest handleNavigation (fresh user state) from a stable callback
+  const handleNavigationRef = useRef(handleNavigation);
+  handleNavigationRef.current = handleNavigation;
+  const onSplashFinish = useCallback(() => {
+    void handleNavigationRef.current();
+  }, []);
+
   useEffect(() => {
     const fallbackTimer = setTimeout(
-      handleNavigation,
+      onSplashFinish,
       SPLASH_FALLBACK_TIMEOUT_MS,
     );
     return () => clearTimeout(fallbackTimer);
@@ -77,6 +109,7 @@ export default function Index() {
     <ImageBackground
       source={USE_LIGHT_SPLASH ? IMAGES.splashBackground : undefined}
       resizeMode="cover"
+      fadeDuration={0}
       style={styles.container}
     >
       <StatusBar
@@ -84,16 +117,9 @@ export default function Index() {
         backgroundColor={USE_LIGHT_SPLASH ? "transparent" : theme.darkGreen}
         translucent
       />
-      <LottieView
-        source={USE_LIGHT_SPLASH ? IMAGES.welcomeLogoLight : IMAGES.welcomeLogo}
-        autoPlay
-        loop={false}
-        onAnimationFinish={handleNavigation}
-        onAnimationFailure={(error) => {
-          Logger.error("Animation failed:", error);
-          handleNavigation();
-        }}
+      <SplashLogo
         style={USE_LIGHT_SPLASH ? styles.logoLarge : styles.logo}
+        onFinish={onSplashFinish}
       />
     </ImageBackground>
   );
