@@ -117,6 +117,8 @@ export const themes = {
     // Gold text on tileGoldCream (≈5.5:1) and solid pale red pill on the green card
     goldTextDark: "#6E5810",
     lightRedSolid: "#F8DEDB",
+    // Stripe brand word in "Secure payment powered by Stripe" (Master Classes publish)
+    stripePurple: "#635BFF",
   },
   dark: {},
   blue: {},

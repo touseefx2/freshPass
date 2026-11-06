@@ -334,6 +334,20 @@ export default function NotificationsScreen() {
         return "notification";
       case "appointment_checkout_failed":
         return "payment";
+      // Master Classes
+      case "class_enrollment_confirmed":
+      case "class_rescheduled":
+      case "class_reminder":
+      case "master_class_listing_ending":
+      case "master_class_listing_ended":
+        return "schedule";
+      case "class_cancelled":
+      case "class_enrollment_refunded":
+      case "master_class_refund_failed":
+        return "payment";
+      case "master_class_published":
+      case "master_class_new_enrollment":
+        return "completed";
     }
 
     if (type === "message") {

@@ -158,4 +158,14 @@ export const createStyles = (theme: Theme) =>
       gap: moderateHeightScale(2),
       flexShrink: 1,
     },
+    // Deals row with master classes: business loading / error shown after
+    // the class cards (same height as a card, so the row never jumps)
+    classesTrailingState: {
+      height: heightScale(132),
+      minWidth: widthScale(72),
+      paddingHorizontal: moderateWidthScale(12),
+      alignItems: "center",
+      justifyContent: "center",
+      gap: moderateHeightScale(10),
+    },
   });

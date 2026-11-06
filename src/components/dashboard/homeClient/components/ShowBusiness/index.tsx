@@ -17,6 +17,9 @@ import { PlatformVerifiedStarIcon, StarIconSmall } from "@/assets/icons";
 import RetryButton from "@/src/components/retryButton";
 import { HiringCornerBadge } from "@/src/components/jobs/jobBadges";
 import { createStyles } from "./styles";
+import ClassDealCard from "@/src/components/masterClasses/ClassDealCard";
+import type { MasterClass } from "@/src/types/masterClass";
+import { mixDealsWithClasses } from "@/src/utils/masterClassHelpers";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -36,13 +39,18 @@ interface ShowBusinessProps {
   businessesError: boolean;
   verifiedSalons: VerifiedSalon[];
   onRetry: () => void;
+  /** FreshPass Deals only: listed master classes mixed into the row. */
+  classes?: MasterClass[];
 }
+
+const NO_CLASSES: MasterClass[] = [];
 
 export default function ShowBusiness({
   businessesLoading,
   businessesError,
   verifiedSalons,
   onRetry,
+  classes = NO_CLASSES,
 }: ShowBusinessProps) {
   const { colors } = useTheme();
   const { t } = useTranslation();
@@ -50,6 +58,76 @@ export default function ShowBusiness({
   const styles = useMemo(() => createStyles(theme), [colors]);
   const router = useRouter();
   const hasHiring = verifiedSalons.some((salon) => salon.isHiring);
+  const hasClasses = classes.length > 0;
+  const dealItems = useMemo(
+    () => (hasClasses ? mixDealsWithClasses(verifiedSalons, classes) : []),
+    [hasClasses, verifiedSalons, classes],
+  );
+
+  const renderSalon = (salon: VerifiedSalon) => (
+    <TouchableOpacity
+      onPress={() => {
+        router.push({
+          pathname: "/(main)/businessDetail",
+          params: { business_id: salon.id.toString() },
+        } as any);
+      }}
+      activeOpacity={0.9}
+      key={salon.id}
+      style={[
+        styles.verifiedSalonCardNew,
+        salon.isHiring && styles.verifiedSalonCardHiring,
+      ]}
+    >
+      {salon.isHiring ? <HiringCornerBadge /> : null}
+      <AppImage
+        uri={salon.image}
+        style={styles.verifiedSalonImage}
+        iconSize={widthScale(36)}
+        iconColor={theme.white50}
+      />
+
+      <View style={styles.verifiedSalonContent}>
+        <View style={styles.platformVerifiedBadge}>
+          <PlatformVerifiedStarIcon
+            width={widthScale(10)}
+            height={heightScale(10)}
+          />
+          <Text style={styles.platformVerifiedText}>
+            Platform verified
+          </Text>
+        </View>
+        <View style={styles.businessInfoContainer}>
+          <Text
+            numberOfLines={1}
+            style={styles.verifiedSalonBusinessName}
+          >
+            {salon.businessName}
+          </Text>
+          {!!salon.ownerName && (
+            <Text numberOfLines={1} style={styles.verifiedSalonOwnerName}>
+              {t("ownedBy", { name: salon.ownerName })}
+            </Text>
+          )}
+          <Text numberOfLines={1} style={styles.verifiedSalonAddress}>
+            {salon.address}
+          </Text>
+        </View>
+        <View style={styles.verifiedSalonBottomRow}>
+          <View style={styles.verifiedSalonRatingButton}>
+            <StarIconSmall
+              width={widthScale(12)}
+              height={heightScale(12)}
+              color={theme.orangeBrown}
+            />
+            <Text style={styles.verifiedSalonRatingText}>
+              {salon.rating || 0}/ {salon.reviewCount || 0} reviews
+            </Text>
+          </View>
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
 
   return (
     <ScrollView
@@ -63,7 +141,7 @@ export default function ShowBusiness({
       ]}
       nestedScrollEnabled={true}
     >
-      {businessesLoading && verifiedSalons.length <= 0 ? (
+      {businessesLoading && verifiedSalons.length <= 0 && !hasClasses ? (
         <View
           style={[
             styles.loadingContainer,
@@ -74,7 +152,7 @@ export default function ShowBusiness({
         >
           <ActivityIndicator size="large" color={theme.primary} />
         </View>
-      ) : businessesError ? (
+      ) : businessesError && !hasClasses ? (
         <View
           style={[
             styles.errorContainer,
@@ -86,71 +164,33 @@ export default function ShowBusiness({
           <Text style={styles.errorText}>Failed to load businesses</Text>
           <RetryButton onPress={onRetry} loading={businessesLoading} />
         </View>
-      ) : verifiedSalons.length > 0 ? (
-        verifiedSalons.map((salon) => (
-          <TouchableOpacity
-            onPress={() => {
-              router.push({
-                pathname: "/(main)/businessDetail",
-                params: { business_id: salon.id.toString() },
-              } as any);
-            }}
-            activeOpacity={0.9}
-            key={salon.id}
-            style={[
-              styles.verifiedSalonCardNew,
-              salon.isHiring && styles.verifiedSalonCardHiring,
-            ]}
-          >
-            {salon.isHiring ? <HiringCornerBadge /> : null}
-            <AppImage
-              uri={salon.image}
-              style={styles.verifiedSalonImage}
-              iconSize={widthScale(36)}
-              iconColor={theme.white50}
-            />
-
-            <View style={styles.verifiedSalonContent}>
-              <View style={styles.platformVerifiedBadge}>
-                <PlatformVerifiedStarIcon
-                  width={widthScale(10)}
-                  height={heightScale(10)}
-                />
-                <Text style={styles.platformVerifiedText}>
-                  Platform verified
-                </Text>
-              </View>
-              <View style={styles.businessInfoContainer}>
-                <Text
-                  numberOfLines={1}
-                  style={styles.verifiedSalonBusinessName}
-                >
-                  {salon.businessName}
-                </Text>
-                {!!salon.ownerName && (
-                  <Text numberOfLines={1} style={styles.verifiedSalonOwnerName}>
-                    {t("ownedBy", { name: salon.ownerName })}
-                  </Text>
-                )}
-                <Text numberOfLines={1} style={styles.verifiedSalonAddress}>
-                  {salon.address}
-                </Text>
-              </View>
-              <View style={styles.verifiedSalonBottomRow}>
-                <View style={styles.verifiedSalonRatingButton}>
-                  <StarIconSmall
-                    width={widthScale(12)}
-                    height={heightScale(12)}
-                    color={theme.orangeBrown}
-                  />
-                  <Text style={styles.verifiedSalonRatingText}>
-                    {salon.rating || 0}/ {salon.reviewCount || 0} reviews
-                  </Text>
-                </View>
-              </View>
+      ) : hasClasses ? (
+        <>
+          {dealItems.map((entry) =>
+            entry.kind === "business" ? (
+              renderSalon(entry.item)
+            ) : (
+              <ClassDealCard
+                key={`class-${entry.item.id}`}
+                masterClass={entry.item}
+              />
+            ),
+          )}
+          {businessesLoading && verifiedSalons.length <= 0 ? (
+            <View style={styles.classesTrailingState}>
+              <ActivityIndicator size="small" color={theme.primary} />
             </View>
-          </TouchableOpacity>
-        ))
+          ) : businessesError ? (
+            <View style={styles.classesTrailingState}>
+              <Text style={styles.errorText}>
+                {t("failedToLoadBusinesses")}
+              </Text>
+              <RetryButton onPress={onRetry} loading={businessesLoading} />
+            </View>
+          ) : null}
+        </>
+      ) : verifiedSalons.length > 0 ? (
+        verifiedSalons.map(renderSalon)
       ) : (
         <View
           style={[

@@ -48,6 +48,8 @@ import HomeSlotOffersSection from "@/src/components/homeSlotOffersSection";
 import FreshyTryOnBanner from "@/src/components/FreshyTryOnBanner";
 import MarketplaceBanner from "@/src/components/marketplace/MarketplaceBanner";
 import { fetchFollowing } from "@/src/services/followService";
+import { listPublic as listDealClasses } from "@/src/services/masterClassService";
+import type { MasterClass } from "@/src/types/masterClass";
 import { setGuestModeModalVisible } from "@/src/state/slices/generalSlice";
 import {
   getDefaultAvatarImage,
@@ -568,6 +570,9 @@ export default function DashboardContent() {
   >([]);
   const [dealsLoading, setDealsLoading] = useState(false);
   const [dealsError, setDealsError] = useState(false);
+  // Master classes listed in FreshPass Deals (mixed into the same row)
+  const [dealClasses, setDealClasses] = useState<MasterClass[]>([]);
+  const dealClassesSeqRef = useRef(0);
   const [favoriteBusinesses, setFavoriteBusinesses] = useState<
     FavoriteBusiness[]
   >([]);
@@ -743,6 +748,25 @@ export default function DashboardContent() {
     } finally {
       setDealsLoading(false);
     }
+  };
+
+  // Same filters as fetchBusinessesDeals (none today). A failure never
+  // touches the business row: the classes simply stay as they were.
+  const fetchDealClasses = async () => {
+    const seq = ++dealClassesSeqRef.current;
+    try {
+      const { items } = await listDealClasses();
+      if (seq !== dealClassesSeqRef.current) return;
+      setDealClasses(items.filter((item) => item && item.id != null));
+    } catch (error) {
+      if (isRequestCanceled(error)) return;
+      Logger.error("Failed to fetch deal classes:", error);
+    }
+  };
+
+  const retryDeals = () => {
+    fetchBusinessesDeals();
+    fetchDealClasses();
   };
 
   const fetchBusinesses = async () => {
@@ -1025,6 +1049,7 @@ export default function DashboardContent() {
         fetchCategories();
         fetchBusinesses();
         fetchBusinessesDeals();
+        fetchDealClasses();
         fetchProTipCards();
       }
     }, []),
@@ -1094,14 +1119,18 @@ export default function DashboardContent() {
         </View>
       )}
 
-      {(verifiedSalonsDeals.length > 0 || dealsLoading || dealsError) && (
+      {(verifiedSalonsDeals.length > 0 ||
+        dealClasses.length > 0 ||
+        dealsLoading ||
+        dealsError) && (
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>{t("freshPassDeals")}</Text>
           <ShowBusiness
             businessesLoading={dealsLoading}
             businessesError={dealsError}
             verifiedSalons={verifiedSalonsDeals}
-            onRetry={fetchBusinessesDeals}
+            onRetry={retryDeals}
+            classes={dealClasses}
           />
         </View>
       )}

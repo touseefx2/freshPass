@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
@@ -8,11 +8,13 @@ import {
   moderateHeightScale,
   moderateWidthScale,
   widthScale,
+  heightScale,
   iconScale,
 } from "@/src/theme/dimensions";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import { IMAGES } from "@/src/constant/images";
 
 type StackHeaderProps = {
   title: string;
@@ -24,6 +26,8 @@ type StackHeaderProps = {
   showLine?: boolean;
   /** When true, uses darkGreen → darkGreenLight gradient instead of solid fill */
   useGradient?: boolean;
+  /** When true, shows the FRESHPASS logo centered instead of the title */
+  centerLogo?: boolean;
 };
 
 const createStyles = (theme: Theme) =>
@@ -57,6 +61,22 @@ const createStyles = (theme: Theme) =>
       color: theme.white,
       textAlign: "center",
     },
+    headerWithLogo: {
+      minHeight: heightScale(36),
+    },
+    centerLogoOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    centerLogoImage: {
+      width: widthScale(156),
+      height: heightScale(36),
+      resizeMode: "contain",
+    },
+    centerLogoSpacer: {
+      flex: 1,
+    },
     line: {
       width: "100%",
       height: 1.1,
@@ -72,6 +92,7 @@ export default function StackHeader({
   rightAccessibilityLabel,
   showLine = true,
   useGradient = false,
+  centerLogo = false,
 }: StackHeaderProps) {
   const { colors } = useTheme();
   const theme = colors as Theme;
@@ -88,7 +109,17 @@ export default function StackHeader({
   };
 
   const headerContent = (
-    <View style={styles.header}>
+    <View style={centerLogo ? [styles.header, styles.headerWithLogo] : styles.header}>
+      {centerLogo ? (
+        <View style={styles.centerLogoOverlay} pointerEvents="none">
+          <Image
+            source={IMAGES.logo3d}
+            style={styles.centerLogoImage}
+            accessibilityRole="image"
+            accessibilityLabel={title || "FreshPass"}
+          />
+        </View>
+      ) : null}
       <TouchableOpacity
         activeOpacity={0.7}
         onPress={handleBack}
@@ -103,7 +134,11 @@ export default function StackHeader({
           color={theme.white}
         />
       </TouchableOpacity>
-      <Text style={styles.headerTitle}>{title}</Text>
+      {centerLogo ? (
+        <View style={styles.centerLogoSpacer} />
+      ) : (
+        <Text style={styles.headerTitle}>{title}</Text>
+      )}
       {rightIcon ? (
         onRightPress ? (
           <TouchableOpacity

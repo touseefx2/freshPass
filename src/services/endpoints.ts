@@ -1310,3 +1310,55 @@ export const slotOfferEndpoints = {
   },
   detail: (id: number | string) => `/api/slot-offers/${id}`,
 };
+
+// ── Master Classes (backend guide 13) ───────────────────────────────
+
+function mcQuery(params: Record<string, unknown>): string {
+  const q = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value === undefined || value === null || value === "") return;
+    if (Array.isArray(value)) {
+      if (value.length) q.append(key, value.join(","));
+      return;
+    }
+    q.append(key, String(value));
+  });
+  const query = q.toString();
+  return query ? `?${query}` : "";
+}
+
+export const masterClassEndpoints = {
+  /** Pro: own classes per tab, with `counts`. */
+  mine: (params: { tab: string; page?: number; per_page?: number }) =>
+    `/api/master-classes/mine${mcQuery(params)}`,
+  create: `/api/master-classes`,
+  byId: (id: number | string) => `/api/master-classes/${id}`,
+  duplicate: (id: number | string) => `/api/master-classes/${id}/duplicate`,
+  cancel: (id: number | string) => `/api/master-classes/${id}/cancel`,
+  enrollments: (
+    id: number | string,
+    params: { page?: number; per_page?: number } = {},
+  ) => `/api/master-classes/${id}/enrollments${mcQuery(params)}`,
+  /** Public: classes listed in Deals right now (category_ids comma-separated). */
+  list: (
+    params: {
+      latitude?: number;
+      longitude?: number;
+      radius_km?: number;
+      category_ids?: number[];
+      page?: number;
+      per_page?: number;
+    } = {},
+  ) => `/api/master-classes${mcQuery(params)}`,
+  /** $50 listing fee (publish or renew), platform account. */
+  listingPaymentSheet: `/api/payment-sheet/class-listing`,
+  /** Student seat, direct charge on the pro's account. */
+  enrollmentPaymentSheet: `/api/payment-sheet/class-enrollment`,
+};
+
+export const classEnrollmentEndpoints = {
+  list: (params: { status?: string; page?: number; per_page?: number } = {}) =>
+    `/api/class-enrollments${mcQuery(params)}`,
+  byId: (id: number | string) => `/api/class-enrollments/${id}`,
+  cancel: (id: number | string) => `/api/class-enrollments/${id}/cancel`,
+};

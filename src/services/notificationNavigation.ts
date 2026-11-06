@@ -94,6 +94,19 @@ export type NotificationSubType =
   // FreshPass flagged / removed / restored a Marketplace product (type "business_product", data.action)
   | "product_moderated"
   | "business_job_application"
+  // Master Classes: pro (type "master_class") / student (type "class_enrollment")
+  | "master_class_published"
+  | "master_class_listing_ending"
+  | "master_class_listing_ended"
+  | "master_class_new_enrollment"
+  | "master_class_student_cancelled"
+  | "master_class_moderated"
+  | "master_class_refund_failed"
+  | "class_enrollment_confirmed"
+  | "class_rescheduled"
+  | "class_cancelled"
+  | "class_enrollment_refunded"
+  | "class_reminder"
   | "moderation_warning"
   | "posting_suspended"
   | "posting_restored"
@@ -298,6 +311,9 @@ function openOwnerReelsList(
  * - type "business_order" (owner: new paid order / refunds / refund requests) → owner order screen
  * - type "business_product" (owner: low / out of stock / product_moderated) → edit product; products list if deleted
  * - type "business_job" (owner: new job application) → that post's manage screen with its applicants
+ * - type "master_class" (pro, business mode; master_class_id / model_id = class) → Master Classes class detail;
+ *   subType master_class_listing_ending → renew payment screen
+ * - type "class_enrollment" (student, customer mode; model_id = enrollment) → My classes enrollment screen
  * - type "moderation" (push: subType only): warning / posting_suspended + reel_id → reelsFeed (404 → stay);
  *   account_suspended → sign out if still signed in; restored → nothing
  * - type "staff_removed" (removed from a team; model_id = old business, never opened): signed out → sign-in as
@@ -1194,6 +1210,56 @@ export function navigateFromNotificationData(
       "/(main)/dashboard/(account)/(businessProfileSettings)/jobPosts" as any,
     );
     return;
+  }
+
+  // Pro (business mode): class published / listing ending or ended / new
+  // enrollment / student cancelled / moderated / refund failed → the class.
+  // The 3-day "listing ends soon" reminder opens the renew screen instead.
+  if (type === "master_class") {
+    const classId = pickNumber(data, "master_class_id", "model_id");
+    const userRole = store.getState().user.userRole;
+    if (classId != null && userRole === "business") {
+      if (subType === "master_class_listing_ending") {
+        router.push({
+          pathname: "/(main)/masterClasses/publish" as any,
+          params: { id: String(classId), mode: "renew" },
+        });
+      } else {
+        router.push({
+          pathname: "/(main)/masterClasses/detail" as any,
+          params: { id: String(classId) },
+        });
+      }
+      Logger.log("------>navigateFromNotificationData (master_class)", {
+        master_class_id: classId,
+        subType,
+      });
+      return;
+    }
+  }
+
+  // Student (customer mode): confirmed / rescheduled / cancelled / refunded /
+  // 24 h reminder → that enrollment (model_id is the enrollment id)
+  if (type === "class_enrollment") {
+    const enrollmentId = pickNumber(
+      data,
+      "model_id",
+      "class_enrollment_id",
+      "enrollment_id",
+    );
+    const userRole = store.getState().user.userRole;
+    if (enrollmentId != null && userRole === "customer") {
+      router.push({
+        pathname: "/(main)/classes/enrollment" as any,
+        params: { id: String(enrollmentId) },
+      });
+      Logger.log("------>navigateFromNotificationData (class_enrollment)", {
+        enrollment_id: enrollmentId,
+        master_class_id: data.master_class_id,
+        subType,
+      });
+      return;
+    }
   }
 
   // Owner: low / out of stock → edit product to restock; product_moderated

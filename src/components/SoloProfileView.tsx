@@ -9,6 +9,7 @@ import {
   View,
 } from "react-native";
 import { useTranslation } from "react-i18next";
+import { useRouter } from "expo-router";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
@@ -41,6 +42,7 @@ export type SoloRowKey =
   | "orders"
   | "hiring"
   | "myDeals"
+  | "masterClasses"
   | "socialMedia"
   | "cancellationPolicy"
   | "team"
@@ -183,6 +185,7 @@ export default function SoloProfileView({
   variant?: "solo" | "staff";
 }) {
   const isStaff = variant === "staff";
+  const router = useRouter();
   const { colors } = useTheme();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -396,6 +399,13 @@ export default function SoloProfileView({
       iconColor: theme.selectCard,
     },
     {
+      key: "masterClasses",
+      title: t("mcMasterClasses"),
+      subtitle: t("mcSoloRowSub"),
+      icon: "school-outline",
+      ...dark,
+    },
+    {
       key: "socialMedia",
       title: t("socialMediaTitle"),
       subtitle: t("soloSocialMediaSub"),
@@ -581,7 +591,12 @@ export default function SoloProfileView({
         <Section
           title={t("profileSectionBusiness")}
           rows={businessRows}
-          onRowPress={onRowPress}
+          onRowPress={(key) =>
+            // Opened here so the parent's row handler stays untouched
+            key === "masterClasses"
+              ? router.push("/(main)/masterClasses" as any)
+              : onRowPress(key)
+          }
           theme={theme}
           styles={styles}
         />

@@ -807,6 +807,8 @@ export default function AccountScreen() {
       router.push("/(main)/marketplace/saved" as any);
     } else if (key === "myJobApplications") {
       router.push("/(main)/jobs/myApplications" as any);
+    } else if (key === "myClasses") {
+      router.push("/(main)/classes/myClasses" as any);
     } else if (key === "myLooks") {
       router.push("/(main)/myLooks");
     } else if (key === "following") {
@@ -906,6 +908,8 @@ export default function AccountScreen() {
         return { name: "favorite-border", family: "material" };
       case "myJobApplications":
         return { name: "work-outline", family: "material" };
+      case "myClasses":
+        return { name: "school-outline", family: "community" };
       case "myLooks":
         return { name: "bookmark", family: "material" };
       case "following":
@@ -1118,6 +1122,10 @@ export default function AccountScreen() {
     ...(isCustomer && !isGuest
       ? [{ key: "myJobApplications", title: t("jobMyApplications") }]
       : []),
+    // Master classes the customer paid a seat for
+    ...(isCustomer && !isGuest
+      ? [{ key: "myClasses", title: t("mcMyClasses") }]
+      : []),
     ...(isCustomer
       ? [{ key: "subscriptions", title: t("memberships") }]
       : []),
@@ -1160,6 +1168,15 @@ export default function AccountScreen() {
           {rows.map((row, index) => {
             const isDelete = row.key === "delete";
             const iconMeta = getIconMeta(row.key);
+            // "My classes" is skipped in the colour cycle so the rows after
+            // it keep the icon colours they had before it was added
+            const classesBefore = rows
+              .slice(0, index)
+              .filter((r) => r.key === "myClasses").length;
+            const variantIndex =
+              row.key === "myClasses"
+                ? index - classesBefore + 1
+                : index - classesBefore;
             return (
               <ProfileSettingCard
                 key={row.key}
@@ -1172,7 +1189,7 @@ export default function AccountScreen() {
                 loading={isDelete && deleteLoading}
                 theme={theme}
                 styles={styles}
-                iconVariant={getIconVariant(index)}
+                iconVariant={getIconVariant(variantIndex)}
               />
             );
           })}

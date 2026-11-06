@@ -45,6 +45,7 @@ type SettingKey =
   | "mediaLibrary"
   | "aiTools"
   | "allAppointments"
+  | "masterClasses"
   | "myDeals"
   | "viewBusinessProfile";
 
@@ -372,6 +373,8 @@ export default function BusinessProfileSettingsScreen() {
       router.push("/(main)/myDeals" as any);
     } else if (key === "allAppointments") {
       router.push("/(main)/dashboard/(account)/allAppointments" as any);
+    } else if (key === "masterClasses") {
+      router.push("/(main)/masterClasses" as any);
     } else if (key === "affiliationRequests") {
       router.push("./affiliationRequests");
     } else if (key === "mediaLibrary") {
@@ -401,6 +404,10 @@ export default function BusinessProfileSettingsScreen() {
       ? [{ key: "team" as const, title: t("manageTeamTitle") }]
       : []),
     { key: "allAppointments", title: t("appointments") },
+    // Master Classes APIs are owner / Solo only (staff get 403)
+    ...(isBusinessOwner
+      ? [{ key: "masterClasses" as const, title: t("mcMasterClasses") }]
+      : []),
     ...(isBusinessOwner
       ? [{ key: "cancellationPolicy" as const, title: t("cancellationPolicy") }]
       : []),
@@ -445,6 +452,8 @@ export default function BusinessProfileSettingsScreen() {
         return { name: "account-group", family: "community", variant: "dark" };
       case "allAppointments":
         return { name: "event-note", family: "material", variant: "cream" };
+      case "masterClasses":
+        return { name: "school-outline", family: "community", variant: "dark" };
       case "cancellationPolicy":
         return { name: "policy", family: "material", variant: "cream" };
       case "socialMedia":
