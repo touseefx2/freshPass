@@ -51,13 +51,18 @@ import {
   type OwnerBookingStaff,
   type OwnerBookingService,
 } from "@/src/services/ownerBookingService";
-import { createSlotOffer } from "@/src/services/slotOfferService";
+import { createSlotOffer, fetchMySlotOffers } from "@/src/services/slotOfferService";
 import SlotOfferCard from "@/src/components/slotOffer/SlotOfferCard";
 import type { SlotOffer } from "@/src/types/slotOffer";
 import { resolveApiImageUrl } from "@/src/utils/media";
 import { resetToDashboardHome } from "@/src/utils/navigation";
 import { isSoloSubscription } from "@/src/state/slices/userSlice";
-import { formatSlotTime, slotProblem } from "@/src/utils/dealSlotCheck";
+import {
+  formatSlotTime,
+  isActiveDeal,
+  overlappingDeal,
+  slotProblem,
+} from "@/src/utils/dealSlotCheck";
 import {
   getDeviceTimeZone,
   parseSalonClock,
@@ -446,6 +451,32 @@ const createStyles = (theme: Theme) =>
       color: theme.darkGreen,
     },
     timeChipTextSelected: { color: theme.white },
+    timeChipDeal: {
+      borderStyle: "dashed",
+      borderColor: theme.orangeBrown,
+      backgroundColor: theme.orangeBrown015,
+    },
+    timeChipTextDeal: {
+      color: theme.lightGreen5,
+      textDecorationLine: "line-through",
+    },
+    timeChipDealTag: {
+      position: "absolute",
+      top: -moderateHeightScale(8),
+      right: -moderateWidthScale(6),
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(2),
+      backgroundColor: theme.selectCard,
+      borderRadius: moderateWidthScale(8),
+      paddingHorizontal: moderateWidthScale(5),
+      paddingVertical: moderateHeightScale(1),
+    },
+    timeChipDealTagText: {
+      fontSize: fontSize.size10,
+      fontFamily: fonts.fontBold,
+      color: theme.white,
+    },
     // Price input
     inputHint: {
       fontSize: fontSize.size13,
@@ -665,6 +696,8 @@ export default function PostDealScreen() {
   const [timesFor, setTimesFor] = useState("");
   const [salonClock, setSalonClock] = useState<SalonClock | null>(null);
   const [hours, setHours] = useState<OwnerBusinessHours | null>(null);
+  /** Owner's live / paused deals: their times can't take a second deal */
+  const [myDeals, setMyDeals] = useState<SlotOffer[]>([]);
 
   // Time tapped on the calendar: skip the time step when it's free for the
   // picked service; otherwise show the step with the reason (client 11-06).
@@ -688,14 +721,17 @@ export default function PostDealScreen() {
             setTimeout(() => rej(new Error("timeout")), 10_000),
           ),
         ]);
-      const [staff, services, hoursRes] = await Promise.all([
+      const [staff, services, hoursRes, dealsRes] = await Promise.all([
         // Solo owners still have their own staff row — slots need its id.
         withTimeout(fetchOwnerBookingStaff(businessId)),
         withTimeout(fetchOwnerBookingServices(businessId)),
         // Only explains a refused calendar time — never blocks the flow.
         withTimeout(fetchOwnerBusinessHours(businessId)).catch(() => null),
+        // Same: the server still refuses a double deal if this fails.
+        withTimeout(fetchMySlotOffers({ per_page: 50 })).catch(() => null),
       ]);
       setHours(hoursRes);
+      setMyDeals((dealsRes?.data ?? []).filter(isActiveDeal));
       setStaffList(staff);
       setServiceList(services);
       const pre =
@@ -753,6 +789,22 @@ export default function PostDealScreen() {
   }, [businessId, staffList.length, selectedDate, selectedService, selectedStaff]);
 
   const timesReady = !timesLoading && timesFor === timesKey;
+
+  /** Live deal this service would overlap at `time` on the selected day */
+  const dealAt = useCallback(
+    (time: string, date: string = selectedDate) =>
+      selectedService
+        ? overlappingDeal(
+            myDeals,
+            date,
+            time,
+            selectedService.durationMinutes,
+            selectedStaff?.id,
+          )
+        : null,
+    [myDeals, selectedDate, selectedService, selectedStaff],
+  );
+  const openTimesCount = freeTimes.filter((time) => !dealAt(time)).length;
 
   // Hours for the day on screen (barber's own when set, else the salon's)
   const dayHours = useMemo(() => {
@@ -946,7 +998,12 @@ export default function PostDealScreen() {
         return !!selectedStaff && (!checksPresetOnNext || timesReady);
       case "time":
         // Only a time that is in the list — a hidden pick can't slip through
-        return !!selectedTime && timesReady && freeTimes.includes(selectedTime);
+        return (
+          !!selectedTime &&
+          timesReady &&
+          freeTimes.includes(selectedTime) &&
+          !dealAt(selectedTime)
+        );
       case "price":
         return !!closesAtTime && !priceError;
       case "preview":
@@ -964,19 +1021,29 @@ export default function PostDealScreen() {
     timesReady,
     freeTimes,
     priceError,
+    dealAt,
   ]);
 
   const goNext = () => {
     if (checksPresetOnNext && presetTime && params.date) {
       if (!timesReady) return;
-      if (selectedDate === params.date && freeTimes.includes(presetTime)) {
+      const presetDeal = dealAt(presetTime, params.date);
+      if (
+        selectedDate === params.date &&
+        freeTimes.includes(presetTime) &&
+        !presetDeal
+      ) {
         setSelectedTime(presetTime);
         setStep("price");
         return;
       }
       // Not free for this service: say why, clear the pick, show the time step.
-      const reason =
-        slotProblem(
+      const reason = presetDeal
+        ? t("sdSlotHasDeal", {
+            service: presetDeal.service.name,
+            time: formatSlotTime(presetDeal.start_time.slice(0, 5)),
+          })
+        : slotProblem(
           {
             date: params.date,
             time: presetTime,
@@ -1349,7 +1416,7 @@ export default function PostDealScreen() {
                 <>
                 <SectionLabel
                   label={t("sdFreeTimesLabel")}
-                  meta={t("sdFreeTimesCount", { count: freeTimes.length })}
+                  meta={t("sdFreeTimesCount", { count: openTimesCount })}
                 />
                 <View style={styles.timeChipsWrap}>
                   {freeTimes.map((time) => {
@@ -1359,24 +1426,40 @@ export default function PostDealScreen() {
                     const ampm = hour >= 12 ? "PM" : "AM";
                     const h12 = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
                     const label = `${h12}:${min} ${ampm}`;
+                    // Already has a live deal: shown, tagged, not pickable
+                    const hasDeal = !!dealAt(time);
                     return (
                       <TouchableOpacity
                         key={time}
                         style={[
                           styles.timeChip,
-                          sel && styles.timeChipSelected,
+                          sel && !hasDeal && styles.timeChipSelected,
+                          hasDeal && styles.timeChipDeal,
                         ]}
                         activeOpacity={0.75}
+                        disabled={hasDeal}
                         onPress={() => setSelectedTime(time)}
+                        accessibilityState={{ disabled: hasDeal, selected: sel }}
                       >
                         <Text
                           style={[
                             styles.timeChipText,
-                            sel && styles.timeChipTextSelected,
+                            sel && !hasDeal && styles.timeChipTextSelected,
+                            hasDeal && styles.timeChipTextDeal,
                           ]}
                         >
                           {label}
                         </Text>
+                        {hasDeal ? (
+                          <View style={styles.timeChipDealTag}>
+                            <MaterialIcons
+                              name="local-offer"
+                              size={iconScale(10)}
+                              color={theme.white}
+                            />
+                            <Text style={styles.timeChipDealTagText}>{t("sdDealTag")}</Text>
+                          </View>
+                        ) : null}
                       </TouchableOpacity>
                     );
                   })}

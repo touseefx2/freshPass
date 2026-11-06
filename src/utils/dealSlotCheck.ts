@@ -10,6 +10,7 @@ import type {
   OwnerBusinessHours,
 } from "@/src/services/ownerBookingService";
 import type { SalonWall } from "@/src/utils/salonTimezone";
+import type { SlotOffer } from "@/src/types/slotOffer";
 
 const toMin = (hhmm: string) => {
   const [h, m] = hhmm.split(":").map(Number);
@@ -166,6 +167,40 @@ export function checkSlot(input: SlotCheckInput, t: TFunction): SlotProblem | nu
     if (staffReason) return staffReason;
   }
   return null;
+}
+
+/** Live or paused deals hold their slot; booked ones are already appointments. */
+export function isActiveDeal(deal: Pick<SlotOffer, "status">): boolean {
+  return deal.status === "live" || deal.status === "paused";
+}
+
+/** Deal's slot as salon-clock minutes [start, end). */
+export function dealMinutes(deal: Pick<SlotOffer, "start_time" | "duration_minutes">) {
+  const start = toMin(deal.start_time.slice(0, 5));
+  return { start, end: start + Math.max(deal.duration_minutes || 0, 1) };
+}
+
+/**
+ * The active deal a new deal at `time` (lasting `durationMinutes`) would
+ * overlap for this barber on this day, if any.
+ */
+export function overlappingDeal(
+  deals: SlotOffer[],
+  date: string,
+  time: string,
+  durationMinutes: number,
+  staffId?: number | null,
+): SlotOffer | null {
+  const start = toMin(time);
+  const end = start + Math.max(durationMinutes, 1);
+  return (
+    deals.find((deal) => {
+      if (deal.date !== date || !isActiveDeal(deal)) return false;
+      if (staffId != null && deal.staff && deal.staff.id !== staffId) return false;
+      const d = dealMinutes(deal);
+      return start < d.end && end > d.start;
+    }) ?? null
+  );
 }
 
 /** Just the sentence (Post a Deal time-step box). */

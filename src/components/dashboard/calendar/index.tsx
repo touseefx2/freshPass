@@ -75,6 +75,9 @@ import {
 } from "@/src/services/ownerBookingService";
 import { checkSlot, type SlotProblem } from "@/src/utils/dealSlotCheck";
 import DealSlotBlockedModal from "@/src/components/DealSlotBlockedModal";
+import { fetchMySlotOffers } from "@/src/services/slotOfferService";
+import type { SlotOffer } from "@/src/types/slotOffer";
+import { dealMinutes, isActiveDeal } from "@/src/utils/dealSlotCheck";
 import { salonNow } from "@/src/utils/salonTimezone";
 import { useRouter, useFocusEffect } from "expo-router";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
@@ -718,6 +721,56 @@ const createStyles = (theme: Theme) =>
       color: theme.darkGreenLight,
       lineHeight: BLOCK_LINE_HEIGHT,
       textTransform:"capitalize"
+    },
+    // Live deal: just a tag at the slot's top-right, under the booking
+    // cards (zIndex 1 < 2) so their lanes never move (user 11-06)
+    dealBand: {
+      position: "absolute",
+      zIndex: 1,
+      left: moderateWidthScale(1),
+      right: moderateWidthScale(1),
+      alignItems: "flex-end",
+      overflow: "hidden",
+    },
+    dealBandPaused: { opacity: 0.55 },
+    dealBandTag: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(3),
+      margin: moderateWidthScale(4),
+      paddingHorizontal: moderateWidthScale(6),
+      paddingVertical: moderateHeightScale(2),
+      borderRadius: moderateWidthScale(10),
+      backgroundColor: theme.white,
+      borderWidth: 1,
+      borderColor: theme.orangeBrown30,
+    },
+    dealBandText: {
+      fontSize: fontSize.size10,
+      fontFamily: fonts.fontBold,
+      color: theme.orangeBrownText,
+    },
+    slotDealRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(8),
+      paddingHorizontal: moderateWidthScale(8),
+      paddingVertical: moderateHeightScale(6),
+      borderRadius: moderateWidthScale(6),
+      borderWidth: 1,
+      borderStyle: "dashed",
+      borderColor: theme.orangeBrown,
+      backgroundColor: theme.orangeBrown015,
+    },
+    slotDealTitle: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontBold,
+      color: theme.orangeBrownText,
+    },
+    slotDealSub: {
+      fontSize: fontSize.size11,
+      fontFamily: fonts.fontRegular,
+      color: theme.darkGreen,
     },
     breakBlock: {
       position: "absolute",
@@ -1611,6 +1664,47 @@ export default function CalendarScreen() {
       }
     }, [canManageLeaves, fetchLeaves]),
   );
+
+  // Owner's live / paused deals: a band on the grid (under bookings) and a
+  // "Deal live here" row in the slot menu instead of Post a Deal (11-06).
+  const [liveDeals, setLiveDeals] = useState<SlotOffer[]>([]);
+  const loadLiveDeals = useCallback(async () => {
+    if (!isOwner) return;
+    try {
+      // Server caps per_page at 50
+      const res = await fetchMySlotOffers({ per_page: 50 });
+      setLiveDeals(res.data.filter(isActiveDeal));
+    } catch {
+      // Not critical: Post a Deal still checks on its own.
+    }
+  }, [isOwner]);
+  useFocusEffect(
+    useCallback(() => {
+      loadLiveDeals();
+    }, [loadLiveDeals]),
+  );
+  /** date -> deals for the barber on screen (all barbers on "All staff") */
+  const dealsByDate = useMemo(() => {
+    const map: Record<string, SlotOffer[]> = {};
+    liveDeals.forEach((deal) => {
+      if (staffFilterId !== "all" && deal.staff && deal.staff.id !== staffFilterId) return;
+      if (!map[deal.date]) map[deal.date] = [];
+      map[deal.date].push(deal);
+    });
+    return map;
+  }, [liveDeals, staffFilterId]);
+  const dealAtSlot = useMemo(() => {
+    if (!slotMenu) return null;
+    return (
+      (dealsByDate[slotMenu.day.format("YYYY-MM-DD")] ?? []).find((deal) => {
+        const { start, end } = dealMinutes(deal);
+        return slotMenu.minutes >= start && slotMenu.minutes < end;
+      }) ?? null
+    );
+  }, [slotMenu, dealsByDate]);
+  // "All staff" with a team: another barber may still post at this time.
+  const canPostBesideDeal =
+    staffFilterId === "all" && hasTeamFeatures && staffOptions.length > 1;
 
   // Back from New appointment: show the booking that was just made.
   useFocusEffect(
@@ -2821,6 +2915,41 @@ export default function CalendarScreen() {
           );
         })}
 
+        {(dealsByDate[dateStr] ?? []).map((deal) => {
+          const { start, end } = dealMinutes(deal);
+          const top = ((start - GRID_START_HOUR * 60) / 60) * hourHeight;
+          const height = Math.max(((end - start) / 60) * hourHeight, heightScale(20));
+          const paused = deal.status === "paused";
+          return (
+            // Taps fall through to the column -> slot menu shows the deal.
+            <View
+              key={`deal-${deal.id}`}
+              pointerEvents="none"
+              style={[styles.dealBand, paused && styles.dealBandPaused, { top, height }]}
+            >
+              {viewMode === "day" ? (
+                <View style={styles.dealBandTag}>
+                  <MaterialIcons
+                    name="local-offer"
+                    size={iconScale(11)}
+                    color={theme.orangeBrownText}
+                  />
+                  <Text style={styles.dealBandText} numberOfLines={1}>
+                    {`${paused ? t("calDealPaused") : t("calDealLive")} · $${deal.offer_price}`}
+                  </Text>
+                </View>
+              ) : (
+                <MaterialIcons
+                  name="local-offer"
+                  size={iconScale(10)}
+                  color={theme.orangeBrownText}
+                  style={{ margin: moderateWidthScale(2) }}
+                />
+              )}
+            </View>
+          );
+        })}
+
         {positionedList.map((positioned) => renderPositionedBlock(positioned))}
 
         {showClosedOverlay && dayLeave ? (
@@ -3396,7 +3525,45 @@ export default function CalendarScreen() {
                       {t("calBreakTimeOff")}
                     </Text>
                   </TouchableOpacity>
-                  {isOwner && (
+                  {isOwner && dealAtSlot && (
+                    <TouchableOpacity
+                      style={styles.slotDealRow}
+                      onPress={() => {
+                        setSlotMenu(null);
+                        router.push("/(main)/myDeals" as any);
+                      }}
+                      activeOpacity={0.75}
+                      accessibilityRole="button"
+                    >
+                      <MaterialIcons
+                        name="local-offer"
+                        size={iconScale(16)}
+                        color={theme.orangeBrownText}
+                      />
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.slotDealTitle} numberOfLines={1}>
+                          {dealAtSlot.status === "paused"
+                            ? t("calDealPausedHere")
+                            : t("calDealLiveHere")}
+                        </Text>
+                        <Text style={styles.slotDealSub} numberOfLines={1}>
+                          {[
+                            dealAtSlot.service.name,
+                            dealAtSlot.staff?.name,
+                            `$${dealAtSlot.offer_price}`,
+                          ]
+                            .filter(Boolean)
+                            .join(" · ")}
+                        </Text>
+                      </View>
+                      <MaterialIcons
+                        name="chevron-right"
+                        size={iconScale(16)}
+                        color={theme.orangeBrownText}
+                      />
+                    </TouchableOpacity>
+                  )}
+                  {isOwner && (!dealAtSlot || canPostBesideDeal) && (
                     <TouchableOpacity
                       style={styles.slotMenuRow}
                       onPress={openPostDealFromMenu}
