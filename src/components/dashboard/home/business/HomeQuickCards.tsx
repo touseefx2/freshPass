@@ -180,7 +180,6 @@ export default function HomeQuickCards() {
     <View style={styles.row}>
       <GoldFrame
         framed={gold.isFramed("stripe")}
-        pulse={gold.pulseTarget === "stripe"}
         radius={STRIPE_RADIUS}
         style={styles.stripeSlot}
       >

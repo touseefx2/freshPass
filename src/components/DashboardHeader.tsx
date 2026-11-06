@@ -39,7 +39,8 @@ import { resolveApiImageUrl } from "@/src/utils/media";
 import ModeSwitchLogo from "@/src/components/ModeSwitchLogo";
 import { useBusinessTrialDaysLeft } from "@/src/hooks/useBusinessTrialDaysLeft";
 import GoldFrame from "@/src/components/GoldFrame";
-import { useGoldFrames, type GoldTarget } from "@/src/hooks/useGoldFrames";
+import { useGoldFrames } from "@/src/hooks/useGoldFrames";
+import { markGoldTapped, type GoldTapKey } from "@/src/utils/goldFrames";
 
 const AVATAR_SIZE = 36;
 /** Gold setup bars sit as rounded cards (client-approved sample 11-03) */
@@ -259,7 +260,8 @@ function DashboardHeader() {
     isOnboardedOwner && businessStatus?.has_subscription === false;
 
   // Trial banner clears once tapped (client 10-30); "Choose a plan" stays.
-  // Membership / cancellation policy bars stay until done (gold frame, 11-03).
+  // Membership / cancellation policy bars glow until tapped once or done
+  // (client 11-06), then go away like the trial banner.
   // Stripe / Orders cards live in the home scroll (HomeQuickCards).
   // Persisted in dismissedSetupReminders, reset on logout.
   const dismissedReminders = useAppSelector(
@@ -307,7 +309,7 @@ function DashboardHeader() {
   const actionBanners = [
     showBusinessSubscriptipn && {
       key: "plan",
-      gold: null as GoldTarget | null,
+      task: null as GoldTapKey | null,
       icon: "briefcase" as const,
       title: t("pleaseBuyBusinessPlan"),
       cta: t("viewBusinessPlans"),
@@ -316,7 +318,7 @@ function DashboardHeader() {
     trialDaysLeft !== null &&
       !dismissedReminders.includes("banner:trial") && {
       key: "trial",
-      gold: null as GoldTarget | null,
+      task: null as GoldTapKey | null,
       icon: "clock" as const,
       title:
         trialDaysLeft === 0
@@ -328,7 +330,7 @@ function DashboardHeader() {
     isOnboardedOwner &&
       gold.isFramed("membership") && {
         key: "createMembership",
-        gold: "membershipBar" as GoldTarget | null,
+        task: "membership" as GoldTapKey | null,
         icon: "gift" as const,
         title: t("setupCreateMembership"),
         cta: t("setupCreateMembershipCta"),
@@ -337,7 +339,7 @@ function DashboardHeader() {
     isOnboardedOwner &&
       gold.isFramed("cancellationPolicy") && {
         key: "cancellationPolicy",
-        gold: "policyBar" as GoldTarget | null,
+        task: "cancellationPolicy" as GoldTapKey | null,
         icon: "shield" as const,
         title: t("setupCancellationPolicy"),
         cta: t("setupCancellationPolicyCta"),
@@ -345,8 +347,8 @@ function DashboardHeader() {
       },
   ].filter(Boolean) as {
     key: string;
-    /** Set on bars that stay (gold frame) until the feature is done */
-    gold: GoldTarget | null;
+    /** Gold task the bar stands for: shown until tapped once or done */
+    task: GoldTapKey | null;
     icon: "briefcase" | "clock" | "gift" | "shield";
     title: string;
     cta: string;
@@ -355,7 +357,7 @@ function DashboardHeader() {
 
   // All setup banners share one slot (user 11-05): one card at a time, the
   // owner swipes (no auto-slide), honey dots below when there are 2+.
-  // Every card has the same honey border; only the gold-frame task pulses.
+  // Every card has the same glowing gold frame.
   // The card on show is shared by every tab's header, so coming back from a
   // banner's screen keeps that banner.
   const { width: screenWidth } = useWindowDimensions();
@@ -388,7 +390,6 @@ function DashboardHeader() {
     <View key={banner.key} style={[styles.slide, { width: screenWidth }]}>
       <GoldFrame
         framed
-        pulse={banner.gold != null && gold.pulseTarget === banner.gold}
         radius={GOLD_BAR_RADIUS}
         glow="sm"
         style={styles.slideFill}
@@ -396,6 +397,8 @@ function DashboardHeader() {
         <TouchableOpacity
           onPress={() => {
             setupBannerStore.set(banner.key);
+            // Membership / policy bars clear once tapped (client 11-06)
+            markGoldTapped(banner.task ?? undefined);
             banner.onPress();
           }}
           activeOpacity={0.85}

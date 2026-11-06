@@ -127,6 +127,11 @@ export interface GeneralState {
   chatTryOnPreselectedUrls: string[];
   /** Setup/growth reminder keys the user has dismissed (persisted) */
   dismissedSetupReminders: string[];
+  /**
+   * Gold-frame buttons tapped once, by "role:userId" (persisted, kept across
+   * logout so the glow doesn't come back on the next login)
+   */
+  goldTapped: Record<string, string[]>;
 }
 
 export interface ChatContactItem {
@@ -200,6 +205,7 @@ const initialState: GeneralState = {
   chatAttachmentUrls: [],
   chatTryOnPreselectedUrls: [],
   dismissedSetupReminders: [],
+  goldTapped: {},
 };
 
 const generalSlice = createSlice({
@@ -433,6 +439,19 @@ const generalSlice = createSlice({
     resetSetupReminders(state) {
       state.dismissedSetupReminders = [];
     },
+    markGoldTapped(
+      state,
+      action: PayloadAction<{ owner: string; key: string }>,
+    ) {
+      const { owner, key } = action.payload;
+      const tapped = state.goldTapped?.[owner] ?? [];
+      if (tapped.includes(key)) return;
+      state.goldTapped = { ...state.goldTapped, [owner]: [...tapped, key] };
+    },
+    /** Logout: write the kept taps back after the persist purge */
+    setGoldTapped(state, action: PayloadAction<Record<string, string[]>>) {
+      state.goldTapped = action.payload;
+    },
     setBookingTryOnSelectionForJob(
       state,
       action: PayloadAction<{ jobId: string; urls: string[] }>,
@@ -615,6 +634,8 @@ export const {
   clearChatTryOnPreselectedUrls,
   setBookingTryOnSelectionForJob,
   dismissSetupReminder,
+  markGoldTapped,
+  setGoldTapped,
   resetSetupReminders,
   setIsFirstShowTryOn,
   setHasSeenReelsSwipeGuide,

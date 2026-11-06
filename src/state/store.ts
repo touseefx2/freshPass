@@ -64,6 +64,7 @@ const generalPersistConfig = {
     "recentLocations",
     "recentSearches",
     "dismissedSetupReminders",
+    "goldTapped",
   ], // Only persist these fields
 };
 

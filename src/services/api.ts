@@ -14,6 +14,7 @@ import {
   setAiChatDataConsentAccepted,
   setAiHairTryOnConsentAccepted,
   setAiVoiceDataConsentAccepted,
+  setGoldTapped,
   setIsFirstShowTryOn,
   setIsVisitFirst,
   setRegisterEmail,
@@ -315,6 +316,7 @@ const handleLogout = async (options?: { skipApi?: boolean }) => {
       aiHairTryOnConsentAccepted,
       aiChatDataConsentAccepted,
       aiVoiceDataConsentAccepted,
+      goldTapped,
     } = store.getState().general;
 
     // Clear Redux state (in-memory)
@@ -366,7 +368,10 @@ const handleLogout = async (options?: { skipApi?: boolean }) => {
     if (registerEmail != null) {
       store.dispatch(setRegisterEmail(registerEmail));
     }
-    
+    // Gold buttons already tapped stay quiet on the next login (new object,
+    // so redux-persist writes it again after the purge)
+    store.dispatch(setGoldTapped({ ...(goldTapped ?? {}) }));
+
     try {
       await persistor.flush();
     } catch (err) {

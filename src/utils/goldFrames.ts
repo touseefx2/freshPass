@@ -3,6 +3,7 @@ import {
   markSetupProgressDone,
   type SetupProgress,
 } from "@/src/state/slices/userSlice";
+import { markGoldTapped as markGoldTappedAction } from "@/src/state/slices/generalSlice";
 
 /** A feature with a gold-frame reminder until it's done */
 export type GoldTask =
@@ -26,6 +27,44 @@ export const GOLD_TASK_FLAG: Record<
   hiring: "has_job_post",
   uploadWork: "has_work_photos",
 };
+
+/**
+ * Client 11-06: every gold button stops glowing after its first tap, except
+ * Stripe (glows until setup is done). The + button counts as its own button.
+ */
+export type GoldTapKey = Exclude<GoldTask, "stripe"> | "plus";
+
+/** + menu item id → the feature it opens */
+export const MENU_ITEM_TASK: Record<string, Exclude<GoldTask, "stripe">> = {
+  createReel: "createReel",
+  addProduct: "addProduct",
+  servicesAndMemberships: "membership",
+  hiring: "hiring",
+  uploadWork: "uploadWork",
+};
+
+/**
+ * Whose taps these are. The role is part of it: a removed staff member can
+ * become an owner on the same user id and must start with every glow on.
+ */
+export function goldTapOwner(
+  userRole: string | null | undefined,
+  id: number | null | undefined,
+): string | null {
+  if ((userRole !== "business" && userRole !== "staff") || id == null) {
+    return null;
+  }
+  return `${userRole}:${id}`;
+}
+
+/** A gold button was tapped: its glow goes away for this user for good. */
+export function markGoldTapped(key: GoldTapKey | undefined): void {
+  if (!key) return;
+  const { userRole, id } = store.getState().user;
+  const owner = goldTapOwner(userRole, id);
+  if (!owner) return;
+  store.dispatch(markGoldTappedAction({ owner, key }));
+}
 
 /** When each flag was last set here (ms) */
 const markedAt: Partial<Record<keyof SetupProgress, number>> = {};

@@ -48,6 +48,7 @@ import {
 import { getReelUploadGate } from "@/src/utils/reelUploadGate";
 import GoldFrame from "@/src/components/GoldFrame";
 import { useGoldFrames } from "@/src/hooks/useGoldFrames";
+import { MENU_ITEM_TASK, markGoldTapped } from "@/src/utils/goldFrames";
 
 const androidBlurMethod =
   Platform.OS === "android" ? ("dimezisBlurView" as const) : ("none" as const);
@@ -243,7 +244,6 @@ function MenuPill({
   styles,
   theme,
   framed,
-  pulse,
   onPress,
 }: {
   item: MenuItem;
@@ -253,9 +253,8 @@ function MenuPill({
   icon: React.ReactNode;
   styles: Styles;
   theme: Theme;
-  /** Gold frame: this feature isn't done yet */
+  /** Gold glow: not tapped yet and the feature isn't done */
   framed: boolean;
-  pulse: boolean;
   onPress: () => void;
 }) {
   const reduceMotion = useReducedMotion();
@@ -291,7 +290,6 @@ function MenuPill({
       {/* Thin ring + soft glow: several pills can glow at once (sample 11-06) */}
       <GoldFrame
         framed={framed}
-        pulse={pulse}
         radius={PILL_RADIUS}
         borderWidth={1.5}
         glow="xs"
@@ -636,8 +634,11 @@ export default function BusinessCreateMediaMenu({
                   styles={styles}
                   theme={theme}
                   framed={gold.isMenuItemFramed(item.id)}
-                  pulse={gold.pulseTarget === `menu:${item.id}`}
-                  onPress={() => handleMenuAction(item.id)}
+                  onPress={() => {
+                    // First tap ends this pill's glow (client 11-06)
+                    markGoldTapped(MENU_ITEM_TASK[item.id]);
+                    handleMenuAction(item.id);
+                  }}
                 />
               ))}
             </View>

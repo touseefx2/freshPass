@@ -45,8 +45,8 @@ const RINGS = [
 
 /** One way of the breath; the glow goes back and forth */
 const HALF_CYCLE_MS = 1100;
-/** Dimmest point of the breath: the next step breathes deepest */
-const BREATH_MIN = { next: 0.12, other: 0.35 };
+/** Dimmest point of the breath */
+const BREATH_MIN = 0.25;
 
 /**
  * One clock for every frame on screen, so all glows breathe together and
@@ -75,10 +75,8 @@ const stopBreath = () => {
 };
 
 type Props = {
-  /** Glowing frame: the feature isn't done yet */
+  /** Glowing frame: the button is still untouched */
   framed: boolean;
-  /** The next step: breathes deeper than the other frames */
-  pulse?: boolean;
   /** Corner radius of the wrapped button */
   radius: number;
   /** Matches (or covers) the wrapped button's own border */
@@ -96,11 +94,10 @@ type Props = {
 
 /**
  * Gold frame reminder (client 11-03, look per client sample 11-06): every
- * unfinished feature's button glows until the feature is done.
+ * untouched setup button glows; all of them breathe together.
  */
 export default function GoldFrame({
   framed,
-  pulse = false,
   radius,
   borderWidth = 2,
   glow = "md",
@@ -112,7 +109,6 @@ export default function GoldFrame({
   const theme = colors as Theme;
   const reduceMotion = useReducedMotion();
   const breathing = framed && !reduceMotion;
-  const breathMin = pulse ? BREATH_MIN.next : BREATH_MIN.other;
 
   useEffect(() => {
     if (!breathing) return;
@@ -122,9 +118,9 @@ export default function GoldFrame({
 
   const glowStyle = useAnimatedStyle(
     () => ({
-      opacity: breathing ? breathMin + breath.value * (1 - breathMin) : 1,
+      opacity: breathing ? BREATH_MIN + breath.value * (1 - BREATH_MIN) : 1,
     }),
-    [breathing, breathMin],
+    [breathing],
   );
 
   const amber = tone === "amber";

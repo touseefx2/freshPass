@@ -25,7 +25,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AiChatBot from "@/src/components/AiChatBot";
 import BusinessCreateMediaMenu from "@/src/components/businessCreateMediaMenu";
 import GoldFrame from "@/src/components/GoldFrame";
-import { GoldMenuOpenContext, useGoldFrames } from "@/src/hooks/useGoldFrames";
+import { useGoldFrames } from "@/src/hooks/useGoldFrames";
+import { markGoldTapped } from "@/src/utils/goldFrames";
 import { setUserDetails } from "@/src/state/slices/userSlice";
 import {
   resetChatContacts,
@@ -439,7 +440,7 @@ export default function DashboardLayout() {
   }, [shouldHideAiChat, createMenuOpen]);
 
   return (
-    <GoldMenuOpenContext.Provider value={createMenuOpen}>
+    <>
       <Tabs
         initialRouteName={"(home)"}
         screenOptions={{
@@ -535,7 +536,6 @@ export default function DashboardLayout() {
             tabBarIcon: ({ focused }) => (
               <GoldFrame
                 framed={!focused && gold.plusFramed && !createMenuOpen}
-                pulse={gold.pulseTarget === "plus"}
                 radius={CREATE_TAB_RADIUS}
                 borderWidth={3}
                 tone="gold"
@@ -555,6 +555,8 @@ export default function DashboardLayout() {
             tabPress: (e) => {
               e.preventDefault();
               if (!hasCreateTab) return;
+              // First tap ends the + glow (client 11-06)
+              markGoldTapped("plus");
               toggleCreateMenu();
             },
           }}
@@ -635,6 +637,6 @@ export default function DashboardLayout() {
       )}
       {/* Floating AI ChatBot Button */}
       {!shouldHideAiChat && <AiChatBot />}
-    </GoldMenuOpenContext.Provider>
+    </>
   );
 }
