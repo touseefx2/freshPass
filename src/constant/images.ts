@@ -1,5 +1,8 @@
 export const IMAGES = {
   welcomeLogo: require("@/assets/lotties/logo.json"),
+  // Same animation, green/orange colors for the light splash background
+  welcomeLogoLight: require("@/assets/lotties/logoLight.json"),
+  splashBackground: require("@/assets/images/splashBackground.png"),
   socialBackgroud: require("@/assets/images/socialBackgroud.png"),
   mapPins: require("@/assets/images/mapPin.png"),
   acceptTermBackS: require("@/assets/images/acceptTermBackS.png"),

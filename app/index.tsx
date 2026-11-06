@@ -2,7 +2,7 @@ import { router } from "expo-router";
 import { MAIN_ROUTES } from "@/src/constant/routes";
 import { resetToDashboardHome } from "@/src/utils/navigation";
 import { useAppSelector, useTheme } from "@/src/hooks/hooks";
-import { StatusBar, StyleSheet, View } from "react-native";
+import { ImageBackground, StatusBar, StyleSheet } from "react-native";
 import { Theme } from "@/src/theme/colors";
 import LottieView from "lottie-react-native";
 import { IMAGES } from "@/src/constant/images";
@@ -20,6 +20,10 @@ import {
 // Android/iOS builds), which would otherwise leave the user stuck on the
 // splash screen forever.
 const SPLASH_FALLBACK_TIMEOUT_MS = 4000;
+
+// Client 11-06: cream/gold background + bigger green/orange logo.
+// Set to false to go back to the old dark green splash (white logo).
+const USE_LIGHT_SPLASH = true;
 
 export default function Index() {
   const { colors } = useTheme();
@@ -70,14 +74,18 @@ export default function Index() {
   }, []);
 
   return (
-    <View style={styles.container}>
+    <ImageBackground
+      source={USE_LIGHT_SPLASH ? IMAGES.splashBackground : undefined}
+      resizeMode="cover"
+      style={styles.container}
+    >
       <StatusBar
-        barStyle="light-content"
-        backgroundColor={theme.darkGreen}
+        barStyle={USE_LIGHT_SPLASH ? "dark-content" : "light-content"}
+        backgroundColor={USE_LIGHT_SPLASH ? "transparent" : theme.darkGreen}
         translucent
       />
       <LottieView
-        source={IMAGES.welcomeLogo}
+        source={USE_LIGHT_SPLASH ? IMAGES.welcomeLogoLight : IMAGES.welcomeLogo}
         autoPlay
         loop={false}
         onAnimationFinish={handleNavigation}
@@ -85,9 +93,9 @@ export default function Index() {
           Logger.error("Animation failed:", error);
           handleNavigation();
         }}
-        style={styles.logo}
+        style={USE_LIGHT_SPLASH ? styles.logoLarge : styles.logo}
       />
-    </View>
+    </ImageBackground>
   );
 }
 
@@ -95,12 +103,16 @@ const createStyles = (theme: Theme) =>
   StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: theme.darkGreen,
+      backgroundColor: USE_LIGHT_SPLASH ? "#FBF1E8" : theme.darkGreen,
       alignItems: "center",
       justifyContent: "center",
     },
     logo: {
       width: moderateWidthScale(500),
       height: moderateWidthScale(500),
+    },
+    logoLarge: {
+      width: moderateWidthScale(900),
+      height: moderateWidthScale(900),
     },
   });
