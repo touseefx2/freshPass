@@ -5,7 +5,6 @@ import {
   setBusinessPlansModalVisible,
   setSuppressBusinessPlansAutoOpen,
 } from "@/src/state/slices/generalSlice";
-import { usesSoloProfileLayout } from "@/src/state/slices/userSlice";
 import { markStripeConnectCongratsSeen } from "@/src/state/thunks/businessThunks";
 import { openBusinessSettingsScreen } from "@/src/utils/navigation";
 import StripeConnectedCongratsModal from "@/src/components/StripeConnectedCongratsModal";
@@ -37,8 +36,8 @@ export default function StripeConnectedCongratsModalHandler() {
     // Optimistic hide + persist on server (idempotent; retry on next launch if fails)
     void dispatch(markStripeConnectCongratsSeen());
 
-    // Profile → Business profile settings → Manage subscription list
-    openBusinessSettingsScreen("subscriptions", usesSoloProfileLayout(businessStatus), 15);
+    // Profile → Manage subscription list
+    openBusinessSettingsScreen("subscriptions", 15);
   };
 
   return (

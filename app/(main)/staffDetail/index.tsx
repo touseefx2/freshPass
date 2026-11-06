@@ -307,7 +307,7 @@ const createStyles = (theme: Theme) =>
       marginBottom: moderateHeightScale(16),
     },
     scrollContent: {
-      paddingBottom: moderateHeightScale(36),
+      paddingBottom: moderateHeightScale(100),
       paddingTop: 0,
     },
     heroWrap: {

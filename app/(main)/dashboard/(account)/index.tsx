@@ -54,7 +54,6 @@ const SOLO_BUSINESS_ROUTES: Record<string, string> = {
   orders: "orders",
   hiring: "jobPosts",
   socialMedia: "socialMedia",
-  cancellationPolicy: "cancellationPolicy",
   team: "team",
 };
 

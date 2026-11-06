@@ -44,7 +44,6 @@ import {
 import {
   canAddStaffMembers,
   isSoloSubscription,
-  usesSoloProfileLayout,
 } from "@/src/state/slices/userSlice";
 import { openBusinessSettingsScreen } from "@/src/utils/navigation";
 import { getReelUploadGate } from "@/src/utils/reelUploadGate";
@@ -501,13 +500,13 @@ export default function BusinessCreateMediaMenu({
         case "hiring":
           closeAll();
           if (!ensureCanHire()) return;
-          // Profile → Business profile settings → Hiring (job posts)
-          openBusinessSettingsScreen("jobPosts", usesSoloProfileLayout(businessStatus));
+          // Profile → Hiring (job posts)
+          openBusinessSettingsScreen("jobPosts");
           return;
         case "addProduct":
           closeAll();
-          // Profile → Business profile settings → Products listing
-          openBusinessSettingsScreen("products", usesSoloProfileLayout(businessStatus));
+          // Profile → Products listing
+          openBusinessSettingsScreen("products");
           return;
         case "availability":
         case "uploadWork": {
@@ -527,14 +526,14 @@ export default function BusinessCreateMediaMenu({
           return;
         case "servicesAndMemberships":
           closeAll();
-          // Profile → Business profile settings → Services & Memberships
-          openBusinessSettingsScreen("servicesAndMemberships", usesSoloProfileLayout(businessStatus));
+          // Profile → Services & Memberships
+          openBusinessSettingsScreen("servicesAndMemberships");
           return;
         default:
           closeAll();
       }
     },
-    [businessStatus, closeAll, ensureCanHire, handleAddEmployee, openReelPicker, router],
+    [closeAll, ensureCanHire, handleAddEmployee, openReelPicker, router],
   );
 
   const renderMenuIcon = (item: MenuItem) => {

@@ -37,7 +37,6 @@ import { IMAGES } from "../constant/images";
 import { Feather } from "@expo/vector-icons";
 import { resolveApiImageUrl } from "@/src/utils/media";
 import ModeSwitchLogo from "@/src/components/ModeSwitchLogo";
-import { usesSoloProfileLayout } from "@/src/state/slices/userSlice";
 import { openBusinessSettingsScreen } from "@/src/utils/navigation";
 import { useBusinessTrialDaysLeft } from "@/src/hooks/useBusinessTrialDaysLeft";
 import GoldFrame from "@/src/components/GoldFrame";
@@ -276,12 +275,12 @@ function DashboardHeader() {
   const gold = useGoldFrames();
 
   const handleMembershipSetup = useCallback(() => {
-    openBusinessSettingsScreen("servicesAndMemberships", usesSoloProfileLayout(businessStatus));
-  }, [businessStatus]);
+    openBusinessSettingsScreen("servicesAndMemberships");
+  }, []);
 
   const handleCancellationPolicySetup = useCallback(() => {
-    openBusinessSettingsScreen("cancellationPolicy", usesSoloProfileLayout(businessStatus));
-  }, [businessStatus]);
+    openBusinessSettingsScreen("cancellationPolicy");
+  }, []);
 
   const trialDaysLeft = useBusinessTrialDaysLeft(
     isOnboardedOwner && businessStatus?.has_subscription === true,

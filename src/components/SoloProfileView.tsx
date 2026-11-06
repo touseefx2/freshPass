@@ -19,6 +19,11 @@ import {
   moderateWidthScale,
 } from "@/src/theme/dimensions";
 import AppImage from "@/src/components/AppImage";
+import {
+  ManagementTileGrid,
+  type ManagementTile,
+  type ManagementTileKey,
+} from "@/src/components/BusinessManagementGrid";
 import Logger from "@/src/services/logger";
 import { resolveApiImageUrl } from "@/src/utils/media";
 import { isSoloSubscription } from "@/src/state/slices/userSlice";
@@ -44,7 +49,6 @@ export type SoloRowKey =
   | "myDeals"
   | "masterClasses"
   | "socialMedia"
-  | "cancellationPolicy"
   | "team"
   | "affiliation"
   | "publicProfile"
@@ -244,11 +248,11 @@ export default function SoloProfileView({
   const dark = { tileBg: theme.darkGreen, iconColor: theme.white };
   const affiliatedShop = user.working_with_business?.title;
   const pendingShop = user.working_with_business_request?.host_business?.title;
-  const affiliationSubtitle = affiliatedShop
+  const affiliationStatus = affiliatedShop
     ? t("soloAffiliationWorkingAt", { name: affiliatedShop })
     : pendingShop
       ? t("soloAffiliationPending", { name: pendingShop })
-      : t("soloAffiliationSub");
+      : undefined;
 
   const staffAccountRows: SoloRow[] = [
     {
@@ -300,152 +304,39 @@ export default function SoloProfileView({
     },
   ];
 
-  const accountRows: SoloRow[] = [
-    {
-      key: "barberProfile",
-      title: t("myBarberProfile"),
-      subtitle: t("soloBarberProfileSub"),
-      icon: "account",
-      ...dark,
-    },
-    {
-      key: "schedule",
-      title: t("mySchedule"),
-      subtitle: t("soloScheduleSub"),
-      icon: "calendar-blank-outline",
-      tileBg: theme.apptGoldBg,
-      iconColor: theme.apptGoldAccent,
-    },
-    {
-      key: "services",
-      title: t("myServices"),
-      subtitle: t("soloServicesSub"),
-      icon: "content-cut",
-      tileBg: theme.apptPeachBg,
-      iconColor: theme.orangeBrownText,
-    },
-    {
-      key: "portfolio",
-      title: t("myPortfolio"),
-      subtitle: t("soloPortfolioSub"),
-      icon: "image-outline",
-      tileBg: theme.mintTintStrong,
-      iconColor: theme.apptMintAccent,
-    },
-    {
-      key: "mediaLibrary",
-      title: t("myReels"),
-      subtitle: t("soloReelsSub"),
-      icon: "play-box-outline",
-      tileBg: theme.apptPinkBg,
-      iconColor: theme.apptPinkAccent,
-    },
-    {
-      key: "aiTools",
-      title: t("aiTools"),
-      subtitle: t("soloAiToolsSub"),
-      icon: "creation",
-      tileBg: theme.apptLavenderBg,
-      iconColor: theme.apptLavenderAccent,
-    },
-  ];
-
-  const businessRows: SoloRow[] = [
-    {
-      key: "businessProfile",
-      title: t("businessProfileTitle"),
-      subtitle: t("soloBusinessProfileSub"),
-      icon: "storefront-outline",
-      ...dark,
-    },
-    {
-      key: "appointments",
-      title: t("appointments"),
-      subtitle: t("soloAppointmentsSub"),
-      icon: "calendar-check-outline",
-      tileBg: theme.apptBlueBg,
-      iconColor: theme.apptBlueAccent,
-    },
-    {
-      key: "products",
-      title: t("productsTitle"),
-      subtitle: t("soloProductsSub"),
-      icon: "package-variant-closed",
-      tileBg: theme.apptGoldBg,
-      iconColor: theme.apptGoldAccent,
-    },
-    {
-      key: "orders",
-      title: t("ordersTitle"),
-      subtitle: t("soloOrdersSub"),
-      icon: "receipt-text-outline",
-      tileBg: theme.apptPeachBg,
-      iconColor: theme.orangeBrownText,
-    },
-    {
-      key: "hiring",
-      title: t("jobHiringTitle"),
-      subtitle: t("soloHiringSub"),
-      icon: "briefcase-outline",
-      tileBg: theme.tileMint,
-      iconColor: theme.successGreen,
-    },
-    {
-      key: "myDeals",
-      title: t("sdMyDeals"),
-      subtitle: t("soloDealsSub"),
-      icon: "tag-outline",
-      tileBg: theme.apptGoldBg,
-      iconColor: theme.selectCard,
-    },
+  // Every owner item as a tile, same design as the Business plan Profile.
+  // Order follows the client's sample, with the solo-only items first.
+  const soloTile = (key: ManagementTileKey & SoloRowKey): ManagementTile => ({
+    key,
+    onPress: () => onRowPress(key),
+  });
+  const ownerTiles: ManagementTile[] = [
+    soloTile("barberProfile"),
+    soloTile("schedule"),
+    soloTile("portfolio"),
+    soloTile("businessProfile"),
+    soloTile("services"),
+    soloTile("team"),
+    soloTile("appointments"),
     {
       key: "masterClasses",
-      title: t("mcMasterClasses"),
-      subtitle: t("mcSoloRowSub"),
-      icon: "school-outline",
-      ...dark,
+      // Opened here so the parent's row handler stays untouched
+      onPress: () => router.push("/(main)/masterClasses" as any),
     },
-    {
-      key: "socialMedia",
-      title: t("socialMediaTitle"),
-      subtitle: t("soloSocialMediaSub"),
-      icon: "share-variant-outline",
-      tileBg: theme.apptPinkBg,
-      iconColor: theme.apptPinkAccent,
-    },
-    {
-      key: "cancellationPolicy",
-      title: t("cancellationPolicy"),
-      subtitle: t("soloCancellationSub"),
-      icon: "shield-check-outline",
-      tileBg: theme.mintTintStrong,
-      iconColor: theme.apptMintAccent,
-    },
-    {
-      key: "team",
-      title: t("manageTeamTitle"),
-      subtitle: t("soloTeamSub"),
-      icon: "account-group-outline",
-      tileBg: theme.apptLavenderBg,
-      iconColor: theme.apptLavenderAccent,
-    },
+    soloTile("socialMedia"),
+    soloTile("products"),
+    soloTile("orders"),
+    soloTile("hiring"),
+    soloTile("myDeals"),
     {
       // Solo side of affiliation: link yourself to the shop you work at
-      key: "affiliation",
+      ...soloTile("affiliation"),
       title: t("soloAffiliationTitle"),
-      subtitle: affiliationSubtitle,
-      icon: "handshake-outline",
-      tileBg: theme.apptPeachBg,
-      iconColor: theme.orangeBrownText,
+      note: affiliationStatus,
     },
-    {
-      key: "publicProfile",
-      title: t("viewPublicProfile"),
-      subtitle: t("soloPublicProfileSub"),
-      icon: "eye-outline",
-      tileBg: theme.apptBlueBg,
-      iconColor: theme.apptBlueAccent,
-    },
+    soloTile("mediaLibrary"),
+    soloTile("aiTools"),
+    soloTile("publicProfile"),
   ];
 
   const settingsRows: SoloRow[] = [
@@ -580,26 +471,25 @@ export default function SoloProfileView({
         />
       </TouchableOpacity>
 
-      <Section
-        title={t("profileSectionAccount")}
-        rows={isStaff ? staffAccountRows : accountRows}
-        onRowPress={onRowPress}
-        theme={theme}
-        styles={styles}
-      />
-      {!isStaff && (
+      {isStaff ? (
         <Section
-          title={t("profileSectionBusiness")}
-          rows={businessRows}
-          onRowPress={(key) =>
-            // Opened here so the parent's row handler stays untouched
-            key === "masterClasses"
-              ? router.push("/(main)/masterClasses" as any)
-              : onRowPress(key)
-          }
+          title={t("profileSectionAccount")}
+          rows={staffAccountRows}
+          onRowPress={onRowPress}
           theme={theme}
           styles={styles}
         />
+      ) : (
+        <View style={styles.section}>
+          <Text style={styles.gridTitle} accessibilityRole="header">
+            {t("businessManagement")}
+          </Text>
+          <Text style={styles.gridSubtitle}>{t("bmSubtitle")}</Text>
+          <ManagementTileGrid
+            tiles={ownerTiles}
+            horizontalPadding={moderateWidthScale(16)}
+          />
+        </View>
       )}
       <Section
         title={t("profileSectionSettings")}
@@ -762,6 +652,20 @@ const createStyles = (theme: Theme) => {
     /* ── Sections + rows ── */
     section: {
       marginTop: moderateHeightScale(24),
+    },
+    gridTitle: {
+      fontSize: fontSize.size18,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+      paddingHorizontal: moderateWidthScale(2),
+    },
+    gridSubtitle: {
+      marginTop: moderateHeightScale(2),
+      marginBottom: moderateHeightScale(10),
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen5,
+      paddingHorizontal: moderateWidthScale(2),
     },
     sectionTitle: {
       fontSize: fontSize.size18,
