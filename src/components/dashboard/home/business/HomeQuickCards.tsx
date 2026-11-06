@@ -24,7 +24,8 @@ const createStyles = (theme: Theme) =>
     row: {
       flexDirection: "row",
       alignItems: "center",
-      gap: moderateWidthScale(14),
+      // Room for the Stripe pill's gold glow before the Orders card
+      gap: moderateWidthScale(16),
     },
     ordersSlot: {
       flex: 1,
@@ -58,6 +59,11 @@ const createStyles = (theme: Theme) =>
     // Done state: calm green outline
     stripeCardConnected: {
       borderColor: theme.buttonBack,
+    },
+    // While the gold glow is on, a grey drop shadow would muddy the amber
+    noShadow: {
+      shadowOpacity: 0,
+      elevation: 0,
     },
     ordersCard: {
       paddingHorizontal: moderateWidthScale(10),
@@ -183,6 +189,7 @@ export default function HomeQuickCards() {
             styles.card,
             styles.stripeCard,
             isStripeConnected && styles.stripeCardConnected,
+            gold.isFramed("stripe") && styles.noShadow,
           ]}
           onPress={handleStripePress}
           activeOpacity={0.8}

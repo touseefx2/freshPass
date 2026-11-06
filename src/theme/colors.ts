@@ -36,6 +36,13 @@ export const themes = {
     darkGreen15: "rgba(40, 54, 24, 0.15)",
     goldenBuy: "#E5C872",
     orangeBrown: "#DDA15E",
+    // Gold frame reminders: neon ring measured from the client sample (11-06).
+    // Outside → in: bloom, shine line, gold rim, amber core, peach inner line.
+    goldGlow: "rgba(255, 184, 48, 0.9)",
+    goldGlowShine: "rgba(255, 252, 236, 1)",
+    goldGlowRim: "#F5C35C",
+    goldGlowBorder: "#E27F1E",
+    goldGlowInner: "#F8C792",
     orangeBrown30: "rgba(221, 161, 94, 0.3)",
     orangeBrown015: "rgba(175, 138, 37, 0.15)",
     orangeBrown01: "rgba(188, 108, 37, 0.1)",

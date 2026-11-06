@@ -16,7 +16,6 @@ import {
   ExploreIcon,
 } from "@/assets/icons";
 import {
-  heightScale,
   moderateHeightScale,
   moderateWidthScale,
   widthScale,
@@ -104,8 +103,8 @@ const createStyles = (theme: Theme) =>
       marginTop: moderateHeightScale(-6),
     },
     createTabIcon: {
-      width: widthScale(44),
-      height: heightScale(44),
+      width: CREATE_TAB_SIZE,
+      height: CREATE_TAB_SIZE,
       borderRadius: CREATE_TAB_RADIUS,
       backgroundColor: theme.buttonBack,
       alignItems: "center",
@@ -118,7 +117,9 @@ const createStyles = (theme: Theme) =>
     },
   });
 
-const CREATE_TAB_RADIUS = moderateWidthScale(22);
+/** One scaler for both sides keeps the + (and its gold ring) round */
+const CREATE_TAB_SIZE = widthScale(44);
+const CREATE_TAB_RADIUS = CREATE_TAB_SIZE / 2;
 
 export default function DashboardLayout() {
   const { colors } = useTheme();
@@ -528,12 +529,16 @@ export default function DashboardLayout() {
             href: hasCreateTab ? undefined : null,
             title: "",
             tabBarLabel: () => null,
-            tabBarIcon: () => (
+            // Tabs draws the icon twice (focused copy hidden); this tab is
+            // never focused, so only the visible copy carries the gold glow.
+            // With the menu open the glow moves to the menu (client sample).
+            tabBarIcon: ({ focused }) => (
               <GoldFrame
-                framed={gold.plusFramed}
-                pulse={!createMenuOpen && gold.pulseTarget === "plus"}
+                framed={!focused && gold.plusFramed && !createMenuOpen}
+                pulse={gold.pulseTarget === "plus"}
                 radius={CREATE_TAB_RADIUS}
                 borderWidth={3}
+                tone="gold"
                 style={styles.createTabFrame}
               >
                 <View style={styles.createTabIcon}>

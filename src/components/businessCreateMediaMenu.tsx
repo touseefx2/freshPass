@@ -142,7 +142,8 @@ const createStyles = (theme: Theme) =>
     },
     menu: {
       alignItems: "stretch",
-      gap: moderateHeightScale(10),
+      // Wide enough that two glowing (gold frame) pills don't run together
+      gap: moderateHeightScale(14),
     },
     // Every pill stretches to the widest label, so the stack is one even column
     menuOption: {
@@ -161,6 +162,10 @@ const createStyles = (theme: Theme) =>
       shadowOpacity: 0.16,
       shadowRadius: moderateWidthScale(12),
       elevation: 6,
+    },
+    menuOptionNoShadow: {
+      shadowOpacity: 0,
+      elevation: 0,
     },
     menuOptionPrimary: {
       backgroundColor: theme.darkGreen,
@@ -223,7 +228,7 @@ const STAFF_MENU_ITEMS: MenuItem[] = [
 type Styles = ReturnType<typeof createStyles>;
 
 /** Gap between pills plus one pill's height, roughly — how far each one rises */
-const PILL_STEP = moderateHeightScale(58);
+const PILL_STEP = moderateHeightScale(62);
 /** Pills leave the + button one after another, nearest first */
 const STAGGER_MS = 75;
 /** Low damping = the little hop past the spot before it settles */
@@ -285,9 +290,20 @@ function MenuPill({
   const primary = !!item.highlighted;
   return (
     <Animated.View style={motion}>
-      <GoldFrame framed={framed} pulse={pulse} radius={PILL_RADIUS}>
+      {/* Several pills can glow at once: the next step gets the big bloom */}
+      <GoldFrame
+        framed={framed}
+        pulse={pulse}
+        radius={PILL_RADIUS}
+        glow={pulse ? "md" : "sm"}
+      >
       <TouchableOpacity
-        style={[styles.menuOption, primary && styles.menuOptionPrimary]}
+        style={[
+          styles.menuOption,
+          primary && styles.menuOptionPrimary,
+          // A grey drop shadow would muddy the gold glow
+          framed && styles.menuOptionNoShadow,
+        ]}
         onPress={onPress}
         activeOpacity={0.85}
         accessibilityRole="button"

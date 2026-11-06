@@ -184,10 +184,11 @@ const createStyles = (theme: Theme) =>
       height: heightScale(36),
       resizeMode: "contain",
     },
-    // Setup banners: one card at a time, swipe + honey dots (user 11-05)
+    // Setup banners: one card at a time, swipe + honey dots (user 11-05).
+    // The pager clips, so the padding leaves room for the card's gold glow.
     slide: {
-      paddingHorizontal: moderateWidthScale(12),
-      paddingVertical: moderateHeightScale(8),
+      paddingHorizontal: moderateWidthScale(14),
+      paddingVertical: moderateHeightScale(12),
     },
     slideFill: {
       flexGrow: 1,
@@ -389,6 +390,7 @@ function DashboardHeader() {
         framed
         pulse={banner.gold != null && gold.pulseTarget === banner.gold}
         radius={GOLD_BAR_RADIUS}
+        glow="sm"
         style={styles.slideFill}
       >
         <TouchableOpacity
