@@ -746,6 +746,11 @@ export default function MasterClassEditorScreen() {
         if (key && !mapped[key]) mapped[key] = message;
       });
       if (Object.keys(missing).length) {
+        // Only Stripe left (e.g. Connect revoked): show the Connect card
+        if (missing.stripe) {
+          setStripeError(missing.stripe);
+          scrollRef.current?.scrollTo({ y: 0, animated: true });
+        }
         setErrors(mapped);
         setFormError(
           hasErrors(mapped)

@@ -109,6 +109,9 @@ export default function PublishClassScreen() {
   const validId = Number.isFinite(classId) && classId > 0;
 
   const [cls, setCls] = useState<MasterClass | null>(null);
+  // load() is memoized; read the shown class from a ref, not a stale closure
+  const clsRef = useRef<MasterClass | null>(null);
+  clsRef.current = cls;
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [loadError, setLoadError] = useState<LoadError | null>(null);
@@ -159,7 +162,7 @@ export default function PublishClassScreen() {
         if (!mountedRef.current) return;
         const e = parseApiError(err, t("mcLoadError"));
         // Keep the screen on a refresh failure when a class is already shown
-        if (asRefresh && cls) {
+        if (asRefresh && clsRef.current) {
           setPayError(e.message);
         } else if (e.status === 403) {
           setLoadError({ title: t("mcOwnerOnly"), message: "", icon: "lock-closed-outline" });
@@ -175,8 +178,6 @@ export default function PublishClassScreen() {
         }
       }
     },
-    // `cls` only decides how a refresh failure is shown
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [classId, validId, t],
   );
 

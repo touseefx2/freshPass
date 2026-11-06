@@ -170,9 +170,9 @@ export default function MyClassesScreen() {
           patchTab(key, { loading: false, loaded: true, error: message });
         }
       } finally {
-        if (mode === "refresh" && request === requestRef.current[key]) {
-          setRefreshing(false);
-        }
+        // Newest request clears it, whatever its mode: a silent focus load
+        // may have overtaken a pull-to-refresh
+        if (request === requestRef.current[key]) setRefreshing(false);
       }
     },
     [patchTab, t],

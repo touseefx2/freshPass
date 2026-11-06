@@ -366,6 +366,8 @@ export default function ProClassDetailScreen() {
   const days = listing?.days ?? 30;
   const missing = cls.missing ?? {};
   const missingCount = getMissingCount(cls);
+  // Stripe alone isn't a form field: the payment screen shows the Connect card
+  const formMissingCount = Object.keys(missing).filter((k) => k !== "stripe").length;
   const price = getClassPrice(cls);
   const durationText = formatDuration(cls.duration_minutes);
   const isOnline = cls.format === "online";
@@ -539,7 +541,7 @@ export default function ProClassDetailScreen() {
             </View>
           ) : null}
           <View style={styles.cardButtonWrap}>
-            {missingCount > 0
+            {formMissingCount > 0
               ? renderPrimaryButton(t("mcFinishDetails"), () => openEditor(cls.id), "create-outline")
               : renderPrimaryButton(t("mcPublishClass"), () => openPublish(false), "rocket-outline")}
           </View>
