@@ -1088,6 +1088,13 @@ export const reportsEndpoints = {
 };
 
 /**
+ * FreshPass Support (in-app requests)
+ */
+export const supportEndpoints = {
+  submit: `/api/support-requests`,
+};
+
+/**
  * Product inventory endpoints
  */
 export const productEndpoints = {

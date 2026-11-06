@@ -1798,18 +1798,18 @@ export default function BookingDetailsById() {
     }
   };
 
-  const handleSupportPress = useCallback(async () => {
-    const url = process.env.EXPO_PUBLIC_PRIVACY_URL;
-    if (!url) return;
-    try {
-      const canOpen = await Linking.canOpenURL(url);
-      if (canOpen) {
-        await Linking.openURL(url);
-      }
-    } catch (_error) {
-      // Silently ignore if URL cannot be opened
-    }
-  }, []);
+  const handleSupportPress = () => {
+    router.push({
+      pathname: "/(main)/supportRequest",
+      params: {
+        appointmentId: bookingId ?? "",
+        businessName: booking?.businessName ?? "",
+        appointmentMeta: [serviceCardTitle, dateLabel, timeLabel]
+          .filter((part) => part && part !== "---")
+          .join(" · "),
+      },
+    });
+  };
 
   // Handle cancel booking modal
   const handleOpenCancelModal = async () => {

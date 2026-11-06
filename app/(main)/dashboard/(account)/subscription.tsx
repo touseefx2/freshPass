@@ -758,6 +758,15 @@ const createStyles = (theme: Theme) =>
     totalRow: {
       marginBottom: 0,
     },
+    nextTotalRow: {
+      marginTop: moderateHeightScale(6),
+      marginBottom: 0,
+    },
+    nextTotalText: {
+      fontSize: fontSize.size15,
+      fontFamily: fonts.fontBold,
+      color: theme.goldenBuy,
+    },
     totalLabel: {
       fontSize: fontSize.size16,
       fontFamily: fonts.fontBold,
@@ -987,6 +996,25 @@ const createStyles = (theme: Theme) =>
       paddingTop: moderateHeightScale(12),
       borderTopWidth: StyleSheet.hairlineWidth,
       borderTopColor: theme.borderNormal,
+    },
+    trialNote: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: moderateWidthScale(10),
+      padding: moderateWidthScale(12),
+      borderRadius: moderateWidthScale(12),
+      backgroundColor: theme.noticeCream,
+    },
+    trialNoteTitle: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    trialNoteText: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontRegular,
+      color: theme.textMuted,
+      lineHeight: fontSize.size18,
     },
     sinceText: {
       flex: 1,
@@ -1564,6 +1592,11 @@ export default function SubscriptionScreen() {
     const used = dayjs().startOf("day").diff(periodStart, "day");
     return Math.min(1, Math.max(0, used / total));
   })();
+  /** Trial length from the server's dates (14 today), not hard-coded */
+  const trialDays =
+    isTrialing && periodStart && periodEnd
+      ? Math.max(0, periodEnd.diff(periodStart, "day"))
+      : 0;
   const subscribedSinceText = formatTrialEndDate(
     subscription?.createdAt ?? null,
   );
@@ -1683,6 +1716,9 @@ export default function SubscriptionScreen() {
           : null;
   // Not paying for the add-on yet: keep it out of "Current total"
   const breakdownAddOns = promotionStartsPending ? [] : activeAddOns;
+  /** Removal pending: the total stays until the period ends, then this price */
+  const showPriceDropRows =
+    isRenewing && promotionPending && !!renewalPriceText;
 
   /** Manage plan rows — what each one shows depends on who bills the plan */
   const manageRows = (() => {
@@ -1979,6 +2015,11 @@ export default function SubscriptionScreen() {
                       </Text>
                     </View>
                   ))}
+                  {showPriceDropRows ? (
+                    <Text style={styles.addOnNote}>
+                      {t("promotionEndsShort", { date: promotionEndShort })}
+                    </Text>
+                  ) : null}
                   <View style={styles.breakdownDivider} />
                   <View style={[styles.addOnRow, styles.totalRow]}>
                     <Text style={styles.totalLabel}>
@@ -1988,6 +2029,17 @@ export default function SubscriptionScreen() {
                       {t("pricePerMonth", { price: currentTotalText })}
                     </Text>
                   </View>
+                  {/* Client 11-06: show the lower price right under the total */}
+                  {showPriceDropRows ? (
+                    <View style={[styles.addOnRow, styles.nextTotalRow]}>
+                      <Text style={styles.nextTotalText}>
+                        {t("fromDateLabel", { date: promotionEndShort })}
+                      </Text>
+                      <Text style={styles.nextTotalText}>
+                        {t("pricePerMonth", { price: renewalPriceText })}
+                      </Text>
+                    </View>
+                  ) : null}
                 </View>
               ) : (
                 <View style={styles.planPriceContainer}>
@@ -2300,7 +2352,39 @@ export default function SubscriptionScreen() {
                   </Text>
                 </View>
               </View>
-              {subscribedSinceText ? (
+              {/* Trial: no charge yet, and how to avoid it (11-06). The start
+                  date is already on the timeline, so no "Subscribed since" here. */}
+              {isTrialing ? (
+                <View style={styles.trialNote}>
+                  <Feather
+                    name="info"
+                    size={iconScale(18)}
+                    color={theme.darkGreen}
+                  />
+                  <View style={styles.flexCopy}>
+                    <Text style={styles.trialNoteTitle}>
+                      {trialDays
+                        ? t("trialActiveTitleDays", { days: trialDays })
+                        : t("trialActiveTitle")}
+                    </Text>
+                    <Text style={styles.trialNoteText}>
+                      {renewalPriceText
+                        ? t("trialFirstPayment", {
+                            price: renewalPriceText,
+                            date: formatShortDate(subscription.trialEndsAt),
+                          })
+                        : t("trialFirstPaymentNoPrice", {
+                            date: formatShortDate(subscription.trialEndsAt),
+                          })}
+                    </Text>
+                    <Text style={styles.trialNoteText}>
+                      {isApplePayment
+                        ? t("trialCancelBeforeApple")
+                        : t("trialCancelBefore")}
+                    </Text>
+                  </View>
+                </View>
+              ) : subscribedSinceText ? (
                 <View style={styles.sinceRow}>
                   <Feather
                     name="calendar"
