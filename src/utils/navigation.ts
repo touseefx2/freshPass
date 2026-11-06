@@ -19,3 +19,25 @@ export function resetToDashboardHome() {
   // Home is up (after splash / login) — open a held "Book Again" link, if any
   openPendingBookingLink();
 }
+
+/**
+ * Profile tab → a Business Management screen, so back returns through Profile.
+ * Solo-layout owners also pass through their Business Management page; on the
+ * Business plan those items live on Profile itself (pass viaHub = false).
+ */
+export function openBusinessSettingsScreen(
+  screen: string,
+  viaHub: boolean,
+  stepMs = 5,
+) {
+  const hub = "/(main)/dashboard/(account)/(businessProfileSettings)";
+  router.push("/(main)/dashboard/(account)" as Href);
+  setTimeout(() => {
+    if (!viaHub) {
+      router.push(`${hub}/${screen}` as Href);
+      return;
+    }
+    router.push(hub as Href);
+    setTimeout(() => router.push(`${hub}/${screen}` as Href), stepMs);
+  }, stepMs);
+}

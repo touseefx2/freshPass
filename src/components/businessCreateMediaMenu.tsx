@@ -44,7 +44,9 @@ import {
 import {
   canAddStaffMembers,
   isSoloSubscription,
+  usesSoloProfileLayout,
 } from "@/src/state/slices/userSlice";
+import { openBusinessSettingsScreen } from "@/src/utils/navigation";
 import { getReelUploadGate } from "@/src/utils/reelUploadGate";
 import GoldFrame from "@/src/components/GoldFrame";
 import { useGoldFrames } from "@/src/hooks/useGoldFrames";
@@ -104,6 +106,7 @@ const MENU_ITEMS: MenuItem[] = [
     labelKey: "createReel",
     icon: "movie-open-outline",
     iconSet: "community",
+    highlighted: true,
   },
   {
     id: "servicesAndMemberships",
@@ -499,32 +502,12 @@ export default function BusinessCreateMediaMenu({
           closeAll();
           if (!ensureCanHire()) return;
           // Profile → Business profile settings → Hiring (job posts)
-          router.push("/(main)/dashboard/(account)");
-          setTimeout(() => {
-            router.push(
-              "/(main)/dashboard/(account)/(businessProfileSettings)",
-            );
-            setTimeout(() => {
-              router.push(
-                "/(main)/dashboard/(account)/(businessProfileSettings)/jobPosts" as any,
-              );
-            }, 5);
-          }, 5);
+          openBusinessSettingsScreen("jobPosts", usesSoloProfileLayout(businessStatus));
           return;
         case "addProduct":
           closeAll();
           // Profile → Business profile settings → Products listing
-          router.push("/(main)/dashboard/(account)");
-          setTimeout(() => {
-            router.push(
-              "/(main)/dashboard/(account)/(businessProfileSettings)",
-            );
-            setTimeout(() => {
-              router.push(
-                "/(main)/dashboard/(account)/(businessProfileSettings)/products",
-              );
-            }, 5);
-          }, 5);
+          openBusinessSettingsScreen("products", usesSoloProfileLayout(businessStatus));
           return;
         case "availability":
         case "uploadWork": {
@@ -545,23 +528,13 @@ export default function BusinessCreateMediaMenu({
         case "servicesAndMemberships":
           closeAll();
           // Profile → Business profile settings → Services & Memberships
-          router.push("/(main)/dashboard/(account)");
-          setTimeout(() => {
-            router.push(
-              "/(main)/dashboard/(account)/(businessProfileSettings)",
-            );
-            setTimeout(() => {
-              router.push(
-                "/(main)/dashboard/(account)/(businessProfileSettings)/servicesAndMemberships",
-              );
-            }, 5);
-          }, 5);
+          openBusinessSettingsScreen("servicesAndMemberships", usesSoloProfileLayout(businessStatus));
           return;
         default:
           closeAll();
       }
     },
-    [closeAll, ensureCanHire, handleAddEmployee, openReelPicker, router],
+    [businessStatus, closeAll, ensureCanHire, handleAddEmployee, openReelPicker, router],
   );
 
   const renderMenuIcon = (item: MenuItem) => {

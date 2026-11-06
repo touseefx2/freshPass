@@ -38,6 +38,9 @@ import {
   usesSoloProfileLayout,
 } from "@/src/state/slices/userSlice";
 import SoloProfileView from "@/src/components/SoloProfileView";
+import BusinessManagementGrid from "@/src/components/BusinessManagementGrid";
+import AppImage from "@/src/components/AppImage";
+import { resolveApiImageUrl } from "@/src/utils/media";
 
 const CARD_WIDTH_PERCENT = "48%";
 
@@ -200,6 +203,7 @@ function ProfileNavCard({
   iconName,
   iconFamily = "material",
   iconVariant,
+  avatarUri,
   onPress,
   theme,
   styles,
@@ -207,6 +211,8 @@ function ProfileNavCard({
   title: string;
   subtitle: string;
   badgeText?: string;
+  /** Profile photo instead of the icon tile, when the user has one */
+  avatarUri?: string | null;
   iconName: string;
   iconFamily?: IconFamily;
   iconVariant: IconVariant;
@@ -258,48 +264,52 @@ function ProfileNavCard({
           ]}
         >
           <View style={[styles.navCardFace, { borderRadius: radius }]}>
-            <View
-              style={[
-                styles.iconWrap,
-                { backgroundColor: iconBg },
-                iconVariant === "cream" && styles.iconWrapCream,
-              ]}
-            >
-              {iconFamily === "community" ? (
-                <MaterialCommunityIcons
-                  name={
-                    iconName as React.ComponentProps<
-                      typeof MaterialCommunityIcons
-                    >["name"]
-                  }
-                  size={iconSize}
-                  color={iconColor}
-                />
-              ) : (
-                <MaterialIcons
-                  name={
-                    iconName as React.ComponentProps<
-                      typeof MaterialIcons
-                    >["name"]
-                  }
-                  size={iconSize}
-                  color={iconColor}
-                />
-              )}
-            </View>
+            {avatarUri ? (
+              <AppImage uri={avatarUri} style={styles.navCardAvatar} />
+            ) : (
+              <View
+                style={[
+                  styles.iconWrap,
+                  { backgroundColor: iconBg },
+                  iconVariant === "cream" && styles.iconWrapCream,
+                ]}
+              >
+                {iconFamily === "community" ? (
+                  <MaterialCommunityIcons
+                    name={
+                      iconName as React.ComponentProps<
+                        typeof MaterialCommunityIcons
+                      >["name"]
+                    }
+                    size={iconSize}
+                    color={iconColor}
+                  />
+                ) : (
+                  <MaterialIcons
+                    name={
+                      iconName as React.ComponentProps<
+                        typeof MaterialIcons
+                      >["name"]
+                    }
+                    size={iconSize}
+                    color={iconColor}
+                  />
+                )}
+              </View>
+            )}
 
             <View style={styles.navCardTextBlock}>
               <Text style={styles.navCardTitle} numberOfLines={1}>
                 {title}
+              </Text>
+              <Text style={styles.navCardSubtitle} numberOfLines={2}>
+                {subtitle}
               </Text>
               {badgeText ? (
                 <View style={styles.ownerBadge}>
                   <Text style={styles.ownerBadgeText}>{badgeText}</Text>
                 </View>
               ) : null}
-              <Text style={styles.navCardSubtitle} numberOfLines={2}>
-                {subtitle}
-              </Text>
             </View>
 
             <Entypo
@@ -609,6 +619,18 @@ const createStyles = (theme: Theme) =>
       fontSize: fontSize.size18,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
+    },
+    sectionHeaderSubtitle: {
+      marginTop: moderateHeightScale(2),
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen5,
+    },
+    navCardAvatar: {
+      width: moderateWidthScale(60),
+      height: moderateWidthScale(60),
+      borderRadius: moderateWidthScale(30),
+      overflow: "hidden",
     },
     settingsListBlock: {
       gap: moderateHeightScale(8),
@@ -1013,28 +1035,33 @@ export default function AccountScreen() {
             <Text style={styles.subtitle}>{t("profilePageSubtitle")}</Text>
           </View>
 
-          {/* Two big nav cards */}
+          {/* Barber profile card */}
           <View style={styles.navCardsBlock}>
             <ProfileNavCard
               title={t("myBarberProfile")}
-              subtitle={t("barberProfileSubtitle")}
+              subtitle={user.business_name || t("barberProfileSubtitle")}
               badgeText={t("owner")}
               iconName="person"
               iconVariant="dark"
+              avatarUri={resolveApiImageUrl(user.profile_image_url)}
               onPress={() => handleRowPress("barberProfile")}
               theme={theme}
               styles={styles}
             />
-            <ProfileNavCard
-              title={t("businessManagement")}
-              subtitle={t("businessManagementSubtitle")}
-              iconName="storefront"
-              iconVariant="accent"
-              onPress={() => handleRowPress("business")}
-              theme={theme}
-              styles={styles}
-            />
           </View>
+
+          {/* Business Management: every item right on this page (client PDF) */}
+          <View style={styles.sectionHeaderBlock}>
+            <Text style={styles.sectionHeaderText} accessibilityRole="header">
+              {t("businessManagement")}
+            </Text>
+            <Text style={styles.sectionHeaderSubtitle}>
+              {t("bmSubtitle")}
+            </Text>
+          </View>
+          <BusinessManagementGrid
+            horizontalPadding={moderateWidthScale(16)}
+          />
 
           {/* Account settings section */}
           <View style={styles.sectionHeaderBlock}>

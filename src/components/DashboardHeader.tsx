@@ -37,6 +37,8 @@ import { IMAGES } from "../constant/images";
 import { Feather } from "@expo/vector-icons";
 import { resolveApiImageUrl } from "@/src/utils/media";
 import ModeSwitchLogo from "@/src/components/ModeSwitchLogo";
+import { usesSoloProfileLayout } from "@/src/state/slices/userSlice";
+import { openBusinessSettingsScreen } from "@/src/utils/navigation";
 import { useBusinessTrialDaysLeft } from "@/src/hooks/useBusinessTrialDaysLeft";
 import GoldFrame from "@/src/components/GoldFrame";
 import { useGoldFrames } from "@/src/hooks/useGoldFrames";
@@ -274,32 +276,12 @@ function DashboardHeader() {
   const gold = useGoldFrames();
 
   const handleMembershipSetup = useCallback(() => {
-    router.push("/(main)/dashboard/(account)" as any);
-    setTimeout(() => {
-      router.push(
-        "/(main)/dashboard/(account)/(businessProfileSettings)" as any,
-      );
-      setTimeout(() => {
-        router.push(
-          "/(main)/dashboard/(account)/(businessProfileSettings)/servicesAndMemberships" as any,
-        );
-      }, 5);
-    }, 5);
-  }, [router]);
+    openBusinessSettingsScreen("servicesAndMemberships", usesSoloProfileLayout(businessStatus));
+  }, [businessStatus]);
 
   const handleCancellationPolicySetup = useCallback(() => {
-    router.push("/(main)/dashboard/(account)" as any);
-    setTimeout(() => {
-      router.push(
-        "/(main)/dashboard/(account)/(businessProfileSettings)" as any,
-      );
-      setTimeout(() => {
-        router.push(
-          "/(main)/dashboard/(account)/(businessProfileSettings)/cancellationPolicy" as any,
-        );
-      }, 5);
-    }, 5);
-  }, [router]);
+    openBusinessSettingsScreen("cancellationPolicy", usesSoloProfileLayout(businessStatus));
+  }, [businessStatus]);
 
   const trialDaysLeft = useBusinessTrialDaysLeft(
     isOnboardedOwner && businessStatus?.has_subscription === true,

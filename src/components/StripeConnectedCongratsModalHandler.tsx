@@ -5,7 +5,9 @@ import {
   setBusinessPlansModalVisible,
   setSuppressBusinessPlansAutoOpen,
 } from "@/src/state/slices/generalSlice";
+import { usesSoloProfileLayout } from "@/src/state/slices/userSlice";
 import { markStripeConnectCongratsSeen } from "@/src/state/thunks/businessThunks";
+import { openBusinessSettingsScreen } from "@/src/utils/navigation";
 import StripeConnectedCongratsModal from "@/src/components/StripeConnectedCongratsModal";
 
 export default function StripeConnectedCongratsModalHandler() {
@@ -36,15 +38,7 @@ export default function StripeConnectedCongratsModalHandler() {
     void dispatch(markStripeConnectCongratsSeen());
 
     // Profile → Business profile settings → Manage subscription list
-    router.push("/(main)/dashboard/(account)");
-    setTimeout(() => {
-      router.push("/(main)/dashboard/(account)/(businessProfileSettings)");
-      setTimeout(() => {
-        router.push(
-          "/(main)/dashboard/(account)/(businessProfileSettings)/subscriptions",
-        );
-      }, 15);
-    }, 15);
+    openBusinessSettingsScreen("subscriptions", usesSoloProfileLayout(businessStatus), 15);
   };
 
   return (
