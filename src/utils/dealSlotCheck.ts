@@ -36,70 +36,139 @@ export type SlotCheckInput = {
   durationMinutes?: number | null;
 };
 
-/** The reason in plain words, or null when hours alone don't explain it. */
-export function slotProblem(input: SlotCheckInput, t: TFunction): string | null {
+export type SlotProblemKind =
+  | "passed"
+  | "closedDay"
+  | "outsideHours"
+  | "staffOff"
+  | "staffOutsideHours"
+  | "break"
+  | "serviceTooLong";
+
+export type SlotProblem = {
+  kind: SlotProblemKind;
+  /** Short title for the popup */
+  title: string;
+  /** One sentence: why */
+  message: string;
+  /** Whose hours explain it (null for "passed") */
+  hoursOf: { who: "salon" | "staff"; name: string | null; day: DayHours } | null;
+  /** "Friday" */
+  dayName: string;
+};
+
+/** Full reason for the popup, or null when hours alone don't explain it. */
+export function checkSlot(input: SlotCheckInput, t: TFunction): SlotProblem | null {
   const { date, time, hours, now, staffId, staffName } = input;
   const start = toMin(time);
-  const timeLabel = formatSlotTime(time);
-  const dayLabel = dayjs(date).format("ddd, MMM D");
+  const dayName = dayjs(date).format("dddd");
 
   if (date < now.day || (date === now.day && start <= now.minutes)) {
-    return t("sdSlotPassed", { time: timeLabel });
+    return {
+      kind: "passed",
+      title: t("sdBlockPassedTitle"),
+      message: t("sdSlotPassed"),
+      hoursOf: null,
+      dayName,
+    };
   }
 
   const weekday = dayjs(date).format("dddd").toLowerCase();
+  // dayjs may be in another locale; hours are keyed by English day names
+  const enWeekday = dayjs(date).locale("en").format("dddd").toLowerCase() || weekday;
   const dur = input.durationMinutes && input.durationMinutes > 0 ? input.durationMinutes : 0;
   const end = start + dur;
 
-  const check = (row: DayHours | undefined, who: "salon" | "staff"): string | null => {
+  const check = (row: DayHours | undefined, who: "salon" | "staff"): SlotProblem | null => {
     if (!row) return null;
     const name = staffName || "";
+    const hoursOf = { who, name: who === "staff" ? name : null, day: row };
+    const make = (kind: SlotProblemKind, title: string, message: string): SlotProblem => ({
+      kind,
+      title,
+      message,
+      hoursOf,
+      dayName,
+    });
     if (row.closed || !row.open || !row.close) {
       return who === "salon"
-        ? t("sdSlotSalonClosedDay", { day: dayLabel })
-        : t("sdSlotStaffOffDay", { name, day: dayLabel });
+        ? make("closedDay", t("sdBlockClosedTitle"), t("sdSlotSalonClosedDay", { day: dayName }))
+        : make("staffOff", t("sdBlockStaffTitle", { name }), t("sdSlotStaffOffDay", { name, day: dayName }));
     }
     const open = toMin(row.open);
     const close = toMin(row.close);
-    const range = { open: formatSlotTime(row.open), close: formatSlotTime(row.close) };
     if (start < open || start >= close) {
-      return who === "salon"
-        ? t("sdSlotOutsideHours", { ...range, day: dayLabel, time: timeLabel })
-        : t("sdSlotStaffOutsideHours", { ...range, name, day: dayLabel, time: timeLabel });
+      if (who === "staff") {
+        return make(
+          "staffOutsideHours",
+          t("sdBlockStaffTitle", { name }),
+          t("sdSlotStaffOutsideHours", {
+            name,
+            day: dayName,
+            open: formatSlotTime(row.open),
+            close: formatSlotTime(row.close),
+          }),
+        );
+      }
+      return make(
+        "outsideHours",
+        t("sdBlockOutsideTitle"),
+        start < open
+          ? t("sdSlotBeforeOpen", { open: formatSlotTime(row.open), day: dayName })
+          : t("sdSlotAfterClose", { close: formatSlotTime(row.close), day: dayName }),
+      );
     }
     for (const b of row.breaks) {
       const bs = toMin(b.start);
       const be = toMin(b.end);
       if (start >= bs && start < be) {
-        return t("sdSlotInBreak", {
-          time: timeLabel,
-          start: formatSlotTime(b.start),
-          end: formatSlotTime(b.end),
-        });
+        return make(
+          "break",
+          t("sdBlockBreakTitle"),
+          t("sdSlotInBreak", {
+            start: formatSlotTime(b.start),
+            end: formatSlotTime(b.end),
+          }),
+        );
       }
       if (dur && start < bs && end > bs) {
-        return t("sdSlotEndsInBreak", {
-          service: input.serviceName || "",
-          mins: dur,
-          start: formatSlotTime(b.start),
-        });
+        return make(
+          "serviceTooLong",
+          t("sdBlockServiceTitle"),
+          t("sdSlotEndsInBreak", {
+            service: input.serviceName || "",
+            mins: dur,
+            start: formatSlotTime(b.start),
+          }),
+        );
       }
     }
     if (dur && end > close) {
-      return t("sdSlotEndsAfterClose", {
-        service: input.serviceName || "",
-        mins: dur,
-        close: range.close,
-      });
+      return make(
+        "serviceTooLong",
+        t("sdBlockServiceTitle"),
+        t("sdSlotEndsAfterClose", {
+          service: input.serviceName || "",
+          mins: dur,
+          close: formatSlotTime(row.close),
+        }),
+      );
     }
     return null;
   };
 
-  const salonReason = check(hours?.hours[weekday], "salon");
+  const salonRow = hours?.hours[enWeekday] ?? hours?.hours[weekday];
+  const salonReason = check(salonRow, "salon");
   if (salonReason) return salonReason;
   if (staffId != null && hours?.staffHours[staffId]) {
-    const staffReason = check(hours.staffHours[staffId][weekday], "staff");
+    const rows = hours.staffHours[staffId];
+    const staffReason = check(rows[enWeekday] ?? rows[weekday], "staff");
     if (staffReason) return staffReason;
   }
   return null;
+}
+
+/** Just the sentence (Post a Deal time-step box). */
+export function slotProblem(input: SlotCheckInput, t: TFunction): string | null {
+  return checkSlot(input, t)?.message ?? null;
 }

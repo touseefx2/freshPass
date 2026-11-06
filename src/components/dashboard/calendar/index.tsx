@@ -14,7 +14,6 @@ import {
   ActivityIndicator,
   Pressable,
   GestureResponderEvent,
-  Alert,
 } from "react-native";
 import { useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { useTranslation } from "react-i18next";
@@ -74,7 +73,8 @@ import {
   fetchOwnerBusinessHours,
   type OwnerBusinessHours,
 } from "@/src/services/ownerBookingService";
-import { formatSlotTime, slotProblem } from "@/src/utils/dealSlotCheck";
+import { checkSlot, type SlotProblem } from "@/src/utils/dealSlotCheck";
+import DealSlotBlockedModal from "@/src/components/DealSlotBlockedModal";
 import { salonNow } from "@/src/utils/salonTimezone";
 import { useRouter, useFocusEffect } from "expo-router";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
@@ -1402,6 +1402,14 @@ export default function CalendarScreen() {
     at: number;
     promise: Promise<OwnerBusinessHours | null>;
   } | null>(null);
+  // Post a Deal refused on the calendar: popup with the reason + day's hours
+  const [dealBlock, setDealBlock] = useState<{
+    date: string;
+    time: string;
+    problem: SlotProblem;
+    /** Post a Deal params for "Pick another time" */
+    params: Record<string, string>;
+  } | null>(null);
   const loadDealHours = useCallback(() => {
     if (!ownerBusinessId) return Promise.resolve(null);
     const cached = dealHoursRef.current;
@@ -2506,7 +2514,7 @@ export default function CalendarScreen() {
     if (!ensureCanPostDeals()) return;
     const date = day.format("YYYY-MM-DD");
     const time = `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
-    const staffParam =
+    const staffParam: Record<string, string> =
       staffFilterId !== "all" ? { staff_id: String(staffFilterId) } : {};
 
     const hours = await Promise.race([
@@ -2517,7 +2525,7 @@ export default function CalendarScreen() {
     const now = hours ? salonNow(null, hours.timezone) : null;
     const problem =
       hours && now
-        ? slotProblem(
+        ? checkSlot(
             {
               date,
               time,
@@ -2539,25 +2547,16 @@ export default function CalendarScreen() {
       });
       return;
     }
-    Alert.alert(
-      t("sdSlotCantPostTitle", { time: formatSlotTime(time) }),
-      `${problem}\n\n${t("sdSlotCalendarHint")}`,
-      [
-        { text: t("cancel"), style: "cancel" },
-        {
-          text: t("sdPickAnotherTime"),
-          onPress: () =>
-            router.push({
-              pathname: "/(main)/postDeal" as any,
-              params: {
-                // A passed day isn't in the date strip — start on today.
-                ...(now && date >= now.day ? { date } : {}),
-                ...staffParam,
-              },
-            }),
-        },
-      ],
-    );
+    setDealBlock({
+      date,
+      time,
+      problem,
+      params: {
+        // A passed day isn't in the date strip — start on today.
+        ...(now && date >= now.day ? { date } : {}),
+        ...staffParam,
+      },
+    });
   };
 
   const openTimeOffFromMenu = () => {
@@ -3802,6 +3801,15 @@ export default function CalendarScreen() {
       )}
 
       {dealsPlanModal}
+      <DealSlotBlockedModal
+        block={dealBlock}
+        onClose={() => setDealBlock(null)}
+        onPickAnother={() => {
+          const params = dealBlock?.params ?? {};
+          setDealBlock(null);
+          router.push({ pathname: "/(main)/postDeal" as any, params });
+        }}
+      />
     </View>
   );
 }

@@ -20,7 +20,6 @@ import {
   View,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import { MaterialIcons } from "@expo/vector-icons";
 import dayjs from "dayjs";
@@ -33,7 +32,13 @@ import {
   widthScale,
   iconScale,
 } from "@/src/theme/dimensions";
-import StackHeader from "@/src/components/StackHeader";
+import FlowHeader from "@/src/components/reelFlow/flowHeader";
+import FlowFooter from "@/src/components/reelFlow/flowFooter";
+import {
+  FlowTitle,
+  InfoNote,
+  SectionLabel,
+} from "@/src/components/reelFlow/flowParts";
 import AppImage from "@/src/components/AppImage";
 import RetryButton from "@/src/components/retryButton";
 import Logger from "@/src/services/logger";
@@ -47,17 +52,36 @@ import {
   type OwnerBookingService,
 } from "@/src/services/ownerBookingService";
 import { createSlotOffer } from "@/src/services/slotOfferService";
+import SlotOfferCard from "@/src/components/slotOffer/SlotOfferCard";
+import type { SlotOffer } from "@/src/types/slotOffer";
 import { resolveApiImageUrl } from "@/src/utils/media";
 import { resetToDashboardHome } from "@/src/utils/navigation";
 import { isSoloSubscription } from "@/src/state/slices/userSlice";
 import { formatSlotTime, slotProblem } from "@/src/utils/dealSlotCheck";
 import {
+  getDeviceTimeZone,
   parseSalonClock,
   salonNow,
   type SalonClock,
 } from "@/src/utils/salonTimezone";
 
 type StepKey = "service" | "staff" | "time" | "price" | "preview";
+
+/** "13:00","14:00" → "1 – 2 PM"; "09:00","18:00" → "9 AM – 6 PM" */
+function shortRange(from: string, to: string) {
+  const part = (hhmm: string) => {
+    const [h, m] = hhmm.split(":").map(Number);
+    return {
+      text: m ? `${h % 12 || 12}:${String(m).padStart(2, "0")}` : `${h % 12 || 12}`,
+      ampm: h >= 12 ? "PM" : "AM",
+    };
+  };
+  const a = part(from);
+  const b = part(to);
+  return a.ampm === b.ampm
+    ? `${a.text} – ${b.text} ${b.ampm}`
+    : `${a.text} ${a.ampm} – ${b.text} ${b.ampm}`;
+}
 
 function formatPrice(n: number) {
   return Number.isInteger(n) ? `$${n}` : `$${n.toFixed(2)}`;
@@ -77,20 +101,9 @@ const createStyles = (theme: Theme) =>
       paddingHorizontal: moderateWidthScale(20),
     },
     scrollContent: {
-      paddingBottom: moderateHeightScale(160),
+      paddingTop: moderateHeightScale(18),
+      paddingBottom: moderateHeightScale(40),
       gap: moderateHeightScale(12),
-    },
-    stepLabel: {
-      fontSize: fontSize.size13,
-      fontFamily: fonts.fontMedium,
-      color: theme.lightGreen5,
-      marginTop: moderateHeightScale(4),
-    },
-    stepTitle: {
-      fontSize: fontSize.size20,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-      marginBottom: moderateHeightScale(8),
     },
     // Service / Staff tiles
     tile: {
@@ -98,15 +111,20 @@ const createStyles = (theme: Theme) =>
       alignItems: "center",
       gap: moderateWidthScale(12),
       backgroundColor: theme.white,
-      borderRadius: moderateWidthScale(12),
-      borderWidth: 1,
-      borderColor: theme.lightGreen015,
-      paddingHorizontal: moderateWidthScale(12),
-      paddingVertical: moderateHeightScale(12),
+      borderRadius: moderateWidthScale(18),
+      borderWidth: 1.5,
+      borderColor: theme.borderLight,
+      paddingHorizontal: moderateWidthScale(16),
+      paddingVertical: moderateHeightScale(16),
+      shadowColor: theme.darkGreen,
+      shadowOffset: { width: 0, height: moderateHeightScale(4) },
+      shadowOpacity: 0.08,
+      shadowRadius: moderateWidthScale(10),
+      elevation: 2,
     },
     tileSelected: {
       borderColor: theme.darkGreen,
-      backgroundColor: theme.lightGreen05,
+      backgroundColor: theme.mintTint,
     },
     tileImage: {
       width: moderateWidthScale(44),
@@ -119,12 +137,12 @@ const createStyles = (theme: Theme) =>
     },
     tileTextCol: { flex: 1, gap: moderateHeightScale(1) },
     tileName: {
-      fontSize: fontSize.size15,
+      fontSize: fontSize.size16,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
     },
     tileSub: {
-      fontSize: fontSize.size12,
+      fontSize: fontSize.size13,
       fontFamily: fonts.fontRegular,
       color: theme.lightGreen5,
     },
@@ -140,6 +158,269 @@ const createStyles = (theme: Theme) =>
     tileCheckSelected: {
       borderColor: theme.darkGreen,
       backgroundColor: theme.darkGreen,
+    },
+    // Price step
+    slotStrip: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(12),
+      backgroundColor: theme.mintTint,
+      borderRadius: moderateWidthScale(16),
+      padding: moderateWidthScale(12),
+    },
+    slotStripIcon: {
+      width: moderateWidthScale(40),
+      height: moderateWidthScale(40),
+      borderRadius: moderateWidthScale(12),
+      backgroundColor: theme.buttonBack,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    slotStripTitle: {
+      fontSize: fontSize.size15,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    slotStripSub: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+      marginTop: moderateHeightScale(2),
+    },
+    priceCard: {
+      backgroundColor: theme.white,
+      borderRadius: moderateWidthScale(18),
+      borderWidth: 1.5,
+      borderColor: theme.borderLight,
+      paddingHorizontal: moderateWidthScale(16),
+      paddingVertical: moderateHeightScale(12),
+    },
+    priceCardError: { borderColor: theme.red },
+    priceInputRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(6),
+    },
+    priceCurrency: {
+      fontSize: fontSize.size28,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    priceInput: {
+      flex: 1,
+      fontSize: fontSize.size28,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+      paddingVertical: moderateHeightScale(6),
+    },
+    priceDivider: {
+      height: 1,
+      backgroundColor: theme.borderLight,
+      marginVertical: moderateHeightScale(10),
+    },
+    priceFootRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: moderateWidthScale(8),
+    },
+    priceNormal: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+    },
+    priceNormalValue: {
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    savePill: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(4),
+      backgroundColor: theme.successGreen,
+      borderRadius: moderateWidthScale(20),
+      paddingHorizontal: moderateWidthScale(10),
+      paddingVertical: moderateHeightScale(4),
+    },
+    savePillText: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontBold,
+      color: theme.white,
+    },
+    noDiscountText: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontMedium,
+      color: theme.lightGreen5,
+    },
+    priceErrorText: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontMedium,
+      color: theme.red,
+      marginTop: -moderateHeightScale(4),
+    },
+    quickRow: {
+      flexDirection: "row",
+      gap: moderateWidthScale(6),
+    },
+    quickChip: {
+      flex: 1,
+      alignItems: "center",
+      paddingHorizontal: moderateWidthScale(2),
+      paddingVertical: moderateHeightScale(8),
+      borderRadius: moderateWidthScale(20),
+      borderWidth: 1,
+      borderColor: theme.lightGreen2,
+      backgroundColor: theme.white,
+    },
+    quickChipSel: {
+      backgroundColor: theme.darkGreen,
+      borderColor: theme.darkGreen,
+    },
+    quickChipText: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    quickChipTextSel: { color: theme.white },
+    closeGrid: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: moderateWidthScale(10),
+    },
+    closeCard: {
+      flexBasis: "47%",
+      flexGrow: 1,
+      backgroundColor: theme.white,
+      borderRadius: moderateWidthScale(16),
+      borderWidth: 1.5,
+      borderColor: theme.borderLight,
+      padding: moderateWidthScale(12),
+      gap: moderateHeightScale(4),
+    },
+    closeCardSel: {
+      backgroundColor: theme.darkGreen,
+      borderColor: theme.darkGreen,
+    },
+    closeCardOff: { opacity: 0.4 },
+    closeHead: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(6),
+    },
+    closeTitle: {
+      fontSize: fontSize.size15,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    closeSub: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+    },
+    closeTextSel: { color: theme.white },
+    // Preview step
+    detailCard: {
+      backgroundColor: theme.white,
+      borderRadius: moderateWidthScale(18),
+      borderWidth: 1,
+      borderColor: theme.borderLight,
+      paddingHorizontal: moderateWidthScale(14),
+    },
+    detailRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(12),
+      paddingVertical: moderateHeightScale(12),
+    },
+    detailRowBorder: {
+      borderTopWidth: 1,
+      borderTopColor: theme.borderLight,
+    },
+    detailIcon: {
+      width: moderateWidthScale(36),
+      height: moderateWidthScale(36),
+      borderRadius: moderateWidthScale(10),
+      backgroundColor: theme.mintTint,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    detailLabel: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen5,
+    },
+    detailValueRow: {
+      flexDirection: "row",
+      alignItems: "baseline",
+      gap: moderateWidthScale(8),
+      marginTop: moderateHeightScale(2),
+    },
+    detailValue: {
+      fontSize: fontSize.size15,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    detailStrike: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen5,
+      textDecorationLine: "line-through",
+    },
+    changeBtn: {
+      paddingHorizontal: moderateWidthScale(12),
+      paddingVertical: moderateHeightScale(6),
+      borderRadius: moderateWidthScale(20),
+      backgroundColor: theme.orangeBrown015,
+    },
+    changeBtnText: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontBold,
+      color: theme.orangeBrownText,
+    },
+    // "Why these times" card (time step) — compact
+    timeInfoCard: {
+      backgroundColor: theme.mintTint,
+      borderRadius: moderateWidthScale(14),
+      paddingHorizontal: moderateWidthScale(12),
+      paddingVertical: moderateHeightScale(10),
+      gap: moderateHeightScale(6),
+    },
+    timeInfoHead: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(6),
+    },
+    timeInfoTitle: {
+      flex: 1,
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    timeInfoBody: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+      lineHeight: fontSize.size16,
+    },
+    timeInfoPills: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: moderateWidthScale(6),
+      marginTop: moderateHeightScale(2),
+    },
+    timeInfoPill: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(4),
+      backgroundColor: theme.white,
+      borderRadius: moderateWidthScale(20),
+      paddingHorizontal: moderateWidthScale(7),
+      paddingVertical: moderateHeightScale(3),
+    },
+    timeInfoPillText: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
     },
     // Time chips
     timeChipsWrap: {
@@ -166,177 +447,119 @@ const createStyles = (theme: Theme) =>
     },
     timeChipTextSelected: { color: theme.white },
     // Price input
-    inputLabel: {
-      fontSize: fontSize.size14,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-      marginBottom: moderateHeightScale(6),
-    },
     inputHint: {
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontRegular,
-      color: theme.lightGreen5,
-      marginBottom: moderateHeightScale(12),
-    },
-    input: {
-      backgroundColor: theme.white,
-      borderRadius: moderateWidthScale(12),
-      borderWidth: 1,
-      borderColor: theme.lightGreen2,
-      paddingHorizontal: moderateWidthScale(14),
-      paddingVertical: moderateHeightScale(12),
-      fontSize: fontSize.size16,
-      fontFamily: fonts.fontMedium,
-      color: theme.darkGreen,
-      marginBottom: moderateHeightScale(16),
-    },
-    chipsRow: {
-      flexDirection: "row",
-      flexWrap: "wrap",
-      gap: moderateWidthScale(8),
-      marginBottom: moderateHeightScale(12),
-    },
-    chip: {
-      paddingHorizontal: moderateWidthScale(14),
-      paddingVertical: moderateHeightScale(9),
-      borderRadius: moderateWidthScale(10),
-      borderWidth: 1,
-      borderColor: theme.lightGreen2,
-      backgroundColor: theme.white,
-    },
-    chipSelected: {
-      borderColor: theme.darkGreen,
-      backgroundColor: theme.darkGreen,
-    },
-    chipText: {
-      fontSize: fontSize.size13,
-      fontFamily: fonts.fontMedium,
-      color: theme.darkGreen,
-    },
-    chipTextSelected: { color: theme.white },
-    closesPreview: {
-      fontSize: fontSize.size13,
-      fontFamily: fonts.fontMedium,
-      color: theme.lightGreen5,
-      marginBottom: moderateHeightScale(8),
-    },
-    // Preview card
-    previewCard: {
-      backgroundColor: theme.white,
-      borderRadius: moderateWidthScale(16),
-      borderWidth: 1,
-      borderColor: theme.lightGreen015,
-      padding: moderateWidthScale(16),
-      gap: moderateHeightScale(12),
-    },
-    previewRow: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-    },
-    previewLabel: {
       fontSize: fontSize.size13,
       fontFamily: fonts.fontRegular,
-      color: theme.lightGreen5,
-    },
-    previewValue: {
-      fontSize: fontSize.size14,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-    },
-    savingsBadge: {
-      alignSelf: "flex-start",
-      flexDirection: "row",
-      alignItems: "center",
-      gap: moderateWidthScale(4),
-      paddingHorizontal: moderateWidthScale(10),
-      paddingVertical: moderateHeightScale(4),
-      borderRadius: moderateWidthScale(8),
-      backgroundColor: theme.tileMint,
-    },
-    savingsText: {
-      fontSize: fontSize.size13,
-      fontFamily: fonts.fontBold,
-      color: theme.successGreen,
-    },
-    divider: { height: 1, backgroundColor: theme.lightGreen07 },
-    // Footer
-    footer: {
-      position: "absolute",
-      bottom: 0,
-      left: 0,
-      right: 0,
-      paddingHorizontal: moderateWidthScale(20),
-      paddingBottom: moderateHeightScale(34),
-      paddingTop: moderateHeightScale(12),
-      backgroundColor: theme.background,
-      borderTopWidth: 1,
-      borderTopColor: theme.lightGreen07,
-      flexDirection: "row",
-      gap: moderateWidthScale(10),
-    },
-    backBtn: {
-      flex: 1,
-      borderRadius: moderateWidthScale(14),
-      paddingVertical: moderateHeightScale(15),
-      alignItems: "center",
-      borderWidth: 1,
-      borderColor: theme.darkGreen,
-    },
-    backBtnText: {
-      fontSize: fontSize.size15,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-    },
-    nextBtn: {
-      flex: 2,
-      borderRadius: moderateWidthScale(14),
-      paddingVertical: moderateHeightScale(15),
-      alignItems: "center",
-      backgroundColor: theme.darkGreen,
-    },
-    nextBtnDisabled: { opacity: 0.4 },
-    nextBtnText: {
-      fontSize: fontSize.size15,
-      fontFamily: fonts.fontBold,
-      color: theme.white,
+      color: theme.lightGreen,
+      marginTop: -moderateHeightScale(8),
     },
     // Done
-    doneIcon: {
-      width: moderateWidthScale(72),
-      height: moderateWidthScale(72),
-      borderRadius: moderateWidthScale(36),
-      backgroundColor: theme.tileMint,
+    doneScroll: {
+      paddingHorizontal: moderateWidthScale(20),
+      paddingTop: moderateHeightScale(24),
+      paddingBottom: moderateHeightScale(24),
+      gap: moderateHeightScale(14),
+    },
+    doneHero: {
+      alignItems: "center",
+      gap: moderateHeightScale(6),
+      marginBottom: moderateHeightScale(4),
+    },
+    doneHalo: {
+      width: moderateWidthScale(104),
+      height: moderateWidthScale(104),
+      borderRadius: moderateWidthScale(52),
+      backgroundColor: theme.mintTint,
       alignItems: "center",
       justifyContent: "center",
       marginBottom: moderateHeightScale(8),
     },
+    doneHaloInner: {
+      width: moderateWidthScale(76),
+      height: moderateWidthScale(76),
+      borderRadius: moderateWidthScale(38),
+      backgroundColor: theme.mintTintStrong,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    doneCheck: {
+      width: moderateWidthScale(54),
+      height: moderateWidthScale(54),
+      borderRadius: moderateWidthScale(27),
+      backgroundColor: theme.successGreen,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    liveBadge: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(6),
+      backgroundColor: theme.white,
+      borderRadius: moderateWidthScale(20),
+      borderWidth: 1,
+      borderColor: theme.borderLight,
+      paddingHorizontal: moderateWidthScale(10),
+      paddingVertical: moderateHeightScale(4),
+    },
+    liveDot: {
+      width: moderateWidthScale(8),
+      height: moderateWidthScale(8),
+      borderRadius: moderateWidthScale(4),
+      backgroundColor: theme.toggleActive,
+    },
+    liveText: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontBold,
+      color: theme.successGreen,
+      letterSpacing: 0.5,
+    },
     doneTitle: {
-      fontSize: fontSize.size20,
+      fontSize: fontSize.size26,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
       textAlign: "center",
+      marginTop: moderateHeightScale(6),
     },
     doneSub: {
+      fontSize: fontSize.size15,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+      textAlign: "center",
+      lineHeight: fontSize.size21,
+      paddingHorizontal: moderateWidthScale(12),
+    },
+    nextCard: {
+      backgroundColor: theme.white,
+      borderRadius: moderateWidthScale(18),
+      borderWidth: 1,
+      borderColor: theme.borderLight,
+      padding: moderateWidthScale(14),
+      gap: moderateHeightScale(12),
+    },
+    nextRow: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: moderateWidthScale(12),
+    },
+    nextNum: {
+      width: moderateWidthScale(26),
+      height: moderateWidthScale(26),
+      borderRadius: moderateWidthScale(13),
+      backgroundColor: theme.mintTint,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    nextNumText: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontBold,
+      color: theme.buttonBack,
+    },
+    nextText: {
+      flex: 1,
       fontSize: fontSize.size14,
       fontFamily: fonts.fontRegular,
-      color: theme.lightGreen5,
-      textAlign: "center",
+      color: theme.darkGreen,
       lineHeight: fontSize.size20,
-    },
-    doneBtn: {
-      marginTop: moderateHeightScale(20),
-      paddingHorizontal: moderateWidthScale(32),
-      paddingVertical: moderateHeightScale(14),
-      borderRadius: moderateWidthScale(14),
-      backgroundColor: theme.darkGreen,
-      flexDirection: "row",
-      alignItems: "center",
-      gap: moderateWidthScale(8),
-    },
-    doneBtnText: {
-      fontSize: fontSize.size15,
-      fontFamily: fonts.fontBold,
-      color: theme.white,
     },
     dateChipsWrap: {
       flexDirection: "row",
@@ -372,13 +595,6 @@ const createStyles = (theme: Theme) =>
     timeLoadingWrap: {
       paddingVertical: moderateHeightScale(20),
       alignItems: "center",
-    },
-    emptyTimeText: {
-      fontSize: fontSize.size13,
-      fontFamily: fonts.fontRegular,
-      color: theme.lightGreen5,
-      textAlign: "center",
-      marginTop: moderateHeightScale(8),
     },    slotProblemBox: {
       flexDirection: "row",
       alignItems: "flex-start",
@@ -402,17 +618,6 @@ const createStyles = (theme: Theme) =>
       color: theme.darkGreen,
       lineHeight: moderateHeightScale(19),
     },
-    previewTimeRight: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: moderateWidthScale(10),
-    },
-    previewChange: {
-      fontSize: fontSize.size13,
-      fontFamily: fonts.fontBold,
-      color: theme.selectCard,
-      textDecorationLine: "underline",
-    },
   });
 
 export default function PostDealScreen() {
@@ -420,7 +625,6 @@ export default function PostDealScreen() {
   const { colors } = useTheme();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [theme]);
-  const insets = useSafeAreaInsets();
   const router = useRouter();
   const params = useLocalSearchParams<{
     date?: string;
@@ -550,6 +754,44 @@ export default function PostDealScreen() {
 
   const timesReady = !timesLoading && timesFor === timesKey;
 
+  // Hours for the day on screen (barber's own when set, else the salon's)
+  const dayHours = useMemo(() => {
+    if (!hours) return null;
+    const key = dayjs(selectedDate).locale("en").format("dddd").toLowerCase();
+    const staffRows = selectedStaff ? hours.staffHours[selectedStaff.id] : undefined;
+    return staffRows?.[key] ?? hours.hours[key] ?? null;
+  }, [hours, selectedDate, selectedStaff]);
+
+  /** Small pills on the "why these times" card: staff / open / break / zone */
+  const timeInfoPills = useMemo(() => {
+    const pills: { icon: keyof typeof MaterialIcons.glyphMap; text: string }[] = [];
+    if (selectedStaff && staffList.length > 1) {
+      pills.push({ icon: "person", text: selectedStaff.name });
+    }
+    if (dayHours && !dayHours.closed && dayHours.open && dayHours.close) {
+      pills.push({
+        icon: "schedule",
+        text: shortRange(dayHours.open, dayHours.close),
+      });
+      dayHours.breaks.forEach((b) =>
+        pills.push({
+          icon: "free-breakfast",
+          text: `${t("sdBlockBreak")} ${shortRange(b.start, b.end)}`,
+        }),
+      );
+    }
+    const zone = hours?.timezone;
+    if (zone && zone !== getDeviceTimeZone()) {
+      pills.push({
+        icon: "public",
+        text: t("sdSalonTimePill", {
+          city: (zone.split("/").pop() ?? zone).replace(/_/g, " "),
+        }),
+      });
+    }
+    return pills;
+  }, [selectedStaff, staffList.length, dayHours, hours, t]);
+
   const showTimeStep = !presetTime || !!presetProblem || forceTimeStep;
 
   const steps = useMemo<StepKey[]>(() => {
@@ -586,6 +828,98 @@ export default function PostDealScreen() {
   const normalPrice = selectedService?.price ?? 0;
   const offerPrice = offerPriceText.trim() === "" ? normalPrice : Number(offerPriceText);
   const savings = normalPrice - (Number.isFinite(offerPrice) ? offerPrice : normalPrice);
+  const percentOff =
+    savings > 0 && normalPrice > 0 ? Math.round((savings / normalPrice) * 100) : 0;
+  const priceError = useMemo(() => {
+    if (offerPriceText.trim() === "") return null;
+    const n = Number(offerPriceText);
+    if (!Number.isFinite(n) || n <= 0) return t("sdPriceInvalid");
+    if (n > normalPrice) return t("sdPriceTooHigh", { price: formatPrice(normalPrice) });
+    return null;
+  }, [offerPriceText, normalPrice, t]);
+
+  /** "Fri, Nov 6 · 3:00 PM" (+ " · with Touseef") */
+  const slotLabelNoStaff = selectedTime
+    ? `${dayjs(selectedDate).format("ddd, MMM D")} · ${formatSlotTime(selectedTime)}`
+    : "";
+  const slotLabel =
+    selectedStaff && staffList.length > 1
+      ? `${slotLabelNoStaff} · ${t("sdWith")} ${selectedStaff.name}`
+      : slotLabelNoStaff;
+
+  /** "Stop taking bookings" choices; ones already past on the salon clock are off */
+  const closeOptions = useMemo(() => {
+    if (!selectedTime) return [];
+    const now = salonNow(salonClock, hours?.timezone);
+    const [h, m] = selectedTime.split(":").map(Number);
+    const start = h * 60 + m;
+    return [
+      { min: 30, labelKey: "sdClose30" },
+      { min: 60, labelKey: "sdClose60" },
+      { min: 120, labelKey: "sdClose120" },
+      { min: 180, labelKey: "sdClose180" },
+    ]
+      .filter((o) => start - o.min >= 0)
+      .map((o) => {
+        const close = start - o.min;
+        const hhmm = `${String(Math.floor(close / 60)).padStart(2, "0")}:${String(close % 60).padStart(2, "0")}`;
+        const passed =
+          selectedDate < now.day || (selectedDate === now.day && close <= now.minutes);
+        return { ...o, timeLabel: formatSlotTime(hhmm), passed };
+      });
+  }, [selectedTime, selectedDate, salonClock, hours]);
+
+  // A pick that is now in the past can't be kept
+  useEffect(() => {
+    if (closesBeforeMinutes == null) return;
+    if (closeOptions.find((o) => o.min === closesBeforeMinutes)?.passed) {
+      setClosesBeforeMinutes(null);
+    }
+  }, [closeOptions, closesBeforeMinutes]);
+
+  /** Same card customers see in Last-Minute Deals */
+  const previewDeal = useMemo<SlotOffer | null>(() => {
+    if (!selectedService || !selectedTime) return null;
+    const dealPrice = Number.isFinite(offerPrice) ? offerPrice : normalPrice;
+    return {
+      id: 0,
+      status: "live",
+      bookable: true,
+      business: {
+        id: businessId,
+        title: hours?.profile.title || user.business_name || "",
+        image_url: hours?.profile.imageUrl ?? null,
+        address: null,
+        city: hours?.profile.city ?? null,
+        state: hours?.profile.state ?? null,
+        category: null,
+      },
+      staff: selectedStaff ? { id: selectedStaff.id, name: selectedStaff.name } : null,
+      service: { id: selectedService.id, name: selectedService.name },
+      date: selectedDate,
+      start_time: selectedTime,
+      starts_at: `${selectedDate}T${selectedTime}:00`,
+      duration_minutes: selectedService.durationMinutes,
+      normal_price: normalPrice,
+      offer_price: dealPrice,
+      savings: Math.max(0, normalPrice - dealPrice),
+      closes_at: "",
+      timezone: hours?.timezone ?? "",
+      cancellation_policy: null,
+      views_count: null,
+      appointment: null,
+    };
+  }, [
+    selectedService,
+    selectedTime,
+    selectedStaff,
+    selectedDate,
+    offerPrice,
+    normalPrice,
+    businessId,
+    hours,
+    user.business_name,
+  ]);
 
   // Dates: next 14 days
   const dates = useMemo(() => {
@@ -602,11 +936,8 @@ export default function PostDealScreen() {
       case "time":
         // Only a time that is in the list — a hidden pick can't slip through
         return !!selectedTime && timesReady && freeTimes.includes(selectedTime);
-      case "price": {
-        if (!closesAtTime) return false;
-        if (offerPriceText.trim() !== "" && !Number.isFinite(Number(offerPriceText))) return false;
-        return true;
-      }
+      case "price":
+        return !!closesAtTime && !priceError;
       case "preview":
         return true;
       default:
@@ -622,6 +953,7 @@ export default function PostDealScreen() {
     checksPresetOnNext,
     timesReady,
     freeTimes,
+    priceError,
   ]);
 
   const goNext = () => {
@@ -699,32 +1031,68 @@ export default function PostDealScreen() {
 
   // DONE screen
   if (done) {
+    const nextSteps = [
+      t("sdNext1"),
+      t("sdNext2"),
+      closesAtTime
+        ? t("sdNext3", { time: formatSlotTime(closesAtTime) })
+        : null,
+    ].filter(Boolean) as string[];
     return (
       <View style={styles.container}>
-        <StackHeader title={t("sdPostADeal")} />
-        <View style={styles.center}>
-          <View style={styles.doneIcon}>
-            <MaterialIcons
-              name="check"
-              size={iconScale(36)}
-              color={theme.successGreen}
-            />
+        <FlowHeader
+          title={t("sdPostADeal")}
+          onBack={resetToDashboardHome}
+          backIcon="close"
+        />
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={styles.doneScroll}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.doneHero}>
+            <View style={styles.doneHalo}>
+              <View style={styles.doneHaloInner}>
+                <View style={styles.doneCheck}>
+                  <MaterialIcons name="check" size={iconScale(32)} color={theme.white} />
+                </View>
+              </View>
+            </View>
+            <View style={styles.liveBadge}>
+              <View style={styles.liveDot} />
+              <Text style={styles.liveText}>{t("sdLiveNow")}</Text>
+            </View>
+            <Text style={styles.doneTitle}>{t("sdDealPosted")}</Text>
+            <Text style={styles.doneSub}>{t("sdDealPostedSub")}</Text>
           </View>
-          <Text style={styles.doneTitle}>{t("sdDealPosted")}</Text>
-          <Text style={styles.doneSub}>{t("sdDealPostedSub")}</Text>
-          <TouchableOpacity
-            style={styles.doneBtn}
-            activeOpacity={0.75}
-            onPress={resetToDashboardHome}
-          >
-            <MaterialIcons
-              name="home"
-              size={iconScale(20)}
-              color={theme.white}
-            />
-            <Text style={styles.doneBtnText}>{t("goToHome")}</Text>
-          </TouchableOpacity>
-        </View>
+
+          {previewDeal ? (
+            <View pointerEvents="none" accessibilityElementsHidden>
+              <SlotOfferCard deal={previewDeal} />
+            </View>
+          ) : null}
+
+          <SectionLabel label={t("sdWhatsNext")} style={{ marginTop: moderateHeightScale(4) }} />
+          <View style={styles.nextCard}>
+            {nextSteps.map((text, i) => (
+              <View key={i} style={styles.nextRow}>
+                <View style={styles.nextNum}>
+                  <Text style={styles.nextNumText}>{i + 1}</Text>
+                </View>
+                <Text style={styles.nextText}>{text}</Text>
+              </View>
+            ))}
+          </View>
+        </ScrollView>
+        <FlowFooter
+          row
+          secondary={{ label: t("goToHome"), onPress: resetToDashboardHome, icon: "home" }}
+          primary={{
+            label: t("sdViewMyDeals"),
+            onPress: () => router.replace("/(main)/myDeals" as any),
+            trailingIcon: "arrow-forward",
+          }}
+        />
       </View>
     );
   }
@@ -732,7 +1100,7 @@ export default function PostDealScreen() {
   if (loadingData) {
     return (
       <View style={styles.container}>
-        <StackHeader title={t("sdPostADeal")} />
+        <FlowHeader title={t("sdPostADeal")} onBack={() => router.back()} />
         <View style={styles.center}>
           <ActivityIndicator size="large" color={theme.darkGreen} />
         </View>
@@ -743,7 +1111,7 @@ export default function PostDealScreen() {
   if (loadError) {
     return (
       <View style={styles.container}>
-        <StackHeader title={t("sdPostADeal")} />
+        <FlowHeader title={t("sdPostADeal")} onBack={() => router.back()} />
         <View style={styles.center}>
           <RetryButton onPress={loadInitial} />
         </View>
@@ -753,7 +1121,13 @@ export default function PostDealScreen() {
 
   return (
     <View style={styles.container}>
-      <StackHeader title={t("sdPostADeal")} />
+      <FlowHeader
+        title={t("sdPostADeal")}
+        step={{ current: stepNumber, total: steps.length }}
+        onBack={goBack}
+        backDisabled={posting}
+        backIcon={stepIndex === 0 ? "close" : "back"}
+      />
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -763,14 +1137,10 @@ export default function PostDealScreen() {
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
         >
-          <Text style={styles.stepLabel}>
-            {t("sdStep")} {stepNumber} {t("sdOf")} {steps.length}
-          </Text>
-
           {/* SERVICE STEP */}
           {step === "service" && (
             <>
-              <Text style={styles.stepTitle}>{t("sdChooseService")}</Text>
+              <FlowTitle title={t("sdChooseService")} subtitle={t("sdServiceStepSub")} />
               {serviceList.map((svc) => {
                 const sel = selectedService?.id === svc.id;
                 return (
@@ -806,7 +1176,7 @@ export default function PostDealScreen() {
           {/* STAFF STEP */}
           {step === "staff" && (
             <>
-              <Text style={styles.stepTitle}>{t("sdChooseStaff")}</Text>
+              <FlowTitle title={t("sdChooseStaff")} subtitle={t("sdStaffStepSub")} />
               {staffList.map((staff) => {
                 const sel = selectedStaff?.id === staff.id;
                 const img = resolveApiImageUrl(staff.image);
@@ -858,7 +1228,7 @@ export default function PostDealScreen() {
           {/* TIME STEP */}
           {step === "time" && (
             <>
-              <Text style={styles.stepTitle}>{t("sdPickTime")}</Text>
+              <FlowTitle title={t("sdPickTime")} subtitle={t("sdTimeStepSub")} />
               {presetProblem && presetTime && selectedDate === params.date && !selectedTime ? (
                 <View style={styles.slotProblemBox}>
                   <MaterialIcons
@@ -877,6 +1247,39 @@ export default function PostDealScreen() {
                       {presetProblem} {t("sdSlotPickAnother")}
                     </Text>
                   </View>
+                </View>
+              ) : selectedService ? (
+                <View style={styles.timeInfoCard}>
+                  <View style={styles.timeInfoHead}>
+                    <MaterialIcons
+                      name="event-available"
+                      size={iconScale(18)}
+                      color={theme.buttonBack}
+                    />
+                    <Text style={styles.timeInfoTitle} numberOfLines={1}>
+                      {t("sdFreeTimesTitle", {
+                        service: selectedService.name,
+                        mins: selectedService.durationMinutes,
+                      })}
+                    </Text>
+                  </View>
+                  <Text style={styles.timeInfoBody}>
+                    {t("sdFreeTimesBody", { mins: selectedService.durationMinutes })}
+                  </Text>
+                  {timeInfoPills.length > 0 && (
+                    <View style={styles.timeInfoPills}>
+                      {timeInfoPills.map((pill) => (
+                        <View key={`${pill.icon}-${pill.text}`} style={styles.timeInfoPill}>
+                          <MaterialIcons
+                            name={pill.icon}
+                            size={iconScale(13)}
+                            color={theme.buttonBack}
+                          />
+                          <Text style={styles.timeInfoPillText}>{pill.text}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  )}
                 </View>
               ) : null}
               <ScrollView
@@ -923,10 +1326,21 @@ export default function PostDealScreen() {
                   <ActivityIndicator color={theme.darkGreen} />
                 </View>
               ) : freeTimes.length === 0 ? (
-                <Text style={styles.emptyTimeText}>
-                  {t("sdNoFreeSlots")}
-                </Text>
+                <InfoNote
+                  tone="warm"
+                  icon="event-busy"
+                  text={
+                    dayHours && (dayHours.closed || !dayHours.open)
+                      ? t("sdClosedThisDay", { day: dayjs(selectedDate).format("dddd") })
+                      : t("sdNoFreeSlots")
+                  }
+                />
               ) : (
+                <>
+                <SectionLabel
+                  label={t("sdFreeTimesLabel")}
+                  meta={t("sdFreeTimesCount", { count: freeTimes.length })}
+                />
                 <View style={styles.timeChipsWrap}>
                   {freeTimes.map((time) => {
                     const sel = selectedTime === time;
@@ -957,187 +1371,229 @@ export default function PostDealScreen() {
                     );
                   })}
                 </View>
+                </>
               )}
             </>
           )}
 
           {/* PRICE STEP */}
-          {step === "price" && (
+          {step === "price" && selectedService && (
             <>
-              <Text style={styles.stepTitle}>{t("sdSetDealPrice")}</Text>
+              <FlowTitle title={t("sdSetDealPrice")} subtitle={t("sdPriceStepSub")} />
 
-              <Text style={styles.inputLabel}>{t("sdDealPrice")}</Text>
-              <Text style={styles.inputHint}>
-                {t("sdNormalPrice")}: {formatPrice(normalPrice)}.{" "}
-                {t("sdLeaveEmptyForNormal")}
-              </Text>
-              <TextInput
-                style={styles.input}
-                value={offerPriceText}
-                onChangeText={setOfferPriceText}
-                placeholder="0.00"
-                placeholderTextColor={theme.lightGreen2}
-                keyboardType="numeric"
-                accessibilityLabel={t("sdDealPrice")}
-              />
+              {/* The slot this deal fills */}
+              <View style={styles.slotStrip}>
+                <View style={styles.slotStripIcon}>
+                  <MaterialIcons name="event" size={iconScale(20)} color={theme.white} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.slotStripTitle} numberOfLines={1}>
+                    {`${selectedService.name} · ${selectedService.durationMinutes} ${t("sdMin")}`}
+                  </Text>
+                  <Text style={styles.slotStripSub} numberOfLines={1}>
+                    {slotLabel}
+                  </Text>
+                </View>
+              </View>
 
-              <Text style={styles.inputLabel}>{t("sdClosesAt")}</Text>
-              <Text style={styles.inputHint}>
-                {t("sdClosesAtHint")}
-              </Text>
-              <View style={styles.chipsRow}>
-                {[
-                  { min: 30, label: "30 min before" },
-                  { min: 60, label: "1 hr before" },
-                  { min: 120, label: "2 hrs before" },
-                  { min: 180, label: "3 hrs before" },
-                ].map((opt) => {
-                  const [h, m] = (selectedTime ?? "00:00").split(":").map(Number);
-                  const valid = h * 60 + m - opt.min >= 0;
-                  if (!valid) return null;
-                  const selected = closesBeforeMinutes === opt.min;
+              <SectionLabel label={t("sdDealPrice")} meta={t("optional")} />
+              <View style={[styles.priceCard, !!priceError && styles.priceCardError]}>
+                <View style={styles.priceInputRow}>
+                  <Text style={styles.priceCurrency}>$</Text>
+                  <TextInput
+                    style={styles.priceInput}
+                    value={offerPriceText}
+                    onChangeText={(v) => setOfferPriceText(v.replace(/[^0-9.]/g, ""))}
+                    placeholder={String(normalPrice)}
+                    placeholderTextColor={theme.lightGreen2}
+                    keyboardType="decimal-pad"
+                    accessibilityLabel={t("sdDealPrice")}
+                  />
+                </View>
+                <View style={styles.priceDivider} />
+                <View style={styles.priceFootRow}>
+                  <Text style={styles.priceNormal}>
+                    {t("sdNormalPrice")}{" "}
+                    <Text style={styles.priceNormalValue}>{formatPrice(normalPrice)}</Text>
+                  </Text>
+                  {savings > 0 && !priceError ? (
+                    <View style={styles.savePill}>
+                      <MaterialIcons name="local-offer" size={iconScale(13)} color={theme.white} />
+                      <Text style={styles.savePillText}>
+                        {t("sdSavePill", { amount: formatPrice(savings), percent: percentOff })}
+                      </Text>
+                    </View>
+                  ) : (
+                    <Text style={styles.noDiscountText}>{t("sdNoDiscount")}</Text>
+                  )}
+                </View>
+              </View>
+              {priceError ? <Text style={styles.priceErrorText}>{priceError}</Text> : null}
+
+              <View style={styles.quickRow}>
+                {[10, 20, 30, 50].map((pct) => {
+                  const price = Math.round(normalPrice * (100 - pct)) / 100;
+                  const sel = offerPriceText.trim() !== "" && Number(offerPriceText) === price;
+                  return (
+                    <TouchableOpacity
+                      key={pct}
+                      style={[styles.quickChip, sel && styles.quickChipSel]}
+                      activeOpacity={0.75}
+                      onPress={() => setOfferPriceText(String(price))}
+                    >
+                      <Text
+                        style={[styles.quickChipText, sel && styles.quickChipTextSel]}
+                        numberOfLines={1}
+                      >
+                        {t("sdPercentOffShort", { percent: pct })}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+                <TouchableOpacity
+                  style={[styles.quickChip, offerPriceText.trim() === "" && styles.quickChipSel]}
+                  activeOpacity={0.75}
+                  onPress={() => setOfferPriceText("")}
+                >
+                  <Text
+                    style={[
+                      styles.quickChipText,
+                      offerPriceText.trim() === "" && styles.quickChipTextSel,
+                    ]}
+                  >
+                    {t("sdFullPrice")}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              <SectionLabel label={t("sdStopBookingsLabel")} style={{ marginTop: moderateHeightScale(10) }} />
+              <Text style={styles.inputHint}>{t("sdStopBookingsHint")}</Text>
+              <View style={styles.closeGrid}>
+                {closeOptions.map((opt) => {
+                  const sel = closesBeforeMinutes === opt.min;
                   return (
                     <TouchableOpacity
                       key={opt.min}
-                      style={[styles.chip, selected && styles.chipSelected]}
+                      style={[
+                        styles.closeCard,
+                        sel && styles.closeCardSel,
+                        opt.passed && styles.closeCardOff,
+                      ]}
                       activeOpacity={0.75}
+                      disabled={opt.passed}
                       onPress={() => setClosesBeforeMinutes(opt.min)}
                     >
-                      <Text style={[styles.chipText, selected && styles.chipTextSelected]}>
-                        {opt.label}
+                      <View style={styles.closeHead}>
+                        <MaterialIcons
+                          name="timer"
+                          size={iconScale(16)}
+                          color={sel ? theme.white : theme.selectCard}
+                        />
+                        <Text style={[styles.closeTitle, sel && styles.closeTextSel]}>
+                          {t(opt.labelKey)}
+                        </Text>
+                      </View>
+                      <Text style={[styles.closeSub, sel && styles.closeTextSel]}>
+                        {opt.passed ? t("sdClosePassed") : t("sdCloseAt", { time: opt.timeLabel })}
                       </Text>
                     </TouchableOpacity>
                   );
                 })}
               </View>
-              {closesAtTime ? (
-                <Text style={styles.closesPreview}>
-                  {t("sdBookingCloses")} {closesAtTime} on {selectedDate}
-                </Text>
-              ) : null}
             </>
           )}
 
           {/* PREVIEW STEP */}
-          {step === "preview" && (
+          {step === "preview" && selectedService && (
             <>
-              <Text style={styles.stepTitle}>{t("sdReviewDeal")}</Text>
-              <View style={styles.previewCard}>
-                <View style={styles.previewRow}>
-                  <Text style={styles.previewLabel}>{t("sdService")}</Text>
-                  <Text style={styles.previewValue}>
-                    {selectedService?.name}
-                  </Text>
+              <FlowTitle title={t("sdReviewDeal")} subtitle={t("sdPreviewStepSub")} />
+
+              <SectionLabel label={t("sdHowCustomersSee")} />
+              {previewDeal ? (
+                <View pointerEvents="none" accessibilityElementsHidden>
+                  <SlotOfferCard deal={previewDeal} />
                 </View>
-                {selectedStaff && (
-                  <>
-                    <View style={styles.divider} />
-                    <View style={styles.previewRow}>
-                      <Text style={styles.previewLabel}>{t("sdStaff")}</Text>
-                      <Text style={styles.previewValue}>
-                        {selectedStaff.name}
-                      </Text>
+              ) : null}
+
+              <SectionLabel label={t("sdDealDetailsLabel")} style={{ marginTop: moderateHeightScale(6) }} />
+              <View style={styles.detailCard}>
+                {[
+                  {
+                    icon: "content-cut" as const,
+                    label: t("sdService"),
+                    value: `${selectedService.name} · ${selectedService.durationMinutes} ${t("sdMin")}`,
+                  },
+                  ...(selectedStaff
+                    ? [{ icon: "person" as const, label: t("sdStaff"), value: selectedStaff.name }]
+                    : []),
+                  {
+                    icon: "event" as const,
+                    label: t("sdWhen"),
+                    value: slotLabelNoStaff,
+                    change: true,
+                  },
+                  {
+                    icon: "sell" as const,
+                    label: t("sdDealPrice"),
+                    value: formatPrice(Number.isFinite(offerPrice) ? offerPrice : normalPrice),
+                    strike: savings > 0 ? formatPrice(normalPrice) : null,
+                  },
+                  {
+                    icon: "timer" as const,
+                    label: t("sdBookingCloses"),
+                    value: closesAtTime
+                      ? `${dayjs(selectedDate).format("ddd, MMM D")} · ${formatSlotTime(closesAtTime)}`
+                      : "",
+                  },
+                ].map((row, i) => (
+                  <View key={row.label} style={[styles.detailRow, i > 0 && styles.detailRowBorder]}>
+                    <View style={styles.detailIcon}>
+                      <MaterialIcons name={row.icon} size={iconScale(18)} color={theme.buttonBack} />
                     </View>
-                  </>
-                )}
-                <View style={styles.divider} />
-                <View style={styles.previewRow}>
-                  <Text style={styles.previewLabel}>{t("sdDate")}</Text>
-                  <Text style={styles.previewValue}>
-                    {dayjs(selectedDate).format("ddd, MMM D")}
-                  </Text>
-                </View>
-                <View style={styles.divider} />
-                <View style={styles.previewRow}>
-                  <Text style={styles.previewLabel}>{t("sdTime")}</Text>
-                  <View style={styles.previewTimeRight}>
-                    <Text style={styles.previewValue}>
-                      {selectedTime ? formatSlotTime(selectedTime) : ""}
-                    </Text>
-                    <TouchableOpacity
-                      onPress={() => {
-                        setForceTimeStep(true);
-                        setStep("time");
-                      }}
-                      activeOpacity={0.75}
-                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                    >
-                      <Text style={styles.previewChange}>{t("change")}</Text>
-                    </TouchableOpacity>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.detailLabel}>{row.label}</Text>
+                      <View style={styles.detailValueRow}>
+                        <Text style={styles.detailValue}>{row.value}</Text>
+                        {"strike" in row && row.strike ? (
+                          <Text style={styles.detailStrike}>{row.strike}</Text>
+                        ) : null}
+                      </View>
+                    </View>
+                    {"change" in row && row.change ? (
+                      <TouchableOpacity
+                        onPress={() => {
+                          setForceTimeStep(true);
+                          setStep("time");
+                        }}
+                        activeOpacity={0.75}
+                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                        style={styles.changeBtn}
+                      >
+                        <Text style={styles.changeBtnText}>{t("change")}</Text>
+                      </TouchableOpacity>
+                    ) : null}
                   </View>
-                </View>
-                <View style={styles.divider} />
-                <View style={styles.previewRow}>
-                  <Text style={styles.previewLabel}>{t("sdNormalPrice")}</Text>
-                  <Text style={styles.previewValue}>
-                    {formatPrice(normalPrice)}
-                  </Text>
-                </View>
-                <View style={styles.divider} />
-                <View style={styles.previewRow}>
-                  <Text style={styles.previewLabel}>{t("sdDealPrice")}</Text>
-                  <Text style={[styles.previewValue, { color: theme.successGreen }]}>
-                    {formatPrice(Number.isFinite(offerPrice) ? offerPrice : normalPrice)}
-                  </Text>
-                </View>
-                {savings > 0 && (
-                  <>
-                    <View style={styles.divider} />
-                    <View style={styles.savingsBadge}>
-                      <MaterialIcons
-                        name="local-offer"
-                        size={iconScale(14)}
-                        color={theme.successGreen}
-                      />
-                      <Text style={styles.savingsText}>
-                        {t("sdCustomerSaves")} {formatPrice(savings)}
-                      </Text>
-                    </View>
-                  </>
-                )}
-                <View style={styles.divider} />
-                <View style={styles.previewRow}>
-                  <Text style={styles.previewLabel}>{t("sdBookingCloses")}</Text>
-                  <Text style={styles.previewValue}>
-                    {selectedDate} {closesAtTime}
-                  </Text>
-                </View>
+                ))}
               </View>
+
+              <InfoNote icon="info-outline" text={t("sdPreviewNote")} />
             </>
           )}
         </ScrollView>
       </KeyboardAvoidingView>
 
-      {/* Footer buttons */}
-      <View
-        style={[
-          styles.footer,
-          // Keep buttons above Android 3-button nav / iOS home indicator
-          { paddingBottom: Math.max(insets.bottom + moderateHeightScale(12), moderateHeightScale(34)) },
-        ]}
-      >
-        <TouchableOpacity
-          style={styles.backBtn}
-          activeOpacity={0.75}
-          onPress={goBack}
-        >
-          <Text style={styles.backBtnText}>{t("sdBack")}</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.nextBtn, !canNext && styles.nextBtnDisabled]}
-          activeOpacity={0.75}
-          disabled={!canNext || posting}
-          onPress={step === "preview" ? handlePost : goNext}
-        >
-          {posting ? (
-            <ActivityIndicator color={theme.white} />
-          ) : (
-            <Text style={styles.nextBtnText}>
-              {step === "preview" ? t("sdPostDeal") : t("sdNext")}
-            </Text>
-          )}
-        </TouchableOpacity>
-      </View>
+      <FlowFooter
+        row
+        secondary={{ label: t("sdBack"), onPress: goBack, disabled: posting }}
+        primary={{
+          label: step === "preview" ? t("sdPostDeal") : t("sdNext"),
+          onPress: step === "preview" ? handlePost : goNext,
+          disabled: !canNext || posting,
+          loading: posting || (checksPresetOnNext && !!selectedService && !timesReady),
+          trailingIcon: step === "preview" ? undefined : "arrow-forward",
+          icon: step === "preview" ? "local-offer" : undefined,
+        }}
+      />
     </View>
   );
 }

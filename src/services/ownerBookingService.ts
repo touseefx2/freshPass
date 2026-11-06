@@ -291,6 +291,13 @@ export type OwnerBusinessHours = {
   hours: Record<string, DayHours>;
   /** Each barber's hours (staff id → day name → hours) */
   staffHours: Record<number, Record<string, DayHours>>;
+  /** Name / logo / city for previews (Post a Deal review card) */
+  profile: {
+    title: string;
+    imageUrl: string | null;
+    city: string | null;
+    state: string | null;
+  };
 };
 
 const hhmm = (v: unknown): string | null =>
@@ -330,6 +337,11 @@ export async function fetchOwnerBusinessHours(
         timezone?: string | null;
         hours?: unknown;
         staff?: { id?: number; working_hours?: unknown }[] | null;
+        title?: string | null;
+        logo_url?: string | null;
+        image_url?: string | null;
+        city?: string | null;
+        state?: string | null;
       };
     };
   }>(businessEndpoints.businessDetails(businessId));
@@ -345,6 +357,12 @@ export async function fetchOwnerBusinessHours(
         : null,
     hours: parseDayHours(business?.hours),
     staffHours,
+    profile: {
+      title: business?.title ?? "",
+      imageUrl: business?.logo_url ?? business?.image_url ?? null,
+      city: business?.city ?? null,
+      state: business?.state ?? null,
+    },
   };
 }
 
