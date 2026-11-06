@@ -3419,6 +3419,7 @@
   "pricePerMonth": "{{price}}/月",
   "basePlanLabel": "基本プラン",
   "currentTotalLabel": "現在の合計",
+  "promoteIosNote": "カード払いのプランでは、iPhoneアプリからお店のプロモーションを利用できません。",
   "trialActiveTitle": "無料トライアル中です",
   "trialActiveTitleDays": "{{days}}日間の無料トライアル中です",
   "trialFirstPayment": "本日の請求はありません。初回のお支払い：{{date}}に{{price}}。",

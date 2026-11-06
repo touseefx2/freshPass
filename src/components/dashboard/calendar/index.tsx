@@ -33,7 +33,10 @@ import EarningsStaffPickerModal, {
   type StaffPickerRow,
 } from "@/src/components/earningsStaffPickerModal";
 import type { StaffIdFilter } from "@/src/types/businessEarnings";
-import { isSoloSubscription } from "@/src/state/slices/userSlice";
+import {
+  getOwnBusinessIds,
+  isSoloSubscription,
+} from "@/src/state/slices/userSlice";
 import dayjs from "dayjs";
 import weekOfYear from "dayjs/plugin/weekOfYear";
 import isoWeek from "dayjs/plugin/isoWeek";
@@ -1004,6 +1007,17 @@ const createStyles = (theme: Theme) =>
       color: theme.darkGreen,
     },
     slotMenuTextPrimary: { color: theme.white },
+    slotPassedRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(6),
+    },
+    slotPassedText: {
+      flexShrink: 1,
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+    },
     applyBoxDateText: {
       fontSize: fontSize.size11,
       fontFamily: fonts.fontBold,
@@ -1398,7 +1412,10 @@ export default function CalendarScreen() {
     dayjs.locale(i18n.language || "en");
   }, [i18n.language]);
 
-  const today = dayjs();
+  // "Today" and the now line run on the salon's clock, like bookings and free
+  // slots (client 11-06). Phone clock only until the salon's zone is known.
+  const [salonTz, setSalonTz] = useState<string | null>(null);
+  const today = salonNow(null, salonTz).today;
   const [viewMode, setViewMode] = useState<ViewMode>("day");
   const hourHeight = viewMode === "day" ? DAY_HOUR_HEIGHT : HOUR_HEIGHT;
   const [selectedDate, setSelectedDate] = useState(today);
@@ -1407,7 +1424,7 @@ export default function CalendarScreen() {
   const [leaves, setLeaves] = useState<StaffLeave[]>([]);
   const [loading, setLoading] = useState(false);
   const [nowMinutes, setNowMinutes] = useState(
-    today.hour() * 60 + today.minute(),
+    () => salonNow(null, null).minutes,
   );
   const scrollToSlotRef = useRef<number | null>(null);
   const [overlapListVisible, setOverlapListVisible] = useState(false);
@@ -1446,8 +1463,8 @@ export default function CalendarScreen() {
   const canManageLeaves = userRole === "staff" || userRole === "business";
   const isOwner = userRole === "business";
   const { ensureCanPostDeals, planModal: dealsPlanModal } = useDealsPlanGate();
-  const ownerBusinessId = useAppSelector((state: any) =>
-    Number(state.user.business_id),
+  const ownerBusinessId = useAppSelector(
+    (state: any) => getOwnBusinessIds(state.user)[0] ?? 0,
   );
   // Salon hours for the Post a Deal check: fetched when the slot menu opens,
   // reused for 5 min.
@@ -1471,6 +1488,15 @@ export default function CalendarScreen() {
     dealHoursRef.current = { at: Date.now(), promise };
     return promise;
   }, [ownerBusinessId]);
+  useEffect(() => {
+    let active = true;
+    loadDealHours().then((hours) => {
+      if (active && hours?.timezone) setSalonTz(hours.timezone);
+    });
+    return () => {
+      active = false;
+    };
+  }, [loadDealHours]);
   // Solo owners are the only provider: their time off always closes the
   // business and there is no team to filter by.
   const hasTeamFeatures = isOwner && !isSoloSubscription(businessStatus);
@@ -1548,12 +1574,11 @@ export default function CalendarScreen() {
   const leavesFetchTo = leavesFetchRange.to.format("YYYY-MM-DD");
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      const now = dayjs();
-      setNowMinutes(now.hour() * 60 + now.minute());
-    }, 60000);
+    const tick = () => setNowMinutes(salonNow(null, salonTz).minutes);
+    tick();
+    const interval = setInterval(tick, 60000);
     return () => clearInterval(interval);
-  }, []);
+  }, [salonTz]);
 
   // Fetch appointments whenever the visible range or staff filter changes.
   // Staff accounts only ever get their own, so the filter is owner-only.
@@ -2024,6 +2049,20 @@ export default function CalendarScreen() {
   const applyBreakEndMinutes =
     applyBoxBreakEndHour * 60 + applyBoxBreakEndMinutes;
 
+  /** Earliest break start on a day: today = next slot on the salon clock. */
+  const firstOpenMinute = (date: dayjs.Dayjs) =>
+    date.isSame(today, "day")
+      ? (Math.floor(nowMinutes / SLOT_INTERVAL_MINUTES) + 1) * SLOT_INTERVAL_MINUTES
+      : 0;
+  const applyBoxMinStart = firstOpenMinute(applyBoxDate);
+  /** Late today, or the rest of the day is booked: no break can fit */
+  const applyBoxBreakHasRoom =
+    findNextAvailableBreakStart(
+      applyBoxMinStart,
+      applyBoxDayAppointments,
+      applyBoxMinStart,
+    ) !== null;
+
   const isApplyBoxTimeOptionAvailable = useCallback(
     (hours: number, minutes: number) => {
       if (applyBoxType !== "break") return true;
@@ -2031,7 +2070,10 @@ export default function CalendarScreen() {
       const slotMinutes = hours * 60 + minutes;
 
       if (applyBoxTimePickerTarget === "start") {
-        return isValidBreakStartSlot(slotMinutes, applyBoxDayAppointments);
+        return (
+          slotMinutes >= applyBoxMinStart &&
+          isValidBreakStartSlot(slotMinutes, applyBoxDayAppointments)
+        );
       }
 
       if (applyBoxTimePickerTarget === "end") {
@@ -2052,6 +2094,7 @@ export default function CalendarScreen() {
       applyBoxTimePickerTarget,
       applyBoxDayAppointments,
       applyBreakStartMinutes,
+      applyBoxMinStart,
     ],
   );
 
@@ -2063,7 +2106,8 @@ export default function CalendarScreen() {
       anchorMinutes = scrollToSlotRef.current;
       scrollToSlotRef.current = null;
     } else if (isTodayVisible) {
-      anchorMinutes = nowMinutes;
+      // Not nowMinutes: it updates a render after the salon's zone arrives
+      anchorMinutes = salonNow(null, salonTz).minutes;
     } else {
       const firstAppointment = selectedDayAppointments[0];
       anchorMinutes = firstAppointment?.start_minutes ?? 9 * 60;
@@ -2077,7 +2121,7 @@ export default function CalendarScreen() {
       });
     }, 80);
     return () => clearTimeout(timeout);
-  }, [viewMode, currentDate, selectedDayAppointments.length]);
+  }, [viewMode, currentDate, selectedDayAppointments.length, salonTz]);
 
   const closeOverlays = () => {
     setSlotMenu(null);
@@ -2129,6 +2173,17 @@ export default function CalendarScreen() {
     setWeek(getWeekDays(date));
   };
 
+  // Zone just arrived: if the salon's date differs from the phone's, the
+  // calendar opened on the wrong "today".
+  useEffect(() => {
+    if (!salonTz) return;
+    const phoneToday = dayjs();
+    if (selectedDate.isSame(phoneToday, "day") && !today.isSame(phoneToday, "day")) {
+      goToDate(today);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [salonTz]);
+
   const handlePrev = useCallback(() => {
     closeOverlays();
     if (viewMode === "day") {
@@ -2169,7 +2224,7 @@ export default function CalendarScreen() {
 
   const handleToday = () => {
     closeOverlays();
-    goToDate(dayjs());
+    goToDate(today);
   };
 
   const rangeLabel = useMemo(() => {
@@ -2269,21 +2324,25 @@ export default function CalendarScreen() {
     if (!targetDate.isSame(selectedDate, "day")) {
       setSelectedDate(targetDate);
     }
-    setApplyBoxType(type);
     setApplyBoxClosesBusiness(false);
 
     const dayAppointments = getAppointmentsForDay(
       bookedByDate,
       targetDate.format("YYYY-MM-DD"),
     );
-    const preferredStart = startMinutes ?? 9 * 60;
+    const minStart = firstOpenMinute(targetDate);
+    const preferredStart = Math.max(startMinutes ?? 9 * 60, minStart);
+    const openBreakStart =
+      type === "break"
+        ? findNextAvailableBreakStart(preferredStart, dayAppointments, minStart)
+        : null;
+    // No break can fit today: open on Day off, the Break option says why.
+    const boxType = openBreakStart === null ? "leave" : "break";
+    setApplyBoxType(boxType);
     const resolvedStart =
-      type === "break"
-        ? (findNextAvailableBreakStart(preferredStart, dayAppointments) ??
-          preferredStart)
-        : preferredStart;
+      openBreakStart ?? Math.min(preferredStart, 24 * 60 - SLOT_INTERVAL_MINUTES);
     const resolvedEnd =
-      type === "break"
+      boxType === "break"
         ? findDefaultBreakEnd(resolvedStart, dayAppointments)
         : Math.min(resolvedStart + SLOT_INTERVAL_MINUTES, 24 * 60);
 
@@ -2292,12 +2351,17 @@ export default function CalendarScreen() {
   };
 
   const selectApplyBoxType = (type: "leave" | "break") => {
+    if (type !== "break") {
+      setApplyBoxType(type);
+      return;
+    }
+    const resolvedStart = findNextAvailableBreakStart(
+      applyBreakStartMinutes,
+      applyBoxDayAppointments,
+      applyBoxMinStart,
+    );
+    if (resolvedStart === null) return;
     setApplyBoxType(type);
-    if (type !== "break") return;
-
-    const resolvedStart =
-      findNextAvailableBreakStart(applyBreakStartMinutes, applyBoxDayAppointments) ??
-      applyBreakStartMinutes;
     const resolvedEnd = findDefaultBreakEnd(
       resolvedStart,
       applyBoxDayAppointments,
@@ -2445,6 +2509,16 @@ export default function CalendarScreen() {
           applyBoxSlotHour * 60 + applyBoxBreakStartMinutes;
         const endMinutes = applyBoxBreakEndHour * 60 + applyBoxBreakEndMinutes;
 
+        if (startMinutes < firstOpenMinute(applyBoxDate)) {
+          showBanner(
+            t("apiFailed") || "Error",
+            t("calBreakTimePassed"),
+            "error",
+            2500,
+          );
+          return;
+        }
+
         if (endMinutes <= startMinutes) {
           showBanner(
             t("apiFailed") || "Error",
@@ -2567,13 +2641,15 @@ export default function CalendarScreen() {
     );
 
     // Owners can also book a customer in here (staff only take time off).
-    if (isOwner) {
+    // A slot that already started gets the "time has passed" box, for both.
+    const slotPassed = day.isSame(today, "day") && snapped <= nowMinutes;
+    if (isOwner || slotPassed) {
       setAnchorFromEvent(event);
       if (!day.isSame(selectedDate, "day")) {
         setSelectedDate(day);
       }
       setSlotMenu({ day, minutes: snapped });
-      loadDealHours();
+      if (isOwner) loadDealHours();
       return;
     }
 
@@ -2651,6 +2727,13 @@ export default function CalendarScreen() {
         ...staffParam,
       },
     });
+  };
+
+  /** Past slot's only action: same "close the day" box as Manage Availability */
+  const openCloseDayFromMenu = () => {
+    if (!slotMenu) return;
+    openApplyBox("leave", undefined, slotMenu.day, undefined, true);
+    if (canCloseBusiness) setApplyBoxClosesBusiness(true);
   };
 
   const openTimeOffFromMenu = () => {
@@ -3492,6 +3575,36 @@ export default function CalendarScreen() {
                       slotMenu.minutes % 60,
                     )}`}
                   </Text>
+                  {slotMenu.day.isSame(today, "day") && slotMenu.minutes <= nowMinutes ? (
+                    <>
+                      <View style={styles.slotPassedRow}>
+                        <MaterialIcons
+                          name="history"
+                          size={iconScale(16)}
+                          color={theme.lightGreen}
+                        />
+                        <Text style={styles.slotPassedText} numberOfLines={1}>
+                          {t("calSlotPassed")}
+                        </Text>
+                      </View>
+                      <TouchableOpacity
+                        style={styles.slotMenuRow}
+                        onPress={openCloseDayFromMenu}
+                        activeOpacity={0.75}
+                        accessibilityRole="button"
+                      >
+                        <MaterialIcons
+                          name="event-busy"
+                          size={iconScale(16)}
+                          color={theme.darkGreen}
+                        />
+                        <Text style={styles.slotMenuText} numberOfLines={1}>
+                          {isOwner ? t("calCloseDay") : t("tOffDayOff")}
+                        </Text>
+                      </TouchableOpacity>
+                    </>
+                  ) : (
+                    <>
                   <TouchableOpacity
                     style={[styles.slotMenuRow, styles.slotMenuRowPrimary]}
                     onPress={openNewAppointment}
@@ -3580,6 +3693,8 @@ export default function CalendarScreen() {
                       </Text>
                     </TouchableOpacity>
                   )}
+                    </>
+                  )}
                 </Pressable>
               </Pressable>
             )}
@@ -3645,9 +3760,14 @@ export default function CalendarScreen() {
                       </Text>
                     </TouchableOpacity>
                     <TouchableOpacity
-                      style={styles.applyBoxRadioRow}
+                      style={[
+                        styles.applyBoxRadioRow,
+                        !applyBoxBreakHasRoom && { opacity: 0.4 },
+                      ]}
                       onPress={() => selectApplyBoxType("break")}
+                      disabled={!applyBoxBreakHasRoom}
                       activeOpacity={0.7}
+                      accessibilityState={{ disabled: !applyBoxBreakHasRoom }}
                     >
                       <View
                         style={[
@@ -3663,6 +3783,9 @@ export default function CalendarScreen() {
                       <Text style={styles.applyBoxOptionText}>{t("break")}</Text>
                     </TouchableOpacity>
                   </View>
+                  {!applyBoxBreakHasRoom && (
+                    <Text style={styles.applyBoxHint}>{t("calNoBreakRoom")}</Text>
+                  )}
                   {applyBoxType === "break" && (
                     <View style={{ marginBottom: moderateHeightScale(3) }}>
                       <View

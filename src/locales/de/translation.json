@@ -3422,6 +3422,7 @@
   "pricePerMonth": "{{price}}/Monat",
   "basePlanLabel": "Basistarif",
   "currentTotalLabel": "Aktuelle Summe",
+  "promoteIosNote": "Die Bewerbung Ihres Unternehmens ist in der iPhone-App für per Karte bezahlte Tarife nicht verfügbar.",
   "trialActiveTitle": "Ihr kostenloser Testzeitraum ist aktiv",
   "trialActiveTitleDays": "Ihr {{days}}-tägiger Testzeitraum ist aktiv",
   "trialFirstPayment": "Heute keine Kosten. Erste Zahlung: {{price}} am {{date}}.",

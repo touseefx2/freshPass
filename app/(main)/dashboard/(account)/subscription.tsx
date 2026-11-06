@@ -997,6 +997,13 @@ const createStyles = (theme: Theme) =>
       borderTopWidth: StyleSheet.hairlineWidth,
       borderTopColor: theme.borderNormal,
     },
+    promoteIosNote: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: moderateWidthScale(8),
+      marginTop: moderateHeightScale(12),
+      paddingHorizontal: moderateWidthScale(4),
+    },
     trialNote: {
       flexDirection: "row",
       alignItems: "flex-start",
@@ -1711,14 +1718,44 @@ export default function SubscriptionScreen() {
       ? null
       : promotionPending
         ? "keep"
-        : !hasPromotion && !promotionStartsPending
+        : !hasPromotion &&
+            !promotionStartsPending &&
+            // Paid placement bought through Stripe on an iPhone = App Store
+            // 3.1.1/3.1.3(g) risk; Stripe-billed owners can promote on Android
+            (isApplePayment || !isIosDevice)
           ? "promote"
           : null;
+  /** Explains the missing Promote card; doesn't point to buying elsewhere (App Store) */
+  const showPromoteIosNote =
+    !!subscription &&
+    isRenewing &&
+    isIosDevice &&
+    !isApplePayment &&
+    !hasPromotion &&
+    !promotionPending &&
+    !promotionStartsPending;
   // Not paying for the add-on yet: keep it out of "Current total"
   const breakdownAddOns = promotionStartsPending ? [] : activeAddOns;
   /** Removal pending: the total stays until the period ends, then this price */
   const showPriceDropRows =
     isRenewing && promotionPending && !!renewalPriceText;
+  /**
+   * Apple can bill in local currency (PKR...) but plan and add-on prices only
+   * come in USD, so never show dollars to those owners. With no pending change
+   * the renewal price IS today's price; otherwise today's price is unknown.
+   */
+  const localCurrencyBilling =
+    isApplePayment &&
+    !!subscription?.renewalCurrency &&
+    subscription.renewalCurrency.toUpperCase() !== "USD";
+  const localCurrentPrice =
+    localCurrencyBilling && !promotionPending && !subscription?.pendingPlanName
+      ? renewalPriceText
+      : null;
+  const bigPriceText = localCurrencyBilling ? localCurrentPrice : basePriceText;
+  const totalRowText = localCurrencyBilling
+    ? localCurrentPrice
+    : currentTotalText;
 
   /** Manage plan rows — what each one shows depends on who bills the plan */
   const manageRows = (() => {
@@ -1993,9 +2030,11 @@ export default function SubscriptionScreen() {
                         ? t("soloPlanLabel")
                         : t("proPlanLabel")}
                     </Text>
-                    <Text style={styles.addOnPrice}>
-                      {t("pricePerMonth", { price: basePriceText })}
-                    </Text>
+                    {localCurrencyBilling ? null : (
+                      <Text style={styles.addOnPrice}>
+                        {t("pricePerMonth", { price: basePriceText })}
+                      </Text>
+                    )}
                   </View>
                   {breakdownAddOns.map((service) => (
                     <View key={service.id} style={styles.addOnRow}>
@@ -2006,13 +2045,15 @@ export default function SubscriptionScreen() {
                           ? t("promotionLineLabel")
                           : service.name}
                       </Text>
-                      <Text style={styles.addOnPrice}>
-                        {t("pricePerMonth", {
-                          price:
-                            formatMoney(service.price, "USD") ??
-                            `$${service.price}`,
-                        })}
-                      </Text>
+                      {localCurrencyBilling ? null : (
+                        <Text style={styles.addOnPrice}>
+                          {t("pricePerMonth", {
+                            price:
+                              formatMoney(service.price, "USD") ??
+                              `$${service.price}`,
+                          })}
+                        </Text>
+                      )}
                     </View>
                   ))}
                   {showPriceDropRows ? (
@@ -2020,15 +2061,19 @@ export default function SubscriptionScreen() {
                       {t("promotionEndsShort", { date: promotionEndShort })}
                     </Text>
                   ) : null}
-                  <View style={styles.breakdownDivider} />
-                  <View style={[styles.addOnRow, styles.totalRow]}>
-                    <Text style={styles.totalLabel}>
-                      {t("currentTotalLabel")}
-                    </Text>
-                    <Text style={styles.totalLabel}>
-                      {t("pricePerMonth", { price: currentTotalText })}
-                    </Text>
-                  </View>
+                  {totalRowText || showPriceDropRows ? (
+                    <View style={styles.breakdownDivider} />
+                  ) : null}
+                  {totalRowText ? (
+                    <View style={[styles.addOnRow, styles.totalRow]}>
+                      <Text style={styles.totalLabel}>
+                        {t("currentTotalLabel")}
+                      </Text>
+                      <Text style={styles.totalLabel}>
+                        {t("pricePerMonth", { price: totalRowText })}
+                      </Text>
+                    </View>
+                  ) : null}
                   {/* Client 11-06: show the lower price right under the total */}
                   {showPriceDropRows ? (
                     <View style={[styles.addOnRow, styles.nextTotalRow]}>
@@ -2041,18 +2086,18 @@ export default function SubscriptionScreen() {
                     </View>
                   ) : null}
                 </View>
-              ) : (
+              ) : bigPriceText ? (
                 <View style={styles.planPriceContainer}>
                   {/* Sample: small "$", big "60", then "/month" */}
                   <Text style={styles.currencySymbol}>
-                    {basePriceText.match(/^[^\d]*/)?.[0]?.trim()}
+                    {bigPriceText.match(/^[^\d]*/)?.[0]?.trim()}
                   </Text>
                   <Text style={styles.planPrice}>
-                    {basePriceText.replace(/^[^\d]*/, "")}
+                    {bigPriceText.replace(/^[^\d]*/, "")}
                   </Text>
                   <Text style={styles.pricePeriod}>{t("perMonthCompact")}</Text>
                 </View>
-              )}
+              ) : null}
 
               {/* Client 11-05: what the plan includes, inside the plan card */}
               {/* Closed by default; tap the heading row to open (client 11-05) */}
@@ -2397,6 +2442,16 @@ export default function SubscriptionScreen() {
                 </View>
               ) : null}
             </View>
+            {showPromoteIosNote ? (
+              <View style={styles.promoteIosNote}>
+                <Feather
+                  name="info"
+                  size={iconScale(15)}
+                  color={theme.textMuted}
+                />
+                <Text style={styles.sinceText}>{t("promoteIosNote")}</Text>
+              </View>
+            ) : null}
           </View>
 
           {(hasPrimaryPlanAction || canCancel || showAppleCancelHelp) && (

@@ -81,17 +81,19 @@ export const isValidBreakEndSlot = (
 const snapToSlot = (minutes: number) =>
   Math.floor(Math.max(0, minutes) / 30) * 30;
 
+/** `minMinutes`: earliest start allowed (today: the next slot, never a past one). */
 export const findNextAvailableBreakStart = (
   preferredMinutes: number,
   appointments: AppointmentTimeSlot[],
+  minMinutes = 0,
 ): number | null => {
-  const snapped = snapToSlot(preferredMinutes);
+  const snapped = Math.max(snapToSlot(preferredMinutes), minMinutes);
 
   for (let slot = snapped; slot < 24 * 60; slot += 30) {
     if (isValidBreakStartSlot(slot, appointments)) return slot;
   }
 
-  for (let slot = snapped - 30; slot >= 0; slot -= 30) {
+  for (let slot = snapped - 30; slot >= minMinutes; slot -= 30) {
     if (isValidBreakStartSlot(slot, appointments)) return slot;
   }
 

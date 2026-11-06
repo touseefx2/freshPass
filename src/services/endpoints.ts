@@ -1091,6 +1091,7 @@ export const reportsEndpoints = {
  * FreshPass Support (in-app requests)
  */
 export const supportEndpoints = {
+  topics: `/api/support-requests/topics`,
   submit: `/api/support-requests`,
 };
 

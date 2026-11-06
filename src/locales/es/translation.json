@@ -3425,6 +3425,7 @@
   "pricePerMonth": "{{price}}/mes",
   "basePlanLabel": "Plan base",
   "currentTotalLabel": "Total actual",
+  "promoteIosNote": "La promoción de tu negocio no está disponible en la app de iPhone para planes pagados con tarjeta.",
   "trialActiveTitle": "Tu prueba gratuita está activa",
   "trialActiveTitleDays": "Tu prueba gratuita de {{days}} días está activa",
   "trialFirstPayment": "Hoy no se cobra nada. Primer pago: {{price}} el {{date}}.",

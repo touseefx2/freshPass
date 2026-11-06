@@ -3434,6 +3434,7 @@
   "pricePerMonth": "{{price}} شهريًا",
   "basePlanLabel": "الخطة الأساسية",
   "currentTotalLabel": "الإجمالي الحالي",
+  "promoteIosNote": "الترويج لنشاطك التجاري غير متاح في تطبيق iPhone للخطط المدفوعة بالبطاقة.",
   "trialActiveTitle": "الفترة التجريبية المجانية نشطة",
   "trialActiveTitleDays": "الفترة التجريبية المجانية ({{days}} يومًا) نشطة",
   "trialFirstPayment": "لا توجد رسوم اليوم. الدفعة الأولى: {{price}} في {{date}}.",

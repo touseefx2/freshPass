@@ -3425,6 +3425,7 @@
   "pricePerMonth": "{{price}}/mois",
   "basePlanLabel": "Forfait de base",
   "currentTotalLabel": "Total actuel",
+  "promoteIosNote": "La promotion de votre entreprise n'est pas disponible dans l'app iPhone pour les forfaits payés par carte.",
   "trialActiveTitle": "Votre essai gratuit est actif",
   "trialActiveTitleDays": "Votre essai gratuit de {{days}} jours est actif",
   "trialFirstPayment": "Aucun débit aujourd'hui. Premier paiement : {{price}} le {{date}}.",

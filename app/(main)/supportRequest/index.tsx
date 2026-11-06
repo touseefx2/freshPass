@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   BackHandler,
@@ -28,6 +28,7 @@ import {
 } from "@/src/theme/dimensions";
 import StackHeader from "@/src/components/StackHeader";
 import AppImage from "@/src/components/AppImage";
+import FlowButton from "@/src/components/reelFlow/flowButton";
 import FlowFooter from "@/src/components/reelFlow/flowFooter";
 import {
   FlowCard,
@@ -47,8 +48,10 @@ import {
 import {
   SUPPORT_MAX_PHOTOS,
   SUPPORT_MESSAGE_MAX,
+  fetchSupportTopics,
   submitSupportRequest,
   type SupportAttachment,
+  type SupportTopic,
 } from "@/src/services/supportService";
 
 /**
@@ -58,7 +61,21 @@ import {
  */
 
 type IconName = React.ComponentProps<typeof MaterialIcons>["name"];
-type Errors = { message?: string; attachments?: string };
+type Errors = {
+  appointment?: string;
+  topic?: string;
+  message?: string;
+  attachments?: string;
+};
+
+const TOPIC_ICONS: Record<string, IconName> = {
+  payment: "credit-card",
+  appointment: "event",
+  barber_salon: "content-cut",
+  app_problem: "smartphone",
+  other: "more-horiz",
+};
+const TOPIC_SKELETON_WIDTHS = [104, 128, 132, 124, 84];
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -141,6 +158,11 @@ const createStyles = (theme: Theme) =>
       color: theme.darkGreen,
     },
     pillTextOn: { color: theme.white },
+    pillSkeleton: {
+      height: heightScale(44),
+      borderRadius: heightScale(22),
+      backgroundColor: theme.lightGreen07,
+    },
     // ── Photos
     addRow: { flexDirection: "row", gap: moderateWidthScale(10) },
     addButton: {
@@ -289,7 +311,6 @@ export default function SupportRequestScreen() {
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [theme]);
   const { showBanner } = useNotificationContext();
-  const userRole = useAppSelector((s) => s.user.userRole);
   const email = useAppSelector((s) => s.user.email);
   const params = useLocalSearchParams<{
     appointmentId?: string;
@@ -297,6 +318,8 @@ export default function SupportRequestScreen() {
     appointmentMeta?: string;
   }>();
 
+  const [topics, setTopics] = useState<SupportTopic[] | null>(null);
+  const [topicsFailed, setTopicsFailed] = useState(false);
   const [topic, setTopic] = useState<string | null>(null);
   const [message, setMessage] = useState("");
   const [photos, setPhotos] = useState<SupportAttachment[]>([]);
@@ -307,35 +330,20 @@ export default function SupportRequestScreen() {
   const [progress, setProgress] = useState<number | null>(null);
   const [sent, setSent] = useState(false);
 
-  const topics = useMemo<{ value: string; label: string; icon: IconName }[]>(
-    () => [
-      {
-        value: "payment",
-        label: t("supportTopicPayment"),
-        icon: "credit-card",
-      },
-      {
-        value: "appointment",
-        label: t("supportTopicAppointment"),
-        icon: "event",
-      },
-      // The other side of the appointment, depending on who is asking
-      userRole === "customer"
-        ? {
-            value: "provider",
-            label: t("supportTopicProvider"),
-            icon: "content-cut",
-          }
-        : {
-            value: "customer",
-            label: t("supportTopicCustomer"),
-            icon: "person-outline",
-          },
-      { value: "app", label: t("supportTopicApp"), icon: "smartphone" },
-      { value: "other", label: t("supportTopicOther"), icon: "more-horiz" },
-    ],
-    [t, userRole],
-  );
+  const loadTopics = useCallback(() => {
+    setTopics(null);
+    setTopicsFailed(false);
+    fetchSupportTopics()
+      .then((list) => {
+        setTopics(list);
+        if (!list.length) setTopicsFailed(true);
+      })
+      .catch(() => setTopicsFailed(true));
+  }, []);
+
+  useEffect(() => {
+    loadTopics();
+  }, [loadTopics]);
 
   // No leaving while the request is on its way
   useFocusEffect(
@@ -389,11 +397,13 @@ export default function SupportRequestScreen() {
   const removePhoto = (index: number) => {
     setPhotos((prev) => prev.filter((_, i) => i !== index));
     setErrors((prev) => ({ ...prev, attachments: undefined }));
+    setSubmitError(null);
   };
 
   const submit = async () => {
     Keyboard.dismiss();
-    if (submitting || !topic) return;
+    // A failed topic list must not stop someone from asking for help
+    if (submitting || (!topic && !topicsFailed)) return;
     if (!message.trim()) {
       setErrors({ message: t("supportMessageRequired") });
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
@@ -418,15 +428,29 @@ export default function SupportRequestScreen() {
     } catch (err: any) {
       if (err?.isNoInternet) return;
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      if (getJobErrorStatus(err) === 429) {
+        setSubmitError(t("supportTooMany"));
+        return;
+      }
       const fieldErrors = getJobFieldErrors(err);
       const attachmentError = Object.entries(fieldErrors).find(([key]) =>
         key.startsWith("attachments"),
       )?.[1];
-      if (fieldErrors.message || attachmentError) {
-        setErrors({
-          message: fieldErrors.message,
-          attachments: attachmentError,
-        });
+      const mapped: Errors = {
+        appointment: fieldErrors.appointment_id,
+        topic: fieldErrors.topic,
+        message: fieldErrors.message,
+        attachments: attachmentError,
+      };
+      if (Object.values(mapped).some(Boolean)) {
+        setErrors(mapped);
+        // The field itself may be scrolled out of view
+        setSubmitError(t("supportCheckDetails"));
+        // The list changed on the server: show the current one to pick from
+        if (mapped.topic) {
+          setTopic(null);
+          loadTopics();
+        }
         return;
       }
       setSubmitError(
@@ -527,7 +551,7 @@ export default function SupportRequestScreen() {
     { key: "camera", label: t("reportTakePhoto"), icon: "photo-camera" },
     { key: "library", label: t("reportChooseGallery"), icon: "photo-library" },
   ];
-  const ready = !!topic && !!message.trim();
+  const ready = (!!topic || topicsFailed) && !!message.trim();
 
   return (
     <View style={styles.container}>
@@ -576,38 +600,81 @@ export default function SupportRequestScreen() {
             </View>
           </FlowCard>
         ) : null}
+        {errors.appointment ? (
+          <Text style={styles.fieldError} accessibilityLiveRegion="polite">
+            {errors.appointment}
+          </Text>
+        ) : null}
 
         <View style={styles.group}>
-          <SectionLabel label={t("supportTopicLabel")} required />
-          <View style={styles.pills} accessibilityRole="radiogroup">
-            {topics.map((item) => {
-              const on = topic === item.value;
-              return (
-                <TouchableOpacity
-                  key={item.value}
-                  style={[styles.pill, on && styles.pillOn]}
-                  onPress={() => {
-                    void Haptics.selectionAsync();
-                    setTopic(item.value);
-                    setSubmitError(null);
-                  }}
-                  disabled={submitting}
-                  activeOpacity={0.8}
-                  accessibilityRole="radio"
-                  accessibilityState={{ checked: on }}
-                >
-                  <MaterialIcons
-                    name={item.icon}
-                    size={moderateWidthScale(18)}
-                    color={on ? theme.white : theme.darkGreen}
-                  />
-                  <Text style={[styles.pillText, on && styles.pillTextOn]}>
-                    {item.label}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
+          <SectionLabel
+            label={t("supportTopicLabel")}
+            required={!topicsFailed}
+          />
+          {topicsFailed ? (
+            <>
+              <InfoNote
+                tone="warm"
+                icon="error-outline"
+                text={t("supportTopicsLoadFailed")}
+              />
+              <FlowButton
+                label={t("tryAgain")}
+                variant="outline"
+                icon="refresh"
+                onPress={loadTopics}
+                disabled={submitting}
+              />
+            </>
+          ) : topics == null ? (
+            <View style={styles.pills} accessibilityLabel={t("loading")}>
+              {TOPIC_SKELETON_WIDTHS.map((width) => (
+                <View
+                  key={width}
+                  style={[
+                    styles.pillSkeleton,
+                    { width: moderateWidthScale(width) },
+                  ]}
+                />
+              ))}
+            </View>
+          ) : (
+            <View style={styles.pills} accessibilityRole="radiogroup">
+              {topics.map((item) => {
+                const on = topic === item.value;
+                return (
+                  <TouchableOpacity
+                    key={item.value}
+                    style={[styles.pill, on && styles.pillOn]}
+                    onPress={() => {
+                      void Haptics.selectionAsync();
+                      setTopic(item.value);
+                      setSubmitError(null);
+                      setErrors((prev) => ({ ...prev, topic: undefined }));
+                    }}
+                    disabled={submitting}
+                    activeOpacity={0.8}
+                    accessibilityRole="radio"
+                    accessibilityState={{ checked: on }}
+                  >
+                    <MaterialIcons
+                      name={TOPIC_ICONS[item.value] ?? "help-outline"}
+                      size={moderateWidthScale(18)}
+                      color={on ? theme.white : theme.darkGreen}
+                    />
+                    <Text style={[styles.pillText, on && styles.pillTextOn]}>
+                      {item.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          )}
+          {errors.topic ? (
+            <Text style={styles.fieldError} accessibilityLiveRegion="polite">
+              {errors.topic}
+            </Text>
+          ) : null}
         </View>
 
         <FlowTextField
@@ -731,7 +798,13 @@ export default function SupportRequestScreen() {
             loading: submitting,
             disabled: submitting || picking || !ready,
           }}
-          hint={!ready ? t("supportSendHint") : null}
+          hint={
+            ready
+              ? null
+              : topicsFailed
+                ? t("supportSendHintNoTopic")
+                : t("supportSendHint")
+          }
           progress={
             progress != null
               ? {
