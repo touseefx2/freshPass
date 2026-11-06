@@ -111,6 +111,7 @@ type StaffRow = {
   name?: string | null;
   is_owner?: boolean;
   active?: boolean | number | null;
+  is_paused?: boolean;
   invitation_token?: string | null;
   invitation_status?: string | null;
   user?: { profile_image_url?: string | null } | null;
@@ -128,8 +129,10 @@ export async function fetchOwnerBookingStaff(
   return pickList<StaffRow>(res)
     .filter(
       (row) =>
-        // Pending invites and switched-off staff can't take bookings
+        // Pending invites, switched-off staff and team members paused by a
+        // move to Solo can't take bookings (server refuses their staff_id).
         !(row.invitation_token && row.invitation_status !== "accepted") &&
+        row.is_paused !== true &&
         row.active !== false &&
         row.active !== 0,
     )

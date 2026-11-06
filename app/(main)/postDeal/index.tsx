@@ -722,8 +722,8 @@ export default function PostDealScreen() {
           ),
         ]);
       const [staff, services, hoursRes, dealsRes] = await Promise.all([
-        // Solo owners still have their own staff row — slots need its id.
-        withTimeout(fetchOwnerBookingStaff(businessId)),
+        // Solo = no staff to choose: API takes the deal and slots without staff_id.
+        isSolo ? [] : withTimeout(fetchOwnerBookingStaff(businessId)),
         withTimeout(fetchOwnerBookingServices(businessId)),
         // Only explains a refused calendar time — never blocks the flow.
         withTimeout(fetchOwnerBusinessHours(businessId)).catch(() => null),
@@ -738,10 +738,8 @@ export default function PostDealScreen() {
         (params.staff_id
           ? staff.find((s) => s.id === Number(params.staff_id))
           : undefined) ??
-        // Solo / one barber: no choice to make, pick them.
-        (isSolo || staff.length === 1
-          ? staff.find((s) => s.isOwner) ?? staff[0]
-          : undefined);
+        // One barber: no choice to make, pick them.
+        (staff.length === 1 ? staff[0] : undefined);
       if (pre) setSelectedStaff(pre);
     } catch (err) {
       Logger.error("PostDeal: load data failed", err);
@@ -848,11 +846,11 @@ export default function PostDealScreen() {
 
   const steps = useMemo<StepKey[]>(() => {
     const s: StepKey[] = ["service"];
-    if (!isSolo && staffList.length > 1) s.push("staff");
+    if (staffList.length > 1) s.push("staff");
     if (showTimeStep) s.push("time");
     s.push("price", "preview");
     return s;
-  }, [isSolo, staffList.length, showTimeStep]);
+  }, [staffList.length, showTimeStep]);
 
   const stepIndex = steps.indexOf(step);
   const stepNumber = stepIndex + 1;
