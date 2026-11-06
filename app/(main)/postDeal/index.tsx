@@ -853,21 +853,32 @@ export default function PostDealScreen() {
     const now = salonNow(salonClock, hours?.timezone);
     const [h, m] = selectedTime.split(":").map(Number);
     const start = h * 60 + m;
-    return [
+    const build = (o: { min: number; labelKey: string }) => {
+      const close = start - o.min;
+      const hhmm = `${String(Math.floor(close / 60)).padStart(2, "0")}:${String(close % 60).padStart(2, "0")}`;
+      const passed =
+        selectedDate < now.day || (selectedDate === now.day && close <= now.minutes);
+      return { ...o, timeLabel: formatSlotTime(hhmm), passed };
+    };
+    const options = [
       { min: 30, labelKey: "sdClose30" },
       { min: 60, labelKey: "sdClose60" },
       { min: 120, labelKey: "sdClose120" },
       { min: 180, labelKey: "sdClose180" },
     ]
       .filter((o) => start - o.min >= 0)
-      .map((o) => {
-        const close = start - o.min;
-        const hhmm = `${String(Math.floor(close / 60)).padStart(2, "0")}:${String(close % 60).padStart(2, "0")}`;
-        const passed =
-          selectedDate < now.day || (selectedDate === now.day && close <= now.minutes);
-        return { ...o, timeLabel: formatSlotTime(hhmm), passed };
-      });
+      .map(build);
+    // Slot less than 30 min away: offer a last-minute close so the step
+    // never dead-ends (the time step's own list already hides past starts).
+    if (options.every((o) => o.passed) && start - 5 >= 0) {
+      const last = build({ min: 5, labelKey: "sdClose5" });
+      if (!last.passed) options.unshift(last);
+    }
+    return options;
   }, [selectedTime, selectedDate, salonClock, hours]);
+
+  /** Every close time is already past: this slot starts too soon for a deal */
+  const slotTooSoon = !!selectedTime && closeOptions.every((o) => o.passed);
 
   // A pick that is now in the past can't be kept
   useEffect(() => {
@@ -949,7 +960,6 @@ export default function PostDealScreen() {
     selectedStaff,
     selectedTime,
     closesAtTime,
-    offerPriceText,
     checksPresetOnNext,
     timesReady,
     freeTimes,
@@ -1468,6 +1478,27 @@ export default function PostDealScreen() {
 
               <SectionLabel label={t("sdStopBookingsLabel")} style={{ marginTop: moderateHeightScale(10) }} />
               <Text style={styles.inputHint}>{t("sdStopBookingsHint")}</Text>
+              {slotTooSoon ? (
+                <View style={{ gap: moderateHeightScale(10) }}>
+                  <InfoNote
+                    tone="warm"
+                    icon="schedule"
+                    title={t("sdTooSoonTitle")}
+                    text={t("sdTooSoonText")}
+                  />
+                  <TouchableOpacity
+                    style={[styles.changeBtn, { alignSelf: "flex-start" }]}
+                    activeOpacity={0.75}
+                    onPress={() => {
+                      setForceTimeStep(true);
+                      setSelectedTime(null);
+                      setStep("time");
+                    }}
+                  >
+                    <Text style={styles.changeBtnText}>{t("sdPickLaterTime")}</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
               <View style={styles.closeGrid}>
                 {closeOptions.map((opt) => {
                   const sel = closesBeforeMinutes === opt.min;
@@ -1500,6 +1531,7 @@ export default function PostDealScreen() {
                   );
                 })}
               </View>
+              )}
             </>
           )}
 
