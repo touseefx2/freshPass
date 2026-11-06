@@ -66,6 +66,11 @@ export interface SetupProgress {
   has_job_post?: boolean;
   /** Staff: uploaded a work photo */
   has_work_photos?: boolean;
+  /**
+   * Gold buttons this login has tapped once (server keys, e.g. "add_product").
+   * Saved with POST /api/user { setup_tap }.
+   */
+  tapped?: string[];
 }
 
 export interface BusinessStatus {

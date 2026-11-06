@@ -14,7 +14,7 @@ import {
 } from "@/src/services/endpoints";
 import { BusinessStatus, deriveHasAddStaff, DEFAULT_OWNER_AS_STAFF, normalizeOwnerAsStaff } from "../slices/userSlice";
 import type { SetupProgress } from "../slices/userSlice";
-import { withRecentGoldMarks } from "@/src/utils/goldFrames";
+import { syncGoldTaps, withRecentGoldMarks } from "@/src/utils/goldFrames";
 import { canApplyServerMode } from "@/src/services/userModeService";
 
 interface fetchUserStatusOptions {
@@ -99,6 +99,7 @@ export const fetchUserStatus = createAsyncThunk<
           ),
         };
         dispatch(setBusinessStatus(businessStatusData));
+        syncGoldTaps(response.data.setup_progress);
         dispatch(setBusinessStatusError(false));
 
         // Set business_id and business_name in user state
@@ -143,6 +144,7 @@ export const fetchUserStatus = createAsyncThunk<
         };
 
         dispatch(setBusinessStatus(businessStatusData));
+        syncGoldTaps(response.data.setup_progress);
         dispatch(setBusinessStatusError(false));
 
         // Set business_id and business_name in user state

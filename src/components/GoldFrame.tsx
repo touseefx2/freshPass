@@ -75,8 +75,10 @@ const stopBreath = () => {
 };
 
 type Props = {
-  /** Glowing frame: the button is still untouched */
+  /** Gold ring around the button */
   framed: boolean;
+  /** Bloom + breath on the ring: the button is still untouched */
+  glowing?: boolean;
   /** Corner radius of the wrapped button */
   radius: number;
   /** Matches (or covers) the wrapped button's own border */
@@ -98,6 +100,7 @@ type Props = {
  */
 export default function GoldFrame({
   framed,
+  glowing = true,
   radius,
   borderWidth = 2,
   glow = "md",
@@ -108,7 +111,8 @@ export default function GoldFrame({
   const { colors } = useTheme();
   const theme = colors as Theme;
   const reduceMotion = useReducedMotion();
-  const breathing = framed && !reduceMotion;
+  const lit = framed && glowing;
+  const breathing = lit && !reduceMotion;
 
   useEffect(() => {
     if (!breathing) return;
@@ -128,7 +132,7 @@ export default function GoldFrame({
 
   return (
     <View style={style}>
-      {framed && (
+      {lit && (
         // Drawn outside the button's box only, so it never tints the button
         <Animated.View
           pointerEvents="none"

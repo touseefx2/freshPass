@@ -260,8 +260,8 @@ function DashboardHeader() {
     isOnboardedOwner && businessStatus?.has_subscription === false;
 
   // Trial banner clears once tapped (client 10-30); "Choose a plan" stays.
-  // Membership / cancellation policy bars glow until tapped once or done
-  // (client 11-06), then go away like the trial banner.
+  // Membership / cancellation policy bars stay until done; their glow stops
+  // after the first tap (client 11-06).
   // Stripe / Orders cards live in the home scroll (HomeQuickCards).
   // Persisted in dismissedSetupReminders, reset on logout.
   const dismissedReminders = useAppSelector(
@@ -310,6 +310,7 @@ function DashboardHeader() {
     showBusinessSubscriptipn && {
       key: "plan",
       task: null as GoldTapKey | null,
+      glowing: false,
       icon: "briefcase" as const,
       title: t("pleaseBuyBusinessPlan"),
       cta: t("viewBusinessPlans"),
@@ -319,6 +320,7 @@ function DashboardHeader() {
       !dismissedReminders.includes("banner:trial") && {
       key: "trial",
       task: null as GoldTapKey | null,
+      glowing: false,
       icon: "clock" as const,
       title:
         trialDaysLeft === 0
@@ -328,18 +330,20 @@ function DashboardHeader() {
       onPress: clearOnPress("banner:trial", handleTrialPress),
     },
     isOnboardedOwner &&
-      gold.isFramed("membership") && {
+      gold.isPending("membership") && {
         key: "createMembership",
         task: "membership" as GoldTapKey | null,
+        glowing: gold.isFramed("membership"),
         icon: "gift" as const,
         title: t("setupCreateMembership"),
         cta: t("setupCreateMembershipCta"),
         onPress: handleMembershipSetup,
       },
     isOnboardedOwner &&
-      gold.isFramed("cancellationPolicy") && {
+      gold.isPending("cancellationPolicy") && {
         key: "cancellationPolicy",
         task: "cancellationPolicy" as GoldTapKey | null,
+        glowing: gold.isFramed("cancellationPolicy"),
         icon: "shield" as const,
         title: t("setupCancellationPolicy"),
         cta: t("setupCancellationPolicyCta"),
@@ -347,8 +351,10 @@ function DashboardHeader() {
       },
   ].filter(Boolean) as {
     key: string;
-    /** Gold task the bar stands for: shown until tapped once or done */
+    /** Gold task the bar stands for: shown until the task is done */
     task: GoldTapKey | null;
+    /** Setup bars glow until tapped once; plan / trial cards never glow */
+    glowing: boolean;
     icon: "briefcase" | "clock" | "gift" | "shield";
     title: string;
     cta: string;
@@ -357,7 +363,7 @@ function DashboardHeader() {
 
   // All setup banners share one slot (user 11-05): one card at a time, the
   // owner swipes (no auto-slide), honey dots below when there are 2+.
-  // Every card has the same glowing gold frame.
+  // Every card has the same gold ring; only untapped setup bars glow.
   // The card on show is shared by every tab's header, so coming back from a
   // banner's screen keeps that banner.
   const { width: screenWidth } = useWindowDimensions();
@@ -390,14 +396,16 @@ function DashboardHeader() {
     <View key={banner.key} style={[styles.slide, { width: screenWidth }]}>
       <GoldFrame
         framed
+        glowing={banner.glowing}
         radius={GOLD_BAR_RADIUS}
+        borderWidth={1.5}
         glow="sm"
         style={styles.slideFill}
       >
         <TouchableOpacity
           onPress={() => {
             setupBannerStore.set(banner.key);
-            // Membership / policy bars clear once tapped (client 11-06)
+            // Membership / policy bars stop glowing once tapped (client 11-06)
             markGoldTapped(banner.task ?? undefined);
             banner.onPress();
           }}

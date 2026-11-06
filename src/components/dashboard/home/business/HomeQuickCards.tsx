@@ -181,6 +181,8 @@ export default function HomeQuickCards() {
       <GoldFrame
         framed={gold.isFramed("stripe")}
         radius={STRIPE_RADIUS}
+        // Thin ring like the + menu pills (user 11-06); the glow does the work
+        borderWidth={1.5}
         style={styles.stripeSlot}
       >
         <TouchableOpacity
