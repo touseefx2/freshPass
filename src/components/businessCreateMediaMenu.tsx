@@ -103,7 +103,6 @@ const MENU_ITEMS: MenuItem[] = [
     labelKey: "createReel",
     icon: "movie-open-outline",
     iconSet: "community",
-    highlighted: true,
   },
   {
     id: "servicesAndMemberships",
@@ -221,7 +220,6 @@ const STAFF_MENU_ITEMS: MenuItem[] = [
     labelKey: "createReel",
     icon: "movie-open-outline",
     iconSet: "community",
-    highlighted: true,
   },
 ];
 
@@ -290,12 +288,13 @@ function MenuPill({
   const primary = !!item.highlighted;
   return (
     <Animated.View style={motion}>
-      {/* Several pills can glow at once: the next step gets the big bloom */}
+      {/* Thin ring + soft glow: several pills can glow at once (sample 11-06) */}
       <GoldFrame
         framed={framed}
         pulse={pulse}
         radius={PILL_RADIUS}
-        glow={pulse ? "md" : "sm"}
+        borderWidth={1.5}
+        glow="xs"
       >
       <TouchableOpacity
         style={[

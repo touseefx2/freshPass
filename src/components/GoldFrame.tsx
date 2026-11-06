@@ -21,14 +21,17 @@ import { Theme } from "@/src/theme/colors";
 /**
  * Glow layers (client sample 11-06): a tight warm shine hugging the ring and
  * a golden bloom that sits a little lower, like light falling down.
- * md around buttons, sm where the parent leaves little room.
+ * md around buttons, sm where the parent leaves little room, xs in the menu.
  */
 const GLOW = {
   md: { shine: "0 0 2px 3px", bloom: "0 3px 16px 4px" },
   sm: { shine: "0 0 2px 2.5px", bloom: "0 2px 9px 2px" },
+  /** + menu pills: thin and soft, several can glow at once */
+  xs: { shine: "0 0 1px 1px", bloom: "0 2px 10px 1px" },
 } as const;
-/** Gold rim drawn just outside the amber core */
+/** Gold rim drawn just outside the amber core (thinner on thin rings) */
 const RIM = 1;
+const THIN_RIM = 0.75;
 
 /** boxShadow needs Android 9+; older phones get stacked rings instead */
 const HAS_BOX_SHADOW =
@@ -125,6 +128,7 @@ export default function GoldFrame({
   );
 
   const amber = tone === "amber";
+  const rim = borderWidth < 2 ? THIN_RIM : RIM;
 
   return (
     <View style={style}>
@@ -173,7 +177,12 @@ export default function GoldFrame({
               style={[
                 styles.rim,
                 {
-                  borderRadius: radius + RIM,
+                  top: -rim,
+                  left: -rim,
+                  right: -rim,
+                  bottom: -rim,
+                  borderWidth: rim,
+                  borderRadius: radius + rim,
                   borderColor: theme.goldGlowRim,
                 },
               ]}
@@ -217,11 +226,6 @@ const styles = StyleSheet.create({
   },
   rim: {
     position: "absolute",
-    top: -RIM,
-    left: -RIM,
-    right: -RIM,
-    bottom: -RIM,
-    borderWidth: RIM,
   },
   inner: {
     position: "absolute",
