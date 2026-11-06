@@ -2511,7 +2511,7 @@ export default function CalendarScreen() {
 
         if (startMinutes < firstOpenMinute(applyBoxDate)) {
           showBanner(
-            t("apiFailed") || "Error",
+            t("calSlotPassed"),
             t("calBreakTimePassed"),
             "error",
             2500,
