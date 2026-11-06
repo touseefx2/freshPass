@@ -568,9 +568,14 @@ export default function PostDealScreen() {
       });
       setDone(true);
     } catch (err: any) {
+      // api.ts rejects with a plain Error: server reply is on err.data, not err.response.
+      // Field error first — Laravel's top-level message adds "(and 1 more error)".
+      const errors = err?.data?.errors ?? {};
+      const firstFieldError = errors[Object.keys(errors)[0]]?.[0];
       const msg =
-        err?.response?.data?.message ||
-        err?.response?.data?.errors?.[Object.keys(err?.response?.data?.errors ?? {})[0]]?.[0] ||
+        firstFieldError ||
+        err?.data?.message ||
+        err?.message ||
         t("sdPostError");
       setPostError(msg);
       Alert.alert(t("sdError"), msg);
