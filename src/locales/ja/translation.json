@@ -377,6 +377,8 @@
   "selectPhoto": "写真を選択",
   "workHistory": "勤務履歴",
   "reasonToCancel": "キャンセル理由",
+  "confirmCancellation": "キャンセルを確認",
+  "typeYourReason": "理由を入力してください（任意）",
   "continue": "続ける",
   "confirmBooking": "予約を確認",
   "completeYourOnboarding": "オンボーディングを完了",

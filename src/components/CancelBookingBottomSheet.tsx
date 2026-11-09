@@ -1,19 +1,17 @@
 import React, { useMemo, useState, useEffect, useRef } from "react";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { SvgXml } from "react-native-svg";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import {
-  heightScale,
   moderateHeightScale,
   moderateWidthScale,
   widthScale,
 } from "@/src/theme/dimensions";
 import ModalizeBottomSheet from "@/src/components/modalizeBottomSheet";
 
-// Radio Button Icon SVG (filled circle)
 const radioIconSvg = `
 <svg width="{{WIDTH}}" height="{{HEIGHT}}" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
 <circle cx="12" cy="12" r="10" fill="{{COLOR}}"/>
@@ -33,33 +31,31 @@ interface CancelBookingBottomSheetProps {
   onClose: () => void;
   onSubmit: (reason: string) => void;
   feeNotice?: string | null;
+  userRole?: "customer" | "business" | "staff";
 }
 
-const cancellationReasons = [
-  "Service provider verification",
-  "Booked by mistake",
-  "Service provider delayed or didn't show up",
-  "Price was too high",
-  "Issue with location or travel",
+const CUSTOMER_REASONS = [
   "Not feeling well",
-  "Poor communication from provider",
-  "Incorrect booking details",
-  "Other (please specify)",
+  "Can't make it",
+  "Bad weather",
+  "Other",
 ];
+
+const PRO_REASONS = ["Can't make it", "Had to leave", "Other"];
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
     reasonItem: {
       flexDirection: "row",
       alignItems: "center",
-      paddingVertical: moderateHeightScale(16),
+      paddingVertical: moderateHeightScale(14),
       borderBottomWidth: 1,
       borderBottomColor: theme.borderLight,
     },
     radioContainer: {
-      width: widthScale(20),
-      height: widthScale(20),
-      borderRadius: widthScale(20 / 2),
+      width: widthScale(22),
+      height: widthScale(22),
+      borderRadius: widthScale(11),
       borderWidth: moderateWidthScale(1.5),
       borderColor: theme.lightGreen2,
       alignItems: "center",
@@ -69,7 +65,6 @@ const createStyles = (theme: Theme) =>
     radioContainerSelected: {
       borderColor: theme.lightGreen,
     },
-
     reasonText: {
       flex: 1,
       fontSize: fontSize.size14,
@@ -82,7 +77,7 @@ const createStyles = (theme: Theme) =>
       borderWidth: 1,
       borderColor: theme.orangeBrown30,
       paddingHorizontal: moderateWidthScale(14),
-      paddingVertical: moderateHeightScale(12),
+      paddingVertical: moderateHeightScale(10),
       marginBottom: moderateHeightScale(12),
     },
     feeNoticeText: {
@@ -91,6 +86,19 @@ const createStyles = (theme: Theme) =>
       color: theme.darkGreen,
       lineHeight: fontSize.size20,
     },
+    otherInput: {
+      borderWidth: 1,
+      borderColor: theme.borderLight,
+      borderRadius: moderateWidthScale(8),
+      paddingHorizontal: moderateWidthScale(12),
+      paddingVertical: moderateHeightScale(10),
+      marginTop: moderateHeightScale(8),
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontRegular,
+      color: theme.darkGreen,
+      minHeight: moderateHeightScale(44),
+      textAlignVertical: "top",
+    },
   });
 
 export default function CancelBookingBottomSheet({
@@ -98,31 +106,35 @@ export default function CancelBookingBottomSheet({
   onClose,
   onSubmit,
   feeNotice,
+  userRole = "customer",
 }: CancelBookingBottomSheetProps) {
   const { t } = useTranslation();
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors as Theme), [colors]);
   const theme = colors as Theme;
   const [selectedReason, setSelectedReason] = useState<string>("");
+  const [otherText, setOtherText] = useState("");
   const prevVisibleRef = useRef(false);
 
+  const reasons =
+    userRole === "customer" ? CUSTOMER_REASONS : PRO_REASONS;
+
   useEffect(() => {
-    // Reset selection when sheet opens
     if (visible && !prevVisibleRef.current) {
       setSelectedReason("");
+      setOtherText("");
     }
     prevVisibleRef.current = visible;
   }, [visible]);
 
-  const handleSelectReason = (reason: string) => {
-    setSelectedReason(reason);
-  };
-
   const handleSubmit = () => {
-    if (selectedReason) {
-      onSubmit(selectedReason);
-      onClose();
-    }
+    if (!selectedReason) return;
+    const reason =
+      selectedReason === "Other" && otherText.trim()
+        ? `Other: ${otherText.trim()}`
+        : selectedReason;
+    onSubmit(reason);
+    onClose();
   };
 
   return (
@@ -130,7 +142,7 @@ export default function CancelBookingBottomSheet({
       visible={visible}
       onClose={onClose}
       title={t("reasonToCancel")}
-      footerButtonTitle="Submit"
+      footerButtonTitle={t("confirmCancellation")}
       onFooterButtonPress={handleSubmit}
       footerButtonDisabled={!selectedReason}
     >
@@ -139,10 +151,10 @@ export default function CancelBookingBottomSheet({
           <Text style={styles.feeNoticeText}>{feeNotice}</Text>
         </View>
       ) : null}
-      {cancellationReasons.map((reason, index) => (
+      {reasons.map((reason) => (
         <TouchableOpacity
-          key={index}
-          onPress={() => handleSelectReason(reason)}
+          key={reason}
+          onPress={() => setSelectedReason(reason)}
           activeOpacity={0.7}
           style={styles.reasonItem}
         >
@@ -163,6 +175,17 @@ export default function CancelBookingBottomSheet({
           <Text style={styles.reasonText}>{reason}</Text>
         </TouchableOpacity>
       ))}
+      {selectedReason === "Other" ? (
+        <TextInput
+          style={styles.otherInput}
+          placeholder={t("typeYourReason")}
+          placeholderTextColor={theme.lightGreen2}
+          value={otherText}
+          onChangeText={setOtherText}
+          maxLength={200}
+          multiline
+        />
+      ) : null}
     </ModalizeBottomSheet>
   );
 }

@@ -377,6 +377,8 @@
   "selectPhoto": "Sélectionner une photo",
   "workHistory": "Historique de travail",
   "reasonToCancel": "Raison d'annulation",
+  "confirmCancellation": "Confirmer l'annulation",
+  "typeYourReason": "Tapez votre raison (facultatif)",
   "continue": "Continuer",
   "confirmBooking": "Confirmer la réservation",
   "completeYourOnboarding": "Complétez votre intégration",

@@ -3425,6 +3425,7 @@ export default function BookingDetailsById() {
           onClose={handleCloseCancelModal}
           onSubmit={handleCancelBooking}
           feeNotice={cancelFeeNotice}
+          userRole={userRole}
         />
 
         <OutcomeConfirmSheet

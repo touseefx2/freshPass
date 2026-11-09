@@ -377,6 +377,8 @@
   "selectPhoto": "Foto auswählen",
   "workHistory": "Arbeitshistorie",
   "reasonToCancel": "Stornierungsgrund",
+  "confirmCancellation": "Stornierung bestätigen",
+  "typeYourReason": "Geben Sie Ihren Grund ein (optional)",
   "continue": "Weiter",
   "confirmBooking": "Buchung bestätigen",
   "completeYourOnboarding": "Onboarding abschließen",

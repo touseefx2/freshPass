@@ -377,6 +377,8 @@
   "selectPhoto": "اختر صورة",
   "workHistory": "سجل العمل",
   "reasonToCancel": "سبب الإلغاء",
+  "confirmCancellation": "تأكيد الإلغاء",
+  "typeYourReason": "اكتب سببك (اختياري)",
   "continue": "متابعة",
   "confirmBooking": "تأكيد الحجز",
   "completeYourOnboarding": "أكمل عملية الانضمام",

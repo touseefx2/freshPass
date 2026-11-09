@@ -381,6 +381,8 @@
   "selectPhoto": "Select Photo",
   "workHistory": "Work History",
   "reasonToCancel": "Reason to cancel",
+  "confirmCancellation": "Confirm Cancellation",
+  "typeYourReason": "Type your reason (optional)",
   "continue": "Continue",
   "confirmBooking": "Confirm Booking",
   "completeYourOnboarding": "Complete Your Onboarding",
