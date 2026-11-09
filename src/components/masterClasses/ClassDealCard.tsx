@@ -17,7 +17,10 @@ import {
   moderateWidthScale,
   widthScale,
 } from "@/src/theme/dimensions";
-import { HIRING_FRAME_WIDTH } from "@/src/components/jobs/jobBadges";
+import {
+  HIRING_CORNER_OVERHANG,
+  HIRING_FRAME_WIDTH,
+} from "@/src/components/jobs/jobBadges";
 import type { MasterClass } from "@/src/types/masterClass";
 import {
   formatClassDateTime,
@@ -81,6 +84,14 @@ function ClassDealCard({ masterClass, onPress }: ClassDealCardProps) {
       accessibilityLabel={a11yLabel}
       accessibilityHint={t("mcViewClass")}
     >
+      <View style={styles.cornerBadge}>
+        <Ionicons
+          name="school"
+          size={moderateWidthScale(15)}
+          color={theme.darkGreen}
+        />
+      </View>
+
       <ClassMediaThumb
         media={masterClass.media}
         width={widthScale(110)}
@@ -173,7 +184,7 @@ const createStyles = (theme: Theme) =>
       backgroundColor: theme.darkGreen,
       borderRadius: moderateWidthScale(12),
       borderWidth: HIRING_FRAME_WIDTH,
-      borderColor: "transparent",
+      borderColor: theme.orangeBrown,
       paddingHorizontal: moderateWidthScale(10) - HIRING_FRAME_WIDTH,
       paddingVertical: moderateHeightScale(10) - HIRING_FRAME_WIDTH,
       height: heightScale(132),
@@ -181,6 +192,19 @@ const createStyles = (theme: Theme) =>
       flexDirection: "row",
       alignItems: "center",
       gap: moderateWidthScale(12),
+    },
+    cornerBadge: {
+      position: "absolute",
+      zIndex: 2,
+      elevation: 2,
+      top: -HIRING_CORNER_OVERHANG,
+      right: -moderateWidthScale(4),
+      width: HIRING_CORNER_OVERHANG * 2,
+      height: HIRING_CORNER_OVERHANG * 2,
+      borderRadius: HIRING_CORNER_OVERHANG,
+      backgroundColor: theme.orangeBrown,
+      alignItems: "center",
+      justifyContent: "center",
     },
     media: {
       backgroundColor: theme.emptyProfileImage,

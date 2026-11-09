@@ -59,6 +59,7 @@ export default function ShowBusiness({
   const router = useRouter();
   const hasHiring = verifiedSalons.some((salon) => salon.isHiring);
   const hasClasses = classes.length > 0;
+  const hasCornerBadge = hasHiring || hasClasses;
   const dealItems = useMemo(
     () => (hasClasses ? mixDealsWithClasses(verifiedSalons, classes) : []),
     [hasClasses, verifiedSalons, classes],
@@ -134,10 +135,10 @@ export default function ShowBusiness({
       decelerationRate={0.8}
       horizontal
       showsHorizontalScrollIndicator={false}
-      style={hasHiring ? styles.appCardHiring : styles.appCard}
+      style={hasCornerBadge ? styles.appCardHiring : styles.appCard}
       contentContainerStyle={[
         styles.appointmentsScroll,
-        hasHiring && styles.appointmentsScrollHiring,
+        hasCornerBadge && styles.appointmentsScrollHiring,
       ]}
       nestedScrollEnabled={true}
     >
