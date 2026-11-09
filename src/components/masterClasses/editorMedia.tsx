@@ -5,6 +5,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   ActivityIndicator,
   Platform,
+  Pressable,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -86,7 +87,13 @@ export function useClassMediaUpload(
     setPercent(0);
   }, []);
 
-  const pick = useCallback(async () => {
+  /**
+   * @param onImagePicked When provided and the picked file is a photo,
+   *   calls this with the local URI instead of uploading — lets the caller
+   *   open a crop editor first, then call `uploadImageUri(croppedUri)`.
+   *   Videos still upload directly.
+   */
+  const pick = useCallback(async (onImagePicked?: (uri: string) => void) => {
     if (controllerRef.current) return;
     setError(null);
     let asset: ImagePicker.ImagePickerAsset | undefined;
@@ -107,11 +114,17 @@ export function useClassMediaUpload(
     if (!asset?.uri || !mountedRef.current) return;
 
     const isVideo = asset.type === "video";
+
+    // Image picked and caller wants to edit it first
+    if (!isVideo && onImagePicked) {
+      onImagePicked(asset.uri);
+      return;
+    }
+
     if (isVideo) {
       const limits =
         getCachedMediaLimits() ?? (await getMediaLimits().catch(() => null));
       const maxSeconds = uploadMaxSeconds(limits);
-      // expo-image-picker reports duration in ms (null when unknown)
       if ((asset.duration ?? 0) > maxSeconds * 1000 + 500) {
         setError(t("mcVideoTooLong", { seconds: maxSeconds }));
         return;
@@ -150,7 +163,6 @@ export function useClassMediaUpload(
               width: asset.width,
               height: asset.height,
               signal: controller.signal,
-              // Compression is the first third of the bar, the upload the rest
               onCompressProgress: (p) =>
                 mountedRef.current && setPercent(Math.round(p * 0.3)),
             },
@@ -195,8 +207,53 @@ export function useClassMediaUpload(
     }
   }, [t]);
 
+  /** Upload a local image URI (e.g. after cropping in the photo editor). */
+  const uploadImageUri = useCallback(
+    async (imageUri: string) => {
+      if (controllerRef.current) return;
+      setError(null);
+      const controller = new AbortController();
+      controllerRef.current = controller;
+      setPendingPreview({ uri: imageUri, isVideo: false });
+      setPercent(0);
+      setUploading(true);
+      try {
+        const uploaded = await uploadImage(
+          { uri: imageUri, sourceType: "device", signal: controller.signal },
+          (p) => mountedRef.current && setPercent(p),
+        );
+        if (!mountedRef.current || controller.signal.aborted) return;
+        onUploadedRef.current({
+          id: uploaded.id,
+          previewUri: imageUri,
+          isVideo: false,
+        });
+      } catch (err: any) {
+        if (isUploadCancelled(err) || !mountedRef.current) return;
+        Logger.warn("Class media upload failed:", err);
+        setError(
+          err?.isNoInternet
+            ? t("mcNoInternet")
+            : typeof err?.message === "string" &&
+                err.message &&
+                !/^Upload failed/.test(err.message)
+              ? err.message
+              : t("mcUploadFailed"),
+        );
+      } finally {
+        if (controllerRef.current === controller) controllerRef.current = null;
+        if (mountedRef.current) {
+          setUploading(false);
+          setPendingPreview(null);
+        }
+      }
+    },
+    [t],
+  );
+
   return {
     pick,
+    uploadImageUri,
     cancel,
     uploading,
     percent,
@@ -221,6 +278,8 @@ type Props = {
   onPick: () => void;
   onRemove: () => void;
   onCancelUpload: () => void;
+  /** Tap the preview to view full-screen. */
+  onPreviewPress?: () => void;
 };
 
 export function EditorMediaBox({
@@ -234,6 +293,7 @@ export function EditorMediaBox({
   onPick,
   onRemove,
   onCancelUpload,
+  onPreviewPress,
 }: Props) {
   const { t } = useTranslation();
   const { colors } = useTheme();
@@ -262,9 +322,15 @@ export function EditorMediaBox({
     );
   }
 
+  const PreviewWrap = onPreviewPress && !uploading ? Pressable : View;
+  const previewWrapProps =
+    onPreviewPress && !uploading
+      ? { onPress: onPreviewPress, accessibilityRole: "button" as const }
+      : {};
+
   return (
     <View style={styles.wrap}>
-      <View style={styles.previewWrap}>
+      <PreviewWrap style={styles.previewWrap} {...previewWrapProps}>
         <ClassMediaThumb
           uri={previewUri ?? undefined}
           media={previewUri ? null : media}
@@ -293,7 +359,7 @@ export function EditorMediaBox({
             </TouchableOpacity>
           </View>
         ) : null}
-      </View>
+      </PreviewWrap>
       {!uploading ? (
         <View style={styles.actions}>
           <TouchableOpacity

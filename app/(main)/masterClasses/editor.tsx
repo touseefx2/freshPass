@@ -8,6 +8,7 @@ import React, {
 import {
   ActivityIndicator,
   Alert,
+  Dimensions,
   Keyboard,
   LayoutChangeEvent,
   StyleSheet,
@@ -28,7 +29,7 @@ import { useTranslation } from "react-i18next";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
-import { useAppSelector, useTheme } from "@/src/hooks/hooks";
+import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import {
@@ -110,6 +111,9 @@ import {
   useClassMediaUpload,
 } from "@/src/components/masterClasses/editorMedia";
 import { useOpenStripeConnect } from "@/src/components/masterClasses/useOpenStripeConnect";
+import { openFullImageModal } from "@/src/state/slices/generalSlice";
+import ImagePickerModal from "@/src/components/imagePickerModal";
+import PhotoEditorModal from "@/src/components/PhotoEditorModal";
 
 /**
  * Create / Edit Class (client sample, Design 3).
@@ -121,6 +125,10 @@ import { useOpenStripeConnect } from "@/src/components/masterClasses/useOpenStri
 
 const LIST_PATH = "/(main)/masterClasses";
 const PUBLISH_PATH = "/(main)/masterClasses/publish";
+
+const MEDIA_CROP_ASPECT =
+  (Dimensions.get("window").width - moderateWidthScale(20) * 2) /
+  heightScale(190);
 
 type FormState = {
   title: string;
@@ -453,6 +461,7 @@ export default function MasterClassEditorScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const navigation = useNavigation();
+  const dispatch = useAppDispatch();
   const openStripe = useOpenStripeConnect();
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
@@ -498,6 +507,9 @@ export default function MasterClassEditorScreen() {
     uri: string | null;
     isVideo: boolean;
   } | null>(null);
+  const [showPickerModal, setShowPickerModal] = useState(false);
+  const [editorUri, setEditorUri] = useState("");
+  const [editorVisible, setEditorVisible] = useState(false);
   const [businessAddress, setBusinessAddress] = useState<string | null>(null);
   const businessAddressRequested = useRef(false);
   const allowLeaveRef = useRef(false);
@@ -652,6 +664,30 @@ export default function MasterClassEditorScreen() {
   mediaUploadingRef.current = media.uploading;
   const cancelMediaRef = useRef(media.cancel);
   cancelMediaRef.current = media.cancel;
+
+  /** Gallery pick: images → crop editor, videos → direct upload via pick(). */
+  const handleGalleryPick = useCallback(() => {
+    media.clearError();
+    void media.pick((imageUri) => {
+      setEditorUri(imageUri);
+      setEditorVisible(true);
+    });
+  }, [media]);
+
+  const handleEditorDone = useCallback(
+    (croppedUri: string) => {
+      setEditorVisible(false);
+      setEditorUri("");
+      media.clearError();
+      void media.uploadImageUri(croppedUri);
+    },
+    [media],
+  );
+
+  const handleEditorCancel = useCallback(() => {
+    setEditorVisible(false);
+    setEditorUri("");
+  }, []);
 
   // ── Save ────────────────────────────────────────────────────────────
   /** POST the first time, PATCH changes after. Returns the saved class. */
@@ -1275,7 +1311,7 @@ export default function MasterClassEditorScreen() {
                 onPick={() => {
                   Keyboard.dismiss();
                   media.clearError();
-                  void media.pick();
+                  setShowPickerModal(true);
                 }}
                 onRemove={() => {
                   setField("mediaAssetId", null, "media");
@@ -1283,6 +1319,14 @@ export default function MasterClassEditorScreen() {
                   media.clearError();
                 }}
                 onCancelUpload={media.cancel}
+                onPreviewPress={() => {
+                  const uri =
+                    pending?.uri ??
+                    mediaPreview?.uri ??
+                    savedMedia?.url ??
+                    savedMedia?.thumbnail_url;
+                  if (uri) dispatch(openFullImageModal({ images: [uri] }));
+                }}
               />
             </View>
 
@@ -1621,6 +1665,24 @@ export default function MasterClassEditorScreen() {
           setSheet(null);
         }}
         onClose={() => setSheet(null)}
+      />
+      <ImagePickerModal
+        visible={showPickerModal}
+        onClose={() => setShowPickerModal(false)}
+        onImageSelected={(uri) => {
+          setEditorUri(uri);
+          setEditorVisible(true);
+        }}
+        onGalleryPress={handleGalleryPick}
+        title={t("mcAddMedia")}
+      />
+      <PhotoEditorModal
+        visible={editorVisible}
+        imageUri={editorUri}
+        onDone={handleEditorDone}
+        onCancel={handleEditorCancel}
+        cropShape="square"
+        cropAspectRatio={MEDIA_CROP_ASPECT}
       />
     </View>
   );

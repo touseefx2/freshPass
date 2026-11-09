@@ -46,6 +46,8 @@ interface PhotoEditorModalProps {
   onCancel: () => void;
   cropShape?: CropShape;
   cropSizeFraction?: number;
+  /** Width ÷ height of the crop rectangle. Default 1 (square). Ignored for circle. */
+  cropAspectRatio?: number;
 }
 
 function getImageSize(uri: string): Promise<{ width: number; height: number }> {
@@ -147,6 +149,7 @@ export default function PhotoEditorModal({
   onCancel,
   cropShape = "square",
   cropSizeFraction = 0.85,
+  cropAspectRatio = 1,
 }: PhotoEditorModalProps) {
   const { colors } = useTheme();
   const { t } = useTranslation();
@@ -165,7 +168,8 @@ export default function PhotoEditorModal({
     height: number;
   } | null>(null);
 
-  const CROP_SIZE = SCREEN_WIDTH * cropSizeFraction;
+  const CROP_W = SCREEN_WIDTH * cropSizeFraction;
+  const CROP_H = cropShape === "circle" ? CROP_W : CROP_W / Math.max(0.1, cropAspectRatio);
 
   const scale = useSharedValue(1);
   const savedScale = useSharedValue(1);
@@ -175,15 +179,19 @@ export default function PhotoEditorModal({
   const savedTranslateY = useSharedValue(0);
 
   const imageLayout = useMemo(() => {
-    if (!imageSize) return { width: CROP_SIZE, height: CROP_SIZE };
+    if (!imageSize) return { width: CROP_W, height: CROP_H };
     const { width: iw, height: ih } = imageSize;
-    const aspectRatio = iw / ih;
-    if (aspectRatio >= 1) {
-      return { width: CROP_SIZE * aspectRatio, height: CROP_SIZE };
+    const imgAspect = iw / ih;
+    const cropAspect = CROP_W / CROP_H;
+    // Cover the crop rect: scale so the shorter relative dimension fits exactly
+    if (imgAspect >= cropAspect) {
+      // Image is wider than crop → height-limited
+      return { width: CROP_H * imgAspect, height: CROP_H };
     } else {
-      return { width: CROP_SIZE, height: CROP_SIZE / aspectRatio };
+      // Image is taller than crop → width-limited
+      return { width: CROP_W, height: CROP_W / imgAspect };
     }
-  }, [imageSize, CROP_SIZE]);
+  }, [imageSize, CROP_W, CROP_H]);
 
   const resetGestures = useCallback(() => {
     scale.value = 1;
@@ -224,14 +232,14 @@ export default function PhotoEditorModal({
       "worklet";
       const scaledW = imageLayout.width * s;
       const scaledH = imageLayout.height * s;
-      const maxTx = Math.max(0, (scaledW - CROP_SIZE) / 2);
-      const maxTy = Math.max(0, (scaledH - CROP_SIZE) / 2);
+      const maxTx = Math.max(0, (scaledW - CROP_W) / 2);
+      const maxTy = Math.max(0, (scaledH - CROP_H) / 2);
       return {
         x: Math.min(maxTx, Math.max(-maxTx, tx)),
         y: Math.min(maxTy, Math.max(-maxTy, ty)),
       };
     },
-    [imageLayout, CROP_SIZE],
+    [imageLayout, CROP_W, CROP_H],
   );
 
   const pinchGesture = Gesture.Pinch()
@@ -292,16 +300,16 @@ export default function PhotoEditorModal({
       const displayW = imageLayout.width * currentScale;
       const displayH = imageLayout.height * currentScale;
 
-      const cropDisplayLeft = displayW / 2 - currentTx - CROP_SIZE / 2;
-      const cropDisplayTop = displayH / 2 - currentTy - CROP_SIZE / 2;
+      const cropDisplayLeft = displayW / 2 - currentTx - CROP_W / 2;
+      const cropDisplayTop = displayH / 2 - currentTy - CROP_H / 2;
 
       const scaleFactorX = iw / (imageLayout.width * currentScale);
       const scaleFactorY = ih / (imageLayout.height * currentScale);
 
       const originX = Math.max(0, Math.round(cropDisplayLeft * scaleFactorX));
       const originY = Math.max(0, Math.round(cropDisplayTop * scaleFactorY));
-      const cropW = Math.round(CROP_SIZE * scaleFactorX);
-      const cropH = Math.round(CROP_SIZE * scaleFactorY);
+      const cropW = Math.round(CROP_W * scaleFactorX);
+      const cropH = Math.round(CROP_H * scaleFactorY);
 
       const safeW = Math.min(cropW, iw - originX);
       const safeH = Math.min(cropH, ih - originY);
@@ -336,7 +344,8 @@ export default function PhotoEditorModal({
     scale,
     translateX,
     translateY,
-    CROP_SIZE,
+    CROP_W,
+    CROP_H,
     onDone,
   ]);
 
@@ -401,7 +410,8 @@ export default function PhotoEditorModal({
 
             {containerLayout && (
               <CropOverlay
-                cropSize={CROP_SIZE}
+                cropWidth={CROP_W}
+                cropHeight={CROP_H}
                 cropShape={cropShape}
                 containerWidth={containerLayout.width}
                 containerHeight={containerLayout.height}
@@ -458,27 +468,30 @@ export default function PhotoEditorModal({
 }
 
 function CropOverlay({
-  cropSize,
+  cropWidth,
+  cropHeight,
   cropShape,
   containerWidth,
   containerHeight,
 }: {
-  cropSize: number;
+  cropWidth: number;
+  cropHeight: number;
   cropShape: CropShape;
   containerWidth: number;
   containerHeight: number;
 }) {
   const cx = containerWidth / 2;
   const cy = containerHeight / 2;
-  const r = cropSize / 2;
-  const br = cropShape === "circle" ? r : moderateWidthScale(12);
+  const hw = cropWidth / 2;
+  const hh = cropHeight / 2;
+  const br = cropShape === "circle" ? hw : moderateWidthScale(12);
 
   const outer = `M0,0 L${containerWidth},0 L${containerWidth},${containerHeight} L0,${containerHeight} Z`;
 
   const inner =
     cropShape === "circle"
-      ? `M${cx - r},${cy} A${r},${r} 0 1,0 ${cx + r},${cy} A${r},${r} 0 1,0 ${cx - r},${cy} Z`
-      : `M${cx - r + br},${cy - r} L${cx + r - br},${cy - r} A${br},${br} 0 0,1 ${cx + r},${cy - r + br} L${cx + r},${cy + r - br} A${br},${br} 0 0,1 ${cx + r - br},${cy + r} L${cx - r + br},${cy + r} A${br},${br} 0 0,1 ${cx - r},${cy + r - br} L${cx - r},${cy - r + br} A${br},${br} 0 0,1 ${cx - r + br},${cy - r} Z`;
+      ? `M${cx - hw},${cy} A${hw},${hw} 0 1,0 ${cx + hw},${cy} A${hw},${hw} 0 1,0 ${cx - hw},${cy} Z`
+      : `M${cx - hw + br},${cy - hh} L${cx + hw - br},${cy - hh} A${br},${br} 0 0,1 ${cx + hw},${cy - hh + br} L${cx + hw},${cy + hh - br} A${br},${br} 0 0,1 ${cx + hw - br},${cy + hh} L${cx - hw + br},${cy + hh} A${br},${br} 0 0,1 ${cx - hw},${cy + hh - br} L${cx - hw},${cy - hh + br} A${br},${br} 0 0,1 ${cx - hw + br},${cy - hh} Z`;
 
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="none">
@@ -488,7 +501,7 @@ function CropOverlay({
           <SvgCircle
             cx={cx}
             cy={cy}
-            r={r}
+            r={hw}
             fill="none"
             stroke="rgba(255,255,255,0.8)"
             strokeWidth="2"
