@@ -152,7 +152,7 @@ export default function StepEight() {
         (!dayData?.breaks || dayData.breaks.length === 0);
 
       if (isDayNotConfigured) {
-        // Set day with default hours (9 AM - 6 PM) and break time (1 PM - 2 PM)
+        // Set day with default hours (9 AM - 6 PM) and no break
         dispatch(
           setDayHours({
             day,
@@ -160,14 +160,7 @@ export default function StepEight() {
             fromMinutes: 0,
             tillHours: 18, // 6 PM
             tillMinutes: 0,
-            breaks: [
-              {
-                fromHours: 13, // 1 PM
-                fromMinutes: 0,
-                tillHours: 14, // 2 PM
-                tillMinutes: 0,
-              },
-            ],
+            breaks: [],
           })
         );
 

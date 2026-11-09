@@ -411,53 +411,7 @@ export default function BusinessHoursBottomSheet({
       setTillHours(currentTillHours);
       setTillMinutes(currentTillMinutes);
 
-      // Auto-add at least 1 break time field if no breaks exist
-      const existingBreaks = currentDayData.breaks || [];
-      if (existingBreaks.length === 0) {
-        const fromTotal = getTotalMinutes(currentFromHours, currentFromMinutes);
-        const tillTotal = getTotalMinutes(currentTillHours, currentTillMinutes);
-        const overnight = isOvernightRange(
-          currentFromHours,
-          currentFromMinutes,
-          currentTillHours,
-          currentTillMinutes,
-        );
-        const totalDuration = overnight
-          ? 24 * 60 - fromTotal + tillTotal
-          : tillTotal - fromTotal;
-
-        if (totalDuration >= 120 && !overnight) {
-          const middlePoint = fromTotal + Math.floor(totalDuration / 2);
-          const breakStartMinutes = middlePoint - 30;
-          const breakEndMinutes = middlePoint + 30;
-
-          const adjustedBreakStart = Math.max(fromTotal, breakStartMinutes);
-          const adjustedBreakEnd = Math.min(
-            tillTotal,
-            adjustedBreakStart + 60,
-          );
-
-          setBreaks([
-            {
-              fromHours: Math.floor(adjustedBreakStart / 60),
-              fromMinutes: adjustedBreakStart % 60,
-              tillHours: Math.floor(adjustedBreakEnd / 60),
-              tillMinutes: adjustedBreakEnd % 60,
-            },
-          ]);
-        } else {
-          setBreaks([
-            {
-              fromHours: 0,
-              fromMinutes: 0,
-              tillHours: 0,
-              tillMinutes: 0,
-            },
-          ]);
-        }
-      } else {
-        setBreaks(existingBreaks);
-      }
+      setBreaks(currentDayData.breaks || []);
       setCopyHoursEnabled(false);
       setSelectedDays([]);
       setOpeningHoursError(null);
