@@ -798,6 +798,7 @@ export default function EditBusinessProfileScreen() {
   return (
     <SafeAreaView edges={["bottom"]} style={styles.container}>
       <StackHeader title={t("editBusinessProfileTitle")} />
+      <View style={{ flex: 1 }} pointerEvents={isUpdating ? "none" : "auto"}>
       <KeyboardAwareScrollView
         style={styles.content}
         contentContainerStyle={styles.contentContainer}
@@ -958,6 +959,7 @@ export default function EditBusinessProfileScreen() {
           />
         </View>
       </KeyboardAwareScrollView>
+      </View>
 
       <View style={styles.continueButtonContainer}>
         <Button

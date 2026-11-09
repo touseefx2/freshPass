@@ -1595,6 +1595,7 @@ export default function EditProfileScreen() {
   return (
     <SafeAreaView edges={["bottom"]} style={styles.container}>
       <StackHeader title={t("editProfile")} />
+      <View style={{ flex: 1 }} pointerEvents={isUpdating ? "none" : "auto"}>
       <KeyboardAwareScrollView
         ref={scrollRef}
         style={styles.content}
@@ -2056,6 +2057,7 @@ export default function EditProfileScreen() {
           </View>
         )}
       </KeyboardAwareScrollView>
+      </View>
 
       <View style={styles.updateButtonContainer}>
         <Button
