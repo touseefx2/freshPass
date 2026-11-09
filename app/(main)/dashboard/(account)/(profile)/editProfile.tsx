@@ -2057,7 +2057,7 @@ export default function EditProfileScreen() {
           </View>
         )}
       </KeyboardAwareScrollView>
-      {isUpdating && <View style={StyleSheet.absoluteFill} />}
+      {isUpdating && <View style={[StyleSheet.absoluteFill, { backgroundColor: 'transparent', zIndex: 10 }]} />}
       </View>
 
       <View style={styles.updateButtonContainer}>

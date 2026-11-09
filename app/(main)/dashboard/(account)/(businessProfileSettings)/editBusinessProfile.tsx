@@ -959,7 +959,7 @@ export default function EditBusinessProfileScreen() {
           />
         </View>
       </KeyboardAwareScrollView>
-      {isUpdating && <View style={StyleSheet.absoluteFill} />}
+      {isUpdating && <View style={[StyleSheet.absoluteFill, { backgroundColor: 'transparent', zIndex: 10 }]} />}
       </View>
 
       <View style={styles.continueButtonContainer}>
