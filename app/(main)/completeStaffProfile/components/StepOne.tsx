@@ -31,6 +31,7 @@ import {
   validateDescription,
 } from "@/src/services/validationService";
 import Logger from "@/src/services/logger";
+import { openFullImageModal } from "@/src/state/slices/generalSlice";
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -62,7 +63,7 @@ const createStyles = (theme: Theme) =>
     profileImageContainer: {
       width: widthScale(90),
       height: widthScale(90),
-      borderRadius: moderateWidthScale(12),
+      borderRadius: widthScale(45),
       overflow: "hidden",
       borderWidth: 1,
       borderColor: theme.borderLight,
@@ -70,8 +71,6 @@ const createStyles = (theme: Theme) =>
     profileImage: {
       width: "100%",
       height: "100%",
-      borderRadius: moderateWidthScale(12),
-      overflow: "hidden",
     },
     uploadSection: {
       flex: 1,
@@ -216,7 +215,16 @@ export default function StepOne() {
       </View>
 
       <View style={styles.profileSection}>
-        <View style={styles.profileImageContainer}>
+        <TouchableOpacity
+          activeOpacity={0.8}
+          style={styles.profileImageContainer}
+          disabled={!profileImageUri}
+          onPress={() => {
+            if (profileImageUri) {
+              dispatch(openFullImageModal({ images: [profileImageUri] }));
+            }
+          }}
+        >
           {profileImageUri ? (
             <AppImage
               uri={profileImageUri}
@@ -241,7 +249,7 @@ export default function StepOne() {
               />
             </View>
           )}
-        </View>
+        </TouchableOpacity>
         <View style={styles.uploadSection}>
           <Text style={styles.uploadText}>Add your image</Text>
           <TouchableOpacity
@@ -307,6 +315,8 @@ export default function StepOne() {
         visible={showImagePickerModal}
         onClose={() => setShowImagePickerModal(false)}
         onImageSelected={handleProfileImageChange}
+        enableEditor
+        cropShape="circle"
       />
     </View>
   );

@@ -60,6 +60,8 @@ import {
 } from "react-native-country-codes-picker";
 import CountryPickerItem from "@/src/components/countryPickerItem";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
+import { useAppDispatch } from "@/src/hooks/hooks";
+import { openFullImageModal } from "@/src/state/slices/generalSlice";
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -365,6 +367,7 @@ export default function EditBusinessProfileScreen() {
   const styles = useMemo(() => createStyles(theme), [colors]);
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const dispatch = useAppDispatch();
   const { showBanner } = useNotificationContext();
   const { t } = useTranslation();
   const params = useLocalSearchParams<{
@@ -803,12 +806,20 @@ export default function EditBusinessProfileScreen() {
         keyboardDismissMode="interactive"
       >
         <View style={styles.profileSection}>
-          <View style={styles.profileImageContainer}>
+          <TouchableOpacity
+            activeOpacity={0.8}
+            style={styles.profileImageContainer}
+            onPress={() => {
+              if (logoImageUri) {
+                dispatch(openFullImageModal({ images: [logoImageUri] }));
+              }
+            }}
+          >
             <AppImage
               uri={logoImageUri}
               style={styles.profileImage}
             />
-          </View>
+          </TouchableOpacity>
           <View style={styles.uploadSection}>
             <Text style={styles.uploadText}>{t("addYourBusinessLogo")}</Text>
             <TouchableOpacity
@@ -953,6 +964,7 @@ export default function EditBusinessProfileScreen() {
           title={t("update")}
           onPress={handleContinue}
           disabled={!isFormValid || isUpdating}
+          loading={isUpdating}
         />
       </View>
 
@@ -960,6 +972,8 @@ export default function EditBusinessProfileScreen() {
         visible={showImagePickerModal}
         onClose={() => setShowImagePickerModal(false)}
         onImageSelected={setLogoImageUri}
+        enableEditor
+        cropShape="square"
       />
     </SafeAreaView>
   );

@@ -1,4 +1,4 @@
-import React, { useMemo, useCallback } from "react";
+import React, { useMemo, useCallback, useState } from "react";
 import Logger from "@/src/services/logger";
 import { StyleSheet, Text, View, Alert, Platform } from "react-native";
 import * as ImagePicker from "expo-image-picker";
@@ -20,6 +20,8 @@ import {
   handleMediaLibraryPermission,
   handleCameraPermission,
 } from "@/src/services/mediaPermissionService";
+import PhotoEditorModal, { usePhotoEditorQueue } from "@/src/components/PhotoEditorModal";
+import { openFullImageModal } from "@/src/state/slices/generalSlice";
 
 const PADDING = moderateWidthScale(20);
 
@@ -64,6 +66,10 @@ export default function StepTwelve() {
   const styles = useMemo(() => createStyles(colors as Theme), [colors]);
   const { photos } = useAppSelector((state) => state.completeProfile);
 
+  const [editorUri, setEditorUri] = useState("");
+  const [editorVisible, setEditorVisible] = useState(false);
+  const photoQueue = usePhotoEditorQueue();
+
   const generatePhotoId = () => {
     return `photo_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   };
@@ -88,16 +94,13 @@ export default function StepTwelve() {
       });
 
       if (!result.canceled && result.assets) {
-        result.assets.forEach((asset) => {
-          if (asset.uri) {
-            dispatch(
-              addPhoto({
-                id: generatePhotoId(),
-                uri: asset.uri,
-              }),
-            );
-          }
-        });
+        const rawUris = result.assets.map((a) => a.uri).filter(Boolean);
+        if (rawUris.length > 0) {
+          const editedUris = await photoQueue.startEditing(rawUris);
+          editedUris.forEach((uri) => {
+            dispatch(addPhoto({ id: generatePhotoId(), uri }));
+          });
+        }
       }
     } catch (error) {
       Logger.error("Error selecting image from gallery:", error);
@@ -106,7 +109,7 @@ export default function StepTwelve() {
         "Failed to select image from gallery. Please try again.",
       );
     }
-  }, [dispatch]);
+  }, [dispatch, photoQueue]);
 
   const handleTakePhoto = useCallback(async () => {
     const hasPermission = await handleCameraPermission();
@@ -127,12 +130,8 @@ export default function StepTwelve() {
       });
 
       if (!result.canceled && result.assets && result.assets[0]) {
-        dispatch(
-          addPhoto({
-            id: generatePhotoId(),
-            uri: result.assets[0].uri,
-          }),
-        );
+        setEditorUri(result.assets[0].uri);
+        setEditorVisible(true);
       }
     } catch (error) {
       Logger.error("Error taking photo:", error);
@@ -169,6 +168,12 @@ export default function StepTwelve() {
         onDelete={handleDeletePhoto}
         onPickGallery={handleSelectFromGallery}
         onTakePhoto={handleTakePhoto}
+        onPhotoPress={(_photo, idx) => {
+          const uris = photos.map((p) => p.uri).filter(Boolean);
+          if (uris.length) {
+            dispatch(openFullImageModal({ images: uris, initialIndex: idx }));
+          }
+        }}
       />
 
       {photos.length === 0 && (
@@ -178,6 +183,31 @@ export default function StepTwelve() {
           </Text>
         </View>
       )}
+
+      {/* Single photo editor (camera) */}
+      <PhotoEditorModal
+        visible={editorVisible}
+        imageUri={editorUri}
+        onDone={(croppedUri) => {
+          setEditorVisible(false);
+          setEditorUri("");
+          dispatch(addPhoto({ id: generatePhotoId(), uri: croppedUri }));
+        }}
+        onCancel={() => {
+          setEditorVisible(false);
+          setEditorUri("");
+        }}
+        cropShape="square"
+      />
+
+      {/* Multi-photo editor (gallery) */}
+      <PhotoEditorModal
+        visible={photoQueue.isEditing}
+        imageUri={photoQueue.currentUri}
+        onDone={photoQueue.handleDone}
+        onCancel={photoQueue.handleCancel}
+        cropShape="square"
+      />
     </View>
   );
 }

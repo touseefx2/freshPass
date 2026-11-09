@@ -20,6 +20,8 @@ import {
 import StackHeader from "@/src/components/StackHeader";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import { useDispatch } from "react-redux";
+import { openFullImageModal } from "@/src/state/slices/generalSlice";
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -37,7 +39,7 @@ const createStyles = (theme: Theme) =>
     profileImageContainer: {
       width: widthScale(120),
       height: widthScale(120),
-      borderRadius: moderateWidthScale(12),
+      borderRadius: widthScale(60),
       overflow: "hidden",
       marginBottom: moderateHeightScale(16),
       borderWidth: 1,
@@ -47,8 +49,6 @@ const createStyles = (theme: Theme) =>
     profileImage: {
       width: "100%",
       height: "100%",
-      borderRadius: moderateWidthScale(12),
-      overflow: "hidden",
     },
     nameText: {
       fontSize: fontSize.size24,
@@ -136,6 +136,7 @@ export default function ProfileScreen() {
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
   const router = useRouter();
+  const dispatch = useDispatch();
   const user = useAppSelector((state) => state.user);
 
   const handleEditPress = () => {
@@ -164,12 +165,21 @@ export default function ProfileScreen() {
         contentContainerStyle={styles.contentContainer}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.profileImageContainer}>
+        <TouchableOpacity
+          activeOpacity={0.8}
+          style={styles.profileImageContainer}
+          disabled={!profileImageUri}
+          onPress={() => {
+            if (profileImageUri) {
+              dispatch(openFullImageModal({ images: [profileImageUri] }));
+            }
+          }}
+        >
           <AppImage
             uri={profileImageUri}
             style={styles.profileImage}
           />
-        </View>
+        </TouchableOpacity>
 
         <Text style={styles.nameText}>{userName}</Text>
         <Text style={styles.emailText}>{userEmail}</Text>

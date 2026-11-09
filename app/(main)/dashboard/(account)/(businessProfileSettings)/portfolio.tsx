@@ -26,6 +26,9 @@ import { Skeleton } from "@/src/components/skeletons";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { prepareImagesForUpload } from "@/src/utils/prepareImageForUpload";
 import { resolveApiImageUrl } from "@/src/utils/media";
+import PhotoEditorModal, { usePhotoEditorQueue } from "@/src/components/PhotoEditorModal";
+import { useDispatch } from "react-redux";
+import { openFullImageModal } from "@/src/state/slices/generalSlice";
 
 const PADDING = moderateWidthScale(20);
 
@@ -93,6 +96,7 @@ export default function ManagePortfolioPhotosScreen() {
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
   const router = useRouter();
+  const dispatch = useDispatch();
   const { showBanner } = useNotificationContext();
 
   const [loading, setLoading] = useState(true);
@@ -102,6 +106,12 @@ export default function ManagePortfolioPhotosScreen() {
   const [savedOrder, setSavedOrder] = useState<string[]>([]);
   const [removedPhotoIds, setRemovedPhotoIds] = useState<number[]>([]);
   const scrollRef = useAnimatedRef<Animated.ScrollView>();
+
+  // Photo editor for camera shots (single)
+  const [editorUri, setEditorUri] = useState("");
+  const [editorVisible, setEditorVisible] = useState(false);
+  // Multi-photo editor queue
+  const photoQueue = usePhotoEditorQueue();
 
   const generateLocalId = () => {
     return `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -167,17 +177,16 @@ export default function ManagePortfolioPhotosScreen() {
       });
 
       if (!result.canceled && result.assets) {
-        const added: PortfolioItem[] = [];
-        result.assets.forEach((asset) => {
-          if (asset.uri) {
-            added.push({
-              id: generateLocalId(),
-              uri: asset.uri,
-            });
+        const rawUris = result.assets.map((a) => a.uri).filter(Boolean);
+        if (rawUris.length > 0) {
+          const editedUris = await photoQueue.startEditing(rawUris);
+          const added: PortfolioItem[] = editedUris.map((uri) => ({
+            id: generateLocalId(),
+            uri,
+          }));
+          if (added.length > 0) {
+            setPhotos((prev) => [...prev, ...added]);
           }
-        });
-        if (added.length > 0) {
-          setPhotos((prev) => [...prev, ...added]);
         }
       }
     } catch (error) {
@@ -187,7 +196,7 @@ export default function ManagePortfolioPhotosScreen() {
         "Failed to select image from gallery. Please try again.",
       );
     }
-  }, []);
+  }, [photoQueue]);
 
   const handleTakePhoto = useCallback(async () => {
     const hasPermission = await handleCameraPermission();
@@ -208,13 +217,8 @@ export default function ManagePortfolioPhotosScreen() {
       });
 
       if (!result.canceled && result.assets && result.assets[0]) {
-        setPhotos((prev) => [
-          ...prev,
-          {
-            id: generateLocalId(),
-            uri: result.assets[0].uri,
-          },
-        ]);
+        setEditorUri(result.assets[0].uri);
+        setEditorVisible(true);
       }
     } catch (error) {
       Logger.error("Error taking photo:", error);
@@ -381,42 +385,51 @@ export default function ManagePortfolioPhotosScreen() {
   return (
     <SafeAreaView edges={["bottom"]} style={styles.container}>
       <StackHeader title={t("managePortfolioPhotos")} />
-      <Animated.ScrollView
-        ref={scrollRef}
-        style={styles.content}
-        contentContainerStyle={styles.contentContainer}
-        showsVerticalScrollIndicator={false}
-      >
-        {loading ? (
-          <Skeleton screenType="StepEight" styles={styles} />
-        ) : (
-          <>
-            <View style={styles.titleSec}>
-              <Text style={styles.title}>{t("buildTrustWithPhotos")}</Text>
-              <Text style={styles.subtitle}>
-                {t("clientsBookSalonBarbersFirst")}
-              </Text>
-            </View>
-
-            <PortfolioPhotoGrid
-              photos={photos}
-              onChangeOrder={setPhotos}
-              onDelete={handleDeletePhoto}
-              onPickGallery={handleSelectFromGallery}
-              onTakePhoto={handleTakePhoto}
-              scrollableRef={scrollRef}
-            />
-
-            {!hasAnyPhoto && (
-              <View style={styles.emptyState}>
-                <Text style={styles.emptyStateText}>
-                  {t("youDidntSelectAnythingYet")}
+      <View style={{ flex: 1 }}>
+        <Animated.ScrollView
+          ref={scrollRef}
+          style={styles.content}
+          contentContainerStyle={styles.contentContainer}
+          showsVerticalScrollIndicator={false}
+        >
+          {loading ? (
+            <Skeleton screenType="StepEight" styles={styles} />
+          ) : (
+            <>
+              <View style={styles.titleSec}>
+                <Text style={styles.title}>{t("buildTrustWithPhotos")}</Text>
+                <Text style={styles.subtitle}>
+                  {t("clientsBookSalonBarbersFirst")}
                 </Text>
               </View>
-            )}
-          </>
-        )}
-      </Animated.ScrollView>
+
+              <PortfolioPhotoGrid
+                photos={photos}
+                onChangeOrder={setPhotos}
+                onDelete={handleDeletePhoto}
+                onPickGallery={handleSelectFromGallery}
+                onTakePhoto={handleTakePhoto}
+                scrollableRef={scrollRef}
+                onPhotoPress={(_photo, idx) => {
+                  const uris = photos.map((p) => p.uri).filter(Boolean);
+                  if (uris.length) {
+                    dispatch(openFullImageModal({ images: uris, initialIndex: idx }));
+                  }
+                }}
+                disabled={isUpdating}
+              />
+
+              {!hasAnyPhoto && (
+                <View style={styles.emptyState}>
+                  <Text style={styles.emptyStateText}>
+                    {t("youDidntSelectAnythingYet")}
+                  </Text>
+                </View>
+              )}
+            </>
+          )}
+        </Animated.ScrollView>
+      </View>
 
       {!loading && (
         <View style={styles.continueButtonContainer}>
@@ -428,6 +441,33 @@ export default function ManagePortfolioPhotosScreen() {
           />
         </View>
       )}
+      {/* Single photo editor (camera) */}
+      <PhotoEditorModal
+        visible={editorVisible}
+        imageUri={editorUri}
+        onDone={(croppedUri) => {
+          setEditorVisible(false);
+          setEditorUri("");
+          setPhotos((prev) => [
+            ...prev,
+            { id: generateLocalId(), uri: croppedUri },
+          ]);
+        }}
+        onCancel={() => {
+          setEditorVisible(false);
+          setEditorUri("");
+        }}
+        cropShape="square"
+      />
+
+      {/* Multi-photo editor (gallery) */}
+      <PhotoEditorModal
+        visible={photoQueue.isEditing}
+        imageUri={photoQueue.currentUri}
+        onDone={photoQueue.handleDone}
+        onCancel={photoQueue.handleCancel}
+        cropShape="square"
+      />
     </SafeAreaView>
   );
 }

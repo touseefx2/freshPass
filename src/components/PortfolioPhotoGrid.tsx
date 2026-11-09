@@ -35,6 +35,10 @@ type Props<P extends PortfolioGridPhoto> = {
   scrollableRef?: AnimatedRef<any>;
   /** Hide the gallery/camera tiles (e.g. owner without an active plan) */
   showUploadTiles?: boolean;
+  /** Called when a photo tile is tapped (not dragged) */
+  onPhotoPress?: (photo: P, index: number) => void;
+  /** When true, disables all interactions (drag, delete, star, tap) */
+  disabled?: boolean;
 };
 
 const createStyles = (theme: Theme) =>
@@ -151,6 +155,8 @@ export default function PortfolioPhotoGrid<P extends PortfolioGridPhoto>({
   onTakePhoto,
   scrollableRef,
   showUploadTiles = true,
+  onPhotoPress,
+  disabled = false,
 }: Props<P>) {
   const { colors } = useTheme();
   const { t } = useTranslation();
@@ -213,8 +219,8 @@ export default function PortfolioPhotoGrid<P extends PortfolioGridPhoto>({
         return (
           <Sortable.Handle mode="fixed-order" style={styles.tile}>
             <Sortable.Touchable
-              style={styles.actionButton}
-              onTap={isGallery ? onPickGallery : onTakePhoto}
+              style={[styles.actionButton, disabled && { opacity: 0.5 }]}
+              onTap={disabled ? undefined : (isGallery ? onPickGallery : onTakePhoto)}
             >
               {isGallery ? (
                 <GalleryIcon color={theme.darkGreen} />
@@ -232,11 +238,20 @@ export default function PortfolioPhotoGrid<P extends PortfolioGridPhoto>({
       // Gallery + camera tiles (when shown) come before the photos
       const isMain = index === uploadTileCount;
       return (
-        <Sortable.Handle style={styles.tile}>
+        <Sortable.Handle style={[styles.tile, disabled && { opacity: 0.6 }]}>
           <View
             style={[styles.photoContainer, isMain && styles.mainPhotoContainer]}
           >
-            <AppImage uri={item.uri} style={styles.photo} />
+            <Sortable.Touchable
+              onTap={disabled ? undefined : () => {
+                const photo = photoById.get(item.id);
+                if (photo && onPhotoPress) {
+                  onPhotoPress(photo, index - uploadTileCount);
+                }
+              }}
+            >
+              <AppImage uri={item.uri} style={styles.photo} />
+            </Sortable.Touchable>
             {isMain ? (
               <View style={styles.mainBadge}>
                 <MaterialIcons
@@ -249,7 +264,7 @@ export default function PortfolioPhotoGrid<P extends PortfolioGridPhoto>({
             ) : (
               <Sortable.Touchable
                 style={styles.setMainButton}
-                onTap={() => handleSetMain(item.id)}
+                onTap={disabled ? undefined : () => handleSetMain(item.id)}
               >
                 <View style={styles.setMainCircle}>
                   <MaterialIcons
@@ -262,7 +277,7 @@ export default function PortfolioPhotoGrid<P extends PortfolioGridPhoto>({
             )}
             <Sortable.Touchable
               style={styles.deleteButton}
-              onTap={() => handleDelete(item.id)}
+              onTap={disabled ? undefined : () => handleDelete(item.id)}
             >
               <View style={styles.deleteIconBox}>
                 <MaterialIcons
@@ -285,6 +300,9 @@ export default function PortfolioPhotoGrid<P extends PortfolioGridPhoto>({
       onTakePhoto,
       handleSetMain,
       handleDelete,
+      onPhotoPress,
+      photoById,
+      disabled,
     ],
   );
 
@@ -313,7 +331,7 @@ export default function PortfolioPhotoGrid<P extends PortfolioGridPhoto>({
           dragActivationDelay={250}
           activeItemScale={1.05}
           inactiveItemOpacity={1}
-          onDragEnd={handleDragEnd}
+          onDragEnd={disabled ? undefined : handleDragEnd}
           scrollableRef={scrollableRef}
         />
       </View>

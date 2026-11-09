@@ -1,4 +1,4 @@
-import React, { useMemo, useCallback } from "react";
+import React, { useMemo, useCallback, useState } from "react";
 import Logger from "@/src/services/logger";
 import {
   StyleSheet,
@@ -29,6 +29,7 @@ import {
   handleCameraPermission,
 } from "@/src/services/mediaPermissionService";
 import { PersonScissorsIcon } from "@/assets/icons";
+import PhotoEditorModal, { usePhotoEditorQueue } from "@/src/components/PhotoEditorModal";
 
 const iosCompatiblePickerOptions =
   Platform.OS === "ios"
@@ -61,6 +62,10 @@ interface ImagePickerModalProps {
   onCameraPress?: () => void;
   cameraLabel?: string;
   cameraIcon?: React.ComponentProps<typeof MaterialIcons>["name"];
+  /** Open the photo editor after picking. Defaults to false. */
+  enableEditor?: boolean;
+  /** "circle" for profile photos, "square" for portfolio. Default "square". Only used when enableEditor is true. */
+  cropShape?: "circle" | "square";
 }
 
 const createStyles = (theme: Theme) =>
@@ -99,11 +104,39 @@ export default function ImagePickerModal({
   onCameraPress,
   cameraLabel,
   cameraIcon = "camera-alt",
+  enableEditor = false,
+  cropShape = "square",
 }: ImagePickerModalProps) {
   const { colors } = useTheme();
   const { t } = useTranslation();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
+
+  // Photo editor state for single-image editing
+  const [editorUri, setEditorUri] = useState("");
+  const [editorVisible, setEditorVisible] = useState(false);
+
+  // Multi-image editor queue
+  const photoQueue = usePhotoEditorQueue();
+
+  const openEditor = useCallback((uri: string) => {
+    setEditorUri(uri);
+    setEditorVisible(true);
+  }, []);
+
+  const handleEditorDone = useCallback(
+    (croppedUri: string) => {
+      setEditorVisible(false);
+      setEditorUri("");
+      onImageSelected(croppedUri);
+    },
+    [onImageSelected],
+  );
+
+  const handleEditorCancel = useCallback(() => {
+    setEditorVisible(false);
+    setEditorUri("");
+  }, []);
 
   const handleSelectFromGallery = useCallback(async () => {
     onClose();
@@ -128,9 +161,18 @@ export default function ImagePickerModal({
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const uris = result.assets.map((a) => a.uri).filter(Boolean);
         if (allowsMultipleSelection && uris.length > 0 && onImagesSelected) {
-          onImagesSelected(uris);
-        } else {
-          onImageSelected(uris[0]!);
+          if (enableEditor) {
+            const edited = await photoQueue.startEditing(uris);
+            onImagesSelected(edited);
+          } else {
+            onImagesSelected(uris);
+          }
+        } else if (uris[0]) {
+          if (enableEditor) {
+            openEditor(uris[0]);
+          } else {
+            onImageSelected(uris[0]);
+          }
         }
       }
     } catch (error) {
@@ -147,6 +189,9 @@ export default function ImagePickerModal({
     onImagesSelected,
     allowsMultipleSelection,
     quality,
+    enableEditor,
+    openEditor,
+    photoQueue,
   ]);
 
   const handleTakePhoto = useCallback(async () => {
@@ -169,15 +214,21 @@ export default function ImagePickerModal({
       });
 
       if (!result.canceled && result.assets && result.assets[0]) {
-        onImageSelected(result.assets[0].uri);
+        const uri = result.assets[0].uri;
+        if (enableEditor) {
+          openEditor(uri);
+        } else {
+          onImageSelected(uri);
+        }
       }
     } catch (error) {
       Logger.error("Error taking photo:", error);
       Alert.alert(t("error"), t("failedToTakePhoto"));
     }
-  }, [onCameraPress, onClose, onImageSelected, quality]);
+  }, [onCameraPress, onClose, onImageSelected, quality, enableEditor, openEditor]);
 
   return (
+    <>
     <ModalizeBottomSheet
       visible={visible}
       onClose={onClose}
@@ -249,5 +300,24 @@ export default function ImagePickerModal({
         </TouchableOpacity>
       ) : null}
     </ModalizeBottomSheet>
+
+    {/* Single-photo editor */}
+    <PhotoEditorModal
+      visible={editorVisible}
+      imageUri={editorUri}
+      onDone={handleEditorDone}
+      onCancel={handleEditorCancel}
+      cropShape={cropShape}
+    />
+
+    {/* Multi-photo editor queue */}
+    <PhotoEditorModal
+      visible={photoQueue.isEditing}
+      imageUri={photoQueue.currentUri}
+      onDone={photoQueue.handleDone}
+      onCancel={photoQueue.handleCancel}
+      cropShape={cropShape}
+    />
+    </>
   );
 }

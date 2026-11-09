@@ -23,6 +23,8 @@ import Logger from "@/src/services/logger";
 import { businessEndpoints } from "@/src/services/endpoints";
 import SkeletonPlaceholder from "react-native-skeleton-placeholder";
 import { resolveApiImageUrl } from "@/src/utils/media";
+import { useDispatch } from "react-redux";
+import { openFullImageModal } from "@/src/state/slices/generalSlice";
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -192,6 +194,7 @@ export default function BusinessProfileScreen() {
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
   const router = useRouter();
+  const dispatch = useDispatch();
   const businessCategoryName = useAppSelector(
     (state) => state.user.businessStatus?.business_category?.name,
   );
@@ -276,12 +279,21 @@ export default function BusinessProfileScreen() {
           renderSkeleton()
         ) : (
           <>
-            <View style={styles.profileImageContainer}>
+            <TouchableOpacity
+              activeOpacity={0.8}
+              style={styles.profileImageContainer}
+              onPress={() => {
+                const uri = getLogoUri();
+                if (uri) {
+                  dispatch(openFullImageModal({ images: [uri] }));
+                }
+              }}
+            >
               <AppImage
                 uri={getLogoUri()}
                 style={styles.profileImage}
               />
-            </View>
+            </TouchableOpacity>
 
             <Text style={styles.businessNameText}>
               {profileData?.title || ""}

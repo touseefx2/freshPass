@@ -1880,6 +1880,8 @@ export default function AddStaffScreen() {
           setProfileImageUri(uri);
           setShowImagePickerModal(false);
         }}
+        enableEditor
+        cropShape="circle"
       />
 
       <BuyBusinessPlanModal

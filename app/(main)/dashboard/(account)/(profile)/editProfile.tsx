@@ -81,6 +81,7 @@ import type {
 import {
   getDefaultBusinessLogo,
 } from "@/src/services/remoteConfigService";
+import { openFullImageModal } from "@/src/state/slices/generalSlice";
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -104,7 +105,7 @@ const createStyles = (theme: Theme) =>
     profileImageContainer: {
       width: widthScale(90),
       height: widthScale(90),
-      borderRadius: moderateWidthScale(12),
+      borderRadius: widthScale(45),
       overflow: "hidden",
       borderWidth: 1,
       borderColor: theme.borderLight,
@@ -112,8 +113,6 @@ const createStyles = (theme: Theme) =>
     profileImage: {
       width: "100%",
       height: "100%",
-      borderRadius: moderateWidthScale(12),
-      overflow: "hidden",
     },
     uploadSection: {
       flex: 1,
@@ -1605,13 +1604,21 @@ export default function EditProfileScreen() {
         keyboardDismissMode="interactive"
       >
         <View style={styles.profileSection}>
-          <View style={styles.profileImageContainer}>
+          <TouchableOpacity
+            activeOpacity={0.8}
+            style={styles.profileImageContainer}
+            onPress={() => {
+              if (profileImageUri) {
+                dispatch(openFullImageModal({ images: [profileImageUri] }));
+              }
+            }}
+          >
             <AppImage
               uri={profileImageUri}
               style={styles.profileImage}
               resizeMode="cover"
             />
-          </View>
+          </TouchableOpacity>
           <View style={styles.uploadSection}>
             <Text style={styles.uploadText}>{t("addYourNewImage")}</Text>
             <TouchableOpacity
@@ -2055,6 +2062,7 @@ export default function EditProfileScreen() {
           title={t("update")}
           onPress={handleUpdateProfile}
           disabled={!isFormValid || isUpdating}
+          loading={isUpdating}
         />
       </View>
 
@@ -2062,6 +2070,8 @@ export default function EditProfileScreen() {
         visible={showImagePickerModal}
         onClose={() => setShowImagePickerModal(false)}
         onImageSelected={setProfileImageUri}
+        enableEditor
+        cropShape="circle"
       />
 
       {user?.userRole === "customer" && (

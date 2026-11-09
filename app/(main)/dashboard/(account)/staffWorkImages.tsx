@@ -39,6 +39,9 @@ import {
 import { prepareImagesForUpload } from "@/src/utils/prepareImageForUpload";
 import { markGoldDone } from "@/src/utils/goldFrames";
 import { resolveApiImageUrl } from "@/src/utils/media";
+import PhotoEditorModal, { usePhotoEditorQueue } from "@/src/components/PhotoEditorModal";
+import { useDispatch } from "react-redux";
+import { openFullImageModal } from "@/src/state/slices/generalSlice";
 import type {
   DeleteStaffWorkImagesResult,
   StaffWorkImage,
@@ -115,6 +118,7 @@ export default function StaffWorkImagesManageScreen() {
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
   const router = useRouter();
+  const dispatch = useDispatch();
   const { showBanner } = useNotificationContext();
   const userRole = useAppSelector((state) => state.user.userRole);
   const businessStatus = useAppSelector(
@@ -134,6 +138,11 @@ export default function StaffWorkImagesManageScreen() {
   const [savedOrder, setSavedOrder] = useState<string[]>([]);
   const [removedPhotoIds, setRemovedPhotoIds] = useState<number[]>([]);
   const scrollRef = useAnimatedRef<Animated.ScrollView>();
+
+  // Photo editor state
+  const [editorUri, setEditorUri] = useState("");
+  const [editorVisible, setEditorVisible] = useState(false);
+  const photoQueue = usePhotoEditorQueue();
 
   const removedIdsRef = useRef<number[]>([]);
   removedIdsRef.current = removedPhotoIds;
@@ -239,24 +248,23 @@ export default function StaffWorkImagesManageScreen() {
       });
 
       if (!result.canceled && result.assets) {
-        const added: WorkPhoto[] = [];
-        result.assets.forEach((asset) => {
-          if (asset.uri) {
-            added.push({
-              id: generateLocalId(),
-              uri: asset.uri,
-            });
+        const rawUris = result.assets.map((a) => a.uri).filter(Boolean);
+        if (rawUris.length > 0) {
+          const editedUris = await photoQueue.startEditing(rawUris);
+          const added: WorkPhoto[] = editedUris.map((uri) => ({
+            id: generateLocalId(),
+            uri,
+          }));
+          if (added.length > 0) {
+            setPhotos((prev) => [...prev, ...added]);
           }
-        });
-        if (added.length > 0) {
-          setPhotos((prev) => [...prev, ...added]);
         }
       }
     } catch (error) {
       Logger.error("Error selecting image from gallery:", error);
       Alert.alert(t("error"), t("failedToSelectImageFromGallery"));
     }
-  }, [t]);
+  }, [t, photoQueue]);
 
   const handleTakePhoto = useCallback(async () => {
     const hasPermission = await handleCameraPermission();
@@ -277,13 +285,8 @@ export default function StaffWorkImagesManageScreen() {
       });
 
       if (!result.canceled && result.assets && result.assets[0]) {
-        setPhotos((prev) => [
-          ...prev,
-          {
-            id: generateLocalId(),
-            uri: result.assets[0].uri,
-          },
-        ]);
+        setEditorUri(result.assets[0].uri);
+        setEditorVisible(true);
       }
     } catch (error) {
       Logger.error("Error taking photo:", error);
@@ -534,6 +537,13 @@ export default function StaffWorkImagesManageScreen() {
               onTakePhoto={handleTakePhoto}
               scrollableRef={scrollRef}
               showUploadTiles={canUploadWork}
+              onPhotoPress={(_photo, idx) => {
+                const uris = photos.map((p) => p.uri).filter(Boolean);
+                if (uris.length) {
+                  dispatch(openFullImageModal({ images: uris, initialIndex: idx }));
+                }
+              }}
+              disabled={isUpdating}
             />
             {!hasAnyPhoto ? (
               <View style={styles.emptyState}>
@@ -561,6 +571,33 @@ export default function StaffWorkImagesManageScreen() {
           />
         </View>
       )}
+      {/* Single photo editor (camera) */}
+      <PhotoEditorModal
+        visible={editorVisible}
+        imageUri={editorUri}
+        onDone={(croppedUri) => {
+          setEditorVisible(false);
+          setEditorUri("");
+          setPhotos((prev) => [
+            ...prev,
+            { id: generateLocalId(), uri: croppedUri },
+          ]);
+        }}
+        onCancel={() => {
+          setEditorVisible(false);
+          setEditorUri("");
+        }}
+        cropShape="square"
+      />
+
+      {/* Multi-photo editor (gallery) */}
+      <PhotoEditorModal
+        visible={photoQueue.isEditing}
+        imageUri={photoQueue.currentUri}
+        onDone={photoQueue.handleDone}
+        onCancel={photoQueue.handleCancel}
+        cropShape="square"
+      />
     </SafeAreaView>
   );
 }
