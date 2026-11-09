@@ -1320,11 +1320,12 @@ export default function MasterClassEditorScreen() {
                 }}
                 onCancelUpload={media.cancel}
                 onPreviewPress={() => {
-                  const uri =
-                    pending?.uri ??
-                    mediaPreview?.uri ??
-                    savedMedia?.url ??
-                    savedMedia?.thumbnail_url;
+                  const isVideo = pending
+                    ? pending.isVideo
+                    : (mediaPreview?.isVideo ?? savedMedia?.type === "video");
+                  const uri = isVideo
+                    ? (pending?.uri ?? mediaPreview?.uri ?? savedMedia?.thumbnail_url)
+                    : (pending?.uri ?? mediaPreview?.uri ?? savedMedia?.url ?? savedMedia?.thumbnail_url);
                   if (uri) dispatch(openFullImageModal({ images: [uri] }));
                 }}
               />
