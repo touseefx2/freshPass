@@ -3483,5 +3483,16 @@
   "subscribedSince": "{{date}}から登録中",
   "paymentFailedStatus": "支払い失敗",
   "paymentFailedUpdateCard": "前回のお支払いが完了しませんでした。カードを更新してください。",
-  "daysLeftCount_one": "残り{{count}}日"
+  "daysLeftCount_one": "残り{{count}}日",
+  "mcTeachAndEarn": "教えて稼ぐ",
+  "mcDurationDays_one": "{{count}}日",
+  "mcDurationDays_other": "{{count}}日間",
+  "mcDurationDaysHours": "{{days}}日 {{hours}}時間",
+  "mcHowItWorks": "仕組み",
+  "mcHowStep1Title": "クラスを作成",
+  "mcHowStep1Text": "トピック、価格、日時、定員を追加します。",
+  "mcHowStep2Title": "公開して発見される",
+  "mcHowStep2Text": "受講生がFreshPassディールであなたのクラスを見つけられます。",
+  "mcHowStep3Title": "教えて稼ぐ",
+  "mcHowStep3Text": "登録した受講生と専門知識を共有しましょう。"
 }

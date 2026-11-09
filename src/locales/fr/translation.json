@@ -3489,5 +3489,16 @@
   "renewsOnLabel": "Renouvellement le",
   "subscribedSince": "Abonné depuis le {{date}}",
   "paymentFailedStatus": "Paiement échoué",
-  "paymentFailedUpdateCard": "Votre dernier paiement n'a pas abouti. Mettez à jour votre carte."
+  "paymentFailedUpdateCard": "Votre dernier paiement n'a pas abouti. Mettez à jour votre carte.",
+  "mcTeachAndEarn": "Enseigner & Gagner",
+  "mcDurationDays_one": "{{count}} jour",
+  "mcDurationDays_other": "{{count}} jours",
+  "mcDurationDaysHours": "{{days}} jours {{hours}} h",
+  "mcHowItWorks": "Comment ça marche",
+  "mcHowStep1Title": "Créez votre cours",
+  "mcHowStep1Text": "Ajoutez le sujet, le prix, la date et les places disponibles.",
+  "mcHowStep2Title": "Publiez et soyez découvert",
+  "mcHowStep2Text": "Les étudiants peuvent trouver votre cours dans les offres FreshPass.",
+  "mcHowStep3Title": "Enseignez et gagnez",
+  "mcHowStep3Text": "Partagez votre expertise avec les étudiants inscrits."
 }

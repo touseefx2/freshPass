@@ -18,7 +18,7 @@ import {
 import { useFocusEffect, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Ionicons, MaterialCommunityIcons, MaterialIcons } from "@expo/vector-icons";
 import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
@@ -64,6 +64,12 @@ import ProListActionSheet, {
  * Pro "Classes & Training" (Design 2): Create Class, Upcoming / Drafts /
  * Past tabs with counts, one card per class with a ⋮ action sheet.
  */
+
+const HOW_STEPS = [
+  { num: 1, icon: "edit" as const, titleKey: "mcHowStep1Title", textKey: "mcHowStep1Text" },
+  { num: 2, icon: "laptop-mac" as const, titleKey: "mcHowStep2Title", textKey: "mcHowStep2Text" },
+  { num: 3, icon: "groups" as const, titleKey: "mcHowStep3Title", textKey: "mcHowStep3Text" },
+];
 
 const DETAIL_PATH = "/(main)/masterClasses/detail";
 const EDITOR_PATH = "/(main)/masterClasses/editor";
@@ -595,6 +601,48 @@ export default function MasterClassesScreen() {
         />
       );
     }
+    if (tab === "upcoming") {
+      return (
+        <View style={styles.emptyUpcoming}>
+          <View style={styles.emptyIconCircle}>
+            <MaterialCommunityIcons
+              name="school-outline"
+              size={iconScale(30)}
+              color={theme.darkGreen}
+            />
+          </View>
+          <Text style={styles.emptyTitle} accessibilityRole="header">
+            {t("mcEmptyUpcomingTitle")}
+          </Text>
+          <Text style={styles.emptySubtitle}>
+            {t("mcEmptyUpcomingText")}
+          </Text>
+          <View style={styles.howCard}>
+            <Text style={styles.howTitle} accessibilityRole="header">
+              {t("mcHowItWorks")}
+            </Text>
+            {HOW_STEPS.map((step) => (
+              <View key={step.num} style={styles.howRow}>
+                <View style={styles.howNumCircle}>
+                  <Text style={styles.howNumText}>{step.num}</Text>
+                </View>
+                <View style={styles.howIconWrap}>
+                  <MaterialIcons
+                    name={step.icon}
+                    size={iconScale(20)}
+                    color={theme.darkGreen}
+                  />
+                </View>
+                <View style={styles.howBody}>
+                  <Text style={styles.howStepTitle}>{t(step.titleKey)}</Text>
+                  <Text style={styles.howStepText}>{t(step.textKey)}</Text>
+                </View>
+              </View>
+            ))}
+          </View>
+        </View>
+      );
+    }
     const empty = EMPTY_STATE[tab];
     return (
       <ClassStateView
@@ -841,5 +889,92 @@ const createStyles = (theme: Theme) =>
     },
     forbidden: {
       flex: 1,
+    },
+
+    // Empty state (upcoming tab — "Your first class starts here" + How it works)
+    emptyUpcoming: {
+      alignItems: "center",
+      paddingHorizontal: moderateWidthScale(8),
+      paddingVertical: moderateHeightScale(24),
+      gap: moderateHeightScale(10),
+    },
+    emptyIconCircle: {
+      width: moderateWidthScale(68),
+      height: moderateWidthScale(68),
+      borderRadius: moderateWidthScale(34),
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: theme.lightGreen07,
+      marginBottom: moderateHeightScale(4),
+    },
+    emptyTitle: {
+      fontSize: fontSize.size17,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+      textAlign: "center",
+    },
+    emptySubtitle: {
+      fontSize: fontSize.size14,
+      lineHeight: fontSize.size14 * 1.45,
+      fontFamily: fonts.fontRegular,
+      color: theme.textMuted,
+      textAlign: "center",
+      maxWidth: moderateWidthScale(320),
+    },
+    howCard: {
+      width: "100%",
+      marginTop: moderateHeightScale(10),
+      padding: moderateWidthScale(16),
+      borderRadius: moderateWidthScale(14),
+      borderWidth: 1,
+      borderColor: theme.goldBorder,
+      backgroundColor: theme.noticeCream,
+      gap: moderateHeightScale(14),
+    },
+    howTitle: {
+      fontSize: fontSize.size16,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    howRow: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: moderateWidthScale(10),
+    },
+    howNumCircle: {
+      width: moderateWidthScale(26),
+      height: moderateWidthScale(26),
+      borderRadius: moderateWidthScale(13),
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: theme.orangeBrown015,
+      borderWidth: 1,
+      borderColor: theme.orangeBrown30,
+    },
+    howNumText: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    howIconWrap: {
+      width: moderateWidthScale(28),
+      height: moderateWidthScale(28),
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    howBody: {
+      flex: 1,
+      gap: moderateHeightScale(2),
+    },
+    howStepTitle: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    howStepText: {
+      fontSize: fontSize.size13,
+      lineHeight: fontSize.size13 * 1.4,
+      fontFamily: fonts.fontRegular,
+      color: theme.textMuted,
     },
   });

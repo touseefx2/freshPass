@@ -406,7 +406,7 @@ export default function BusinessProfileSettingsScreen() {
     { key: "allAppointments", title: t("appointments") },
     // Master Classes APIs are owner / Solo only (staff get 403)
     ...(isBusinessOwner
-      ? [{ key: "masterClasses" as const, title: t("mcMasterClasses") }]
+      ? [{ key: "masterClasses" as const, title: t("mcTeachAndEarn") }]
       : []),
     ...(isBusinessOwner
       ? [{ key: "cancellationPolicy" as const, title: t("cancellationPolicy") }]

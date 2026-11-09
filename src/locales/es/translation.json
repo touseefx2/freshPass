@@ -3489,5 +3489,16 @@
   "renewsOnLabel": "Se renueva el",
   "subscribedSince": "Suscrito desde el {{date}}",
   "paymentFailedStatus": "Pago fallido",
-  "paymentFailedUpdateCard": "Tu último pago no se completó. Actualiza tu tarjeta."
+  "paymentFailedUpdateCard": "Tu último pago no se completó. Actualiza tu tarjeta.",
+  "mcTeachAndEarn": "Enseña y Gana",
+  "mcDurationDays_one": "{{count}} día",
+  "mcDurationDays_other": "{{count}} días",
+  "mcDurationDaysHours": "{{days}} días {{hours}} h",
+  "mcHowItWorks": "Cómo funciona",
+  "mcHowStep1Title": "Crea tu clase",
+  "mcHowStep1Text": "Agrega el tema, precio, fecha y asientos disponibles.",
+  "mcHowStep2Title": "Publica y sé descubierto",
+  "mcHowStep2Text": "Los estudiantes pueden encontrar tu clase en las ofertas de FreshPass.",
+  "mcHowStep3Title": "Enseña y gana",
+  "mcHowStep3Text": "Comparte tu experiencia con los estudiantes inscritos."
 }

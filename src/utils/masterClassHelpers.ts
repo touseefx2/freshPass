@@ -66,9 +66,10 @@ export const FORMAT_OPTIONS: { value: MasterClassFormat; labelKey: string }[] =
     { value: "online", labelKey: "mcFormatOnline" },
   ];
 
-/** Minutes. Server accepts 15–1440. */
+/** Minutes. Server accepts 15–132480 (up to ~92 days). */
 export const DURATION_OPTIONS: number[] = [
   30, 60, 90, 120, 180, 240, 300, 360, 480, 600,
+  2880, 4320, 7200, 10080, 20160, 43200, 86400, 129600,
 ];
 export const FULL_DAY_MINUTES = 600;
 
@@ -80,7 +81,7 @@ export const DEFAULT_CANCELLATION_WINDOW: CancellationWindowHours = 48;
 export const CLASS_LIMITS = {
   titleMax: 150,
   durationMin: 15,
-  durationMax: 1440,
+  durationMax: 132480,
   capacityMin: 1,
   capacityMax: 1000,
   priceMin: 1,
@@ -185,9 +186,15 @@ export function getRefundIfCancelledNow(
   return Number.isFinite(deadline) && deadline <= Date.now() ? 0 : refund;
 }
 
-/** 240 → "4 hours", 90 → "1 h 30 min", 45 → "45 min". */
+/** 240 → "4 hours", 90 → "1 h 30 min", 45 → "45 min", 4320 → "3 days". */
 export function formatDuration(minutes: number | null | undefined): string {
   if (!minutes || minutes <= 0) return "";
+  if (minutes >= 1440) {
+    const d = Math.floor(minutes / 1440);
+    const remainH = Math.floor((minutes % 1440) / 60);
+    if (remainH === 0) return tr("mcDurationDays", { count: d });
+    return tr("mcDurationDaysHours", { days: d, hours: remainH });
+  }
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
   if (h === 0) return tr("mcDurationMinutes", { count: m });

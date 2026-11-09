@@ -3502,5 +3502,19 @@
   "renewsOnLabel": "يتجدد في",
   "subscribedSince": "مشترك منذ {{date}}",
   "paymentFailedStatus": "فشل الدفع",
-  "paymentFailedUpdateCard": "لم تتم آخر دفعة. يُرجى تحديث بطاقتك."
+  "paymentFailedUpdateCard": "لم تتم آخر دفعة. يُرجى تحديث بطاقتك.",
+  "mcTeachAndEarn": "علّم واكسب",
+  "mcDurationDays_one": "يوم {{count}}",
+  "mcDurationDays_two": "يومان",
+  "mcDurationDays_few": "{{count}} أيام",
+  "mcDurationDays_many": "{{count}} يومًا",
+  "mcDurationDays_other": "{{count}} يوم",
+  "mcDurationDaysHours": "{{days}} أيام {{hours}} س",
+  "mcHowItWorks": "كيف يعمل",
+  "mcHowStep1Title": "أنشئ دورتك",
+  "mcHowStep1Text": "أضف الموضوع والسعر والتاريخ والمقاعد المتاحة.",
+  "mcHowStep2Title": "انشر واجعلها مكتشفة",
+  "mcHowStep2Text": "يمكن للطلاب العثور على دورتك في عروض FreshPass.",
+  "mcHowStep3Title": "علّم واكسب",
+  "mcHowStep3Text": "شارك خبرتك مع الطلاب المسجلين."
 }

@@ -36,7 +36,7 @@ const TILE_META = {
   services: { titleKey: "servicesAndMemberships", icon: "content-cut", family: "material", variant: "accent" },
   team: { titleKey: "manageTeamTitle", icon: "account-group", family: "community", variant: "dark" },
   appointments: { titleKey: "appointments", icon: "event-note", family: "material", variant: "cream" },
-  masterClasses: { titleKey: "mcMasterClasses", icon: "school-outline", family: "community", variant: "dark" },
+  masterClasses: { titleKey: "mcTeachAndEarn", icon: "school-outline", family: "community", variant: "dark" },
   socialMedia: { titleKey: "bmSocialMedia", icon: "share-variant", family: "community", variant: "dark" },
   products: { titleKey: "productsInventoryShort", icon: "inventory-2", family: "material", variant: "dark" },
   orders: { titleKey: "ordersTitle", icon: "receipt-long", family: "material", variant: "dark" },
