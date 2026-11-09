@@ -217,11 +217,11 @@ type ViewMode = "day" | "week" | "month";
 
 const SLOT_INTERVAL_MINUTES = 30;
 const HOUR_HEIGHT = heightScale(60);
-// Day view is taller so a 30 min visit fits name, service, barber and time.
-const DAY_HOUR_HEIGHT = heightScale(150);
+const DAY_HOUR_HEIGHT = heightScale(80);
 const MIN_BLOCK_HEIGHT_COMPACT = heightScale(36);
 const MIN_BLOCK_HEIGHT_DETAILED = heightScale(40);
 const TIME_GUTTER_WIDTH = widthScale(58);
+const WEEK_GUTTER_WIDTH = widthScale(48);
 const BLOCK_LINE_HEIGHT = moderateHeightScale(16);
 const GRID_START_HOUR = 0;
 const GRID_END_HOUR = 24;
@@ -1229,6 +1229,26 @@ const createStyles = (theme: Theme) =>
       fontSize: fontSize.size16,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
+    },
+    dayNavRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingHorizontal: moderateWidthScale(8),
+      paddingBottom: moderateHeightScale(8),
+    },
+    weekStaffGutter: {
+      width: WEEK_GUTTER_WIDTH,
+      alignItems: "center",
+      justifyContent: "center",
+      paddingVertical: moderateHeightScale(4),
+      gap: moderateHeightScale(2),
+    },
+    weekStaffGutterText: {
+      fontSize: fontSize.size9,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
+      textAlign: "center" as const,
+      includeFontPadding: false,
     },
     cancelledLabel: {
       color: theme.red,
@@ -2827,7 +2847,7 @@ export default function CalendarScreen() {
                 style={[
                   styles.blockClient,
                   cancelled && { color: theme.red },
-                  { fontSize: fontSize.size9, fontFamily: fonts.fontMedium },
+                  { fontSize: fontSize.size9, fontFamily: fonts.fontBold },
                 ]}
               >
                 {appointment.client_name}
@@ -2837,11 +2857,19 @@ export default function CalendarScreen() {
                 style={[
                   styles.blockService,
                   cancelled && styles.cancelledLabel,
-                  { fontSize: fontSize.size9 },
+                  { fontSize: fontSize.size8 },
                 ]}
               >
                 {cancelled ? "CANCELLED" : appointment.title}
               </Text>
+              {!cancelled && (
+                <Text
+                  numberOfLines={1}
+                  style={[styles.blockService, { fontSize: fontSize.size8 }]}
+                >
+                  {appointment.duration}
+                </Text>
+              )}
             </>
           ) : (
             <>
@@ -2863,20 +2891,23 @@ export default function CalendarScreen() {
                   </Text>
                 )}
               </View>
-              <Text
-                numberOfLines={1}
-                style={[
-                  styles.blockServiceDetailed,
-                  cancelled && styles.cancelledLabel,
-                ]}
-              >
-                {cancelled ? "CANCELLED" : toTitleCase(appointment.title)}
-              </Text>
-              {appointment.originalAppointment.staffName ? (
-                <Text numberOfLines={1} style={styles.blockServiceDetailed}>
-                  {`${t("barber")}: ${toTitleCase(appointment.originalAppointment.staffName)}`}
+              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+                <Text
+                  numberOfLines={1}
+                  style={[
+                    styles.blockServiceDetailed,
+                    cancelled && styles.cancelledLabel,
+                    { flex: 1 },
+                  ]}
+                >
+                  {cancelled ? "CANCELLED" : toTitleCase(appointment.title)}
                 </Text>
-              ) : null}
+                {!cancelled && (
+                  <Text numberOfLines={1} style={styles.blockTimeRange}>
+                    {appointment.duration}
+                  </Text>
+                )}
+              </View>
             </>
           )}
           {extraCount > 0 && (
@@ -3178,7 +3209,9 @@ export default function CalendarScreen() {
     );
   };
 
-  const renderTimeGrid = (columnWidth?: number) => (
+  const renderTimeGrid = (columnWidth?: number, gutterWidth?: number) => {
+    const gw = gutterWidth ?? TIME_GUTTER_WIDTH;
+    return (
     <ScrollView
       ref={scrollViewRef}
       style={{ flex: 1 }}
@@ -3189,7 +3222,7 @@ export default function CalendarScreen() {
       }}
     >
       <View style={[styles.gridRow, { height: gridHeight }]}>
-        <View style={[styles.timeGutter, { height: gridHeight }]}>
+        <View style={[styles.timeGutter, { height: gridHeight, width: gw }]}>
           {hours.map((hour, index) => (
             <Text
               key={hour}
@@ -3201,23 +3234,6 @@ export default function CalendarScreen() {
               {formatHourLabel(hour)}
             </Text>
           ))}
-          {viewMode === "day" &&
-            hours.slice(0, -1).map((hour, index) => (
-              <Text
-                key={`half-${hour}`}
-                style={[
-                  styles.hourLabel,
-                  {
-                    top:
-                      index * hourHeight +
-                      hourHeight / 2 -
-                      moderateHeightScale(6),
-                  },
-                ]}
-              >
-                {formatMinutesLabel(hour * 60 + 30)}
-              </Text>
-            ))}
           {showNowLine && (
             <View
               style={[
@@ -3239,7 +3255,7 @@ export default function CalendarScreen() {
                 pointerEvents="none"
                 style={[styles.hourLine, { top: index * hourHeight }]}
               />
-              {index < hours.length - 1 && (
+              {viewMode === "week" && index < hours.length - 1 && (
                 <View
                   pointerEvents="none"
                   style={[
@@ -3266,17 +3282,47 @@ export default function CalendarScreen() {
         </View>
       </View>
     </ScrollView>
-  );
+    );
+  };
 
   // Header keeps the same gutter offset as the grid so each day sits right on
   // top of its own column.
   const renderWeekView = () => (
     <View style={{ flex: 1 }}>
       <View style={styles.daysStrip}>
-        <View style={styles.daysStripGutter} />
+        {showStaffFilter ? (
+          <TouchableOpacity
+            style={styles.weekStaffGutter}
+            activeOpacity={0.8}
+            onPress={() => {
+              closeOverlays();
+              setStaffPickerVisible(true);
+            }}
+            accessibilityRole="button"
+            accessibilityLabel={selectedStaffOption?.name ?? t("earningsAllStaff")}
+          >
+            <Ionicons
+              name="people-outline"
+              size={iconScale(14)}
+              color={theme.darkGreen}
+            />
+            <Text style={styles.weekStaffGutterText} numberOfLines={2}>
+              {selectedStaffOption?.name
+                ? selectedStaffOption.name.split(" ")[0]
+                : t("earningsAllStaff") || "All staff"}
+            </Text>
+            <Ionicons
+              name="chevron-down"
+              size={iconScale(10)}
+              color={theme.darkGreen}
+            />
+          </TouchableOpacity>
+        ) : (
+          <View style={{ width: WEEK_GUTTER_WIDTH }} />
+        )}
         {week.map((day) => renderWeekDayCell(day))}
       </View>
-      {renderTimeGrid()}
+      {renderTimeGrid(undefined, WEEK_GUTTER_WIDTH)}
     </View>
   );
 
@@ -3434,8 +3480,8 @@ export default function CalendarScreen() {
           </View>
         </View>
 
-        {/* Navigation: arrows + range label */}
-        <View style={styles.navRow}>
+        {/* Navigation: arrows + range label (day view adds staff filter inline) */}
+        <View style={viewMode === "day" ? styles.dayNavRow : styles.navRow}>
           <TouchableOpacity
             style={styles.arrowButton}
             activeOpacity={0.8}
@@ -3444,7 +3490,7 @@ export default function CalendarScreen() {
           >
             <Feather
               name="chevron-left"
-              size={iconScale(28)}
+              size={iconScale(24)}
               color={theme.darkGreen}
             />
           </TouchableOpacity>
@@ -3459,16 +3505,53 @@ export default function CalendarScreen() {
           >
             <Feather
               name="chevron-right"
-              size={iconScale(28)}
+              size={iconScale(24)}
               color={theme.darkGreen}
             />
           </TouchableOpacity>
+          {viewMode === "day" && <View style={{ flex: 1 }} />}
+          {viewMode === "day" && showStaffFilter && (
+            <TouchableOpacity
+              style={styles.staffFilterPill}
+              activeOpacity={0.8}
+              onPress={() => {
+                closeOverlays();
+                setStaffPickerVisible(true);
+              }}
+              accessibilityRole="button"
+              accessibilityLabel={`${t("earningsStaffPickerTitle")}: ${
+                selectedStaffOption?.name ?? t("earningsAllStaff")
+              }`}
+            >
+              <Ionicons
+                name="people-outline"
+                size={iconScale(16)}
+                color={theme.darkGreen}
+              />
+              <Text style={styles.staffFilterPillText} numberOfLines={1}>
+                {selectedStaffOption?.name ?? t("earningsAllStaff")}
+              </Text>
+              <Ionicons
+                name="chevron-down"
+                size={iconScale(14)}
+                color={theme.darkGreen}
+              />
+            </TouchableOpacity>
+          )}
+          {viewMode !== "month" && loading && (
+            <ActivityIndicator
+              size="small"
+              color={theme.primary}
+              style={{ marginLeft: moderateWidthScale(8) }}
+            />
+          )}
         </View>
 
         {/* Agenda */}
         <View style={styles.agendaContainer}>
           <GestureDetector gesture={swipeGesture}>
           <View ref={overlayContainerRef} style={{ flex: 1 }}>
+            {viewMode === "month" && (
             <TouchableOpacity
               style={styles.agendaHeader}
               activeOpacity={1}
@@ -3555,6 +3638,7 @@ export default function CalendarScreen() {
                 )}
               </View>
             </TouchableOpacity>
+            )}
 
             {slotMenu && (
               <Pressable
