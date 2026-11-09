@@ -9,6 +9,7 @@ import {
   ScrollView,
 } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme, useAppSelector } from "@/src/hooks/hooks";
 import { useTranslation } from "react-i18next";
 import { Theme } from "@/src/theme/colors";
@@ -36,30 +37,61 @@ const createStyles = (theme: Theme) =>
     },
     content: {
       flex: 1,
-      paddingHorizontal: moderateWidthScale(20),
     },
-    contentContainer: {
-      paddingVertical: moderateHeightScale(24),
-      paddingBottom: moderateHeightScale(40),
+    sectionWrap: {
+      marginTop: moderateHeightScale(20),
+      paddingHorizontal: moderateWidthScale(16),
+    },
+    sectionWrapFirst: {
+      marginTop: moderateHeightScale(8),
+    },
+    sectionHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      marginBottom: moderateHeightScale(10),
+      paddingHorizontal: moderateWidthScale(4),
+    },
+    sectionIcon: {
+      width: moderateWidthScale(28),
+      height: moderateWidthScale(28),
+      borderRadius: moderateWidthScale(8),
+      alignItems: "center",
+      justifyContent: "center",
+      marginRight: moderateWidthScale(8),
     },
     sectionTitle: {
-      fontSize: fontSize.size13,
+      fontSize: fontSize.size14,
       fontFamily: fonts.fontBold,
-      color: theme.lightGreen,
-      marginBottom: moderateHeightScale(8),
-      marginTop: moderateHeightScale(24),
+      color: theme.darkGreen,
       textTransform: "uppercase",
-      letterSpacing: 0.4,
+      letterSpacing: 0.6,
     },
-    sectionTitleFirst: {
-      marginTop: 0,
+    card: {
+      backgroundColor: theme.surfaceRaised,
+      borderRadius: moderateWidthScale(16),
+      borderWidth: 1,
+      borderColor: theme.borderLight,
+      overflow: "hidden",
+      ...Platform.select({
+        ios: {
+          shadowColor: theme.darkGreen,
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.06,
+          shadowRadius: moderateWidthScale(6),
+        },
+        android: {
+          elevation: 2,
+          shadowColor: theme.darkGreen,
+        },
+        default: {},
+      }),
     },
-    listContainer: {},
     row: {
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
-      paddingVertical: moderateHeightScale(16),
+      paddingVertical: moderateHeightScale(14),
+      paddingHorizontal: moderateWidthScale(16),
     },
     rowTitle: {
       fontSize: fontSize.size15,
@@ -69,14 +101,16 @@ const createStyles = (theme: Theme) =>
       paddingRight: moderateWidthScale(12),
     },
     rowDivider: {
-      height: 1,
+      height: StyleSheet.hairlineWidth,
       backgroundColor: theme.borderLight,
+      marginLeft: moderateWidthScale(16),
     },
     capRow: {
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
-      paddingVertical: moderateHeightScale(16),
+      paddingVertical: moderateHeightScale(14),
+      paddingHorizontal: moderateWidthScale(16),
     },
     capControls: {
       flexDirection: "row",
@@ -84,45 +118,82 @@ const createStyles = (theme: Theme) =>
       gap: moderateWidthScale(12),
     },
     capBtn: {
-      width: moderateWidthScale(32),
-      height: moderateWidthScale(32),
-      borderRadius: moderateWidthScale(16),
+      width: moderateWidthScale(30),
+      height: moderateWidthScale(30),
+      borderRadius: moderateWidthScale(15),
       alignItems: "center",
       justifyContent: "center",
-      backgroundColor: theme.lightGreen07,
+      backgroundColor: theme.background,
       borderWidth: 1,
-      borderColor: theme.borderLight,
+      borderColor: theme.borderNormal,
     },
     capBtnText: {
-      fontSize: fontSize.size18,
+      fontSize: fontSize.size16,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
     },
     capValue: {
-      minWidth: moderateWidthScale(28),
+      minWidth: moderateWidthScale(24),
       textAlign: "center",
       fontSize: fontSize.size16,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
     },
     loader: {
-      paddingVertical: moderateHeightScale(40),
+      flex: 1,
       alignItems: "center",
+      justifyContent: "center",
+      paddingVertical: moderateHeightScale(60),
     },
-    phoneSettingsRow: {
+    phoneSettingsCard: {
+      marginTop: moderateHeightScale(24),
+      marginHorizontal: moderateWidthScale(16),
+      backgroundColor: theme.surfaceRaised,
+      borderRadius: moderateWidthScale(16),
+      borderWidth: 1,
+      borderColor: theme.borderLight,
+      ...Platform.select({
+        ios: {
+          shadowColor: theme.darkGreen,
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.06,
+          shadowRadius: moderateWidthScale(6),
+        },
+        android: {
+          elevation: 2,
+          shadowColor: theme.darkGreen,
+        },
+        default: {},
+      }),
+    },
+    phoneSettingsInner: {
       flexDirection: "row",
       alignItems: "center",
-      justifyContent: "space-between",
-      paddingVertical: moderateHeightScale(16),
-      marginTop: moderateHeightScale(24),
-      borderTopWidth: 1,
-      borderTopColor: theme.borderLight,
+      paddingVertical: moderateHeightScale(15),
+      paddingHorizontal: moderateWidthScale(16),
     },
-    phoneSettingsText: {
+    phoneSettingsIcon: {
+      width: moderateWidthScale(36),
+      height: moderateWidthScale(36),
+      borderRadius: moderateWidthScale(10),
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: theme.buttonBack,
+      marginRight: moderateWidthScale(12),
+    },
+    phoneSettingsTextWrap: {
+      flex: 1,
+    },
+    phoneSettingsTitle: {
       fontSize: fontSize.size15,
       fontFamily: fonts.fontMedium,
-      color: theme.buttonBack,
-      flex: 1,
+      color: theme.darkGreen,
+    },
+    phoneSettingsSub: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen5,
+      marginTop: moderateHeightScale(2),
     },
     chevron: {
       marginLeft: moderateWidthScale(8),
@@ -139,6 +210,7 @@ export default function NotificationSettingsScreen() {
   const { t } = useTranslation();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
+  const insets = useSafeAreaInsets();
   const { showBanner } = useNotificationContext();
   const userRole = useAppSelector((s) => s.user.userRole);
   const isBusiness = userRole === "business";
@@ -235,12 +307,35 @@ export default function NotificationSettingsScreen() {
       </View>
     ));
 
+  const renderSection = (
+    title: string,
+    iconName: keyof typeof MaterialIcons.glyphMap,
+    iconBg: string,
+    content: React.ReactNode,
+    isFirst?: boolean,
+  ) => (
+    <View style={[styles.sectionWrap, isFirst && styles.sectionWrapFirst]}>
+      <View style={styles.sectionHeader}>
+        <View style={[styles.sectionIcon, { backgroundColor: iconBg }]}>
+          <MaterialIcons name={iconName} size={16} color={theme.white} />
+        </View>
+        <Text style={styles.sectionTitle}>{title}</Text>
+      </View>
+      <View style={styles.card}>{content}</View>
+    </View>
+  );
+
   return (
     <View style={styles.container}>
       <StackHeader title={t("notificationSettings")} />
       <ScrollView
         style={styles.content}
-        contentContainerStyle={styles.contentContainer}
+        contentContainerStyle={{
+          paddingTop: moderateHeightScale(12),
+          paddingBottom:
+            Math.max(insets.bottom, moderateHeightScale(16)) +
+            moderateHeightScale(24),
+        }}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
@@ -250,80 +345,80 @@ export default function NotificationSettingsScreen() {
           </View>
         ) : prefs ? (
           <>
-            {/* General notifications */}
-            <Text style={[styles.sectionTitle, styles.sectionTitleFirst]}>
-              {t("prefSectionGeneral")}
-            </Text>
-            <View style={styles.listContainer}>
-              {renderToggleRows(generalPrefs)}
-            </View>
+            {renderSection(
+              t("prefSectionGeneral"),
+              "notifications-active",
+              theme.buttonBack,
+              renderToggleRows(generalPrefs),
+              true,
+            )}
 
-            {/* Following */}
-            <Text style={styles.sectionTitle}>
-              {t("prefSectionFollowing")}
-            </Text>
-            <View style={styles.listContainer}>
-              {renderToggleRows(followPrefs)}
-              <View style={styles.rowDivider} />
-              <View style={styles.capRow}>
-                <Text style={styles.rowTitle}>
-                  {t("prefDailyCapPerBusiness")}
-                </Text>
-                <View style={styles.capControls}>
-                  <TouchableOpacity
-                    style={styles.capBtn}
-                    disabled={
-                      savingKey === "daily_cap_per_business" ||
-                      prefs.daily_cap_per_business <= 1
-                    }
-                    onPress={() =>
-                      patchPref(
-                        {
-                          daily_cap_per_business: Math.max(
-                            1,
-                            prefs.daily_cap_per_business - 1,
-                          ),
-                        },
-                        "daily_cap_per_business",
-                      )
-                    }
-                  >
-                    <Text style={styles.capBtnText}>−</Text>
-                  </TouchableOpacity>
-                  <Text style={styles.capValue}>
-                    {prefs.daily_cap_per_business}
+            {renderSection(
+              t("prefSectionFollowing"),
+              "people",
+              theme.selectCard,
+              <>
+                {renderToggleRows(followPrefs)}
+                <View style={styles.rowDivider} />
+                <View style={styles.capRow}>
+                  <Text style={styles.rowTitle}>
+                    {t("prefDailyCapPerBusiness")}
                   </Text>
-                  <TouchableOpacity
-                    style={styles.capBtn}
-                    disabled={
-                      savingKey === "daily_cap_per_business" ||
-                      prefs.daily_cap_per_business >= 20
-                    }
-                    onPress={() =>
-                      patchPref(
-                        {
-                          daily_cap_per_business: Math.min(
-                            20,
-                            prefs.daily_cap_per_business + 1,
-                          ),
-                        },
-                        "daily_cap_per_business",
-                      )
-                    }
-                  >
-                    <Text style={styles.capBtnText}>+</Text>
-                  </TouchableOpacity>
+                  <View style={styles.capControls}>
+                    <TouchableOpacity
+                      style={styles.capBtn}
+                      disabled={
+                        savingKey === "daily_cap_per_business" ||
+                        prefs.daily_cap_per_business <= 1
+                      }
+                      onPress={() =>
+                        patchPref(
+                          {
+                            daily_cap_per_business: Math.max(
+                              1,
+                              prefs.daily_cap_per_business - 1,
+                            ),
+                          },
+                          "daily_cap_per_business",
+                        )
+                      }
+                    >
+                      <Text style={styles.capBtnText}>−</Text>
+                    </TouchableOpacity>
+                    <Text style={styles.capValue}>
+                      {prefs.daily_cap_per_business}
+                    </Text>
+                    <TouchableOpacity
+                      style={styles.capBtn}
+                      disabled={
+                        savingKey === "daily_cap_per_business" ||
+                        prefs.daily_cap_per_business >= 20
+                      }
+                      onPress={() =>
+                        patchPref(
+                          {
+                            daily_cap_per_business: Math.min(
+                              20,
+                              prefs.daily_cap_per_business + 1,
+                            ),
+                          },
+                          "daily_cap_per_business",
+                        )
+                      }
+                    >
+                      <Text style={styles.capBtnText}>+</Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
-              </View>
-            </View>
+              </>,
+            )}
 
-            {/* Email */}
-            <Text style={styles.sectionTitle}>{t("prefSectionEmail")}</Text>
-            <View style={styles.listContainer}>
+            {renderSection(
+              t("prefSectionEmail"),
+              "email",
+              theme.orangeBrownText,
               <View style={styles.row}>
-                <Text style={styles.rowTitle}>
-                  {t("prefPromotionsEmail")}
-                </Text>
+                <Text style={styles.rowTitle}>{t("prefPromotionsEmail")}</Text>
                 <CustomToggle
                   value={!!prefs.promotions}
                   onValueChange={(next) =>
@@ -331,38 +426,51 @@ export default function NotificationSettingsScreen() {
                   }
                   disabled={savingKey === "promotions"}
                 />
-              </View>
-            </View>
+              </View>,
+            )}
 
-            {/* Business */}
-            {isBusiness ? (
-              <>
-                <Text style={styles.sectionTitle}>
-                  {t("prefSectionBusiness")}
-                </Text>
-                <View style={styles.listContainer}>
-                  {renderToggleRows(bizPrefs)}
-                </View>
-              </>
-            ) : null}
+            {isBusiness
+              ? renderSection(
+                  t("prefSectionBusiness"),
+                  "storefront",
+                  theme.darkGreen,
+                  renderToggleRows(bizPrefs),
+                )
+              : null}
 
             {/* Phone settings link */}
             <TouchableOpacity
-              style={styles.phoneSettingsRow}
+              style={styles.phoneSettingsCard}
               onPress={openNotificationSettings}
-              activeOpacity={0.6}
+              activeOpacity={0.7}
             >
-              <Text style={styles.phoneSettingsText}>
-                {t("prefPhoneSettings")}
-              </Text>
-              <MaterialIcons
-                name={
-                  Platform.OS === "ios" ? "open-in-new" : "phone-android"
-                }
-                size={20}
-                color={theme.buttonBack}
-                style={styles.chevron}
-              />
+              <View style={styles.phoneSettingsInner}>
+                <View style={styles.phoneSettingsIcon}>
+                  <MaterialIcons
+                    name={
+                      Platform.OS === "ios"
+                        ? "phone-iphone"
+                        : "phone-android"
+                    }
+                    size={20}
+                    color={theme.white}
+                  />
+                </View>
+                <View style={styles.phoneSettingsTextWrap}>
+                  <Text style={styles.phoneSettingsTitle}>
+                    {t("prefPhoneSettings")}
+                  </Text>
+                  <Text style={styles.phoneSettingsSub}>
+                    {t("prefPhoneSettingsSub")}
+                  </Text>
+                </View>
+                <MaterialIcons
+                  name="chevron-right"
+                  size={22}
+                  color={theme.lightGreen5}
+                  style={styles.chevron}
+                />
+              </View>
             </TouchableOpacity>
           </>
         ) : null}

@@ -1009,6 +1009,7 @@
   "prefPromotionsEmail": "FreshPass promotions (email)",
   "prefLastMinuteOpenings": "Last-minute openings",
   "prefPhoneSettings": "Phone notification settings",
+  "prefPhoneSettingsSub": "Manage sounds, badges and permissions",
   "prefDailyCapPerBusiness": "Max alerts per business per day",
   "prefBizNewFollower": "New followers",
   "prefBizReelComments": "Comments on your reels",
