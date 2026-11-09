@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   StyleSheet,
   View,
@@ -212,6 +212,12 @@ export default function PhotoEditorModal({
     }
     resetGestures();
   }, [imageUri, resetGestures]);
+
+  useEffect(() => {
+    if (visible && imageUri) {
+      handleImageLoad();
+    }
+  }, [visible, imageUri, handleImageLoad]);
 
   const clampTranslation = useCallback(
     (tx: number, ty: number, s: number) => {
@@ -543,14 +549,12 @@ export function usePhotoEditorQueue() {
   }, [queue, currentIndex, handleDone]);
 
   const handleCancel = useCallback(() => {
-    const remaining = queue.slice(currentIndex);
-    const result = [...editedPhotos, ...remaining];
     setQueue([]);
     setCurrentIndex(0);
-    resolveRef.current?.(result);
+    resolveRef.current?.(editedPhotos);
     resolveRef.current = null;
     setEditedPhotos([]);
-  }, [editedPhotos, queue, currentIndex]);
+  }, [editedPhotos]);
 
   return {
     isEditing: queue.length > 0,

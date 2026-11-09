@@ -243,6 +243,7 @@ export default function PortfolioPhotoGrid<P extends PortfolioGridPhoto>({
             style={[styles.photoContainer, isMain && styles.mainPhotoContainer]}
           >
             <Sortable.Touchable
+              style={{ flex: 1 }}
               onTap={disabled ? undefined : () => {
                 const photo = photoById.get(item.id);
                 if (photo && onPhotoPress) {
