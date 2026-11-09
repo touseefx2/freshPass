@@ -1,12 +1,14 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
+  Platform,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
   ScrollView,
 } from "react-native";
+import { MaterialIcons } from "@expo/vector-icons";
 import { useTheme, useAppSelector } from "@/src/hooks/hooks";
 import { useTranslation } from "react-i18next";
 import { Theme } from "@/src/theme/colors";
@@ -19,6 +21,7 @@ import StackHeader from "@/src/components/StackHeader";
 import CustomToggle from "@/src/components/customToggle";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import Logger from "@/src/services/logger";
+import { openNotificationSettings } from "@/src/services/notificationPermissionService";
 import {
   getNotificationPreferences,
   updateNotificationPreferences,
@@ -44,7 +47,7 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontBold,
       color: theme.lightGreen,
       marginBottom: moderateHeightScale(8),
-      marginTop: moderateHeightScale(16),
+      marginTop: moderateHeightScale(24),
       textTransform: "uppercase",
       letterSpacing: 0.4,
     },
@@ -106,6 +109,24 @@ const createStyles = (theme: Theme) =>
       paddingVertical: moderateHeightScale(40),
       alignItems: "center",
     },
+    phoneSettingsRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingVertical: moderateHeightScale(16),
+      marginTop: moderateHeightScale(24),
+      borderTopWidth: 1,
+      borderTopColor: theme.borderLight,
+    },
+    phoneSettingsText: {
+      fontSize: fontSize.size15,
+      fontFamily: fonts.fontMedium,
+      color: theme.buttonBack,
+      flex: 1,
+    },
+    chevron: {
+      marginLeft: moderateWidthScale(8),
+    },
   });
 
 type BoolPrefKey = Exclude<
@@ -121,10 +142,6 @@ export default function NotificationSettingsScreen() {
   const { showBanner } = useNotificationContext();
   const userRole = useAppSelector((s) => s.user.userRole);
   const isBusiness = userRole === "business";
-
-  const [showNotifications, setShowNotifications] = useState(true);
-  const [notificationSound, setNotificationSound] = useState(true);
-  const [showOnLockScreen, setShowOnLockScreen] = useState(false);
 
   const [prefs, setPrefs] = useState<NotificationPreferences | null>(null);
   const [loading, setLoading] = useState(true);
@@ -180,32 +197,16 @@ export default function NotificationSettingsScreen() {
     [prefs, showBanner, t],
   );
 
-  const deviceSettings = [
-    {
-      key: "showNotifications",
-      title: t("showNotifications"),
-      value: showNotifications,
-      onValueChange: setShowNotifications,
-    },
-    {
-      key: "notificationSound",
-      title: t("notificationSound"),
-      value: notificationSound,
-      onValueChange: setNotificationSound,
-    },
-    {
-      key: "showOnLockScreen",
-      title: t("showOnLockScreen"),
-      value: showOnLockScreen,
-      onValueChange: setShowOnLockScreen,
-    },
+  const generalPrefs: { key: BoolPrefKey; title: string }[] = [
+    { key: "appointment_reminders", title: t("prefAppointmentReminders") },
+    { key: "messages", title: t("prefMessages") },
+    { key: "ai_memories", title: t("prefAiMemories") },
   ];
 
   const followPrefs: { key: BoolPrefKey; title: string }[] = [
     { key: "new_reels", title: t("prefNewReels") },
     { key: "new_services", title: t("prefNewServices") },
     { key: "new_memberships", title: t("prefNewMemberships") },
-    { key: "promotions", title: t("prefPromotions") },
     { key: "last_minute_openings", title: t("prefLastMinuteOpenings") },
   ];
 
@@ -219,9 +220,7 @@ export default function NotificationSettingsScreen() {
     { key: "biz_reel_likes", title: t("prefBizReelLikes") },
   ];
 
-  const renderToggleRows = (
-    rows: { key: BoolPrefKey; title: string }[],
-  ) =>
+  const renderToggleRows = (rows: { key: BoolPrefKey; title: string }[]) =>
     rows.map((row, index) => (
       <View key={row.key}>
         <View style={styles.row}>
@@ -243,33 +242,23 @@ export default function NotificationSettingsScreen() {
         style={styles.content}
         contentContainerStyle={styles.contentContainer}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
-        <Text style={[styles.sectionTitle, styles.sectionTitleFirst]}>
-          {t("prefSectionDevice")}
-        </Text>
-        <View style={styles.listContainer}>
-          {deviceSettings.map((setting, index) => (
-            <View key={setting.key}>
-              <View style={styles.row}>
-                <Text style={styles.rowTitle}>{setting.title}</Text>
-                <CustomToggle
-                  value={setting.value}
-                  onValueChange={setting.onValueChange}
-                />
-              </View>
-              {index !== deviceSettings.length - 1 && (
-                <View style={styles.rowDivider} />
-              )}
-            </View>
-          ))}
-        </View>
-
         {loading ? (
           <View style={styles.loader}>
             <ActivityIndicator size="small" color={theme.darkGreen} />
           </View>
         ) : prefs ? (
           <>
+            {/* General notifications */}
+            <Text style={[styles.sectionTitle, styles.sectionTitleFirst]}>
+              {t("prefSectionGeneral")}
+            </Text>
+            <View style={styles.listContainer}>
+              {renderToggleRows(generalPrefs)}
+            </View>
+
+            {/* Following */}
             <Text style={styles.sectionTitle}>
               {t("prefSectionFollowing")}
             </Text>
@@ -328,6 +317,24 @@ export default function NotificationSettingsScreen() {
               </View>
             </View>
 
+            {/* Email */}
+            <Text style={styles.sectionTitle}>{t("prefSectionEmail")}</Text>
+            <View style={styles.listContainer}>
+              <View style={styles.row}>
+                <Text style={styles.rowTitle}>
+                  {t("prefPromotionsEmail")}
+                </Text>
+                <CustomToggle
+                  value={!!prefs.promotions}
+                  onValueChange={(next) =>
+                    patchPref({ promotions: next }, "promotions")
+                  }
+                  disabled={savingKey === "promotions"}
+                />
+              </View>
+            </View>
+
+            {/* Business */}
             {isBusiness ? (
               <>
                 <Text style={styles.sectionTitle}>
@@ -338,6 +345,25 @@ export default function NotificationSettingsScreen() {
                 </View>
               </>
             ) : null}
+
+            {/* Phone settings link */}
+            <TouchableOpacity
+              style={styles.phoneSettingsRow}
+              onPress={openNotificationSettings}
+              activeOpacity={0.6}
+            >
+              <Text style={styles.phoneSettingsText}>
+                {t("prefPhoneSettings")}
+              </Text>
+              <MaterialIcons
+                name={
+                  Platform.OS === "ios" ? "open-in-new" : "phone-android"
+                }
+                size={20}
+                color={theme.buttonBack}
+                style={styles.chevron}
+              />
+            </TouchableOpacity>
           </>
         ) : null}
       </ScrollView>

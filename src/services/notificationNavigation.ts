@@ -34,6 +34,7 @@ import {
 } from "@/src/services/api";
 import { getUserMode } from "@/src/services/userModeService";
 import { requestAwaitingOutcomeScroll } from "@/src/services/homeScrollRequest";
+import { fetchSlotOfferDetail } from "@/src/services/slotOfferService";
 
 export type NotificationSubType =
   | "appointment_scheduled"
@@ -70,6 +71,7 @@ export type NotificationSubType =
   | "follow_new_reel"
   | "follow_new_service"
   | "follow_new_membership"
+  | "follow_last_minute_opening"
   | "business_new_follower"
   | "business_reel_comment"
   | "business_reel_booking"
@@ -430,6 +432,38 @@ async function openProductForRestock(router: Router, productId: number) {
     // Deleted since the alert (404) or offline — the list reloads itself
     Logger.error("Failed to open product from notification:", error);
     router.push(PRODUCTS_PATH as any);
+  }
+}
+
+async function openLastMinuteDeal(
+  router: Router,
+  slotOfferId: number | null,
+  businessId: number | null,
+) {
+  if (slotOfferId != null) {
+    try {
+      const deal = await fetchSlotOfferDetail(slotOfferId);
+      if (deal) {
+        router.push({
+          pathname: "/(main)/slotOfferDetail",
+          params: { id: String(slotOfferId) },
+        } as any);
+        Logger.log(
+          "------>navigateFromNotificationData (follow_last_minute_opening) -> slotOfferDetail",
+          { slot_offer_id: slotOfferId },
+        );
+        return;
+      }
+    } catch {
+      // deal may have been removed or expired
+    }
+  }
+  if (businessId != null) {
+    openBusinessProfile(router, businessId);
+    Logger.log(
+      "------>navigateFromNotificationData (follow_last_minute_opening) deal gone -> businessDetail",
+      { business_id: businessId },
+    );
   }
 }
 
@@ -1134,6 +1168,12 @@ export function navigateFromNotificationData(
         "------>navigateFromNotificationData (follow_new_reel) -> reelsFeed",
         { reel_id: reelId },
       );
+      return;
+    }
+
+    if (subType === "follow_last_minute_opening") {
+      const slotOfferId = pickNumber(data, "slot_offer_id");
+      void openLastMinuteDeal(router, slotOfferId, businessId);
       return;
     }
 

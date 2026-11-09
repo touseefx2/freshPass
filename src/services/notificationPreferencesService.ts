@@ -2,6 +2,9 @@ import { ApiService } from "@/src/services/api";
 import { notificationsEndpoints } from "@/src/services/endpoints";
 
 export type NotificationPreferences = {
+  appointment_reminders: boolean;
+  messages: boolean;
+  ai_memories: boolean;
   new_reels: boolean;
   promotions: boolean;
   last_minute_openings: boolean;
@@ -26,6 +29,9 @@ type Envelope<T> = {
 };
 
 const DEFAULTS: NotificationPreferences = {
+  appointment_reminders: true,
+  messages: true,
+  ai_memories: true,
   new_reels: true,
   promotions: true,
   last_minute_openings: true,
@@ -46,6 +52,10 @@ function normalize(
 ): NotificationPreferences {
   const cap = Number(raw?.daily_cap_per_business);
   return {
+    appointment_reminders:
+      raw?.appointment_reminders ?? DEFAULTS.appointment_reminders,
+    messages: raw?.messages ?? DEFAULTS.messages,
+    ai_memories: raw?.ai_memories ?? DEFAULTS.ai_memories,
     new_reels: raw?.new_reels ?? DEFAULTS.new_reels,
     promotions: raw?.promotions ?? DEFAULTS.promotions,
     last_minute_openings:
