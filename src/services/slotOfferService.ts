@@ -24,6 +24,8 @@ export async function fetchSlotOffers(params?: {
   max_price?: number;
   per_page?: number;
   page?: number;
+  latitude?: number | null;
+  longitude?: number | null;
 }): Promise<{ items: SlotOffer[]; meta: SlotOfferListResponse["meta"] }> {
   const res = unwrapList<SlotOfferListResponse>(
     await ApiService.get(slotOfferEndpoints.list(params), {

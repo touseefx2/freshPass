@@ -25,6 +25,7 @@ import {
 } from "./ShowBusinessList";
 import { createStyles as createListStyles } from "./ShowBusinessList/styles";
 import ShowDeals from "./ShowDeals";
+import InviteProBanner from "@/src/components/invitePro/InviteProBanner";
 import ExploreSegmentToggle, {
   type ExploreSegmentValue,
 } from "./ExploreSegmentToggle";
@@ -179,6 +180,12 @@ export default function ExploreScreen() {
   >([]);
   const [dealsLoading, setDealsLoading] = useState(false);
   const [dealsError, setDealsError] = useState(false);
+  // Last deals call succeeded (an error keeps today's hidden section)
+  const [dealsLoadedOk, setDealsLoadedOk] = useState(false);
+  // Nothing nearby: the banner on its own instead of the row. Stays up while
+  // a reload runs, so it never flickers to a spinner.
+  const dealsNothingNearby =
+    dealsLoadedOk && !dealsError && verifiedSalonsDeals.length === 0;
   const [sortBy, setSortBy] = useState<SortByOption>("recommended");
   const [sortSheetVisible, setSortSheetVisible] = useState(false);
   const [selectedSegment, setSelectedSegment] =
@@ -322,7 +329,6 @@ export default function ExploreScreen() {
       if (location?.lat && location?.long) {
         params.push(`latitude=${location.lat}`);
         params.push(`longitude=${location.long}`);
-        params.push("radius_km=100");
       }
       if (selectedDateISO) {
         const availabilityDate = new Date(selectedDateISO)
@@ -381,10 +387,12 @@ export default function ExploreScreen() {
         });
 
         setVerifiedSalonsDeals(mappedSalons);
+        setDealsLoadedOk(true);
       }
     } catch (error) {
       if (isRequestCanceled(error)) return;
       Logger.error("Failed to fetch businesses:", error);
+      setDealsLoadedOk(false);
       verifiedSalonsDeals.length <= 0 && setDealsError(true);
     } finally {
       setDealsLoading(false);
@@ -617,15 +625,21 @@ export default function ExploreScreen() {
                 </View>
               )}
 
-              {(verifiedSalonsDeals.length > 0 || dealsLoading) && (
+              {(verifiedSalonsDeals.length > 0 ||
+                dealsLoading ||
+                dealsNothingNearby) && (
                 <View style={styles.section}>
                   <Text style={styles.sectionTitle}>{t("freshPassDeals")}</Text>
-                  <ShowDeals
-                    businessesLoading={dealsLoading}
-                    businessesError={dealsError}
-                    verifiedSalons={verifiedSalonsDeals}
-                    onRetry={fetchBusinessesDeals}
-                  />
+                  {dealsNothingNearby ? (
+                    <InviteProBanner variant="standalone" />
+                  ) : (
+                    <ShowDeals
+                      businessesLoading={dealsLoading}
+                      businessesError={dealsError}
+                      verifiedSalons={verifiedSalonsDeals}
+                      onRetry={fetchBusinessesDeals}
+                    />
+                  )}
                 </View>
               )}
 

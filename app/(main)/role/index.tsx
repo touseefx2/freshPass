@@ -1,6 +1,6 @@
 import { useTheme, useAppDispatch, useAppSelector } from "@/src/hooks/hooks";
-import React, { useEffect, useMemo } from "react";
-import { View, Text, Alert } from "react-native";
+import React, { useEffect, useMemo, useRef } from "react";
+import { View, Text, Alert, Platform } from "react-native";
 import { useTranslation } from "react-i18next";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -12,6 +12,7 @@ import RadioOption from "@/src/components/radioOption";
 import Button from "@/src/components/button";
 import { setRole, UserRole } from "@/src/state/slices/generalSlice";
 import { handleNotificationPermission } from "@/src/services/notificationPermissionService";
+import { captureIosClipboardInviteOnce } from "@/src/services/pendingInviteCode";
 
 export default function Role() {
   const { colors } = useTheme();
@@ -21,13 +22,15 @@ export default function Role() {
   const router = useRouter();
   const isFirstVisit = useAppSelector((state) => state.general.isVisitFirst);
   const selectedRole = useAppSelector((state) => state.general.role);
+  // A second Continue tap while the iOS paste prompt is up must not push twice
+  const readingClipboardRef = useRef(false);
 
   const handleOptionSelect = (option: UserRole) => {
     // Save selected role to Redux immediately when user selects
     dispatch(setRole(option === "client" ? "customer" : option));
   };
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     // Only continue if role is selected and saved in Redux
     if (selectedRole) {
       // Navigate to client onboarding flow (location screen first)
@@ -39,6 +42,17 @@ export default function Role() {
         }
 
         return;
+      }
+      // iPhone: the invite page copied FRESHPASS-INVITE:{CODE} before the
+      // App Store. Read it only here, when business is chosen (iOS asks to paste).
+      if (Platform.OS === "ios") {
+        if (readingClipboardRef.current) return;
+        readingClipboardRef.current = true;
+        try {
+          await captureIosClipboardInviteOnce();
+        } finally {
+          readingClipboardRef.current = false;
+        }
       }
       router.push(`/${MAIN_ROUTES.SOCIAL_LOGIN}`);
     }

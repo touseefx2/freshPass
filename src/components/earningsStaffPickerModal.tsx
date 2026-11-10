@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AppImage from "@/src/components/AppImage";
 import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
@@ -143,6 +144,7 @@ export default function EarningsStaffPickerModal({
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
   const { t } = useTranslation();
+  const { bottom: safeBottom } = useSafeAreaInsets();
 
   const pickable = useMemo(
     () => staff.filter((row) => !row.isUnassigned),
@@ -162,7 +164,7 @@ export default function EarningsStaffPickerModal({
       onRequestClose={onClose}
     >
       <Pressable style={styles.backdrop} onPress={onClose}>
-        <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
+        <Pressable style={[styles.sheet, { paddingBottom: Math.max(moderateHeightScale(28), safeBottom + moderateHeightScale(12)) }]} onPress={(e) => e.stopPropagation()}>
           <View style={styles.handle} />
           <Text style={styles.title}>{t("earningsStaffPickerTitle")}</Text>
           <ScrollView showsVerticalScrollIndicator={false}>

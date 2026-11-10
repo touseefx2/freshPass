@@ -64,6 +64,9 @@ import PotentialContactsModal, {
 } from "@/src/components/PotentialContactsModal";
 import TipSection from "@/src/components/tipSection";
 import PayAndTipModal from "@/src/components/payAndTipModal";
+import RewardPayConfirmSheet from "@/src/components/rewards/RewardPayConfirmSheet";
+import { refreshOwnInviteRewardDetails } from "@/src/services/rewardsService";
+import { store } from "@/src/state/store";
 import {
   formatTipAmount,
   formatTipRecipientName,
@@ -92,6 +95,7 @@ import {
 } from "@/src/services/afterVisitService";
 import InPersonPaymentCard from "@/src/components/afterVisit/inPersonPaymentCard";
 import { createStyles } from "./styles";
+import { salonNow } from "@/src/utils/salonTimezone";
 import {
   getDefaultAvatarImage,
   getDefaultBusinessLogo,
@@ -276,6 +280,7 @@ interface BookingItem {
   businessLongitude?: string;
   businessLogoUrl?: string;
   businessAverageRating?: number;
+  businessTimezone?: string | null;
   workingWithBusiness?: AffiliatedBusiness | null;
   paymentMethod?: string;
   paidAmount?: string | null;
@@ -381,6 +386,7 @@ interface ApiBookingResponse {
   businessLongitude: string;
   businessLogoUrl: string | null;
   businessAverageRating: number;
+  businessTimezone?: string | null;
   business?: {
     id: number;
     title: string;
@@ -538,6 +544,12 @@ export default function BookingDetailsById() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [payAndTipModalVisible, setPayAndTipModalVisible] = useState(false);
+  // Reward balance confirm before "Pay now" (only when the balance is > 0).
+  // `tip` = tip sent with this payment; `shownTip` = tip shown in the summary.
+  const [rewardConfirm, setRewardConfirm] = useState<{
+    tip: number | null | undefined;
+    shownTip: number;
+  } | null>(null);
   const [policyExpanded, setPolicyExpanded] = useState(false);
 
   const bookingId = params.bookingId as string;
@@ -546,6 +558,9 @@ export default function BookingDetailsById() {
   const shouldOpenPay = params.openPay === "1";
   const shouldOpenReview = params.openReview === "1";
   const hasHandledNotificationAction = useRef(false);
+  // Blocks a second "Pay" tap on the reward confirm sheet from starting a
+  // second payment sheet while the first one is loading.
+  const rewardPayingRef = useRef(false);
   const userRole = useAppSelector((state) => state.user.userRole);
   let staffClientname = "";
   // No staff on the appointment (Solo plans have no staff list) — the owner
@@ -872,6 +887,7 @@ export default function BookingDetailsById() {
       businessAddress: apiData.businessAddress || "Business address",
       businessLatitude: apiData.businessLatitude || undefined,
       businessLongitude: apiData.businessLongitude || undefined,
+      businessTimezone: apiData.businessTimezone ?? null,
       businessLogoUrl: businessLogo,
       businessAverageRating: apiData.businessAverageRating || 0,
       workingWithBusiness:
@@ -1456,7 +1472,10 @@ export default function BookingDetailsById() {
     openReschedulePicker(true);
   };
 
-  const getAppointmentStartDate = (): Date | null => {
+  const getAppointmentStartMinutes = (): {
+    day: string;
+    minutes: number;
+  } | null => {
     if (!booking?.appointmentDate || !booking?.appointmentTime) return null;
     try {
       const [month, day, year] = booking.appointmentDate.split("/").map(Number);
@@ -1470,21 +1489,30 @@ export default function BookingDetailsById() {
       ) {
         return null;
       }
-      const dateObj = new Date(year, month - 1, day, hours, minutes);
-      return Number.isNaN(dateObj.getTime()) ? null : dateObj;
+      const dayStr = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+      return { day: dayStr, minutes: hours * 60 + minutes };
     } catch {
       return null;
     }
   };
 
-  const appointmentStart = getAppointmentStartDate();
-  const now = new Date();
-  const RESCHEDULE_CUTOFF_MS = 30 * 60 * 1000; // 30 minutes before start
-  const isBeforeAppointmentStart =
-    !appointmentStart || now.getTime() < appointmentStart.getTime();
-  const isBeforeRescheduleCutoff =
-    !appointmentStart ||
-    now.getTime() < appointmentStart.getTime() - RESCHEDULE_CUTOFF_MS;
+  const apptSlot = getAppointmentStartMinutes();
+  const salonWall = salonNow(null, booking?.businessTimezone);
+
+  const isBeforeAppointmentStart = (() => {
+    if (!apptSlot) return true;
+    if (salonWall.day < apptSlot.day) return true;
+    if (salonWall.day > apptSlot.day) return false;
+    return salonWall.minutes < apptSlot.minutes;
+  })();
+
+  const RESCHEDULE_CUTOFF_MINUTES = 30;
+  const isBeforeRescheduleCutoff = (() => {
+    if (!apptSlot) return true;
+    if (salonWall.day < apptSlot.day) return true;
+    if (salonWall.day > apptSlot.day) return false;
+    return salonWall.minutes < apptSlot.minutes - RESCHEDULE_CUTOFF_MINUTES;
+  })();
 
   // Cancel: customer, owner, and assigned staff (MD §6.3). Hidden after
   // appointment start, and after outcome / cancel / complete.
@@ -2022,7 +2050,10 @@ export default function BookingDetailsById() {
     }
   };
 
-  const handlePayOnline = async (tipAmount?: number | null) => {
+  const handlePayOnline = async (
+    tipAmount?: number | null,
+    useRewardBalance = false,
+  ) => {
     if (!booking?.id) {
       showBanner(
         t("error"),
@@ -2051,6 +2082,7 @@ export default function BookingDetailsById() {
       } = await fetchAppointmentPaymentSheetParams(
         appointmentId,
         tipAmount,
+        useRewardBalance ? { useRewardBalance: true } : undefined,
       );
       dispatch(setActionLoader(false));
       await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -2132,7 +2164,52 @@ export default function BookingDetailsById() {
       showBanner("Payment Failed", errorMessage, "error", 4000);
     } finally {
       dispatch(setActionLoader(false));
+      // Held / spent balance changed: keep the shown balance current.
+      if (useRewardBalance) void refreshOwnInviteRewardDetails();
     }
+  };
+
+  const rewardBalanceCents = Number(user.reward_balance_cents) || 0;
+  // Read at call time (not render time) so a refresh that just finished is
+  // used, e.g. the notification auto-pay path.
+  const currentRewardBalanceCents = () =>
+    Number(store.getState().user.reward_balance_cents) || 0;
+  const rewardServiceAmount = booking
+    ? Number.isFinite(booking.serviceTotal)
+      ? (booking.serviceTotal as number)
+      : Number.parseFloat(String(booking.price).replace(/[^0-9.]/g, "")) || 0
+    : 0;
+
+  /**
+   * Pay-later "Pay now": with a reward balance, show the split first
+   * (toggle default ON). With no balance the flow stays as before.
+   */
+  const payOnlineWithRewardCheck = (tipAmount?: number | null) => {
+    if (currentRewardBalanceCents() > 0 && userRole === "customer") {
+      // A tip committed at booking is already in the amount due.
+      const bookingTip =
+        booking?.pendingTip?.source === "booking" &&
+        booking.pendingTip.amount > 0
+          ? booking.pendingTip.amount
+          : 0;
+      setRewardConfirm({
+        tip: tipAmount,
+        shownTip:
+          tipAmount != null && tipAmount > 0 ? tipAmount : bookingTip,
+      });
+      return;
+    }
+    void handlePayOnline(tipAmount);
+  };
+
+  const handleRewardConfirm = (useRewardBalance: boolean) => {
+    const pending = rewardConfirm;
+    if (!pending || rewardPayingRef.current) return;
+    rewardPayingRef.current = true;
+    setRewardConfirm(null);
+    void handlePayOnline(pending.tip, useRewardBalance).finally(() => {
+      rewardPayingRef.current = false;
+    });
   };
 
   /**
@@ -2156,7 +2233,7 @@ export default function BookingDetailsById() {
         booking.pendingTip.amount > 0;
 
       if (hasBookingPendingTip) {
-        void handlePayOnline(null);
+        payOnlineWithRewardCheck(null);
         return;
       }
 
@@ -2164,13 +2241,29 @@ export default function BookingDetailsById() {
       return;
     }
 
-    void handlePayOnline();
+    payOnlineWithRewardCheck();
   };
 
   const handlePayAndTipContinue = (tipAmount: number | null) => {
     setPayAndTipModalVisible(false);
+    if (currentRewardBalanceCents() > 0 && userRole === "customer") {
+      // Let the tip sheet finish closing before the next sheet opens (iOS).
+      setTimeout(() => payOnlineWithRewardCheck(tipAmount), 400);
+      return;
+    }
     void handlePayOnline(tipAmount);
   };
+
+  // Pay-later customer booking that can be paid now: load the current balance.
+  const canPayNowForReward =
+    userRole === "customer" &&
+    !user.isGuest &&
+    !!booking?.owesPayment &&
+    booking?.businessPaymentsEnabled !== false;
+  useEffect(() => {
+    if (!canPayNowForReward) return;
+    void refreshOwnInviteRewardDetails();
+  }, [canPayNowForReward, booking?.id]);
 
   // Act on the notification the customer tapped, once the booking has loaded.
   // The ref keeps a re-render from reopening the Stripe sheet.
@@ -2179,7 +2272,15 @@ export default function BookingDetailsById() {
 
     if (shouldOpenPay && booking.owesPayment) {
       hasHandledNotificationAction.current = true;
-      startPayOnlineFlow();
+      if (canPayNowForReward) {
+        // Load the latest balance first so the reward confirm sheet shows
+        // even when the reward was earned after the last details fetch.
+        void refreshOwnInviteRewardDetails().finally(() =>
+          startPayOnlineFlow(),
+        );
+      } else {
+        startPayOnlineFlow();
+      }
     } else if (shouldOpenReview) {
       hasHandledNotificationAction.current = true;
       void checkAndShowReviewPrompt();
@@ -3512,6 +3613,15 @@ export default function BookingDetailsById() {
           }
           onClose={() => setPayAndTipModalVisible(false)}
           onContinue={handlePayAndTipContinue}
+        />
+
+        <RewardPayConfirmSheet
+          visible={rewardConfirm != null}
+          serviceAmount={rewardServiceAmount}
+          tipAmount={rewardConfirm?.shownTip ?? 0}
+          balanceCents={rewardBalanceCents}
+          onClose={() => setRewardConfirm(null)}
+          onConfirm={handleRewardConfirm}
         />
       </>
     );

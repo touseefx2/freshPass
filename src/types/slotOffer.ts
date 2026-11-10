@@ -45,6 +45,8 @@ export interface SlotOffer {
   cancellation_policy: any | null;
   views_count: number | null;
   appointment: { id: number; status: string } | null;
+  /** km from the customer (one decimal); null when no location was sent */
+  distance_km?: number | null;
 }
 
 export interface SlotOfferListMeta {

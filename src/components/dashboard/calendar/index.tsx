@@ -1600,18 +1600,6 @@ export default function CalendarScreen() {
     return () => clearInterval(interval);
   }, [salonTz]);
 
-  // Fetch appointments whenever the visible range or staff filter changes.
-  // Staff accounts only ever get their own, so the filter is owner-only.
-  useEffect(() => {
-    if (userRole === "business" || userRole === "staff") {
-      fetchAppointments(
-        fetchFrom,
-        fetchTo,
-        userRole === "business" ? staffFilterId : "all",
-      );
-    }
-  }, [fetchFrom, fetchTo, userRole, staffFilterId]);
-
   const fetchStaffOptions = useCallback(async () => {
     try {
       const response = await ApiService.get<{
@@ -1751,14 +1739,19 @@ export default function CalendarScreen() {
   const canPostBesideDeal =
     staffFilterId === "all" && hasTeamFeatures && staffOptions.length > 1;
 
-  // Back from New appointment: show the booking that was just made.
+  // Refetch appointments every time the calendar regains focus (tab switch,
+  // back from detail / another screen) so newly booked visits show up.
   useFocusEffect(
     useCallback(() => {
-      if (!refreshAppointmentsOnReturn.current) return;
-      refreshAppointmentsOnReturn.current = false;
-      fetchAppointments(fetchFrom, fetchTo, staffFilterId);
+      if (userRole === "business" || userRole === "staff") {
+        fetchAppointments(
+          fetchFrom,
+          fetchTo,
+          userRole === "business" ? staffFilterId : "all",
+        );
+      }
       // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [fetchFrom, fetchTo, staffFilterId]),
+    }, [fetchFrom, fetchTo, userRole, staffFilterId]),
   );
 
   const leaveForSelectedDate = useMemo(() => {

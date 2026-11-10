@@ -1,4 +1,10 @@
-import React, { useMemo, useState, useRef, useCallback } from "react";
+import React, {
+  useMemo,
+  useState,
+  useRef,
+  useCallback,
+  useEffect,
+} from "react";
 import {
   StyleSheet,
   Text,
@@ -47,6 +53,7 @@ import HomeAvailableNowSection from "@/src/components/homeAvailableNowSection";
 import HomeSlotOffersSection from "@/src/components/homeSlotOffersSection";
 import FreshyTryOnBanner from "@/src/components/FreshyTryOnBanner";
 import MarketplaceBanner from "@/src/components/marketplace/MarketplaceBanner";
+import InviteProBanner from "@/src/components/invitePro/InviteProBanner";
 import { fetchFollowing } from "@/src/services/followService";
 import { listPublic as listDealClasses } from "@/src/services/masterClassService";
 import type { MasterClass } from "@/src/types/masterClass";
@@ -550,6 +557,20 @@ export default function DashboardContent() {
   const userRole = useAppSelector((state: any) => state.user.userRole);
   const isGuest = useAppSelector((state: any) => state.user.isGuest);
   const isCusotmerandGuest = isGuest || userRole === "customer";
+  // Deals lists send the customer's location (both or neither); the server
+  // sets the 20-mile area and the order.
+  const userLat = useAppSelector((state: any) => state.user.location?.lat);
+  const userLng = useAppSelector((state: any) => state.user.location?.long);
+  const dealsLocationRef = useRef<{ latitude: number; longitude: number } | null>(
+    null,
+  );
+  dealsLocationRef.current =
+    Number.isFinite(Number(userLat)) &&
+    Number.isFinite(Number(userLng)) &&
+    userLat != null &&
+    userLng != null
+      ? { latitude: Number(userLat), longitude: Number(userLng) }
+      : null;
   const categories = useAppSelector(
     (state: any) => state.categories.categories,
   );
@@ -573,6 +594,14 @@ export default function DashboardContent() {
   // Master classes listed in FreshPass Deals (mixed into the same row)
   const [dealClasses, setDealClasses] = useState<MasterClass[]>([]);
   const dealClassesSeqRef = useRef(0);
+  const dealsSeqRef = useRef(0);
+  // "Nothing nearby" is decided only once BOTH the businesses and the classes
+  // calls have finished, so the Invite a Pro banner never flashes.
+  const [dealClassesLoading, setDealClassesLoading] = useState(false);
+  const [dealClassesLoaded, setDealClassesLoaded] = useState(false);
+  const [dealsLoadedOk, setDealsLoadedOk] = useState(false);
+  // Last decided "nothing nearby" value, kept while a reload runs.
+  const dealsNothingNearbyRef = useRef(false);
   const [favoriteBusinesses, setFavoriteBusinesses] = useState<
     FavoriteBusiness[]
   >([]);
@@ -693,17 +722,16 @@ export default function DashboardContent() {
   };
 
   const fetchBusinessesDeals = async () => {
+    const seq = ++dealsSeqRef.current;
     try {
       setDealsLoading(true);
       setDealsError(false);
       let url = businessEndpoints.businesses();
       url = `${url}?type=featured`;
-      // url = `${url}?sort=completed_appointments&direction=desc`;
-      // if (userLocation?.lat && userLocation?.long) {
-      //   url += `&latitude=${userLocation.lat}`;
-      //   url += `&longitude=${userLocation.long}`;
-      //   url += `&radius_km=20`;
-      // }
+      const loc = dealsLocationRef.current;
+      if (loc) {
+        url += `&latitude=${loc.latitude}&longitude=${loc.longitude}`;
+      }
 
       const response = await ApiService.get<{
         success: boolean;
@@ -726,6 +754,7 @@ export default function DashboardContent() {
           }>;
         }>;
       }>(url);
+      if (seq !== dealsSeqRef.current) return;
 
       if (response.success && response.data) {
         const mappedSalons: VerifiedSalon[] = response.data.map((item) => ({
@@ -740,29 +769,57 @@ export default function DashboardContent() {
         }));
 
         setVerifiedSalonsDeals(mappedSalons);
+        setDealsLoadedOk(true);
       }
     } catch (error) {
       if (isRequestCanceled(error)) return;
+      if (seq !== dealsSeqRef.current) return;
       Logger.error("Failed to fetch businesses deals:", error);
+      setDealsLoadedOk(false);
       verifiedSalonsDeals.length <= 0 && setDealsError(true);
     } finally {
-      setDealsLoading(false);
+      if (seq === dealsSeqRef.current) setDealsLoading(false);
     }
   };
 
-  // Same filters as fetchBusinessesDeals (none today). A failure never
-  // touches the business row: the classes simply stay as they were.
+  // Same location as fetchBusinessesDeals. A failure never touches the
+  // business row: the classes simply stay as they were.
   const fetchDealClasses = async () => {
     const seq = ++dealClassesSeqRef.current;
+    setDealClassesLoading(true);
     try {
-      const { items } = await listDealClasses();
+      const loc = dealsLocationRef.current;
+      const { items } = await listDealClasses(loc ? { ...loc } : {});
       if (seq !== dealClassesSeqRef.current) return;
       setDealClasses(items.filter((item) => item && item.id != null));
     } catch (error) {
       if (isRequestCanceled(error)) return;
       Logger.error("Failed to fetch deal classes:", error);
+    } finally {
+      if (seq === dealClassesSeqRef.current) {
+        setDealClassesLoading(false);
+        setDealClassesLoaded(true);
+      }
     }
   };
+
+  // Nothing nearby = no businesses and no in-person classes. Kept as is
+  // while either call is still running, so a reload never flashes it.
+  // Decided during render (not in an effect) so no frame shows a stale value.
+  const dealsDecided =
+    !dealsLoading && !dealClassesLoading && dealClassesLoaded;
+  if (dealsDecided) {
+    dealsNothingNearbyRef.current =
+      dealsLoadedOk &&
+      !dealsError &&
+      verifiedSalonsDeals.length === 0 &&
+      !dealClasses.some((item) => item.format !== "online");
+  }
+  const dealsNothingNearby = dealsNothingNearbyRef.current;
+  const onlineDealClasses = useMemo(
+    () => dealClasses.filter((item) => item.format === "online"),
+    [dealClasses],
+  );
 
   const retryDeals = () => {
     fetchBusinessesDeals();
@@ -1055,6 +1112,20 @@ export default function DashboardContent() {
     }, []),
   );
 
+  // Reload the deal lists once the location arrives or changes (the focus
+  // effect above has [] deps). Skips the first run: focus already loaded.
+  const dealsLocationKey = dealsLocationRef.current
+    ? `${dealsLocationRef.current.latitude},${dealsLocationRef.current.longitude}`
+    : "";
+  const dealsLocationKeyRef = useRef(dealsLocationKey);
+  useEffect(() => {
+    if (dealsLocationKeyRef.current === dealsLocationKey) return;
+    dealsLocationKeyRef.current = dealsLocationKey;
+    if (!isCusotmerandGuest) return;
+    fetchBusinessesDeals();
+    fetchDealClasses();
+  }, [dealsLocationKey, isCusotmerandGuest]);
+
   // Reel previews play only while at least half the reels row is on screen
   const scrollYRef = useRef(0);
   const viewportHRef = useRef(0);
@@ -1122,16 +1193,37 @@ export default function DashboardContent() {
       {(verifiedSalonsDeals.length > 0 ||
         dealClasses.length > 0 ||
         dealsLoading ||
-        dealsError) && (
+        (dealClassesLoading && !dealClassesLoaded) ||
+        dealsError ||
+        dealsNothingNearby) && (
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>{t("freshPassDeals")}</Text>
-          <ShowBusiness
-            businessesLoading={dealsLoading}
-            businessesError={dealsError}
-            verifiedSalons={verifiedSalonsDeals}
-            onRetry={retryDeals}
-            classes={dealClasses}
-          />
+          {dealsNothingNearby ? (
+            <>
+              <InviteProBanner variant="standalone" />
+              {onlineDealClasses.length > 0 ? (
+                <ShowBusiness
+                  businessesLoading={false}
+                  businessesError={false}
+                  verifiedSalons={[]}
+                  onRetry={retryDeals}
+                  classes={onlineDealClasses}
+                />
+              ) : null}
+            </>
+          ) : (
+            <ShowBusiness
+              businessesLoading={
+                dealsLoading ||
+                (!dealClassesLoaded && verifiedSalonsDeals.length === 0)
+              }
+              businessesError={dealsError}
+              verifiedSalons={verifiedSalonsDeals}
+              onRetry={retryDeals}
+              classes={dealClasses}
+              showInviteBanner
+            />
+          )}
         </View>
       )}
 

@@ -74,6 +74,8 @@ export const businessEndpoints = {
   register: `/api/register`,
   /** Sales rep code check at business signup (public) */
   agentCode: (code: string) => `/api/agent-codes/${encodeURIComponent(code)}`,
+  /** Invite a Pro code check at business signup (public): { invite_code, inviter_first_name } */
+  inviteCode: (code: string) => `/api/invite-codes/${encodeURIComponent(code)}`,
   login: `/api/login`,
   logout: `/api/logout`,
   businessSearch: (search?: string, page = 1, perPage = 20) => {
@@ -181,6 +183,19 @@ export const userEndpoints = {
   pushToken: `/api/user/push-token`,
   /** GET: current mode + both AI balances · POST { mode }: switch business ↔ customer */
   mode: `/api/user/mode`,
+};
+
+/**
+ * Reward balance (Invite a Pro): balance + every change, newest first
+ */
+export const rewardEndpoints = {
+  list: (params?: { page?: number; per_page?: number }) => {
+    const q = new URLSearchParams();
+    if (params?.page != null) q.append("page", String(params.page));
+    if (params?.per_page != null) q.append("per_page", String(params.per_page));
+    const query = q.toString();
+    return `/api/rewards${query ? `?${query}` : ""}`;
+  },
 };
 
 /**
@@ -1299,6 +1314,8 @@ export const slotOfferEndpoints = {
     max_price?: number;
     per_page?: number;
     page?: number;
+    latitude?: number | null;
+    longitude?: number | null;
   }) => {
     const q = new URLSearchParams();
     if (params?.category_id != null)
@@ -1313,6 +1330,16 @@ export const slotOfferEndpoints = {
       q.append("max_price", String(params.max_price));
     if (params?.per_page != null) q.append("per_page", String(params.per_page));
     if (params?.page != null) q.append("page", String(params.page));
+    // Send both or neither (server: 20 miles from the customer).
+    if (
+      typeof params?.latitude === "number" &&
+      Number.isFinite(params.latitude) &&
+      typeof params?.longitude === "number" &&
+      Number.isFinite(params.longitude)
+    ) {
+      q.append("latitude", String(params.latitude));
+      q.append("longitude", String(params.longitude));
+    }
     const query = q.toString();
     return `/api/slot-offers${query ? `?${query}` : ""}`;
   },

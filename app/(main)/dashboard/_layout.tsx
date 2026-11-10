@@ -37,6 +37,7 @@ import {
   type ServerModeState,
 } from "@/src/state/thunks/userModeThunks";
 import { getUserMode } from "@/src/services/userModeService";
+import { pickInviteRewardDetails } from "@/src/services/rewardsService";
 import { resetToDashboardHome } from "@/src/utils/navigation";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { ApiService } from "@/src/services/api";
@@ -286,6 +287,7 @@ export default function DashboardLayout() {
             working_with_business_request:
               response.data.working_with_business_request ?? null,
             ...pickUserModeDetails(response.data),
+            ...pickInviteRewardDetails(response.data),
             dateOfBirth: response.data.date_of_birth
               ? parseDateOfBirth(response.data.date_of_birth)
               : null,

@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useCallback, useMemo, useState, useEffect } from "react";
 import {
   ImageBackground,
   Platform,
@@ -38,7 +38,7 @@ import {
 import { useStore } from "react-redux";
 import type { RootState } from "@/src/state/store";
 import { getModeParam } from "@/src/services/userModeService";
-import { router, useLocalSearchParams } from "expo-router";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { createStyles } from "./styles";
 import {
   setActionLoader,
@@ -50,6 +50,16 @@ import {
 } from "@/src/state/slices/generalSlice";
 import type { AdditionalServiceItem } from "@/src/state/slices/generalSlice";
 import Logger from "@/src/services/logger";
+import RewardBalanceToggle from "@/src/components/rewards/RewardBalanceToggle";
+import {
+  pickInviteRewardDetails,
+  refreshOwnInviteRewardDetails,
+} from "@/src/services/rewardsService";
+import {
+  dollarsToCents,
+  estimateTryOnReward,
+  formatRewardMoney,
+} from "@/src/utils/rewardMath";
 
 export default function TryOnPurchase() {
   const { t } = useTranslation();
@@ -80,6 +90,11 @@ export default function TryOnPurchase() {
   const screen: "explore" | "tools" =
     purchaseSource === "tools" || rawScreen === "tools" ? "tools" : "explore";
   const isIos = Platform.OS === "ios";
+  const rewardBalanceCents = useAppSelector(
+    (state) => state.user.reward_balance_cents,
+  );
+  // Default ON whenever the reward row is shown
+  const [useRewardBalance, setUseRewardBalance] = useState(true);
 
   const [localBanner, setLocalBanner] = useState<{
     visible: boolean;
@@ -169,6 +184,44 @@ export default function TryOnPurchase() {
     };
   }, [dispatch, isIos, serviceId, t]);
 
+  // Fresh balance each time the screen is shown (decides the reward row)
+  useFocusEffect(
+    useCallback(() => {
+      if (user.isGuest) return;
+      void refreshOwnInviteRewardDetails();
+    }, [user.isGuest]),
+  );
+
+  // FreshPass API price (never the App Store price), "$9.99" or "9.99"
+  const packPrice = useMemo(() => {
+    const n = parseFloat(String(service?.price ?? "").replace(/^\$/, ""));
+    return Number.isFinite(n) && n > 0 ? n : 0;
+  }, [service?.price]);
+  const balanceCents = Math.max(0, rewardBalanceCents ?? 0);
+  const packPriceCents = dollarsToCents(packPrice);
+  const rewardEstimate = useMemo(
+    () => estimateTryOnReward(balanceCents, packPrice),
+    [balanceCents, packPrice],
+  );
+  // Android: any balance that can apply (card keeps its $0.50 minimum) ·
+  // iPhone: only when it covers the whole pack
+  // Customer mode only: the reward balance never pays for business-mode credits
+  const rewardRowShown =
+    !user.isGuest &&
+    user.userRole === "customer" &&
+    !!service?.id &&
+    packPriceCents > 0 &&
+    (isIos ? balanceCents >= packPriceCents : rewardEstimate.reward > 0);
+  const applyReward = rewardRowShown && useRewardBalance;
+  const rewardEstimateText = !applyReward
+    ? null
+    : rewardEstimate.coversFull
+      ? t("rwTryOnPaidFromBalance")
+      : t("rwTryOnSplitEstimate", {
+        reward: formatRewardMoney(rewardEstimate.reward),
+        card: formatRewardMoney(rewardEstimate.card),
+      });
+
   const pricingText =
     service && service.price && service.ai_requests
       ? t("tryOnModalDynamicPricing", {
@@ -196,6 +249,7 @@ export default function TryOnPurchase() {
       const activeMode: UserMode =
         store.getState().user.active_mode ?? "business";
       if (typeof quotaFromVerify === "number") {
+        void refreshOwnInviteRewardDetails();
         if (!creditedMode || creditedMode === activeMode) {
           dispatch(setUserDetails({ ai_quota: quotaFromVerify }));
         } else if (creditedMode === "customer") {
@@ -207,8 +261,16 @@ export default function TryOnPurchase() {
           success: boolean;
           data?: { ai_quota?: number };
         }>(userEndpoints.details);
-        if (response.success && response.data?.ai_quota !== undefined) {
-          dispatch(setUserDetails({ ai_quota: response.data.ai_quota }));
+        if (response.success && response.data) {
+          dispatch(
+            setUserDetails({
+              ...(response.data.ai_quota !== undefined && {
+                ai_quota: response.data.ai_quota,
+              }),
+              // Balance after the purchase (reward part may have been spent)
+              ...pickInviteRewardDetails(response.data),
+            }),
+          );
         }
       }
     } catch {
@@ -265,15 +327,70 @@ export default function TryOnPurchase() {
     );
   };
 
+  /**
+   * iPhone only: redeem the whole pack from the reward balance (reward_only).
+   * Returns false when the balance no longer covers it (400) so the caller
+   * falls back to the normal Apple purchase at full price. Never mixed.
+   */
+  const handleRewardOnlyPurchase = async (
+    serviceIdForPurchase: number,
+    purchaseMode?: UserMode,
+  ): Promise<boolean> => {
+    const showBalanceChanged = () => {
+      void refreshOwnInviteRewardDetails();
+      setLocalBanner({
+        visible: true,
+        title: t("rwTryOnBalanceChangedTitle"),
+        message: t("rwTryOnBalanceChangedMessage"),
+        type: "warning",
+      });
+    };
+    try {
+      const { paidWithRewards } = await fetchAiToolsPaymentSheetParams(
+        serviceIdForPurchase,
+        purchaseMode,
+        { rewardOnly: true },
+      );
+      if (paidWithRewards) {
+        await refreshQuotaAndShowSuccess();
+        return true;
+      }
+      showBalanceChanged();
+      return false;
+    } catch (err: unknown) {
+      if ((err as { status?: number })?.status === 400) {
+        showBalanceChanged();
+        return false;
+      }
+      throw err;
+    }
+  };
+
   const handleStripePayment = async (
     serviceIdForPurchase: number,
     purchaseMode?: UserMode,
+    withRewardBalance?: boolean,
   ) => {
     // Retry Stripe key from API if startup fetch failed (e.g. no network)
     await ensureStripeReady();
 
-    const { customer, paymentIntent, customerSessionClientSecret } =
-      await fetchAiToolsPaymentSheetParams(serviceIdForPurchase, purchaseMode);
+    const {
+      customer,
+      paymentIntent,
+      customerSessionClientSecret,
+      paidWithRewards,
+    } = await fetchAiToolsPaymentSheetParams(
+      serviceIdForPurchase,
+      purchaseMode,
+      withRewardBalance ? { useRewardBalance: true } : undefined,
+    );
+
+    // Balance covered the full price: credits already added, no sheet
+    if (paidWithRewards) {
+      await refreshQuotaAndShowSuccess();
+      return;
+    }
+
     dispatch(setActionLoader(false));
     await new Promise((resolve) => setTimeout(resolve, 1000));
 
@@ -319,6 +436,8 @@ export default function TryOnPurchase() {
     const { error: presentError } = await presentPaymentSheet();
 
     if (presentError) {
+      // The reward part stays held until the sheet completes (or 24h)
+      if (withRewardBalance) void refreshOwnInviteRewardDetails();
       if (!presentError.code?.includes("Canceled")) {
         setLocalBanner({
           visible: true,
@@ -351,11 +470,22 @@ export default function TryOnPurchase() {
 
     try {
       if (isIos) {
+        // Row only shows on iPhone when the balance covers the whole pack
+        if (applyReward) {
+          const paid = await handleRewardOnlyPurchase(service.id, purchaseMode);
+          if (paid) return;
+          // The loader (a Modal) and Apple's sheet both cover the in-app
+          // banner: drop the loader briefly so "balance changed" is read
+          // before the full-price Apple sheet opens.
+          dispatch(setActionLoader(false));
+          await new Promise((resolve) => setTimeout(resolve, 1500));
+          dispatch(setActionLoader(true));
+        }
         await handleIapPayment(purchaseMode);
         return;
       }
 
-      await handleStripePayment(service.id, purchaseMode);
+      await handleStripePayment(service.id, purchaseMode, applyReward);
     } catch (err: unknown) {
       const ax = err as { message?: string; data?: { message?: string } };
       const message =
@@ -423,6 +553,25 @@ export default function TryOnPurchase() {
           </View>
 
           <View style={styles.bottomSection}>
+            {rewardRowShown ? (
+              <View style={styles.rewardBlock}>
+                <RewardBalanceToggle
+                  variant="onDark"
+                  value={useRewardBalance}
+                  onValueChange={setUseRewardBalance}
+                  balanceCents={balanceCents}
+                  appliedAmount={applyReward ? rewardEstimate.reward : null}
+                />
+                {rewardEstimateText ? (
+                  <Text
+                    style={styles.rewardEstimateText}
+                    accessibilityLiveRegion="polite"
+                  >
+                    {rewardEstimateText}
+                  </Text>
+                ) : null}
+              </View>
+            ) : null}
             <Button
               title={t("unlockAiTryOn")}
               onPress={handleUpgradePress}

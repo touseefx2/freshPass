@@ -35,6 +35,9 @@ import {
   useStripeAccount,
 } from "@/src/services/stripeService";
 import { isPaymentsEnabled } from "@/src/utils/paymentsEnabled";
+import { refreshOwnInviteRewardDetails } from "@/src/services/rewardsService";
+import { estimateAppointmentReward } from "@/src/utils/rewardMath";
+import RewardBalanceToggle from "@/src/components/rewards/RewardBalanceToggle";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import {
@@ -371,6 +374,10 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontMedium,
       color: theme.darkGreen,
       fontVariant: ["tabular-nums"],
+    },
+    ckRewardValue: {
+      color: theme.successGreen,
+      fontFamily: fonts.fontSemiBold,
     },
     ckPhotos: {
       flexDirection: "row",
@@ -791,6 +798,28 @@ function CheckoutContent() {
   );
   const isSubscriptionMode = Boolean(
     subscriptionId != null && subscriptionData,
+  );
+
+  // Reward balance (pay-now service bookings only; never tips or memberships).
+  const rewardBalanceCents = Number(user.reward_balance_cents) || 0;
+  const [useRewardBalance, setUseRewardBalance] = useState(true);
+  const canUseRewardBalance =
+    !isSubscriptionMode &&
+    paymentMethod === "payNow" &&
+    !isGuest &&
+    rewardBalanceCents > 0;
+  const rewardApplied = canUseRewardBalance && useRewardBalance;
+  // Estimate only; the real split comes back from checkout. Card keeps >= $0.50.
+  const rewardEstimate = rewardApplied
+    ? estimateAppointmentReward(rewardBalanceCents, totalPrice)
+    : 0;
+  const cardTotalEstimate = Math.max(0, estimatedTotal - rewardEstimate);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (isGuest) return;
+      void refreshOwnInviteRewardDetails();
+    }, [isGuest]),
   );
 
   // AI Receptionist handoff: auto-open the cancellation policy sheet on mount
@@ -1261,6 +1290,7 @@ function CheckoutContent() {
       reel_id?: number;
       saved_look_id?: number;
       slot_offer_id?: number;
+      use_reward_balance?: boolean;
     } = {
       business_id: parseInt(resolvedCheckoutBusinessId, 10),
       appointment_type: "service",
@@ -1298,6 +1328,11 @@ function CheckoutContent() {
       requestBody.slot_offer_id = Number(params.slot_offer_id);
     }
 
+    // Balance pays part of the service price; the card pays the rest + any tip.
+    if (paymentMethod === "payNow" && rewardApplied) {
+      requestBody.use_reward_balance = true;
+    }
+
     Logger.log("requestBody", requestBody);
 
     try {
@@ -1319,6 +1354,7 @@ function CheckoutContent() {
           connectedAccountId,
           serviceAmount,
           totalAmount,
+          rewardAmount,
         } = checkout;
 
         if (!checkoutId) {
@@ -1333,10 +1369,15 @@ function CheckoutContent() {
 
         const chargedService =
           typeof serviceAmount === "number" ? serviceAmount : totalPrice;
+        const chargedReward =
+          typeof rewardAmount === "number" && rewardAmount > 0
+            ? rewardAmount
+            : 0;
+        // totalAmount = what the sheet charges (already minus the reward part)
         const chargedTotal =
           typeof totalAmount === "number"
             ? totalAmount
-            : chargedService + tax;
+            : chargedService - chargedReward + tax;
 
         try {
           await useStripeAccount(connectedAccountId);
@@ -1452,6 +1493,8 @@ function CheckoutContent() {
                   totalPrice: chargedService.toFixed(2),
                   tax: tax.toFixed(2),
                   estimatedTotal: chargedTotal.toFixed(2),
+                  rewardAmount:
+                    chargedReward > 0 ? chargedReward.toFixed(2) : "",
                   businessId: resolvedCheckoutBusinessId,
                   business_id: resolvedCheckoutBusinessId,
                   note: note || "",
@@ -1485,6 +1528,10 @@ function CheckoutContent() {
           }
         } finally {
           await useStripeAccount(null);
+          // Held / spent balance changed: keep the shown balance current.
+          if (requestBody.use_reward_balance) {
+            void refreshOwnInviteRewardDetails();
+          }
         }
         return;
       }
@@ -1985,6 +2032,28 @@ function CheckoutContent() {
               <Text style={styles.ckLineLabel}>{t("bkCheckoutTax")}</Text>
               <Text style={styles.ckLineValue}>${tax.toFixed(2)} USD</Text>
             </View>
+            {rewardEstimate > 0 ? (
+              <View
+                style={styles.ckLine}
+                accessible
+                accessibilityLabel={`${t("rwPayRewardLine")}, \u2212$${rewardEstimate.toFixed(2)} USD`}
+              >
+                <Text style={styles.ckLineLabel}>{t("rwPayRewardLine")}</Text>
+                <Text style={[styles.ckLineValue, styles.ckRewardValue]}>
+                  {"\u2212"}${rewardEstimate.toFixed(2)} USD
+                </Text>
+              </View>
+            ) : null}
+            {canUseRewardBalance ? (
+              <RewardBalanceToggle
+                value={useRewardBalance}
+                onValueChange={setUseRewardBalance}
+                balanceCents={rewardBalanceCents}
+                appliedAmount={rewardEstimate}
+                variant="light"
+                disabled={processingPayment || policyConfirming}
+              />
+            ) : null}
           </FlowCard>
         ) : (
           renderPlanCard()
@@ -2030,9 +2099,11 @@ function CheckoutContent() {
 
       {!isSubscriptionMode ? (
         <View style={styles.ckTotalBar}>
-          <Text style={styles.ckTotalLabel}>{t("bkCheckoutTotal")}</Text>
+          <Text style={styles.ckTotalLabel}>
+            {rewardEstimate > 0 ? t("rwPayCardTotal") : t("bkCheckoutTotal")}
+          </Text>
           <Text style={styles.ckTotalValue}>
-            ${estimatedTotal.toFixed(2)} USD
+            ${cardTotalEstimate.toFixed(2)} USD
           </Text>
         </View>
       ) : null}

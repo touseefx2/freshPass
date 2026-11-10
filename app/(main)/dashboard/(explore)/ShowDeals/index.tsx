@@ -17,6 +17,9 @@ import { PlatformVerifiedStarIcon, StarIconSmall } from "@/assets/icons";
 import RetryButton from "@/src/components/retryButton";
 import { HiringCornerBadge } from "@/src/components/jobs/jobBadges";
 import { createStyles } from "./styles";
+import InviteProBanner, {
+  withInviteBanners,
+} from "@/src/components/invitePro/InviteProBanner";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -50,6 +53,84 @@ export default function ShowDeals({
   const styles = useMemo(() => createStyles(theme), [colors]);
   const router = useRouter();
   const hasHiring = verifiedSalons.some((salon) => salon.isHiring);
+
+  const renderSalon = (salon: VerifiedSalon) => (
+    <TouchableOpacity
+      activeOpacity={0.9}
+      onPress={() => {
+        router.push({
+          pathname: "/(main)/businessDetail",
+          params: { business_id: salon.id.toString() },
+        } as any);
+      }}
+      key={salon.id}
+      style={[
+        styles.verifiedSalonCardNew,
+        salon.isHiring && styles.verifiedSalonCardHiring,
+      ]}
+    >
+      {salon.isHiring ? <HiringCornerBadge /> : null}
+      <AppImage
+        uri={salon.image}
+        style={styles.verifiedSalonImage}
+        iconSize={widthScale(36)}
+        iconColor={theme.white50}
+      />
+
+      <View style={styles.verifiedSalonContent}>
+        <View style={styles.platformVerifiedBadge}>
+          <PlatformVerifiedStarIcon
+            width={widthScale(10)}
+            height={heightScale(10)}
+          />
+          <Text style={styles.platformVerifiedText}>
+            Platform verified
+          </Text>
+        </View>
+        <View style={styles.businessInfoContainer}>
+          <Text
+            numberOfLines={1}
+            style={styles.verifiedSalonBusinessName}
+          >
+            {salon.businessName}
+          </Text>
+          {!!salon.ownerName && (
+            <Text numberOfLines={1} style={styles.verifiedSalonOwnerName}>
+              {t("ownedBy", { name: salon.ownerName })}
+            </Text>
+          )}
+          <Text numberOfLines={1} style={styles.verifiedSalonAddress}>
+            {salon.address}
+          </Text>
+        </View>
+        <View style={styles.verifiedSalonBottomRow}>
+          <View style={styles.verifiedSalonRatingButton}>
+            <StarIconSmall
+              width={widthScale(12)}
+              height={heightScale(12)}
+              color={theme.orangeBrown}
+            />
+            <Text style={styles.verifiedSalonRatingText}>
+              {salon.rating || 0}/ {salon.reviewCount || 0} reviews
+            </Text>
+          </View>
+          {/* <TouchableOpacity
+            style={styles.verifiedSalonViewDetail}
+            onPress={() => {
+              router.push({
+                pathname: "/(main)/businessDetail",
+                params: { business_id: salon.id.toString() },
+              } as any);
+            }}
+          >
+            <Text style={styles.verifiedSalonViewDetailText}>
+              View detail
+            </Text>
+          </TouchableOpacity> */}
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
 
   return (
     <ScrollView
@@ -87,83 +168,13 @@ export default function ShowDeals({
           <RetryButton onPress={onRetry} loading={businessesLoading} />
         </View>
       ) : verifiedSalons.length > 0 ? (
-        verifiedSalons.map((salon) => (
-          <TouchableOpacity
-            activeOpacity={0.9}
-            onPress={() => {
-              router.push({
-                pathname: "/(main)/businessDetail",
-                params: { business_id: salon.id.toString() },
-              } as any);
-            }}
-            key={salon.id}
-            style={[
-              styles.verifiedSalonCardNew,
-              salon.isHiring && styles.verifiedSalonCardHiring,
-            ]}
-          >
-            {salon.isHiring ? <HiringCornerBadge /> : null}
-            <AppImage
-              uri={salon.image}
-              style={styles.verifiedSalonImage}
-              iconSize={widthScale(36)}
-              iconColor={theme.white50}
-            />
-
-            <View style={styles.verifiedSalonContent}>
-              <View style={styles.platformVerifiedBadge}>
-                <PlatformVerifiedStarIcon
-                  width={widthScale(10)}
-                  height={heightScale(10)}
-                />
-                <Text style={styles.platformVerifiedText}>
-                  Platform verified
-                </Text>
-              </View>
-              <View style={styles.businessInfoContainer}>
-                <Text
-                  numberOfLines={1}
-                  style={styles.verifiedSalonBusinessName}
-                >
-                  {salon.businessName}
-                </Text>
-                {!!salon.ownerName && (
-                  <Text numberOfLines={1} style={styles.verifiedSalonOwnerName}>
-                    {t("ownedBy", { name: salon.ownerName })}
-                  </Text>
-                )}
-                <Text numberOfLines={1} style={styles.verifiedSalonAddress}>
-                  {salon.address}
-                </Text>
-              </View>
-              <View style={styles.verifiedSalonBottomRow}>
-                <View style={styles.verifiedSalonRatingButton}>
-                  <StarIconSmall
-                    width={widthScale(12)}
-                    height={heightScale(12)}
-                    color={theme.orangeBrown}
-                  />
-                  <Text style={styles.verifiedSalonRatingText}>
-                    {salon.rating || 0}/ {salon.reviewCount || 0} reviews
-                  </Text>
-                </View>
-                {/* <TouchableOpacity
-                  style={styles.verifiedSalonViewDetail}
-                  onPress={() => {
-                    router.push({
-                      pathname: "/(main)/businessDetail",
-                      params: { business_id: salon.id.toString() },
-                    } as any);
-                  }}
-                >
-                  <Text style={styles.verifiedSalonViewDetailText}>
-                    View detail
-                  </Text>
-                </TouchableOpacity> */}
-              </View>
-            </View>
-          </TouchableOpacity>
-        ))
+        withInviteBanners(verifiedSalons).map((entry) =>
+          entry.kind === "banner" ? (
+            <InviteProBanner key={entry.key} variant="row" />
+          ) : (
+            renderSalon(entry.item)
+          ),
+        )
       ) : (
         <View
           style={[

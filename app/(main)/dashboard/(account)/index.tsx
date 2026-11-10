@@ -56,6 +56,9 @@ const SOLO_BUSINESS_ROUTES: Record<string, string> = {
   team: "team",
 };
 
+/** Customer tiles added later that do not shift the other tiles' icon colours. */
+const COLOUR_CYCLE_SKIP_KEYS = ["myClasses", "invitePro"];
+
 type IconVariant = "dark" | "accent" | "cream";
 type IconFamily = "material" | "community";
 
@@ -829,6 +832,8 @@ export default function AccountScreen() {
       router.push("/(main)/jobs/myApplications" as any);
     } else if (key === "myClasses") {
       router.push("/(main)/classes/myClasses" as any);
+    } else if (key === "invitePro") {
+      router.push("/(main)/invitePro" as any);
     } else if (key === "myLooks") {
       router.push("/(main)/myLooks");
     } else if (key === "following") {
@@ -930,6 +935,8 @@ export default function AccountScreen() {
         return { name: "work-outline", family: "material" };
       case "myClasses":
         return { name: "school-outline", family: "community" };
+      case "invitePro":
+        return { name: "account-plus-outline", family: "community" };
       case "myLooks":
         return { name: "bookmark", family: "material" };
       case "following":
@@ -1163,6 +1170,10 @@ export default function AccountScreen() {
     ...(isCustomer && !isGuest
       ? [{ key: "following", title: t("following") }]
       : []),
+    // Invite a Pro: share link, reward balance + history
+    ...(isCustomer && !isGuest
+      ? [{ key: "invitePro", title: t("ipScreenTitle") }]
+      : []),
     { key: "rules", title: t("rulesAndTerms") },
     { key: "logout", title: isGuest ? t("signIn") : t("logOut") },
     ...(!isGuest
@@ -1193,15 +1204,14 @@ export default function AccountScreen() {
           {rows.map((row, index) => {
             const isDelete = row.key === "delete";
             const iconMeta = getIconMeta(row.key);
-            // "My classes" is skipped in the colour cycle so the rows after
-            // it keep the icon colours they had before it was added
+            // "My classes" and "Invite a Pro" are skipped in the colour cycle
+            // so the rows after them keep the icon colours they had before
             const classesBefore = rows
               .slice(0, index)
-              .filter((r) => r.key === "myClasses").length;
-            const variantIndex =
-              row.key === "myClasses"
-                ? index - classesBefore + 1
-                : index - classesBefore;
+              .filter((r) => COLOUR_CYCLE_SKIP_KEYS.includes(r.key)).length;
+            const variantIndex = COLOUR_CYCLE_SKIP_KEYS.includes(row.key)
+              ? index - classesBefore + 1
+              : index - classesBefore;
             return (
               <ProfileSettingCard
                 key={row.key}

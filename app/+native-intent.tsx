@@ -6,6 +6,13 @@ import {
   parseBookingLink,
   setPendingBookingLink,
 } from "@/src/services/pendingBookingLink";
+import {
+  holdInviteFromLink,
+  isInviteLink,
+  isInviteNoticeUserSignedIn,
+  openPendingInviteNotice,
+  parseInviteLinkCode,
+} from "@/src/services/pendingInviteCode";
 
 /** Stripe billing portal "return" link: com.freshpass://dashboard/subscription */
 function isSubscriptionReturnLink(path: string): boolean {
@@ -19,6 +26,7 @@ function isSubscriptionReturnLink(path: string): boolean {
  * Every incoming link passes through here before Expo Router opens it.
  * Booking links never open their screen directly: they wait until the app is
  * ready (splash done, home mounted, signed in) and then open booking on top of home.
+ * Invite a Pro links never open a screen: the code is held for business signup.
  * The billing-portal return link only opens its screen while the app is running.
  * Other links (reels, etc.) are unchanged.
  */
@@ -34,6 +42,24 @@ export function redirectSystemPath({
     // (already on top) and it refetches on foreground. Cold start: run the
     // splash like any launch instead of opening the screen before sign-in.
     if (isSubscriptionReturnLink(path)) return initial ? "/" : path;
+
+    if (isInviteLink(path)) {
+      // Kept for business signup. Bad / missing code → just open the app
+      holdInviteFromLink(parseInviteLinkCode(path));
+
+      // Cold start: run the splash; home shows the notice if signed in
+      if (initial) return "/";
+
+      // App already running: signed in → "This invite is for new businesses".
+      // Signed out / guest → clear the notice now (code stays held), so a
+      // later sign-in to an existing account never shows it. Signed in but
+      // home not up yet (mid-onboarding) → home shows it.
+      // "" = stay on the current screen.
+      if (isAppShellReady() || !isInviteNoticeUserSignedIn()) {
+        openPendingInviteNotice();
+      }
+      return "";
+    }
 
     if (!isBookingLink(path)) return path;
 

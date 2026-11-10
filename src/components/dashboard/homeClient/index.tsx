@@ -9,6 +9,7 @@ import SearchBar from "./components/SearchBar";
 import DashboardContent from "./components/DashboardContent";
 import * as Location from "expo-location";
 import LocationEnableModal from "@/src/components/locationEnableModal";
+import AskLocationOnce from "@/src/components/AskLocationOnce";
 import {
   setLocation,
   setTotalUnreadChat,
@@ -34,6 +35,7 @@ import {
   pickUserModeDetails,
   type UserModeDetailsFields,
 } from "@/src/services/userModeService";
+import { pickInviteRewardDetails } from "@/src/services/rewardsService";
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -254,6 +256,7 @@ export default function HomeScreen() {
             working_with_business_request:
               response.data.working_with_business_request ?? null,
             ...pickUserModeDetails(response.data),
+            ...pickInviteRewardDetails(response.data),
             dateOfBirth: response.data.date_of_birth
               ? parseDateOfBirth(response.data.date_of_birth)
               : null,
@@ -321,6 +324,8 @@ export default function HomeScreen() {
         visible={showLocationModal}
         onClose={handleCloseModal}
       />
+      {/* Deals lists load with the customer's location: ask once, then reload */}
+      <AskLocationOnce feature="home" />
     </>
   );
 }

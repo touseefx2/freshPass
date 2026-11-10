@@ -20,6 +20,9 @@ import { createStyles } from "./styles";
 import ClassDealCard from "@/src/components/masterClasses/ClassDealCard";
 import type { MasterClass } from "@/src/types/masterClass";
 import { mixDealsWithClasses } from "@/src/utils/masterClassHelpers";
+import InviteProBanner, {
+  withInviteBanners,
+} from "@/src/components/invitePro/InviteProBanner";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -41,6 +44,8 @@ interface ShowBusinessProps {
   onRetry: () => void;
   /** FreshPass Deals only: listed master classes mixed into the row. */
   classes?: MasterClass[];
+  /** FreshPass Deals only: Invite a Pro banner after every 3 cards. */
+  showInviteBanner?: boolean;
 }
 
 const NO_CLASSES: MasterClass[] = [];
@@ -51,6 +56,7 @@ export default function ShowBusiness({
   verifiedSalons,
   onRetry,
   classes = NO_CLASSES,
+  showInviteBanner = false,
 }: ShowBusinessProps) {
   const { colors } = useTheme();
   const { t } = useTranslation();
@@ -64,6 +70,29 @@ export default function ShowBusiness({
     () => (hasClasses ? mixDealsWithClasses(verifiedSalons, classes) : []),
     [hasClasses, verifiedSalons, classes],
   );
+  // Banner count runs over every card shown (businesses + classes, mixed)
+  const rowItems = useMemo(() => {
+    const cards = hasClasses
+      ? dealItems
+      : verifiedSalons.map((item) => ({ kind: "business" as const, item }));
+    return showInviteBanner
+      ? withInviteBanners(cards)
+      : cards.map((item) => ({ kind: "item" as const, item }));
+  }, [hasClasses, dealItems, verifiedSalons, showInviteBanner]);
+
+  const renderRowItems = () =>
+    rowItems.map((entry) =>
+      entry.kind === "banner" ? (
+        <InviteProBanner key={entry.key} variant="row" />
+      ) : entry.item.kind === "business" ? (
+        renderSalon(entry.item.item)
+      ) : (
+        <ClassDealCard
+          key={`class-${entry.item.item.id}`}
+          masterClass={entry.item.item}
+        />
+      ),
+    );
 
   const renderSalon = (salon: VerifiedSalon) => (
     <TouchableOpacity
@@ -167,16 +196,7 @@ export default function ShowBusiness({
         </View>
       ) : hasClasses ? (
         <>
-          {dealItems.map((entry) =>
-            entry.kind === "business" ? (
-              renderSalon(entry.item)
-            ) : (
-              <ClassDealCard
-                key={`class-${entry.item.id}`}
-                masterClass={entry.item}
-              />
-            ),
-          )}
+          {renderRowItems()}
           {businessesLoading && verifiedSalons.length <= 0 ? (
             <View style={styles.classesTrailingState}>
               <ActivityIndicator size="small" color={theme.primary} />
@@ -191,7 +211,7 @@ export default function ShowBusiness({
           ) : null}
         </>
       ) : verifiedSalons.length > 0 ? (
-        verifiedSalons.map(renderSalon)
+        renderRowItems()
       ) : (
         <View
           style={[

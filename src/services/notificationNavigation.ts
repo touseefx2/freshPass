@@ -116,7 +116,9 @@ export type NotificationSubType =
   | "account_restored"
   | "staff_removed"
   | "staff_paused"
-  | "staff_restored";
+  | "staff_restored"
+  // Invite a Pro reward added (type "reward", mode "customer"; model_id = invite id, data.amount_cents)
+  | "invite_reward_earned";
 
 /** Business moved to Solo (paused) / back to Business (restored): type and sub_type both */
 const STAFF_PAUSE_TYPES: string[] = ["staff_paused", "staff_restored"];
@@ -316,6 +318,7 @@ function openOwnerReelsList(
  * - type "master_class" (pro, business mode; master_class_id / model_id = class) → Master Classes class detail;
  *   subType master_class_listing_ending → renew payment screen
  * - type "class_enrollment" (student, customer mode; model_id = enrollment) → My classes enrollment screen
+ * - type "reward" + sub_type invite_reward_earned (customer mode; model_id = invite id) → Reward balance + history
  * - type "moderation" (push: subType only): warning / posting_suspended + reel_id → reelsFeed (404 → stay);
  *   account_suspended → sign out if still signed in; restored → nothing
  * - type "staff_removed" (removed from a team; model_id = old business, never opened): signed out → sign-in as
@@ -1296,6 +1299,20 @@ export function navigateFromNotificationData(
       Logger.log("------>navigateFromNotificationData (class_enrollment)", {
         enrollment_id: enrollmentId,
         master_class_id: data.master_class_id,
+        subType,
+      });
+      return;
+    }
+  }
+
+  // Invite a Pro reward added: balance + history, pushed straight on top
+  // (mode "customer" was already switched to by navigateFromPushNotification)
+  if (type === "reward") {
+    const { userRole, isGuest } = store.getState().user;
+    if (userRole === "customer" && !isGuest) {
+      router.push("/(main)/rewards" as any);
+      Logger.log("------>navigateFromNotificationData (reward) -> rewards", {
+        model_id: data.model_id,
         subType,
       });
       return;

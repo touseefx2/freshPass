@@ -348,6 +348,9 @@ export default function NotificationsScreen() {
       case "master_class_published":
       case "master_class_new_enrollment":
         return "completed";
+      // Invite a Pro reward added to the balance
+      case "invite_reward_earned":
+        return "tip";
     }
 
     if (type === "message") {

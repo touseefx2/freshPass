@@ -85,6 +85,19 @@ export const createStyles = (theme: Theme) =>
       alignItems: "center",
       paddingBottom: moderateHeightScale(32),
     },
+    rewardBlock: {
+      width: "100%",
+      maxWidth: widthScale(340),
+      marginBottom: moderateHeightScale(16),
+    },
+    rewardEstimateText: {
+      marginTop: moderateHeightScale(8),
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontMedium,
+      color: theme.white85,
+      textAlign: "center",
+      fontVariant: ["tabular-nums"],
+    },
     unlockButton: {
       width: "100%",
       maxWidth: widthScale(340),

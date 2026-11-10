@@ -235,6 +235,12 @@ export interface UserState {
   working_with_business: AffiliatedBusiness | null;
   working_with_business_request: WorkingWithBusinessRequest | null;
   ai_quota: number;
+  /** Invite a Pro: own code + share link (own /api/user/details only) */
+  invite_code: string | null;
+  invite_link: string | null;
+  /** Reward balance (dollars + cents) from own /api/user/details; not persisted */
+  reward_balance: number | null;
+  reward_balance_cents: number | null;
 }
 
 const initialState: UserState = {
@@ -279,6 +285,10 @@ const initialState: UserState = {
   working_with_business: null,
   working_with_business_request: null,
   ai_quota: 0,
+  invite_code: null,
+  invite_link: null,
+  reward_balance: null,
+  reward_balance_cents: null,
 };
 
 /** Real account role — installs persisted before modes existed only have userRole. */
@@ -456,6 +466,10 @@ const userSlice = createSlice({
         active_mode?: UserMode | null;
         can_switch_mode?: boolean;
         customer_ai_quota?: number | null;
+        invite_code?: string | null;
+        invite_link?: string | null;
+        reward_balance?: number | null;
+        reward_balance_cents?: number | null;
       }>,
     ) {
       if (action.payload.name !== undefined) {
@@ -514,6 +528,18 @@ const userSlice = createSlice({
       }
       if (action.payload.customer_ai_quota !== undefined) {
         state.customer_ai_quota = action.payload.customer_ai_quota;
+      }
+      if (action.payload.invite_code !== undefined) {
+        state.invite_code = action.payload.invite_code;
+      }
+      if (action.payload.invite_link !== undefined) {
+        state.invite_link = action.payload.invite_link;
+      }
+      if (action.payload.reward_balance !== undefined) {
+        state.reward_balance = action.payload.reward_balance;
+      }
+      if (action.payload.reward_balance_cents !== undefined) {
+        state.reward_balance_cents = action.payload.reward_balance_cents;
       }
       if (action.payload.active_mode !== undefined) {
         applyActiveMode(state, action.payload.active_mode);

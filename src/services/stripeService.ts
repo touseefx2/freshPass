@@ -10,6 +10,13 @@ import Logger from "./logger";
 
 const STRIPE_KEY_CACHE = "@freshpass/stripe_publishable_key";
 
+/** Reward balance amounts come back in dollars; null when absent/not a number. */
+const toAmountOrNull = (v: unknown): number | null => {
+  if (v === null || v === undefined || v === "") return null;
+  const n = typeof v === "number" ? v : Number(v);
+  return Number.isFinite(n) ? n : null;
+};
+
 export type PaymentSheetTipInfo = {
   id: number;
   amount: number;
@@ -227,24 +234,37 @@ interface AppointmentPaymentSheetApiResponse {
     totalAmount?: number;
     currency?: string;
     tip?: PaymentSheetTipInfo | null;
+    /** Dollars taken from the reward balance (service price only) */
+    rewardAmount?: number | null;
   };
 }
 
 /**
  * @param tipAmount — only for completed unpaid pay-later (`paymentDueNow`).
  *   Omit / undefined / null = no tip. Never send 0 (API rejects below min).
+ * @param options.useRewardBalance — reward balance pays as much of the service
+ *   price as it can (card always pays at least $0.50, plus any tip).
  */
 export const fetchAppointmentPaymentSheetParams = async (
   appointmentId: number,
   tipAmount?: number | null,
-): Promise<PaymentSheetParams> => {
+  options?: { useRewardBalance?: boolean },
+): Promise<PaymentSheetParams & { rewardAmount: number | null }> => {
   try {
-    const body: { appointment_id: number; tip_amount?: number } = {
+    const body: {
+      appointment_id: number;
+      tip_amount?: number;
+      use_reward_balance?: boolean;
+    } = {
       appointment_id: appointmentId,
     };
 
     if (tipAmount != null && tipAmount > 0) {
       body.tip_amount = tipAmount;
+    }
+
+    if (options?.useRewardBalance) {
+      body.use_reward_balance = true;
     }
 
     const response = await ApiService.post<AppointmentPaymentSheetApiResponse>(
@@ -267,6 +287,7 @@ export const fetchAppointmentPaymentSheetParams = async (
         totalAmount: response.data.totalAmount,
         currency: response.data.currency,
         tip: response.data.tip ?? null,
+        rewardAmount: toAmountOrNull(response.data.rewardAmount),
       };
     }
 
@@ -281,6 +302,8 @@ export const fetchAppointmentPaymentSheetParams = async (
 export type AppointmentCheckoutResult = PaymentSheetParams & {
   checkoutId: number;
   appointmentId: number | null;
+  /** Dollars taken from the reward balance; `totalAmount` is what the sheet charges */
+  rewardAmount: number | null;
 };
 
 interface AppointmentCheckoutApiResponse {
@@ -300,6 +323,7 @@ interface AppointmentCheckoutApiResponse {
     totalAmount?: number;
     currency?: string;
     tip?: PaymentSheetTipInfo | null;
+    rewardAmount?: number | null;
   };
 }
 
@@ -338,6 +362,7 @@ export const startAppointmentCheckout = async (
       totalAmount: response.data.totalAmount,
       currency: response.data.currency,
       tip: response.data.tip ?? null,
+      rewardAmount: toAmountOrNull(response.data.rewardAmount),
     };
   }
 
@@ -427,24 +452,46 @@ interface AiToolsPaymentSheetApiResponse {
   message: string;
   data: {
     customer: string;
-    paymentIntent: string;
+    /** null when the reward balance paid the full price */
+    paymentIntent: string | null;
     customerSessionClientSecret?: string;
     serviceId: number;
+    paidWithRewards?: boolean;
+    rewardAmount?: number | null;
+    cardAmount?: number | null;
   };
 }
+
+export type AiToolsPaymentSheetResult = PaymentSheetParams & {
+  /** true = credits already added from the balance; do not open the sheet */
+  paidWithRewards: boolean;
+  /** Dollars taken from the reward balance */
+  rewardAmount: number | null;
+  /** Dollars the sheet charges */
+  cardAmount: number | null;
+};
 
 /**
  * `mode` (Business/Staff only): the mode active when Buy was tapped. The
  * webhook credits that balance even if the user switches before it runs.
+ * `options.useRewardBalance` (Android/web): balance pays first.
+ * `options.rewardOnly` (iPhone): redeem from the balance only; a 400 rejects
+ * (with `.status === 400`) when the balance does not cover the price.
  */
 export const fetchAiToolsPaymentSheetParams = async (
   serviceId: number,
   mode?: "business" | "customer",
-): Promise<PaymentSheetParams> => {
+  options?: { useRewardBalance?: boolean; rewardOnly?: boolean },
+): Promise<AiToolsPaymentSheetResult> => {
   try {
     const response = await ApiService.post<AiToolsPaymentSheetApiResponse>(
       stripeEndpoints.paymentSheetAiTools,
-      { service_id: serviceId, ...(mode && { mode }) },
+      {
+        service_id: serviceId,
+        ...(mode && { mode }),
+        ...(options?.useRewardBalance && { use_reward_balance: true }),
+        ...(options?.rewardOnly && { reward_only: true }),
+      },
       { headers: await getStripeModeHeaders() },
     );
 
@@ -453,6 +500,9 @@ export const fetchAiToolsPaymentSheetParams = async (
         customer: response.data.customer,
         paymentIntent: response.data.paymentIntent || "",
         customerSessionClientSecret: response.data.customerSessionClientSecret,
+        paidWithRewards: Boolean(response.data.paidWithRewards),
+        rewardAmount: toAmountOrNull(response.data.rewardAmount),
+        cardAmount: toAmountOrNull(response.data.cardAmount),
       };
     }
 

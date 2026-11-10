@@ -86,6 +86,9 @@ import {
 } from "@/src/services/tipService";
 import type { ViewAndPay, VisitReceipt } from "@/src/types/afterVisit";
 import { isPaymentsEnabled } from "@/src/utils/paymentsEnabled";
+import { refreshOwnInviteRewardDetails } from "@/src/services/rewardsService";
+import { estimateAppointmentReward } from "@/src/utils/rewardMath";
+import RewardBalanceToggle from "@/src/components/rewards/RewardBalanceToggle";
 
 /**
  * View & Pay — one step at a time after a completed visit:
@@ -222,6 +225,14 @@ export default function ViewAndPayScreen() {
   const [tipText, setTipText] = useState("");
   const [tipError, setTipError] = useState<string | null>(null);
 
+  // Reward balance: pays part of the service price (never the tip).
+  const [useRewardBalance, setUseRewardBalance] = useState(true);
+  // Real split from the payment-sheet response, for the done screen.
+  const [paidRewardSplit, setPaidRewardSplit] = useState<{
+    reward: number;
+    total: number | null;
+  } | null>(null);
+
   // Review
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState("");
@@ -325,6 +336,13 @@ export default function ViewAndPayScreen() {
       .catch(() => setSuggestions([]));
   }, []);
 
+  useFocusEffect(
+    useCallback(() => {
+      if (user.isGuest) return;
+      void refreshOwnInviteRewardDetails();
+    }, [user.isGuest]),
+  );
+
   // Back on screen (e.g. paid from another device / chat): refresh quietly.
   const hasLoadedOnce = useRef(false);
   useFocusEffect(
@@ -369,8 +387,29 @@ export default function ViewAndPayScreen() {
 
   const tipAmount = tipFromChoice(tipChoice, tipText);
   const amountDue = data?.payment.amountDue ?? 0;
+
+  // Reward balance on the last online pay step. Estimate over the service
+  // price only (never a tip or an old booking tip); card keeps >= $0.50.
+  const rewardBalanceCents = Number(user.reward_balance_cents) || 0;
+  const canUseRewardBalance =
+    route === "online" && canOnline && !user.isGuest && rewardBalanceCents > 0;
+  const rewardApplied = canUseRewardBalance && useRewardBalance;
+  const rewardServiceBase =
+    data?.payment.serviceAmount ??
+    Math.max(0, amountDue - (data?.payment.bookingTipAmount ?? 0));
+  const rewardEstimate = rewardApplied
+    ? Math.min(
+        estimateAppointmentReward(rewardBalanceCents, rewardServiceBase),
+        Math.max(0, Math.round((amountDue - 0.5) * 100) / 100),
+      )
+    : 0;
+  const showRewardOnStep = (s: Step) =>
+    canUseRewardBalance && step === s && isLastPayStep;
+
   const totalWithTip =
-    amountDue + (tipWithPayment && route === "online" ? (tipAmount ?? 0) : 0);
+    amountDue -
+    rewardEstimate +
+    (tipWithPayment && route === "online" ? (tipAmount ?? 0) : 0);
 
   // ── Back ───────────────────────────────────────────────────────────────
   const previousStep = (): Step | null => {
@@ -497,12 +536,24 @@ export default function ViewAndPayScreen() {
       const sheet = await fetchAppointmentPaymentSheetParams(
         data.appointmentId,
         tip,
+        rewardApplied ? { useRewardBalance: true } : undefined,
       );
       const paid = await presentSheet({
         ...sheet,
         merchantName: "Fresh Pass",
       });
       if (!paid) return;
+      setPaidRewardSplit(
+        sheet.rewardAmount != null && sheet.rewardAmount > 0
+          ? {
+              reward: sheet.rewardAmount,
+              total:
+                typeof sheet.totalAmount === "number"
+                  ? sheet.totalAmount
+                  : null,
+            }
+          : null,
+      );
 
       setConfirmingPayment(true);
       setProcessing(false);
@@ -515,6 +566,8 @@ export default function ViewAndPayScreen() {
     } finally {
       setConfirmingPayment(false);
       setBusyState(false);
+      // Held / spent balance changed: keep the shown balance current.
+      if (rewardApplied) void refreshOwnInviteRewardDetails();
     }
   };
 
@@ -722,13 +775,42 @@ export default function ViewAndPayScreen() {
             <MoneyRow
               label={t("avAmountDue")}
               value={money(data.payment.amountDue)}
-              total
+              total={!(showRewardOnStep("visit") && rewardEstimate > 0)}
             />
+            {showRewardOnStep("visit") && rewardEstimate > 0 ? (
+              <>
+                {renderRewardLine()}
+                <RowDivider />
+                <MoneyRow
+                  label={t("rwPayCardTotal")}
+                  value={money(totalWithTip)}
+                  total
+                />
+              </>
+            ) : null}
           </>
         ) : null}
       </FlowCard>
     );
   };
+
+  const renderRewardLine = () => (
+    <MoneyRow
+      label={t("rwPayRewardLine")}
+      value={`\u2212${money(rewardEstimate)}`}
+    />
+  );
+
+  const renderRewardToggle = () => (
+    <RewardBalanceToggle
+      value={useRewardBalance}
+      onValueChange={setUseRewardBalance}
+      balanceCents={rewardBalanceCents}
+      appliedAmount={rewardEstimate}
+      variant="light"
+      disabled={busy}
+    />
+  );
 
   const renderTipChooser = (allowNone: boolean, noTipLabel: string) => {
     if (!data) return null;
@@ -789,6 +871,7 @@ export default function ViewAndPayScreen() {
             />
           ) : null}
           {renderVisitCard(true)}
+          {showRewardOnStep("visit") ? renderRewardToggle() : null}
           {nothingToPayHere ? (
             <InfoNote text={t("avCantPayHere", { business: businessName })} />
           ) : paymentsOff ? (
@@ -856,6 +939,26 @@ export default function ViewAndPayScreen() {
               onPress={() => chooseRoute("salon")}
             />
           </View>
+          {showRewardOnStep("method") ? (
+            <>
+              {renderRewardToggle()}
+              {rewardEstimate > 0 ? (
+                <FlowCard style={styles.card}>
+                  <MoneyRow
+                    label={t("avAmountDue")}
+                    value={money(amountDue)}
+                  />
+                  {renderRewardLine()}
+                  <RowDivider />
+                  <MoneyRow
+                    label={t("rwPayCardTotal")}
+                    value={money(totalWithTip)}
+                    total
+                  />
+                </FlowCard>
+              ) : null}
+            </>
+          ) : null}
           {errorNote}
         </ScrollView>
         <FlowFooter
@@ -900,14 +1003,26 @@ export default function ViewAndPayScreen() {
           />
           {renderTipChooser(true, t("avNoTip"))}
           {tipErrorNote}
+          {showRewardOnStep("tip") ? renderRewardToggle() : null}
           <FlowCard style={styles.card}>
             <MoneyRow label={t("avServiceTotal")} value={money(amountDue)} />
+            {showRewardOnStep("tip") && rewardEstimate > 0
+              ? renderRewardLine()
+              : null}
             <MoneyRow
               label={t("avTipLabel")}
               value={money(tipAmount ?? 0)}
             />
             <RowDivider />
-            <MoneyRow label={t("avTotal")} value={money(totalWithTip)} total />
+            <MoneyRow
+              label={
+                showRewardOnStep("tip") && rewardEstimate > 0
+                  ? t("rwPayCardTotal")
+                  : t("avTotal")
+              }
+              value={money(totalWithTip)}
+              total
+            />
           </FlowCard>
           {errorNote}
         </KeyboardAwareScrollView>
@@ -994,9 +1109,20 @@ export default function ViewAndPayScreen() {
         return (
           <SuccessHero
             title={t("avPaidTitle")}
-            amount={money(data.payment.amountPaid ?? data.payment.amountDue)}
+            amount={money(
+              paidRewardSplit?.total ??
+                data.payment.amountPaid ??
+                data.payment.amountDue,
+            )}
             subtitle={t("avPaidTo", { business: businessName })}
-            lines={[paidAt]}
+            lines={[
+              paidAt,
+              paidRewardSplit
+                ? t("rwPayRewardUsed", {
+                    amount: money(paidRewardSplit.reward),
+                  })
+                : null,
+            ]}
           />
         );
       case "paid_in_person": {

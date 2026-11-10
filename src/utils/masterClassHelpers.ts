@@ -502,7 +502,8 @@ export type DealsRowItem<B, C> =
 
 /**
  * One class after every two businesses; leftover classes go at the end.
- * Classes keep their order (the API sends them soonest first).
+ * Both lists keep the order the API sends (business rating, then most
+ * reviews, then closest; classes after that by soonest).
  */
 export function mixDealsWithClasses<B, C>(
   businesses: B[],

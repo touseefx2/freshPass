@@ -41,6 +41,10 @@ import type {
   SocialLoginApiResponse,
 } from "@/src/types/socialLogin";
 import { getExpoPushToken } from "../services/notificationPermissionService";
+import {
+  clearPendingInviteCode,
+  getPendingInviteCode,
+} from "@/src/services/pendingInviteCode";
 
 const GOOGLE_WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || "";
 const GOOGLE_IOS_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || "";
@@ -53,6 +57,18 @@ const APPLE_ANDROID_REDIRECT_URI =
 // spinning for the full 2-minute default API timeout on a slow/blocked network
 // (this is what caused the "stuck loader" reports from App Store reviewers).
 const SOCIAL_LOGIN_TIMEOUT_MS = 20000;
+
+/**
+ * Invite a Pro: a held code goes with business sign-in. The server records it
+ * only when this call creates the account; existing accounts ignore it.
+ */
+async function getInviteCodeBody(
+  role: string | null | undefined,
+): Promise<{ invite_code?: string }> {
+  if (role?.toLowerCase() !== "business") return {};
+  const code = await getPendingInviteCode();
+  return code ? { invite_code: code } : {};
+}
 
 function generateRandomString() {
   return Math.random().toString(36).substring(2) + Date.now().toString(36);
@@ -89,6 +105,21 @@ export function useSocialLogin() {
       const message = getAccountSuspendedMessage(error);
       if (!message) return false;
       Alert.alert(t("accountSuspendedTitle"), message);
+      return true;
+    },
+    [t],
+  );
+
+  // 422 on invite_code (stale / unknown held code): drop it so the next
+  // attempt works, and show the server's message.
+  const alertIfInviteCodeRejected = useCallback(
+    (error: any): boolean => {
+      if (error?.status !== 422) return false;
+      const raw = error?.data?.errors?.invite_code;
+      const message = Array.isArray(raw) ? raw[0] : raw;
+      if (!message) return false;
+      void clearPendingInviteCode();
+      Alert.alert(t("inviteCodeRejectedTitle"), String(message));
       return true;
     },
     [t],
@@ -145,6 +176,8 @@ export function useSocialLogin() {
             );
 
             if (isNewCreated) {
+              // New business account: the invite code has been recorded
+              void clearPendingInviteCode();
               dispatch(setFullName(user.name || ""));
               resetToRoute(`/${MAIN_ROUTES.REGISTER_NEXT_STEPS}`);
             } else {
@@ -295,6 +328,7 @@ export function useSocialLogin() {
             token: idToken,
             role: selectedRole?.toLowerCase() ?? "",
             ...(expo_push_token ? { expo_push_token } : {}),
+            ...(await getInviteCodeBody(selectedRole)),
           },
           { timeout: SOCIAL_LOGIN_TIMEOUT_MS },
         );
@@ -305,6 +339,7 @@ export function useSocialLogin() {
     } catch (error: any) {
       Logger.error("Google Sign-In Error:", error);
       if (alertIfAccountSuspended(error)) return;
+      if (alertIfInviteCodeRejected(error)) return;
 
       if (error.code === statusCodes.SIGN_IN_CANCELLED) {
         Logger.log("User cancelled Google Sign-In");
@@ -319,7 +354,13 @@ export function useSocialLogin() {
         );
       }
     }
-  }, [t, selectedRole, handleSocialLoginResponse, alertIfAccountSuspended]);
+  }, [
+    t,
+    selectedRole,
+    handleSocialLoginResponse,
+    alertIfAccountSuspended,
+    alertIfInviteCodeRejected,
+  ]);
 
   const handleAppleLogin = useCallback(async () => {
     try {
@@ -366,6 +407,7 @@ export function useSocialLogin() {
               token: identityToken,
               role: selectedRole?.toLowerCase() ?? "",
               ...(expo_push_token ? { expo_push_token } : {}),
+              ...(await getInviteCodeBody(selectedRole)),
             },
             { timeout: SOCIAL_LOGIN_TIMEOUT_MS },
           );
@@ -377,6 +419,7 @@ export function useSocialLogin() {
     } catch (error: any) {
       Logger.error("Apple Sign-In Error:", error);
       if (alertIfAccountSuspended(error)) return;
+      if (alertIfInviteCodeRejected(error)) return;
 
       if (error.code === appleAuth.Error.CANCELED) {
         Logger.log("User cancelled Apple Sign-In");
@@ -394,7 +437,13 @@ export function useSocialLogin() {
         );
       }
     }
-  }, [t, selectedRole, handleSocialLoginResponse, alertIfAccountSuspended]);
+  }, [
+    t,
+    selectedRole,
+    handleSocialLoginResponse,
+    alertIfAccountSuspended,
+    alertIfInviteCodeRejected,
+  ]);
 
   const handleAppleLoginAndroid = useCallback(async () => {
     try {
@@ -444,6 +493,7 @@ export function useSocialLogin() {
             token: idToken,
             role: selectedRole?.toLowerCase() ?? "",
             ...(expo_push_token ? { expo_push_token } : {}),
+            ...(await getInviteCodeBody(selectedRole)),
           },
           { timeout: SOCIAL_LOGIN_TIMEOUT_MS },
         );
@@ -454,12 +504,19 @@ export function useSocialLogin() {
     } catch (error: any) {
       Logger.error("Apple Android Sign-In Error:", error);
       if (alertIfAccountSuspended(error)) return;
+      if (alertIfInviteCodeRejected(error)) return;
       Alert.alert(
         t("appleSignInFailed"),
         error.message || t("errorDuringAppleSignIn"),
       );
     }
-  }, [t, selectedRole, handleSocialLoginResponse, alertIfAccountSuspended]);
+  }, [
+    t,
+    selectedRole,
+    handleSocialLoginResponse,
+    alertIfAccountSuspended,
+    alertIfInviteCodeRejected,
+  ]);
 
   const handleFacebookLogin = useCallback(async () => {
     try {
@@ -510,6 +567,7 @@ export function useSocialLogin() {
             token: fbAccessToken,
             role: selectedRole?.toLowerCase() ?? "",
             ...(expo_push_token ? { expo_push_token } : {}),
+            ...(await getInviteCodeBody(selectedRole)),
           },
           { timeout: SOCIAL_LOGIN_TIMEOUT_MS },
         );
@@ -535,12 +593,19 @@ export function useSocialLogin() {
         error,
       );
       if (alertIfAccountSuspended(error)) return;
+      if (alertIfInviteCodeRejected(error)) return;
       Alert.alert(
         t("facebookSignInFailed"),
         error?.message || t("errorDuringFacebookSignIn"),
       );
     }
-  }, [t, selectedRole, handleSocialLoginResponse, alertIfAccountSuspended]);
+  }, [
+    t,
+    selectedRole,
+    handleSocialLoginResponse,
+    alertIfAccountSuspended,
+    alertIfInviteCodeRejected,
+  ]);
 
   const handleSocialLogin = useCallback(
     async (provider: SocialProvider) => {

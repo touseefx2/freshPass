@@ -14,6 +14,11 @@ import {
   consumeSignedOutNotificationNavigation,
   queueColdStartNotificationIfNeeded,
 } from "@/src/services/pendingNotificationNavigation";
+import {
+  captureInstallReferrerInviteOnce,
+  openPendingInviteNotice,
+  preloadPendingInviteCode,
+} from "@/src/services/pendingInviteCode";
 
 // Safety net in case the Lottie splash never fires onAnimationFinish /
 // onAnimationFailure on some devices (seen intermittently on certain
@@ -80,6 +85,8 @@ export default function Index() {
       consumePendingNotificationNavigation(router);
     } else {
       router.replace(`/(main)/${MAIN_ROUTES.ROLE}` as any);
+      // Signed out: an invite link opened at launch stays held, no notice
+      openPendingInviteNotice();
       // Drops the queued tap; a removed staff member's tap opens sign-in on top
       void consumeSignedOutNotificationNavigation(router);
     }
@@ -93,6 +100,10 @@ export default function Index() {
   }, []);
 
   useEffect(() => {
+    // Invite a Pro code: load the held one; Android reads the Play install
+    // referrer once. Fire and forget — never delays the splash.
+    preloadPendingInviteCode();
+    void captureInstallReferrerInviteOnce();
     const fallbackTimer = setTimeout(
       onSplashFinish,
       SPLASH_FALLBACK_TIMEOUT_MS,

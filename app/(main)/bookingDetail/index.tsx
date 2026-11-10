@@ -264,6 +264,7 @@ export default function BookingDetail() {
     totalPrice?: string;
     tax?: string;
     estimatedTotal?: string;
+    rewardAmount?: string;
     businessId?: string;
     business_id?: string;
     note?: string;
@@ -403,6 +404,14 @@ export default function BookingDetail() {
   const bookingTotal = params.estimatedTotal
     ? parseFloat(params.estimatedTotal)
     : 0;
+  // Reward balance paid part of the service; bookingTotal is then what the card paid.
+  const rewardAmountRaw = params.rewardAmount
+    ? parseFloat(params.rewardAmount)
+    : 0;
+  const rewardAmount =
+    Number.isFinite(rewardAmountRaw) && rewardAmountRaw > 0
+      ? rewardAmountRaw
+      : 0;
   // Subscription bookings are covered by the plan: no price summary.
   const showPricing = !params.fromCheckoutBooking && !params.subscriptionId;
   const isPayNow = params.paymentMethod === "payNow";
@@ -662,9 +671,17 @@ export default function BookingDetail() {
                   label={t("bkCheckoutTax")}
                   value={formatVisitMoney(tax)}
                 />
+                {rewardAmount > 0 ? (
+                  <MoneyRow
+                    label={t("rwPayRewardLine")}
+                    value={`\u2212${formatVisitMoney(rewardAmount)}`}
+                  />
+                ) : null}
                 <RowDivider />
                 <MoneyRow
-                  label={t("bkCheckoutTotal")}
+                  label={
+                    rewardAmount > 0 ? t("rwPayCardPaid") : t("bkCheckoutTotal")
+                  }
                   value={formatVisitMoney(bookingTotal)}
                   total
                 />

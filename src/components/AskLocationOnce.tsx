@@ -119,7 +119,8 @@ export default function AskLocationOnce({
         if (status === Location.PermissionStatus.UNDETERMINED) {
           ({ status } = await Location.requestForegroundPermissionsAsync());
         }
-        if (cancelled) return;
+        // Save the position even if this screen remounted while the system
+        // permission dialog was open (e.g. mode switch) — the lists need it.
         if (status === Location.PermissionStatus.GRANTED) {
           await fetchAndSaveCurrentLocation(dispatch);
         } else {

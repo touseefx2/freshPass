@@ -10,6 +10,7 @@ import {
   TouchableWithoutFeedback,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { Feather, FontAwesome5 } from "@expo/vector-icons";
 import { useTheme, useAppSelector, useAppDispatch } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
@@ -40,6 +41,10 @@ import { setUser } from "@/src/state/slices/userSlice";
 import { getExpoPushToken } from "@/src/services/notificationPermissionService";
 import { resetToRoute } from "@/src/utils/navigation";
 import Logger from "@/src/services/logger";
+import {
+  clearPendingInviteCode,
+  getPendingInviteCode,
+} from "@/src/services/pendingInviteCode";
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -52,8 +57,11 @@ const createStyles = (theme: Theme) =>
       backgroundColor: theme.background,
       gap: moderateHeightScale(24),
     },
-    mainContent: {
+    scroll: {
       flex: 1,
+    },
+    mainContent: {
+      flexGrow: 1,
       paddingHorizontal: moderateWidthScale(24),
       paddingBottom: moderateHeightScale(30),
     },
@@ -134,6 +142,14 @@ const createStyles = (theme: Theme) =>
 
 type AgentCodeStatus = "idle" | "checking" | "valid" | "notFound" | "unknown";
 
+// Invite a Pro codes: 8 letters/digits, matched in any case
+const INVITE_CODE_LENGTH = 8;
+const sanitizeInviteCode = (text: string) =>
+  text
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, "")
+    .slice(0, INVITE_CODE_LENGTH);
+
 export default function RegisterPassword() {
   const { colors } = useTheme();
   const { t } = useTranslation();
@@ -205,6 +221,71 @@ export default function RegisterPassword() {
 
   const handleAgentCodeChange = useCallback((text: string) => {
     setAgentCode(text.replace(/\D/g, "").slice(0, 4));
+  }, []);
+
+  // Invite a Pro code (business signup only, optional): pre-filled from the
+  // held link / Play referrer / iPhone clipboard code
+  const [inviteCode, setInviteCode] = useState("");
+  const [inviteStatus, setInviteStatus] = useState<AgentCodeStatus>("idle");
+  const [inviterName, setInviterName] = useState("");
+  // Server 422 on invite_code (shown under the field until the code changes)
+  const [inviteFieldError, setInviteFieldError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isBusiness) return;
+    let cancelled = false;
+    getPendingInviteCode().then((code) => {
+      if (cancelled || !code) return;
+      // Never overwrite what the user already typed
+      setInviteCode((current) => current || sanitizeInviteCode(code));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [isBusiness]);
+
+  useEffect(() => {
+    setInviterName("");
+    if (inviteCode.length !== INVITE_CODE_LENGTH) {
+      setInviteStatus("idle");
+      return;
+    }
+    setInviteStatus("checking");
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      try {
+        const response = await ApiService.get<any>(
+          businessEndpoints.inviteCode(inviteCode),
+        );
+        if (cancelled) return;
+        if (response?.success === false) {
+          setInviteStatus("notFound");
+        } else {
+          // Body may be wrapped ({ success, data }) or flat
+          const payload = response?.data ?? response;
+          setInviterName(payload?.inviter_first_name || "");
+          setInviteStatus("valid");
+        }
+      } catch (error: any) {
+        if (cancelled) return;
+        // 404 = unknown code; anything else (network, 429) the register call validates.
+        setInviteStatus(error?.status === 404 ? "notFound" : "unknown");
+      }
+    }, 400);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [inviteCode]);
+
+  const handleInviteCodeChange = useCallback((text: string) => {
+    setInviteCode(sanitizeInviteCode(text));
+    setInviteFieldError(null);
+  }, []);
+
+  const handleClearInviteCode = useCallback(() => {
+    setInviteCode("");
+    setInviteFieldError(null);
   }, []);
 
   useEffect(() => {
@@ -332,6 +413,11 @@ export default function RegisterPassword() {
         (agentStatus === "valid" || agentStatus === "unknown")
           ? { agent_code: agentCode }
           : {}),
+        // Any entered code goes to the server: an unknown one returns a 422 on
+        // invite_code (no account made), shown on the field to fix or clear.
+        ...(isBusiness && inviteCode.length > 0
+          ? { invite_code: inviteCode }
+          : {}),
       };
 
       Logger.log("---->body", body);
@@ -346,6 +432,9 @@ export default function RegisterPassword() {
 
         // Set user data in Redux (email from API response)
         if (user && token) {
+          // The business account exists now (even before email verification),
+          // so the invite code has been recorded
+          if (isBusiness) void clearPendingInviteCode();
           dispatch(setRegisterEmail(user.email || email.trim()));
           if (savePassword) {
             dispatch(setSavedPassword(password));
@@ -375,6 +464,16 @@ export default function RegisterPassword() {
         Alert.alert(t("error"), response.message || t("registrationFailed"));
       }
     } catch (error: any) {
+      // Unknown invite code: no account was made; show it on the field so
+      // the user can fix or clear it
+      const inviteError = error?.data?.errors?.invite_code;
+      const inviteErrorText = Array.isArray(inviteError)
+        ? inviteError[0]
+        : inviteError;
+      if (isBusiness && error?.status === 422 && inviteErrorText) {
+        setInviteFieldError(String(inviteErrorText));
+        return;
+      }
       // Error message is already formatted by ApiService
       Alert.alert(
         t("registrationFailedTitle"),
@@ -393,7 +492,8 @@ export default function RegisterPassword() {
     confirmPassword.length > 0 &&
     passwordValidation.isValid &&
     matchValidation.isValid &&
-    agentStatus !== "checking";
+    agentStatus !== "checking" &&
+    inviteStatus !== "checking";
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -407,7 +507,14 @@ export default function RegisterPassword() {
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <View style={styles.container}>
           <RegisterHeader onBack={handleBack} />
-          <View style={styles.mainContent}>
+          <KeyboardAwareScrollView
+            style={styles.scroll}
+            contentContainerStyle={styles.mainContent}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="interactive"
+            bottomOffset={moderateHeightScale(32)}
+          >
             <View style={styles.content}>
               <View style={styles.titleSection}>
                 <Text style={styles.title}>Create your password</Text>
@@ -503,6 +610,48 @@ export default function RegisterPassword() {
                       {t("agentCodeHint")}
                     </Text>
                   )}
+
+                  <FloatingInput
+                    label={t("inviteCodeLabel")}
+                    value={inviteCode}
+                    onChangeText={handleInviteCodeChange}
+                    inputStyle={styles.agentInput}
+                    autoCapitalize="characters"
+                    autoCorrect={false}
+                    maxLength={INVITE_CODE_LENGTH}
+                    onClear={handleClearInviteCode}
+                  />
+                  {inviteFieldError ? (
+                    <Text
+                      style={[styles.agentStatusText, styles.agentNotFoundText]}
+                      accessibilityLiveRegion="polite"
+                    >
+                      ✗ {inviteFieldError}
+                    </Text>
+                  ) : inviteStatus === "checking" ? (
+                    <Text style={styles.agentStatusText}>
+                      {t("inviteCodeChecking")}
+                    </Text>
+                  ) : inviteStatus === "valid" ? (
+                    <Text
+                      style={[styles.agentStatusText, styles.agentLinkedText]}
+                    >
+                      ✓{" "}
+                      {inviterName
+                        ? t("inviteCodeInvitedBy", { name: inviterName })
+                        : t("inviteCodeValid")}
+                    </Text>
+                  ) : inviteStatus === "notFound" ? (
+                    <Text
+                      style={[styles.agentStatusText, styles.agentNotFoundText]}
+                    >
+                      ✗ {t("inviteCodeNotFound")}
+                    </Text>
+                  ) : (
+                    <Text style={styles.agentStatusText}>
+                      {t("inviteCodeHint")}
+                    </Text>
+                  )}
                 </>
               )}
 
@@ -532,7 +681,7 @@ export default function RegisterPassword() {
               loading={isLoading}
               containerStyle={styles.buttonWrapper}
             />
-          </View>
+          </KeyboardAwareScrollView>
         </View>
       </TouchableWithoutFeedback>
 

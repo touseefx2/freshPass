@@ -11,7 +11,6 @@ import {
 } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { MaterialIcons } from "@expo/vector-icons";
 import { useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
@@ -27,6 +26,11 @@ import { ApiService } from "@/src/services/api";
 import { businessEndpoints } from "@/src/services/endpoints";
 import { fetchSlotOffers } from "@/src/services/slotOfferService";
 import type { SlotOffer } from "@/src/types/slotOffer";
+import AskLocationOnce from "@/src/components/AskLocationOnce";
+import InviteProBanner, {
+  withInviteBanners,
+  type WithInviteBanners,
+} from "@/src/components/invitePro/InviteProBanner";
 
 const PRICE_OPTIONS: { key: string; min?: number; max?: number; label: string }[] = [
   { key: "any", label: "" },
@@ -87,6 +91,10 @@ const createStyles = (theme: Theme) =>
       gap: moderateHeightScale(10),
       flexGrow: 1,
     },
+    emptyBanner: {
+      marginHorizontal: 0,
+      marginTop: moderateHeightScale(8),
+    },
     center: {
       flex: 1,
       alignItems: "center",
@@ -94,19 +102,6 @@ const createStyles = (theme: Theme) =>
       paddingVertical: moderateHeightScale(40),
       paddingHorizontal: moderateWidthScale(24),
       gap: moderateHeightScale(10),
-    },
-    emptyTitle: {
-      fontSize: fontSize.size16,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-      textAlign: "center",
-    },
-    emptySub: {
-      fontSize: fontSize.size13,
-      fontFamily: fonts.fontRegular,
-      color: theme.lightGreen5,
-      textAlign: "center",
-      lineHeight: fontSize.size18,
     },
     footerLoader: {
       paddingVertical: moderateHeightScale(16),
@@ -134,6 +129,9 @@ export default function SlotOffersListScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState(false);
+  // Customer location, both or neither (the server sets the 20-mile area)
+  const lat = useAppSelector((state: any) => state.user.location?.lat);
+  const lng = useAppSelector((state: any) => state.user.location?.long);
   const requestIdRef = useRef(0);
 
   useEffect(() => {
@@ -169,11 +167,14 @@ export default function SlotOffersListScreen() {
       if (mode === "more") setLoadingMore(true);
       setError(false);
       try {
+        const hasLocation = lat != null && lng != null;
         const { items: pageItems, meta } = await fetchSlotOffers({
           category_id: categoryId ?? undefined,
           min_price: price.min,
           max_price: price.max,
           page: nextPage,
+          latitude: hasLocation ? Number(lat) : null,
+          longitude: hasLocation ? Number(lng) : null,
         });
         if (requestId !== requestIdRef.current) return;
         setItems((prev) => {
@@ -195,7 +196,7 @@ export default function SlotOffersListScreen() {
         }
       }
     },
-    [categoryId, price.max, price.min],
+    [categoryId, price.max, price.min, lat, lng],
   );
 
   const didMount = useRef(false);
@@ -216,24 +217,26 @@ export default function SlotOffersListScreen() {
     if (!loadingMore && page < lastPage) load(page + 1, "more");
   };
 
+  // Invite a Pro banner after every 3 deals. Built from every page loaded
+  // (after the de-dupe), so the count carries on across pages.
+  const listData = useMemo(() => withInviteBanners(items), [items]);
+
   const renderItem = useCallback(
-    ({ item }: { item: SlotOffer }) => <SlotOfferCard deal={item} />,
+    ({ item }: { item: WithInviteBanners<SlotOffer> }) =>
+      item.kind === "banner" ? (
+        <InviteProBanner variant="list" />
+      ) : (
+        <SlotOfferCard deal={item.item} />
+      ),
     [],
   );
 
   const renderEmpty = () => {
     if (loading) return null;
     if (error) return <RetryButton onPress={() => load(1, "initial")} />;
+    // Nothing nearby: the Invite a Pro banner instead of the list
     return (
-      <View style={styles.center}>
-        <MaterialIcons
-          name="local-offer"
-          size={moderateWidthScale(48)}
-          color={theme.lightGreen2}
-        />
-        <Text style={styles.emptyTitle}>{t("sdEmptyTitle")}</Text>
-        <Text style={styles.emptySub}>{t("sdEmptySub")}</Text>
-      </View>
+      <InviteProBanner variant="standalone" style={styles.emptyBanner} />
     );
   };
 
@@ -324,8 +327,10 @@ export default function SlotOffersListScreen() {
         </View>
       ) : (
         <FlatList
-          data={items}
-          keyExtractor={(item) => String(item.id)}
+          data={listData}
+          keyExtractor={(item) =>
+            item.kind === "banner" ? item.key : String(item.item.id)
+          }
           renderItem={renderItem}
           ListHeaderComponent={renderHeader}
           ListEmptyComponent={renderEmpty}
@@ -350,6 +355,7 @@ export default function SlotOffersListScreen() {
           }
         />
       )}
+      <AskLocationOnce feature="slotOffers" />
     </View>
   );
 }
