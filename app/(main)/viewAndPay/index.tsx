@@ -566,6 +566,8 @@ export default function ViewAndPayScreen() {
     let sheetRewardCents: number | null = null;
     // Reward held by a sheet left unpaid; added after the store refresh.
     let nextHeldCents = 0;
+    // Set once the sheet charged: its reward is spent, never held again.
+    let paidOk = false;
     try {
       // "included": the old booking tip is already in amountDue — no tip_amount.
       const tip =
@@ -587,6 +589,7 @@ export default function ViewAndPayScreen() {
         nextHeldCents = sheetRewardCents;
         return;
       }
+      paidOk = true;
       setHeldRewardCents(0);
       setPaidRewardSplit(
         sheet.rewardAmount != null && sheet.rewardAmount > 0
@@ -609,7 +612,8 @@ export default function ViewAndPayScreen() {
     } catch (error) {
       // The sheet was made but could not open: its reward is held. If the
       // sheet was never made, drop the earlier hold (the refresh shows it).
-      if (sheetRewardCents != null) nextHeldCents = sheetRewardCents;
+      // A failure after the charge (polling) must not re-hold the spent reward.
+      if (sheetRewardCents != null && !paidOk) nextHeldCents = sheetRewardCents;
       setActionError(getApiErrorMessage(error, t("avPaymentFailed")));
     } finally {
       setConfirmingPayment(false);
