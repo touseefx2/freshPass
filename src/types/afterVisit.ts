@@ -47,6 +47,8 @@ export interface VisitReceipt {
   appointmentTime?: string | null;
   /** 0 for a membership visit */
   serviceAmount: number | null;
+  /** Part of serviceAmount paid from the reward balance (0 when none); card = serviceAmount − rewardAmount */
+  rewardAmount?: number | null;
   tipAmount: number | null;
   /** online (tipped in the app) · cash · card_terminal */
   tipMethod: "online" | ShopPaymentMethod | string | null;

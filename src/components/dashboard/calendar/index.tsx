@@ -88,6 +88,7 @@ import { runOnJS } from "react-native-reanimated";
 import {
   getDefaultAvatarImage,
 } from "@/src/services/remoteConfigService";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 dayjs.extend(weekOfYear);
 dayjs.extend(isoWeek);
@@ -1412,7 +1413,11 @@ const createStyles = (theme: Theme) =>
     },
   });
 
-export default function CalendarScreen() {
+interface CalendarScreenProps {
+  fullscreen?: boolean;
+}
+
+export default function CalendarScreen({ fullscreen = false }: CalendarScreenProps) {
   const { colors } = useTheme();
   const { t, i18n } = useTranslation();
   const theme = colors as Theme;
@@ -1423,6 +1428,7 @@ export default function CalendarScreen() {
   const availabilityButtonRef = useRef<View>(null);
   const { showBanner } = useNotificationContext();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const userRole = useAppSelector((state: any) => state.user.userRole);
   const businessStatus = useAppSelector(
     (state: any) => state.user.businessStatus,
@@ -3440,11 +3446,21 @@ export default function CalendarScreen() {
   );
 
   return (
-    <View style={styles.container}>
-      <DashboardHeader />
+    <View style={[styles.container, fullscreen && { paddingTop: insets.top }]}>
+      {!fullscreen && <DashboardHeader />}
       <View style={styles.content}>
         {/* Toolbar: view switcher */}
-        <View style={styles.toolbar}>
+        <View style={[styles.toolbar, fullscreen && { paddingHorizontal: moderateWidthScale(10) }]}>
+          {fullscreen && (
+            <TouchableOpacity
+              onPress={() => router.back()}
+              activeOpacity={0.7}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              style={{ marginRight: moderateWidthScale(8) }}
+            >
+              <Feather name="minimize-2" size={iconScale(18)} color={theme.darkGreen} />
+            </TouchableOpacity>
+          )}
           <View style={styles.segmentGroup}>
             {(["day", "week", "month"] as ViewMode[]).map((mode) => (
               <TouchableOpacity
@@ -3471,10 +3487,20 @@ export default function CalendarScreen() {
               </TouchableOpacity>
             ))}
           </View>
+          {!fullscreen && (
+            <TouchableOpacity
+              onPress={() => router.push("/(main)/fullscreenCalendar" as any)}
+              activeOpacity={0.7}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              style={{ marginLeft: moderateWidthScale(8) }}
+            >
+              <Feather name="maximize-2" size={iconScale(16)} color={theme.darkGreen} />
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Navigation: arrows + range label (day view adds staff filter inline) */}
-        <View style={viewMode === "day" ? styles.dayNavRow : styles.navRow}>
+        <View style={[viewMode === "day" ? styles.dayNavRow : styles.navRow, fullscreen && { paddingHorizontal: moderateWidthScale(4) }]}>
           <TouchableOpacity
             style={styles.arrowButton}
             activeOpacity={0.8}
@@ -3502,6 +3528,13 @@ export default function CalendarScreen() {
               color={theme.darkGreen}
             />
           </TouchableOpacity>
+          {viewMode !== "month" && loading && (
+            <ActivityIndicator
+              size={iconScale(14)}
+              color={theme.primary}
+              style={{ position: "absolute", right: moderateWidthScale(50), top: moderateHeightScale(14) }}
+            />
+          )}
           {viewMode === "day" && <View style={{ flex: 1 }} />}
           {viewMode === "day" && showStaffFilter && (
             <TouchableOpacity
@@ -3530,13 +3563,6 @@ export default function CalendarScreen() {
                 color={theme.darkGreen}
               />
             </TouchableOpacity>
-          )}
-          {viewMode !== "month" && loading && (
-            <ActivityIndicator
-              size="small"
-              color={theme.primary}
-              style={{ marginLeft: moderateWidthScale(8) }}
-            />
           )}
         </View>
 

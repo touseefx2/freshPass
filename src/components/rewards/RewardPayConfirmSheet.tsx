@@ -39,6 +39,8 @@ type RewardPayConfirmSheetProps = {
   /** Tip already on this payment (dollars); never paid from the balance */
   tipAmount?: number | null;
   balanceCents: number;
+  /** Toggle state each time the sheet opens (default ON) */
+  defaultUseReward?: boolean;
   currency?: string;
   onClose: () => void;
   onConfirm: (useRewardBalance: boolean) => void;
@@ -179,6 +181,7 @@ export default function RewardPayConfirmSheet({
   serviceAmount,
   tipAmount,
   balanceCents,
+  defaultUseReward = true,
   currency = "USD",
   onClose,
   onConfirm,
@@ -188,11 +191,12 @@ export default function RewardPayConfirmSheet({
   const styles = useMemo(() => createStyles(theme), [colors]);
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
-  const [useReward, setUseReward] = useState(true);
+  const [useReward, setUseReward] = useState(defaultUseReward);
 
-  // Default ON every time the sheet opens.
+  // Default ON every time the sheet opens (a retry keeps the last choice).
   useEffect(() => {
-    if (visible) setUseReward(true);
+    if (visible) setUseReward(defaultUseReward);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible]);
 
   const service =

@@ -61,6 +61,20 @@ import {
   formatRewardMoney,
 } from "@/src/utils/rewardMath";
 
+// Android: reward held by the last Try-on sheet closed / failed without
+// paying. Module level so it outlives this screen (leave and open it again).
+// The store balance leaves it out; the next Pay call gives it back first, and
+// the server frees it after 24h.
+const HELD_REWARD_TTL_MS = 24 * 60 * 60 * 1000;
+let heldReward: { userId: unknown; cents: number; at: number } | null = null;
+
+const readHeldReward = (userId: unknown): number =>
+  heldReward &&
+  heldReward.userId === userId &&
+  Date.now() - heldReward.at < HELD_REWARD_TTL_MS
+    ? heldReward.cents
+    : 0;
+
 export default function TryOnPurchase() {
   const { t } = useTranslation();
   const { colors } = useTheme();
@@ -95,6 +109,18 @@ export default function TryOnPurchase() {
   );
   // Default ON whenever the reward row is shown
   const [useRewardBalance, setUseRewardBalance] = useState(true);
+  // Held reward (see heldReward) is added back so the retry offers (and
+  // sends) the same balance again.
+  const userId = user.id ?? null;
+  const [heldRewardCents, setHeldRewardCents] = useState(() =>
+    readHeldReward(userId),
+  );
+  // newHold: a new sheet took it now (its 24h starts again)
+  const saveHeldReward = (cents: number, newHold: boolean) => {
+    const at = newHold || !heldReward ? Date.now() : heldReward.at;
+    heldReward = cents > 0 ? { userId, cents, at } : null;
+    setHeldRewardCents(cents > 0 ? cents : 0);
+  };
 
   const [localBanner, setLocalBanner] = useState<{
     visible: boolean;
@@ -188,8 +214,9 @@ export default function TryOnPurchase() {
   useFocusEffect(
     useCallback(() => {
       if (user.isGuest) return;
+      setHeldRewardCents(readHeldReward(userId));
       void refreshOwnInviteRewardDetails();
-    }, [user.isGuest]),
+    }, [user.isGuest, userId]),
   );
 
   // FreshPass API price (never the App Store price), "$9.99" or "9.99"
@@ -197,7 +224,7 @@ export default function TryOnPurchase() {
     const n = parseFloat(String(service?.price ?? "").replace(/^\$/, ""));
     return Number.isFinite(n) && n > 0 ? n : 0;
   }, [service?.price]);
-  const balanceCents = Math.max(0, rewardBalanceCents ?? 0);
+  const balanceCents = Math.max(0, rewardBalanceCents ?? 0) + heldRewardCents;
   const packPriceCents = dollarsToCents(packPrice);
   const rewardEstimate = useMemo(
     () => estimateTryOnReward(balanceCents, packPrice),
@@ -379,6 +406,7 @@ export default function TryOnPurchase() {
       paymentIntent,
       customerSessionClientSecret,
       paidWithRewards,
+      rewardAmount,
     } = await fetchAiToolsPaymentSheetParams(
       serviceIdForPurchase,
       purchaseMode,
@@ -387,9 +415,39 @@ export default function TryOnPurchase() {
 
     // Balance covered the full price: credits already added, no sheet
     if (paidWithRewards) {
+      saveHeldReward(0, false);
       await refreshQuotaAndShowSuccess();
       return;
     }
+
+    // Not paid. A real sheet sent with the balance keeps its reward held
+    // (left out of the fresh balance; it comes back first on the next Pay).
+    // Otherwise (no sheet, or sent without the balance) only what left the
+    // balance is held, at most what was held / asked for.
+    const chargedCents =
+      withRewardBalance && typeof rewardAmount === "number" && rewardAmount > 0
+        ? dollarsToCents(rewardAmount)
+        : 0;
+    const balanceBefore = balanceCents;
+    const prevHeld = heldRewardCents;
+    const keepHeldReward = (sheetCreated: boolean) => {
+      if (chargedCents <= 0 && prevHeld <= 0) return;
+      void refreshOwnInviteRewardDetails().then((fresh) => {
+        if (!fresh) return;
+        if (sheetCreated && chargedCents > 0) {
+          saveHeldReward(chargedCents, true);
+          return;
+        }
+        const now = Math.max(0, Number(fresh.rewardBalanceCents) || 0);
+        saveHeldReward(
+          Math.min(
+            Math.max(chargedCents, prevHeld),
+            Math.max(0, balanceBefore - now),
+          ),
+          chargedCents > 0,
+        );
+      });
+    };
 
     dispatch(setActionLoader(false));
     await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -410,6 +468,7 @@ export default function TryOnPurchase() {
     }
 
     if (!paymentIntent || paymentIntent.trim() === "") {
+      keepHeldReward(false);
       setLocalBanner({
         visible: true,
         title: t("error"),
@@ -424,6 +483,7 @@ export default function TryOnPurchase() {
     const { error: initError } = await initPaymentSheet(paymentConfig as any);
 
     if (initError) {
+      keepHeldReward(true);
       setLocalBanner({
         visible: true,
         title: t("error"),
@@ -437,7 +497,7 @@ export default function TryOnPurchase() {
 
     if (presentError) {
       // The reward part stays held until the sheet completes (or 24h)
-      if (withRewardBalance) void refreshOwnInviteRewardDetails();
+      keepHeldReward(true);
       if (!presentError.code?.includes("Canceled")) {
         setLocalBanner({
           visible: true,
@@ -449,6 +509,7 @@ export default function TryOnPurchase() {
       return;
     }
 
+    saveHeldReward(0, false);
     await refreshQuotaAndShowSuccess();
   };
 

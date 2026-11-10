@@ -66,6 +66,12 @@ import TipSection from "@/src/components/tipSection";
 import PayAndTipModal from "@/src/components/payAndTipModal";
 import RewardPayConfirmSheet from "@/src/components/rewards/RewardPayConfirmSheet";
 import { refreshOwnInviteRewardDetails } from "@/src/services/rewardsService";
+import { dollarsToCents } from "@/src/utils/rewardMath";
+import {
+  getRewardHold,
+  setRewardHold,
+  subscribeRewardHold,
+} from "@/src/services/rewardHoldMemory";
 import { store } from "@/src/state/store";
 import {
   formatTipAmount,
@@ -284,6 +290,8 @@ interface BookingItem {
   workingWithBusiness?: AffiliatedBusiness | null;
   paymentMethod?: string;
   paidAmount?: string | null;
+  /** Part of the service paid from the reward balance (dollars, 0 when none) */
+  rewardAmount?: number | null;
   /** Service payment is still outstanding. Keep using for existing pay UI. */
   owesPayment?: boolean;
   /**
@@ -438,6 +446,8 @@ interface ApiBookingResponse {
   appointmentTime: string;
   status: string;
   paidAmount: string | null;
+  /** Dollars from the reward balance (0 when none) */
+  rewardAmount?: number | string | null;
   owesPayment?: boolean;
   paymentDueNow?: boolean;
   paidAt?: string | null;
@@ -561,6 +571,36 @@ export default function BookingDetailsById() {
   // Blocks a second "Pay" tap on the reward confirm sheet from starting a
   // second payment sheet while the first one is loading.
   const rewardPayingRef = useRef(false);
+  // Reward of this screen's last payment sheet that was opened with the
+  // balance and not completed. Own details leave a held balance out, but the
+  // next call gives it back first, so the retry offers the same balance.
+  // Kept per appointment in rewardHoldMemory so it outlives this screen and
+  // is shared with View & Pay (same payment sheet).
+  const [heldRewardCents, setHeldRewardCentsState] = useState(() =>
+    getRewardHold(bookingId, user.id ?? null),
+  );
+  const heldRewardCentsRef = useRef(heldRewardCents);
+  // newHold: a new sheet took it now (its 24h starts again)
+  const setHeldRewardCents = (cents: number, newHold = true) => {
+    setRewardHold(bookingId, user.id ?? null, cents, newHold);
+    heldRewardCentsRef.current = cents;
+    setHeldRewardCentsState(cents);
+  };
+  // A hold saved late by View & Pay (after its refresh) shows here.
+  useEffect(
+    () =>
+      subscribeRewardHold(() => {
+        const held = getRewardHold(
+          bookingId,
+          store.getState().user.id ?? null,
+        );
+        heldRewardCentsRef.current = held;
+        setHeldRewardCentsState(held);
+      }),
+    [bookingId],
+  );
+  // Last "Use my reward balance" choice on the confirm sheet (kept on retry).
+  const [lastUseReward, setLastUseReward] = useState(true);
   const userRole = useAppSelector((state) => state.user.userRole);
   let staffClientname = "";
   // No staff on the appointment (Solo plans have no staff list) — the owner
@@ -894,6 +934,7 @@ export default function BookingDetailsById() {
         apiData.business?.working_with_business ?? null,
       paymentMethod: apiData.paymentMethod,
       paidAmount: apiData.paidAmount,
+      rewardAmount: Number(apiData.rewardAmount) || 0,
       owesPayment:
         apiData.owesPayment ??
         // Older responses have no owesPayment; settling a pay-later
@@ -1034,6 +1075,13 @@ export default function BookingDetailsById() {
 
   useFocusEffect(
     useCallback(() => {
+      // Held reward may have changed on View & Pay for this appointment.
+      const held = getRewardHold(
+        bookingId,
+        store.getState().user.id ?? null,
+      );
+      heldRewardCentsRef.current = held;
+      setHeldRewardCentsState(held);
       fetchBookingDetails();
     }, []),
   );
@@ -1337,6 +1385,30 @@ export default function BookingDetailsById() {
         ? (booking.inPersonPayment.method ?? "cash")
         : null;
   const isCashPaid = !!booking && !isSubscription && !!shopMethod;
+
+  // Paid online with part of the service from the reward balance (receipt
+  // values first): service, reward −R, card = service − R; tip separate.
+  const rewardPaidBreakdown = (() => {
+    if (!booking || isSubscription || booking.owesPayment) return null;
+    const rewardAmount =
+      Number(receipt?.rewardAmount ?? booking.rewardAmount) || 0;
+    if (rewardAmount <= 0) return null;
+    const receiptService = Number(receipt?.serviceAmount);
+    const serviceAmount =
+      Number.isFinite(receiptService) && receiptService > 0
+        ? receiptService
+        : Number.isFinite(booking.serviceTotal)
+          ? (booking.serviceTotal as number)
+          : Number.parseFloat(String(booking.price)) || 0;
+    const tipAmount = paidTipBreakdown?.tipAmount ?? 0;
+    const round2 = (n: number) => Math.round(n * 100) / 100;
+    return {
+      serviceAmount,
+      rewardAmount,
+      cardAmount: Math.max(0, round2(serviceAmount - rewardAmount)),
+      totalPaid: round2(serviceAmount + tipAmount),
+    };
+  })();
 
   const paymentHeadline = (() => {
     if (!booking) return "";
@@ -2070,6 +2142,9 @@ export default function BookingDetailsById() {
       return;
     }
 
+    // Reward held for this sheet (cents); null until the sheet is created.
+    let sheetRewardCents: number | null = null;
+    let paymentCompleted = false;
     dispatch(setActionLoader(true));
     try {
       const {
@@ -2079,11 +2154,15 @@ export default function BookingDetailsById() {
         ephemeralKey,
         customer,
         connectedAccountId,
+        rewardAmount,
       } = await fetchAppointmentPaymentSheetParams(
         appointmentId,
         tipAmount,
         useRewardBalance ? { useRewardBalance: true } : undefined,
       );
+      sheetRewardCents = useRewardBalance
+        ? dollarsToCents(rewardAmount ?? 0)
+        : 0;
       dispatch(setActionLoader(false));
       await new Promise((resolve) => setTimeout(resolve, 1000));
 
@@ -2140,6 +2219,7 @@ export default function BookingDetailsById() {
           return;
         }
 
+        paymentCompleted = true;
         showBanner(
           t("success"),
           "Payment successful! Your booking is confirmed.",
@@ -2164,16 +2244,44 @@ export default function BookingDetailsById() {
       showBanner("Payment Failed", errorMessage, "error", 4000);
     } finally {
       dispatch(setActionLoader(false));
+      // A new sheet gave back the earlier hold first.
+      const hadHeld = heldRewardCentsRef.current > 0;
+      if (paymentCompleted) setHeldRewardCents(0);
       // Held / spent balance changed: keep the shown balance current.
-      if (useRewardBalance) void refreshOwnInviteRewardDetails();
+      if (useRewardBalance || hadHeld) {
+        const storeBeforeCents =
+          Number(store.getState().user.reward_balance_cents) || 0;
+        void refreshOwnInviteRewardDetails().then((details) => {
+          if (paymentCompleted || !details) return;
+          if (sheetRewardCents != null) {
+            // Closed / failed sheet: its hold is out of the refreshed balance
+            // but comes back on the next call, so count it for the retry.
+            setHeldRewardCents(sheetRewardCents);
+          } else if (hadHeld) {
+            // No sheet, but the server may still have given the earlier hold
+            // back: don't count what is now in the store twice.
+            const rose =
+              (Number(details.rewardBalanceCents) || 0) - storeBeforeCents;
+            if (rose > 0) {
+              setHeldRewardCents(
+                Math.max(0, heldRewardCentsRef.current - rose),
+                false,
+              );
+            }
+          }
+        });
+      }
     }
   };
 
-  const rewardBalanceCents = Number(user.reward_balance_cents) || 0;
+  // Store balance + this screen's held reward (see heldRewardCents).
+  const rewardBalanceCents =
+    (Number(user.reward_balance_cents) || 0) + heldRewardCents;
   // Read at call time (not render time) so a refresh that just finished is
   // used, e.g. the notification auto-pay path.
   const currentRewardBalanceCents = () =>
-    Number(store.getState().user.reward_balance_cents) || 0;
+    (Number(store.getState().user.reward_balance_cents) || 0) +
+    heldRewardCentsRef.current;
   const rewardServiceAmount = booking
     ? Number.isFinite(booking.serviceTotal)
       ? (booking.serviceTotal as number)
@@ -2206,6 +2314,7 @@ export default function BookingDetailsById() {
     const pending = rewardConfirm;
     if (!pending || rewardPayingRef.current) return;
     rewardPayingRef.current = true;
+    setLastUseReward(useRewardBalance);
     setRewardConfirm(null);
     void handlePayOnline(pending.tip, useRewardBalance).finally(() => {
       rewardPayingRef.current = false;
@@ -3084,39 +3193,70 @@ export default function BookingDetailsById() {
                 {isSubscription ? t("remaining") : t("totalAmount")}
               </Text>
               {booking.type === "service" ? (
-                paidTipBreakdown &&
-                (isCashPaid ||
-                  (!booking.owesPayment && booking.paidAmount != null)) ? (
+                rewardPaidBreakdown ||
+                (paidTipBreakdown &&
+                  (isCashPaid ||
+                    (!booking.owesPayment && booking.paidAmount != null))) ? (
                   <View style={styles.paymentBreakdownCard}>
                     <View style={styles.paymentBreakdownRow}>
                       <Text style={styles.paymentBreakdownLabel}>Service</Text>
                       <Text style={styles.paymentBreakdownValue}>
-                        {formatPrice(paidTipBreakdown.serviceAmount)}
-                      </Text>
-                    </View>
-                    <View style={styles.paymentBreakdownRow}>
-                      <Text style={styles.paymentBreakdownLabel}>
-                        Tip for {paidTipBreakdown.recipientName}
-                        {receipt?.tipMethod === "card_terminal"
-                          ? ` · ${t("ckMethodCardShort")}`
-                          : booking.tip?.paymentChannel === "in_person"
-                            ? ` · ${t("avTipCashShort")}`
-                            : ""}
-                      </Text>
-                      <Text style={styles.paymentBreakdownValue}>
-                        {formatTipAmount(
-                          paidTipBreakdown.tipAmount,
-                          paidTipBreakdown.currency,
+                        {formatPrice(
+                          rewardPaidBreakdown?.serviceAmount ??
+                            paidTipBreakdown?.serviceAmount ??
+                            null,
                         )}
                       </Text>
                     </View>
+                    {rewardPaidBreakdown ? (
+                      <>
+                        <View style={styles.paymentBreakdownRow}>
+                          <Text style={styles.paymentBreakdownLabel}>
+                            {t("rwPayRewardLine")}
+                          </Text>
+                          <Text style={styles.paymentBreakdownValue}>
+                            {`\u2212${formatPrice(rewardPaidBreakdown.rewardAmount)}`}
+                          </Text>
+                        </View>
+                        <View style={styles.paymentBreakdownRow}>
+                          <Text style={styles.paymentBreakdownLabel}>
+                            {t("rwPayCardPaid")}
+                          </Text>
+                          <Text style={styles.paymentBreakdownValue}>
+                            {formatPrice(rewardPaidBreakdown.cardAmount)}
+                          </Text>
+                        </View>
+                      </>
+                    ) : null}
+                    {paidTipBreakdown ? (
+                      <View style={styles.paymentBreakdownRow}>
+                        <Text style={styles.paymentBreakdownLabel}>
+                          Tip for {paidTipBreakdown.recipientName}
+                          {receipt?.tipMethod === "card_terminal"
+                            ? ` · ${t("ckMethodCardShort")}`
+                            : booking.tip?.paymentChannel === "in_person"
+                              ? ` · ${t("avTipCashShort")}`
+                              : ""}
+                        </Text>
+                        <Text style={styles.paymentBreakdownValue}>
+                          {formatTipAmount(
+                            paidTipBreakdown.tipAmount,
+                            paidTipBreakdown.currency,
+                          )}
+                        </Text>
+                      </View>
+                    ) : null}
                     <View style={styles.paymentBreakdownDivider} />
                     <View style={styles.paymentBreakdownRow}>
                       <Text style={styles.paymentBreakdownTotalLabel}>
                         Total paid
                       </Text>
                       <Text style={styles.paymentBreakdownTotalValue}>
-                        {formatPrice(paidTipBreakdown.totalPaid)}
+                        {formatPrice(
+                          rewardPaidBreakdown?.totalPaid ??
+                            paidTipBreakdown?.totalPaid ??
+                            null,
+                        )}
                       </Text>
                     </View>
                   </View>
@@ -3620,6 +3760,7 @@ export default function BookingDetailsById() {
           serviceAmount={rewardServiceAmount}
           tipAmount={rewardConfirm?.shownTip ?? 0}
           balanceCents={rewardBalanceCents}
+          defaultUseReward={lastUseReward}
           onClose={() => setRewardConfirm(null)}
           onConfirm={handleRewardConfirm}
         />

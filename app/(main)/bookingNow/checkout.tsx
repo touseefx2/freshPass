@@ -36,7 +36,10 @@ import {
 } from "@/src/services/stripeService";
 import { isPaymentsEnabled } from "@/src/utils/paymentsEnabled";
 import { refreshOwnInviteRewardDetails } from "@/src/services/rewardsService";
-import { estimateAppointmentReward } from "@/src/utils/rewardMath";
+import {
+  dollarsToCents,
+  estimateAppointmentReward,
+} from "@/src/utils/rewardMath";
 import RewardBalanceToggle from "@/src/components/rewards/RewardBalanceToggle";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
@@ -524,6 +527,20 @@ const createStyles = (theme: Theme) =>
     // Subscription Card (when from subscription booking)
   });
 
+// Reward held by the last appointment sheet closed / failed without paying.
+// Module level so it outlives this screen (editing a step or a refused time
+// closes checkout and opens a new one). The store balance leaves it out; the
+// next checkout call gives it back first, and the server frees it after 24h.
+const HELD_REWARD_TTL_MS = 24 * 60 * 60 * 1000;
+let heldReward: { userId: unknown; cents: number; at: number } | null = null;
+
+const readHeldReward = (userId: unknown): number =>
+  heldReward &&
+  heldReward.userId === userId &&
+  Date.now() - heldReward.at < HELD_REWARD_TTL_MS
+    ? heldReward.cents
+    : 0;
+
 function CheckoutContent() {
   const { colors } = useTheme();
   const { t } = useTranslation();
@@ -801,7 +818,20 @@ function CheckoutContent() {
   );
 
   // Reward balance (pay-now service bookings only; never tips or memberships).
-  const rewardBalanceCents = Number(user.reward_balance_cents) || 0;
+  // Held reward (see heldReward) is added back so the retry offers (and
+  // sends) the same balance again.
+  const userId = user.id ?? null;
+  const [heldRewardCents, setHeldRewardCents] = useState(() =>
+    readHeldReward(userId),
+  );
+  // newHold: a new sheet took it now (its 24h starts again)
+  const saveHeldReward = (cents: number, newHold: boolean) => {
+    const at = newHold || !heldReward ? Date.now() : heldReward.at;
+    heldReward = cents > 0 ? { userId, cents, at } : null;
+    setHeldRewardCents(cents > 0 ? cents : 0);
+  };
+  const rewardBalanceCents =
+    (Number(user.reward_balance_cents) || 0) + heldRewardCents;
   const [useRewardBalance, setUseRewardBalance] = useState(true);
   const canUseRewardBalance =
     !isSubscriptionMode &&
@@ -818,8 +848,9 @@ function CheckoutContent() {
   useFocusEffect(
     useCallback(() => {
       if (isGuest) return;
+      setHeldRewardCents(readHeldReward(userId));
       void refreshOwnInviteRewardDetails();
-    }, [isGuest]),
+    }, [isGuest, userId]),
   );
 
   // AI Receptionist handoff: auto-open the cancellation policy sheet on mount
@@ -1379,6 +1410,9 @@ function CheckoutContent() {
             ? totalAmount
             : chargedService - chargedReward + tax;
 
+        // True once the sheet is paid (booked, failed + refunded, or pending)
+        let sheetPaid = false;
+
         try {
           await useStripeAccount(connectedAccountId);
 
@@ -1438,6 +1472,7 @@ function CheckoutContent() {
             return;
           }
 
+          sheetPaid = true;
           setProcessingPayment(true);
 
           try {
@@ -1529,8 +1564,31 @@ function CheckoutContent() {
         } finally {
           await useStripeAccount(null);
           // Held / spent balance changed: keep the shown balance current.
-          if (requestBody.use_reward_balance) {
-            void refreshOwnInviteRewardDetails();
+          if (sheetPaid) {
+            saveHeldReward(0, false);
+            if (requestBody.use_reward_balance || heldRewardCents > 0) {
+              void refreshOwnInviteRewardDetails();
+            }
+          } else if (requestBody.use_reward_balance) {
+            // Not paid: this sheet's reward stays held (left out of the
+            // fresh balance) and comes back first on the next try.
+            const heldCents = dollarsToCents(chargedReward);
+            void refreshOwnInviteRewardDetails().then((fresh) => {
+              if (fresh) saveHeldReward(heldCents, true);
+            });
+          } else if (heldRewardCents > 0) {
+            // Sent without the balance: whatever this call gave back is in
+            // the fresh balance now; only the rest is still held.
+            const before = rewardBalanceCents;
+            const prevHeld = heldRewardCents;
+            void refreshOwnInviteRewardDetails().then((fresh) => {
+              if (!fresh) return;
+              const now = Math.max(0, Number(fresh.rewardBalanceCents) || 0);
+              saveHeldReward(
+                Math.min(prevHeld, Math.max(0, before - now)),
+                false,
+              );
+            });
           }
         }
         return;

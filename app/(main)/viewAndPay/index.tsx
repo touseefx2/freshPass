@@ -87,8 +87,16 @@ import {
 import type { ViewAndPay, VisitReceipt } from "@/src/types/afterVisit";
 import { isPaymentsEnabled } from "@/src/utils/paymentsEnabled";
 import { refreshOwnInviteRewardDetails } from "@/src/services/rewardsService";
-import { estimateAppointmentReward } from "@/src/utils/rewardMath";
+import {
+  dollarsToCents,
+  estimateAppointmentReward,
+} from "@/src/utils/rewardMath";
 import RewardBalanceToggle from "@/src/components/rewards/RewardBalanceToggle";
+import {
+  getRewardHold,
+  setRewardHold,
+  subscribeRewardHold,
+} from "@/src/services/rewardHoldMemory";
 
 /**
  * View & Pay — one step at a time after a completed visit:
@@ -232,6 +240,27 @@ export default function ViewAndPayScreen() {
     reward: number;
     total: number | null;
   } | null>(null);
+  // Balance held for this screen's last sheet that was closed unpaid. The
+  // server gives it back on the next call, but user details leave it out.
+  // Kept per appointment in rewardHoldMemory so it outlives this screen and
+  // is shared with Appointment Details (same payment sheet).
+  const holdUserId = user.id ?? null;
+  const [heldRewardCents, setHeldRewardCentsState] = useState(() =>
+    getRewardHold(appointmentId, holdUserId),
+  );
+  // Every value saved here is a new sheet's hold (or 0), so its 24h restarts.
+  const setHeldRewardCents = (cents: number) => {
+    setRewardHold(appointmentId, holdUserId, cents);
+    setHeldRewardCentsState(cents > 0 ? cents : 0);
+  };
+  // A hold saved late by Appointment Details (after its refresh) shows here.
+  useEffect(
+    () =>
+      subscribeRewardHold(() =>
+        setHeldRewardCentsState(getRewardHold(appointmentId, holdUserId)),
+      ),
+    [appointmentId, holdUserId],
+  );
 
   // Review
   const [rating, setRating] = useState(0);
@@ -339,8 +368,10 @@ export default function ViewAndPayScreen() {
   useFocusEffect(
     useCallback(() => {
       if (user.isGuest) return;
+      // Held reward may have changed on Appointment Details.
+      setHeldRewardCentsState(getRewardHold(appointmentId, holdUserId));
       void refreshOwnInviteRewardDetails();
-    }, [user.isGuest]),
+    }, [user.isGuest, appointmentId, holdUserId]),
   );
 
   // Back on screen (e.g. paid from another device / chat): refresh quietly.
@@ -390,7 +421,8 @@ export default function ViewAndPayScreen() {
 
   // Reward balance on the last online pay step. Estimate over the service
   // price only (never a tip or an old booking tip); card keeps >= $0.50.
-  const rewardBalanceCents = Number(user.reward_balance_cents) || 0;
+  const rewardBalanceCents =
+    (Number(user.reward_balance_cents) || 0) + heldRewardCents;
   const canUseRewardBalance =
     route === "online" && canOnline && !user.isGuest && rewardBalanceCents > 0;
   const rewardApplied = canUseRewardBalance && useRewardBalance;
@@ -529,6 +561,11 @@ export default function ViewAndPayScreen() {
     if (tipWithPayment && !validateTip(true)) return;
     setActionError(null);
     setBusyState(true);
+    const hadHeldReward = heldRewardCents > 0;
+    // Reward on the sheet just made (null until it is made).
+    let sheetRewardCents: number | null = null;
+    // Reward held by a sheet left unpaid; added after the store refresh.
+    let nextHeldCents = 0;
     try {
       // "included": the old booking tip is already in amountDue — no tip_amount.
       const tip =
@@ -538,11 +575,19 @@ export default function ViewAndPayScreen() {
         tip,
         rewardApplied ? { useRewardBalance: true } : undefined,
       );
+      sheetRewardCents =
+        rewardApplied && sheet.rewardAmount != null && sheet.rewardAmount > 0
+          ? dollarsToCents(sheet.rewardAmount)
+          : 0;
       const paid = await presentSheet({
         ...sheet,
         merchantName: "Fresh Pass",
       });
-      if (!paid) return;
+      if (!paid) {
+        nextHeldCents = sheetRewardCents;
+        return;
+      }
+      setHeldRewardCents(0);
       setPaidRewardSplit(
         sheet.rewardAmount != null && sheet.rewardAmount > 0
           ? {
@@ -562,12 +607,19 @@ export default function ViewAndPayScreen() {
       if (result.data) setData(result.data);
       setProcessing(!result.paid);
     } catch (error) {
+      // The sheet was made but could not open: its reward is held. If the
+      // sheet was never made, drop the earlier hold (the refresh shows it).
+      if (sheetRewardCents != null) nextHeldCents = sheetRewardCents;
       setActionError(getApiErrorMessage(error, t("avPaymentFailed")));
     } finally {
       setConfirmingPayment(false);
+      // Held / spent balance changed: refresh first, then add the hold, so it
+      // is never counted twice. If the refresh fails the store still has it.
+      if (rewardApplied || hadHeldReward) {
+        const fresh = await refreshOwnInviteRewardDetails();
+        setHeldRewardCents(fresh ? nextHeldCents : 0);
+      }
       setBusyState(false);
-      // Held / spent balance changed: keep the shown balance current.
-      if (rewardApplied) void refreshOwnInviteRewardDetails();
     }
   };
 
@@ -1117,7 +1169,7 @@ export default function ViewAndPayScreen() {
             subtitle={t("avPaidTo", { business: businessName })}
             lines={[
               paidAt,
-              paidRewardSplit
+              paidRewardSplit && !((data.receipt?.rewardAmount ?? 0) > 0)
                 ? t("rwPayRewardUsed", {
                     amount: money(paidRewardSplit.reward),
                   })
@@ -1208,6 +1260,13 @@ export default function ViewAndPayScreen() {
             }
           : null;
     const receiptTip = receipt?.tipAmount ?? 0;
+    // Part of the service paid from the reward balance; card = the rest.
+    const receiptReward =
+      receipt && receipt.status !== "covered" ? Number(receipt.rewardAmount) || 0 : 0;
+    const receiptCard =
+      Math.round(
+        Math.max(0, (receipt?.serviceAmount ?? 0) - receiptReward) * 100,
+      ) / 100;
     const receiptTipVia =
       receiptTip > 0 && receipt?.tipMethod && receipt.tipMethod !== receipt.method
         ? receipt.tipMethod === "online"
@@ -1296,6 +1355,15 @@ export default function ViewAndPayScreen() {
                   : money(receipt.serviceAmount)
               }
             />
+            {receiptReward > 0 ? (
+              <>
+                <MoneyRow
+                  label={t("rwPayRewardLine")}
+                  value={`\u2212${money(receiptReward)}`}
+                />
+                <MoneyRow label={t("rwPayCardPaid")} value={money(receiptCard)} />
+              </>
+            ) : null}
             {receiptTip > 0 ? (
               <MoneyRow
                 label={receiptTipVia ? `${t("ckTip")} · ${receiptTipVia}` : t("ckTip")}
