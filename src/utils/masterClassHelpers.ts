@@ -196,8 +196,12 @@ export function formatClassDateRange(
     if (cls.duration_minutes && cls.time) {
       const startDayjs = dayjs(`2000-01-01T${cls.time.slice(0, 5)}`);
       if (startDayjs.isValid()) {
-        const endTime = startDayjs.add(cls.duration_minutes, "minute").format("h:mm A");
-        return `${startDate} · ${timeText} – ${endTime}`;
+        const endDayjs = startDayjs.add(cls.duration_minutes, "minute");
+        if (endDayjs.isSame(startDayjs, "day")) {
+          return `${startDate} · ${timeText} – ${endDayjs.format("h:mm A")}`;
+        }
+        const duration = formatDuration(cls.duration_minutes);
+        return `${startDate} · ${timeText}${duration ? ` · ${duration}` : ""}`;
       }
     }
     return `${startDate} · ${timeText}`;
