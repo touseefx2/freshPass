@@ -1165,6 +1165,7 @@
   "stripeConnectContinue": "Continue to FreshPass",
   "stripeConnectLoadError": "We couldn't load payout setup. Please try again.",
   "stripeConnectRetry": "Try again",
+  "stripeConnectUpdateProfile": "Update Business Profile",
   "stripeConnectModeMismatch": "Payment environment changed. Please restart the app and try again.",
   "stripeConnectBusinessNotFound": "Please finish business setup before connecting payouts.",
   "stripeConnectNotAllowed": "Payout setup is only available for business accounts.",

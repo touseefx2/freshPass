@@ -205,6 +205,7 @@ export default function StripeConnectOnboardingScreen() {
   const connectUiReadyRef = useRef(false);
   const [phase, setPhase] = useState<ScreenPhase>("loading");
   const [errorMessage, setErrorMessage] = useState("");
+  const [errorNeedsProfileFix, setErrorNeedsProfileFix] = useState(false);
   const [requirementsDeadline, setRequirementsDeadline] = useState<
     string | null
   >(null);
@@ -215,14 +216,21 @@ export default function StripeConnectOnboardingScreen() {
     useState<StripeConnectInstance | null>(null);
 
   const mapSessionError = useCallback(
-    (error: unknown) => {
+    (error: unknown): { message: string; needsProfileFix: boolean } => {
       const status = (error as StripeConnectApiError)?.status;
-      if (status === 409) return t("stripeConnectModeMismatch");
-      if (status === 404) return t("stripeConnectBusinessNotFound");
-      if (status === 403) return t("stripeConnectNotAllowed");
-      return (
-        (error as Error)?.message || t("stripeConnectLoadError")
-      );
+      if (status === 409) return { message: t("stripeConnectModeMismatch"), needsProfileFix: false };
+      if (status === 404) return { message: t("stripeConnectBusinessNotFound"), needsProfileFix: false };
+      if (status === 403) return { message: t("stripeConnectNotAllowed"), needsProfileFix: false };
+      if (status === 422) {
+        return {
+          message: (error as Error)?.message || t("stripeConnectLoadError"),
+          needsProfileFix: true,
+        };
+      }
+      return {
+        message: (error as Error)?.message || t("stripeConnectLoadError"),
+        needsProfileFix: false,
+      };
     },
     [t],
   );
@@ -233,6 +241,7 @@ export default function StripeConnectOnboardingScreen() {
     const init = async () => {
       setPhase("loading");
       setErrorMessage("");
+      setErrorNeedsProfileFix(false);
       setShowStripeModal(false);
       setConnectUiReady(false);
       connectUiReadyRef.current = false;
@@ -280,8 +289,10 @@ export default function StripeConnectOnboardingScreen() {
               // spinner forever — close the sheet and show Retry ourselves.
               if (!cancelled && !exitingRef.current) {
                 Logger.warn("[StripeConnect] Account session failed", error);
+                const mapped = mapSessionError(error);
                 setShowStripeModal(false);
-                setErrorMessage(mapSessionError(error));
+                setErrorMessage(mapped.message);
+                setErrorNeedsProfileFix(mapped.needsProfileFix);
                 setPhase("error");
               }
               throw error;
@@ -314,7 +325,9 @@ export default function StripeConnectOnboardingScreen() {
       } catch (error) {
         Logger.warn("[StripeConnect] Failed to initialize", error);
         if (!cancelled) {
-          setErrorMessage(mapSessionError(error));
+          const mapped = mapSessionError(error);
+          setErrorMessage(mapped.message);
+          setErrorNeedsProfileFix(mapped.needsProfileFix);
           setPhase("error");
         }
       }
@@ -397,7 +410,7 @@ export default function StripeConnectOnboardingScreen() {
       Logger.warn("[StripeConnect] Status check failed", error);
       showBanner(
         t("stripeConnect"),
-        mapSessionError(error),
+        mapSessionError(error).message,
         "error",
         2500,
       );
@@ -410,13 +423,14 @@ export default function StripeConnectOnboardingScreen() {
   const handleLoadError = useCallback(
     ({ error }: { error?: { type?: string; message?: string } }) => {
       const sessionError = getLastAccountSessionError();
-      const message = sessionError
+      const mapped = sessionError
         ? mapSessionError(sessionError)
-        : error?.message || t("stripeConnectLoadError");
+        : { message: error?.message || t("stripeConnectLoadError"), needsProfileFix: false };
       setShowStripeModal(false);
       setConnectUiReady(false);
       connectUiReadyRef.current = false;
-      setErrorMessage(message);
+      setErrorMessage(mapped.message);
+      setErrorNeedsProfileFix(mapped.needsProfileFix);
       setPhase("error");
     },
     [mapSessionError, t],
@@ -569,7 +583,18 @@ export default function StripeConnectOnboardingScreen() {
             <Text style={styles.title}>{t("stripeConnectOnboardingTitle")}</Text>
             <Text style={styles.message}>{errorMessage}</Text>
             <View style={styles.buttonWrap}>
-              <Button title={t("stripeConnectRetry")} onPress={handleRetry} />
+              {errorNeedsProfileFix ? (
+                <Button
+                  title={t("stripeConnectUpdateProfile")}
+                  onPress={() => {
+                    router.replace(
+                      "/(main)/dashboard/(account)/(businessProfileSettings)/editBusinessProfile" as any,
+                    );
+                  }}
+                />
+              ) : (
+                <Button title={t("stripeConnectRetry")} onPress={handleRetry} />
+              )}
             </View>
           </>
         ) : (
