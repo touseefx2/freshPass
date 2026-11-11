@@ -2,7 +2,7 @@
   "expo": {
     "name": "FreshPass",
     "slug": "fresh-pass",
-    "version": "1.0.9",
+    "version": "1.1.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "com.freshpass",
@@ -12,7 +12,7 @@
       "supportsTablet": true,
       "requireFullScreen": true,
       "bundleIdentifier": "com.freshpass",
-      "buildNumber": "111",
+      "buildNumber": "112",
       "googleServicesFile": "./GoogleService-Info.plist",
       "associatedDomains": [
         "applinks:getfreshpass.com"
@@ -55,7 +55,7 @@
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "package": "com.freshpass",
-      "versionCode": 111,
+      "versionCode": 112,
       "allowBackup": false,
       "config": {
         "googleMaps": {
