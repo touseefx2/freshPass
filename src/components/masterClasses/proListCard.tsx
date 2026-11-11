@@ -87,7 +87,7 @@ function ProListCardBase({
       >
         <ClassMediaThumb media={cls.media} size={THUMB} />
         <View style={styles.body}>
-          <ClassTypePill label={cls.label} type={cls.type} />
+          <ClassTypePill label={cls.label} />
           <Text style={styles.title} numberOfLines={2}>
             {title}
           </Text>

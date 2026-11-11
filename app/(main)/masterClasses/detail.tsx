@@ -27,7 +27,6 @@ import StackHeader from "@/src/components/StackHeader";
 import LocalVideoPreviewModal from "@/src/components/localVideoPreviewModal";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import {
-  CertificationNotice,
   ClassMediaThumb,
   ClassStateView,
   ClassTypePill,
@@ -636,7 +635,7 @@ export default function ProClassDetailScreen() {
         {/* Type + status + title */}
         <View style={styles.titleBlock}>
           <View style={styles.pillRow}>
-            <ClassTypePill label={cls.label} type={cls.type} size="md" showIcon />
+            <ClassTypePill label={cls.label} size="md" showIcon />
             <StatusChip meta={getListingBadge(cls)} />
           </View>
           <Text style={styles.title} accessibilityRole="header">
@@ -709,10 +708,6 @@ export default function ProClassDetailScreen() {
         {renderListing()}
 
         {/* Class text */}
-        {cls.type === "certification_training" ? (
-          <CertificationNotice text={cls.certification_notice} />
-        ) : null}
-
         {cls.description ? (
           <SectionCard title={t("mcWhatYoullLearn")} icon="bulb-outline">
             <Text style={styles.cardBody}>{cls.description}</Text>

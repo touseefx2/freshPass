@@ -26,7 +26,6 @@ import AppImage from "@/src/components/AppImage";
 import type {
   MasterClass,
   MasterClassMedia,
-  MasterClassType,
 } from "@/src/types/masterClass";
 import {
   ClassBadgeMeta,
@@ -48,9 +47,8 @@ const useMcTheme = () => {
 // ── ClassTypePill ───────────────────────────────────────────────────
 
 type ClassTypePillProps = {
-  /** Server label wins; else the translated type. */
+  /** Server label wins; else "Master Class". */
   label?: string | null;
-  type?: MasterClassType | null;
   /** `green` = pro screens / detail; `orange` = Deals card on dark green. */
   variant?: "green" | "orange";
   size?: "sm" | "md";
@@ -61,14 +59,13 @@ type ClassTypePillProps = {
 
 export function ClassTypePill({
   label,
-  type,
   variant = "green",
   size = "sm",
   showIcon = false,
   style,
 }: ClassTypePillProps) {
   const { theme, styles } = useMcTheme();
-  const text = label || getClassTypeLabel({ label: null, type: type ?? null });
+  const text = label || getClassTypeLabel({ label: null });
   const isOrange = variant === "orange";
   const fg = isOrange ? theme.darkGreen : theme.white;
   return (
@@ -482,7 +479,7 @@ export function ClassStateView({
 // ── ClassSummaryRow (media + pill + title + when) ───────────────────
 
 type ClassSummaryRowProps = {
-  masterClass: Pick<MasterClass, "media" | "label" | "type" | "title">;
+  masterClass: Pick<MasterClass, "media" | "label" | "title">;
   /** Lines under the title (MetaRows). */
   children?: React.ReactNode;
   thumbSize?: number;
@@ -501,7 +498,7 @@ export function ClassSummaryRow({
     <View style={[styles.summaryRow, style]}>
       <ClassMediaThumb media={masterClass.media} size={thumbSize} />
       <View style={styles.summaryBody}>
-        <ClassTypePill label={masterClass.label} type={masterClass.type} />
+        <ClassTypePill label={masterClass.label} />
         <Text style={styles.summaryTitle} numberOfLines={2}>
           {masterClass.title}
         </Text>

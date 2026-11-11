@@ -13,7 +13,6 @@ import type {
   MasterClassFormat,
   MasterClassStatus,
   MasterClassTab,
-  MasterClassType,
 } from "@/src/types/masterClass";
 
 const tr = (key: string, options?: Record<string, unknown>): string =>
@@ -21,27 +20,11 @@ const tr = (key: string, options?: Record<string, unknown>): string =>
 
 // ── Options ─────────────────────────────────────────────────────────
 
-export const CLASS_TYPE_OPTIONS: { value: MasterClassType; labelKey: string }[] =
-  [
-    { value: "masterclass", labelKey: "mcTypeMasterclass" },
-    { value: "workshop", labelKey: "mcTypeWorkshop" },
-    { value: "certification_training", labelKey: "mcTypeCertification" },
-  ];
-
-export function getClassTypeLabelKey(
-  type: MasterClassType | null | undefined,
-): string {
-  return (
-    CLASS_TYPE_OPTIONS.find((o) => o.value === type)?.labelKey ??
-    "mcTypeMasterclass"
-  );
-}
-
-/** Server `label` first, else the translated type. */
+/** Server `label` (always "Master Class"). */
 export function getClassTypeLabel(
-  cls: Pick<MasterClass, "label" | "type"> | null | undefined,
+  cls: Pick<MasterClass, "label"> | null | undefined,
 ): string {
-  return cls?.label || tr(getClassTypeLabelKey(cls?.type));
+  return cls?.label || tr("mcTypeMasterclass");
 }
 
 export const MASTER_CLASS_TABS: { value: MasterClassTab; labelKey: string }[] =
@@ -66,12 +49,10 @@ export const FORMAT_OPTIONS: { value: MasterClassFormat; labelKey: string }[] =
     { value: "online", labelKey: "mcFormatOnline" },
   ];
 
-/** Minutes. Server accepts 15–132480 (up to ~92 days). */
+/** Minutes. Server accepts 60–720 (1 to 12 hours, each sitting). */
 export const DURATION_OPTIONS: number[] = [
-  30, 60, 90, 120, 180, 240, 300, 360, 480, 600,
-  2880, 4320, 7200, 10080, 20160, 43200, 86400, 129600,
+  60, 120, 180, 240, 300, 360, 420, 480, 540, 600, 660, 720,
 ];
-export const FULL_DAY_MINUTES = 600;
 
 export const CANCELLATION_WINDOW_OPTIONS: CancellationWindowHours[] = [
   24, 48, 72,
@@ -80,8 +61,8 @@ export const DEFAULT_CANCELLATION_WINDOW: CancellationWindowHours = 48;
 
 export const CLASS_LIMITS = {
   titleMax: 150,
-  durationMin: 15,
-  durationMax: 132480,
+  durationMin: 60,
+  durationMax: 720,
   capacityMin: 1,
   capacityMax: 1000,
   priceMin: 1,
@@ -121,11 +102,12 @@ export function formatClassDateTime(
   return t ? `${d} • ${t}` : d;
 }
 
-/** Same as formatClassDateTime, with "No date yet" for undated drafts. */
+/** Date range text for class cards, with "No date yet" for undated drafts. */
 export function getClassWhenText(
-  cls: Pick<MasterClass, "date" | "time"> | null | undefined,
+  cls: Pick<MasterClass, "date" | "end_date" | "time" | "duration_minutes"> | null | undefined,
 ): string {
-  return formatClassDateTime(cls?.date, cls?.time) || tr("mcNoDateYet");
+  if (!cls?.date) return tr("mcNoDateYet");
+  return formatClassDateRange(cls) || formatClassDateTime(cls.date, cls.time) || tr("mcNoDateYet");
 }
 
 /**
@@ -186,15 +168,9 @@ export function getRefundIfCancelledNow(
   return Number.isFinite(deadline) && deadline <= Date.now() ? 0 : refund;
 }
 
-/** 240 → "4 hours", 90 → "1 h 30 min", 45 → "45 min", 4320 → "3 days". */
+/** 240 → "4 hours", 90 → "1 h 30 min", 45 → "45 min". */
 export function formatDuration(minutes: number | null | undefined): string {
   if (!minutes || minutes <= 0) return "";
-  if (minutes >= 1440) {
-    const d = Math.floor(minutes / 1440);
-    const remainH = Math.floor((minutes % 1440) / 60);
-    if (remainH === 0) return tr("mcDurationDays", { count: d });
-    return tr("mcDurationDaysHours", { days: d, hours: remainH });
-  }
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
   if (h === 0) return tr("mcDurationMinutes", { count: m });
@@ -202,11 +178,37 @@ export function formatDuration(minutes: number | null | undefined): string {
   return tr("mcDurationHoursMinutes", { hours: h, minutes: m });
 }
 
-/** Duration dropdown label ("Full day (10 hours)" for 600). */
-export function formatDurationOption(minutes: number): string {
-  return minutes === FULL_DAY_MINUTES
-    ? tr("mcDurationFullDay", { duration: formatDuration(minutes) })
-    : formatDuration(minutes);
+/**
+ * Date range for cards and detail screens.
+ * One-day: "Nov 20 · 10:00 AM – 12:00 PM"
+ * Multi-day: "Nov 20 – Dec 18 · 10:00 AM · 2 hours"
+ */
+export function formatClassDateRange(
+  cls: Pick<MasterClass, "date" | "end_date" | "time" | "duration_minutes">,
+): string {
+  if (!cls.date) return "";
+  const startDate = formatClassShortDate(cls.date);
+  const timeText = formatClassTime(cls.time);
+  const sameDay = !cls.end_date || cls.end_date === cls.date;
+
+  if (sameDay) {
+    if (!timeText) return startDate;
+    if (cls.duration_minutes && cls.time) {
+      const startDayjs = dayjs(`2000-01-01T${cls.time.slice(0, 5)}`);
+      if (startDayjs.isValid()) {
+        const endTime = startDayjs.add(cls.duration_minutes, "minute").format("h:mm A");
+        return `${startDate} · ${timeText} – ${endTime}`;
+      }
+    }
+    return `${startDate} · ${timeText}`;
+  }
+
+  const endDate = formatClassShortDate(cls.end_date);
+  const duration = formatDuration(cls.duration_minutes);
+  const parts = [`${startDate} – ${endDate}`];
+  if (timeText) parts.push(timeText);
+  if (duration) parts.push(duration);
+  return parts.join(" · ");
 }
 
 // ── Money ───────────────────────────────────────────────────────────

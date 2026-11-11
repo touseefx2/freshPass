@@ -23,7 +23,7 @@ import {
 } from "@/src/components/jobs/jobBadges";
 import type { MasterClass } from "@/src/types/masterClass";
 import {
-  formatClassDateTime,
+  formatClassDateRange,
   formatClassPrice,
   getClassPrice,
   getClassTypeLabel,
@@ -49,7 +49,7 @@ function ClassDealCard({ masterClass, onPress }: ClassDealCardProps) {
 
   const label = getClassTypeLabel(masterClass);
   const instructor = getInstructorName(masterClass);
-  const when = formatClassDateTime(masterClass.date, masterClass.time);
+  const when = formatClassDateRange(masterClass);
   const { current, original } = getClassPrice(masterClass);
   const priceText = formatClassPrice(current);
 

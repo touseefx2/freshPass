@@ -2,11 +2,6 @@
 // Class fields are snake_case; the two payment-sheet answers are camelCase.
 // `date` / `time` are already on the business clock: show them as they come.
 
-export type MasterClassType =
-  | "masterclass"
-  | "workshop"
-  | "certification_training";
-
 export type MasterClassStatus =
   | "draft"
   | "published"
@@ -92,21 +87,21 @@ export type MasterClassMissing = Record<string, string>;
 export interface MasterClass {
   id: number;
   title: string;
-  type: MasterClassType | null;
-  /** Ready-to-show type label ("Masterclass", …). */
+  /** Always "Master Class". */
   label: string | null;
   description: string | null;
   prerequisites: string | null;
-  /** Certification Training only. */
-  certification_notice: string | null;
 
-  /** "YYYY-MM-DD", business clock. Null on drafts without a date. */
+  /** "YYYY-MM-DD", business clock (start date). Null on drafts without a date. */
   date: string | null;
   /** "HH:mm", business clock. */
   time: string | null;
+  /** "YYYY-MM-DD", business clock. Last day of the class. */
+  end_date: string | null;
   starts_at: string | null;
   ends_at: string | null;
   timezone: string | null;
+  /** Each sitting, whole hours: 60–720. */
   duration_minutes: number | null;
 
   capacity: number | null;
@@ -203,14 +198,14 @@ export interface ClassStudent {
 /** POST / PATCH body. Send only what the pro filled (or changed). */
 export interface MasterClassPayload {
   title?: string;
-  /** null clears it on a draft. */
-  type?: MasterClassType | null;
   description?: string | null;
   prerequisites?: string | null;
   /** "YYYY-MM-DD" — always with `time` (both null clear a draft's date). */
   date?: string | null;
   /** "HH:mm" — always with `date`. */
   time?: string | null;
+  /** "YYYY-MM-DD" — last day of the class. */
+  end_date?: string | null;
   duration_minutes?: number | null;
   capacity?: number | null;
   price?: number | null;

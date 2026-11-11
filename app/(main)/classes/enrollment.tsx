@@ -25,7 +25,6 @@ import {
 import type { ClassEnrollment } from "@/src/types/masterClass";
 import { formatClassPrice } from "@/src/utils/masterClassHelpers";
 import {
-  CertificationNotice,
   ClassStateView,
 } from "@/src/components/masterClasses/parts";
 import {
@@ -245,9 +244,6 @@ export default function ClassEnrollmentScreen() {
   const cls = enrollment?.class ?? null;
   const isConfirmed = enrollment?.status === "confirmed";
   const canCancel = !!enrollment && isConfirmed && enrollment.can_cancel;
-  const showCertification =
-    !!cls &&
-    (!!cls.certification_notice || cls.type === "certification_training");
 
   const renderBody = () => {
     if (loading && !enrollment) return <MyEnrollmentSkeleton />;
@@ -289,9 +285,6 @@ export default function ClassEnrollmentScreen() {
         {cls ? <MyEnrollmentWhenWhere cls={cls} active={isConfirmed} /> : null}
         <MyEnrollmentPaymentCard enrollment={enrollment} />
         <MyEnrollmentPolicyCard enrollment={enrollment} />
-        {showCertification ? (
-          <CertificationNotice text={cls?.certification_notice} />
-        ) : null}
         {canCancel ? (
           <View style={styles.cancelWrap}>
             <MyEnrollmentCancelButton

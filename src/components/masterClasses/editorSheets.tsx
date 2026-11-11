@@ -248,6 +248,7 @@ export function EditorDateSheet({
   visible,
   value,
   timeZone,
+  minDate,
   onConfirm,
   onClose,
 }: {
@@ -256,6 +257,8 @@ export function EditorDateSheet({
   value: string | null;
   /** Class's zone: "today" follows the salon clock (phone clock when unknown). */
   timeZone?: string | null;
+  /** "YYYY-MM-DD" — earliest selectable date (e.g. start date for end date picker). */
+  minDate?: string;
   onConfirm: (date: string) => void;
   onClose: () => void;
 }) {
@@ -264,10 +267,12 @@ export function EditorDateSheet({
   const salonToday = (): Dayjs => salonNow(null, timeZone).today;
   const initial = (): Dayjs => {
     const today = salonToday();
+    const floor = minDate ? dayjs(minDate) : today;
+    const earliest = floor.isValid() && floor.isAfter(today, "day") ? floor : today;
     const parsed = value ? dayjs(value) : null;
-    return parsed && parsed.isValid() && !parsed.isBefore(today, "day")
+    return parsed && parsed.isValid() && !parsed.isBefore(earliest, "day")
       ? parsed
-      : today;
+      : earliest;
   };
   const [date, setDate] = useState<Dayjs>(initial);
 
@@ -290,7 +295,16 @@ export function EditorDateSheet({
       }
     >
       <View style={styles.dateBody}>
-        <DateStrip value={date} onChange={setDate} today={salonToday()} />
+        <DateStrip
+          value={date}
+          onChange={setDate}
+          today={(() => {
+            const t = salonToday();
+            if (!minDate) return t;
+            const m = dayjs(minDate);
+            return m.isValid() && m.isAfter(t, "day") ? m : t;
+          })()}
+        />
         <View style={styles.summary} accessibilityLiveRegion="polite">
           <Ionicons
             name="calendar"

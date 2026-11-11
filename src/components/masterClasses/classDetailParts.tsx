@@ -26,8 +26,7 @@ import {
 import AppImage from "@/src/components/AppImage";
 import type { MasterClass } from "@/src/types/masterClass";
 import {
-  formatClassDate,
-  formatClassTime,
+  formatClassDateRange,
   formatDuration,
   getBusinessCategoryName,
   getClassAddress,
@@ -238,8 +237,7 @@ export function ClassDetailInfoGrid({ masterClass }: { masterClass: MasterClass 
       <InfoTile
         icon="calendar-outline"
         label={t("mcDate")}
-        value={formatClassDate(masterClass.date) || t("mcNoDateYet")}
-        sub={formatClassTime(masterClass.time)}
+        value={formatClassDateRange(masterClass) || t("mcNoDateYet")}
       />
       <InfoTile
         icon="time-outline"

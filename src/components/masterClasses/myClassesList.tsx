@@ -143,7 +143,7 @@ function MyClassesCardBase({ enrollment, onPress }: CardProps) {
       <View style={styles.main}>
         <ClassMediaThumb media={cls?.media} size={THUMB} />
         <View style={styles.body}>
-          {cls ? <ClassTypePill label={cls.label} type={cls.type} /> : null}
+          {cls ? <ClassTypePill label={cls.label} /> : null}
           <Text style={styles.title} numberOfLines={2}>
             {title}
           </Text>

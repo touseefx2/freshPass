@@ -45,7 +45,6 @@ import {
 } from "@/src/utils/masterClassHelpers";
 import { resetToDashboardHome } from "@/src/utils/navigation";
 import {
-  CertificationNotice,
   ClassStateView,
   ClassTypePill,
   StatusChip,
@@ -436,8 +435,6 @@ export default function ClassDetailScreen() {
       (cls.cancellation_window_hours
         ? t("mcFullRefundWindow", { hours: cls.cancellation_window_hours })
         : null);
-    const showCertification =
-      !!cls.certification_notice || cls.type === "certification_training";
     const busy = phase === "starting" || phase === "sheet";
 
     body = (
@@ -461,7 +458,7 @@ export default function ClassDetailScreen() {
 
           <View style={styles.headBlock}>
             <View style={styles.pillRow}>
-              <ClassTypePill label={cls.label} type={cls.type} size="md" showIcon />
+              <ClassTypePill label={cls.label} size="md" showIcon />
               {statusMeta ? <StatusChip meta={statusMeta} /> : null}
             </View>
             <Text style={styles.title} accessibilityRole="header">
@@ -487,9 +484,6 @@ export default function ClassDetailScreen() {
             icon="shield-checkmark-outline"
             text={cancellationText}
           />
-          {showCertification ? (
-            <CertificationNotice text={cls.certification_notice} />
-          ) : null}
         </ScrollView>
 
         <ClassDetailEnrollBar

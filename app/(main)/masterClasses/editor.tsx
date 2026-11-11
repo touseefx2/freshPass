@@ -56,19 +56,16 @@ import type {
   MasterClassFormat,
   MasterClassLocationType,
   MasterClassPayload,
-  MasterClassType,
 } from "@/src/types/masterClass";
 import {
   CANCELLATION_WINDOW_OPTIONS,
   CLASS_LIMITS,
-  CLASS_TYPE_OPTIONS,
   DEFAULT_CANCELLATION_WINDOW,
   DURATION_OPTIONS,
   formatClassDate,
   formatClassPrice,
   formatClassTime,
   formatDuration,
-  formatDurationOption,
   getClassPrice,
   getClassWhenText,
   getFormatLabel,
@@ -77,7 +74,6 @@ import {
   isValidMeetingUrl,
 } from "@/src/utils/masterClassHelpers";
 import {
-  CertificationNotice,
   ClassStateView,
   ClassSummaryRow,
   MetaRow,
@@ -132,13 +128,14 @@ const MEDIA_CROP_ASPECT =
 
 type FormState = {
   title: string;
-  type: MasterClassType | null;
   description: string;
   prerequisites: string;
-  /** "YYYY-MM-DD" on the business clock */
+  /** "YYYY-MM-DD" on the business clock (start date) */
   date: string | null;
   /** "HH:mm" on the business clock */
   time: string | null;
+  /** "YYYY-MM-DD" on the business clock (end date) */
+  endDate: string | null;
   duration: number | null;
   capacity: string;
   price: string;
@@ -156,11 +153,11 @@ type FormState = {
 type FieldKey =
   | "media"
   | "title"
-  | "type"
   | "description"
   | "prerequisites"
   | "date"
   | "time"
+  | "endDate"
   | "duration"
   | "capacity"
   | "price"
@@ -175,11 +172,11 @@ type Errors = Partial<Record<FieldKey, string>>;
 const FIELD_ORDER: FieldKey[] = [
   "media",
   "title",
-  "type",
   "description",
   "prerequisites",
   "date",
   "time",
+  "endDate",
   "duration",
   "capacity",
   "price",
@@ -193,11 +190,11 @@ const FIELD_ORDER: FieldKey[] = [
 /** Server field (422 `errors` and draft `missing`) → form field. */
 const SERVER_FIELDS: Record<string, FieldKey> = {
   title: "title",
-  type: "type",
   description: "description",
   prerequisites: "prerequisites",
   date: "date",
   time: "time",
+  end_date: "endDate",
   starts_at: "date",
   duration_minutes: "duration",
   capacity: "capacity",
@@ -217,11 +214,11 @@ const SERVER_FIELDS: Record<string, FieldKey> = {
 
 const BLANK_FORM: FormState = {
   title: "",
-  type: null,
   description: "",
   prerequisites: "",
   date: null,
   time: null,
+  endDate: null,
   duration: null,
   capacity: "",
   price: "",
@@ -234,12 +231,6 @@ const BLANK_FORM: FormState = {
   meetingUrl: "",
   cancellationWindow: DEFAULT_CANCELLATION_WINDOW,
   mediaAssetId: null,
-};
-
-const TYPE_ICONS: Record<MasterClassType, IoniconName> = {
-  masterclass: "school-outline",
-  workshop: "construct-outline",
-  certification_training: "ribbon-outline",
 };
 
 // Keeps "12." while typing; one decimal point, two decimals max.
@@ -272,11 +263,11 @@ function formFromClass(cls: MasterClass): FormState {
   const custom = cls.location_type === "custom";
   return {
     title: cls.title ?? "",
-    type: cls.type,
     description: cls.description ?? "",
     prerequisites: cls.prerequisites ?? "",
     date: cls.date ? cls.date.slice(0, 10) : null,
     time: cls.time ? cls.time.slice(0, 5) : null,
+    endDate: cls.end_date ? cls.end_date.slice(0, 10) : null,
     duration: cls.duration_minutes,
     capacity: cls.capacity != null ? String(cls.capacity) : "",
     price: moneyText(cls.price),
@@ -315,11 +306,10 @@ function payloadFromForm(f: FormState): MasterClassPayload {
     cancellation_window_hours: f.cancellationWindow,
     format: f.format,
     media_asset_id: f.mediaAssetId,
-    // Explicit nulls so a PATCH clears a field the pro emptied on a draft
-    type: f.type ?? null,
     duration_minutes: f.duration || null,
     capacity: toInt(f.capacity),
     price: toMoney(f.price),
+    end_date: f.endDate || null,
   };
   // Date and time travel together: both or neither
   const hasWhen = !!(f.date && f.time);
@@ -359,6 +349,9 @@ function changedBody(next: FormState, prev: FormState): MasterClassPayload {
     out.date = a.date;
     out.time = a.time;
   }
+  if ("date" in out || "end_date" in out) {
+    out.end_date = a.end_date;
+  }
   // A switch to "custom" needs its address even when the text didn't change
   if (out.location_type === "custom" && a.address != null) {
     out.address = a.address;
@@ -377,6 +370,10 @@ function rescheduleBody(next: FormState, prev: FormState): MasterClassPayload {
   ) {
     out.date = next.date;
     out.time = next.time;
+    out.end_date = next.endDate || null;
+  }
+  if (next.endDate !== prev.endDate) {
+    out.end_date = next.endDate || null;
   }
   if (next.duration && next.duration !== prev.duration) {
     out.duration_minutes = next.duration;
@@ -425,7 +422,6 @@ function validate(
   }
 
   if (kind === "publish") {
-    if (!f.type) e.type = t("mcErrorTypeRequired");
     if (!f.description.trim()) e.description = t("mcErrorDescriptionRequired");
     if (price == null) e.price = t("mcErrorPriceRequired");
     if (capacity == null) e.capacity = t("mcErrorSeatsRequired");
@@ -448,6 +444,10 @@ function validate(
       e.date = t("mcErrorFutureDateTime");
     }
     if (!f.duration) e.duration = t("mcErrorDurationRequired");
+    if (kind === "publish" && !f.endDate) e.endDate = t("mcErrorEndDateRequired");
+    if (f.endDate && f.date && f.endDate < f.date) {
+      e.endDate = t("mcErrorEndDateBeforeStart");
+    }
   }
   return e;
 }
@@ -455,7 +455,7 @@ function validate(
 const hasErrors = (e: Errors) => Object.keys(e).length > 0;
 
 type Busy = null | "publish" | "draft" | "autosave" | "reschedule";
-type SheetName = null | "type" | "duration" | "date" | "time" | "address";
+type SheetName = null | "duration" | "date" | "time" | "endDate" | "address";
 
 export default function MasterClassEditorScreen() {
   const { t } = useTranslation();
@@ -981,20 +981,13 @@ export default function MasterClassEditorScreen() {
   });
 
   // ── Derived display ─────────────────────────────────────────────────
-  const typeOptions: EditorSheetOption<MasterClassType>[] = CLASS_TYPE_OPTIONS.map(
-    (o) => ({ value: o.value, label: t(o.labelKey), icon: TYPE_ICONS[o.value] }),
-  );
-  const typeLabel = form.type
-    ? t(CLASS_TYPE_OPTIONS.find((o) => o.value === form.type)?.labelKey ?? "")
-    : null;
-
   const durationOptions: EditorSheetOption<number>[] = useMemo(() => {
     const list = [...DURATION_OPTIONS];
     if (form.duration && !list.includes(form.duration)) {
       list.push(form.duration);
       list.sort((a, b) => a - b);
     }
-    return list.map((m) => ({ value: m, label: formatDurationOption(m) }));
+    return list.map((m) => ({ value: m, label: formatDuration(m) }));
   }, [form.duration]);
 
   const windowOptions = CANCELLATION_WINDOW_OPTIONS.map((h) => ({
@@ -1090,8 +1083,8 @@ export default function MasterClassEditorScreen() {
     <View onLayout={recordY(["date", "time"])}>
       <EditorRow
         labels={[
-          { label: t("mcFieldDate"), required: true },
-          { label: t("mcFieldTime"), required: true },
+          { label: t("mcFieldStartDate"), required: true },
+          { label: t("mcFieldStartTime"), required: true },
         ]}
       >
         <EditorPickerBox
@@ -1122,6 +1115,23 @@ export default function MasterClassEditorScreen() {
           <EditorFieldError message={dateTimeError} />
         </View>
       ) : null}
+    </View>
+  );
+
+  const endDateRow = (
+    <View style={styles.section} onLayout={recordY(["endDate"])}>
+      <EditorPickerBox
+        label={t("mcFieldEndDate")}
+        required={!reschedule}
+        icon="calendar-outline"
+        value={form.endDate ? formatClassDate(form.endDate) : null}
+        placeholder={t("mcSelectEndDate")}
+        onPress={() => {
+          Keyboard.dismiss();
+          setSheet("endDate");
+        }}
+        error={errors.endDate}
+      />
     </View>
   );
 
@@ -1210,9 +1220,10 @@ export default function MasterClassEditorScreen() {
             </SectionCard>
 
             {dateTimeRow}
+            {endDateRow}
 
             <View style={styles.section} onLayout={recordY(["duration"])}>
-              <EditorLabel label={t("mcFieldDuration")} required />
+              <EditorLabel label={t("mcFieldClassDuration")} required />
               {durationPicker}
             </View>
 
@@ -1347,27 +1358,6 @@ export default function MasterClassEditorScreen() {
               />
             </View>
 
-            <View style={styles.section} onLayout={recordY(["type"])}>
-              <EditorPickerBox
-                label={t("mcFieldType")}
-                required
-                icon={form.type ? TYPE_ICONS[form.type] : "school-outline"}
-                value={typeLabel}
-                placeholder={t("mcFieldTypePlaceholder")}
-                onPress={() => {
-                  Keyboard.dismiss();
-                  setSheet("type");
-                }}
-                error={errors.type}
-              />
-              {form.type === "certification_training" ? (
-                <CertificationNotice
-                  compact
-                  text={serverClass?.certification_notice}
-                />
-              ) : null}
-            </View>
-
             <View style={styles.section} onLayout={recordY(["description"])}>
               <EditorTextInput
                 ref={descriptionRef}
@@ -1397,11 +1387,12 @@ export default function MasterClassEditorScreen() {
             </View>
 
             {dateTimeRow}
+            {endDateRow}
 
             <View onLayout={recordY(["duration", "capacity"])}>
               <EditorRow
                 labels={[
-                  { label: t("mcFieldDuration"), required: true },
+                  { label: t("mcFieldClassDuration"), required: true },
                   { label: t("mcFieldSeats"), required: true },
                 ]}
               >
@@ -1598,19 +1589,8 @@ export default function MasterClassEditorScreen() {
       ) : null}
 
       <EditorOptionSheet
-        visible={sheet === "type"}
-        title={t("mcFieldType")}
-        options={typeOptions}
-        selected={form.type}
-        onSelect={(v) => {
-          setField("type", v, "type");
-          setSheet(null);
-        }}
-        onClose={() => setSheet(null)}
-      />
-      <EditorOptionSheet
         visible={sheet === "duration"}
-        title={t("mcFieldDuration")}
+        title={t("mcFieldClassDuration")}
         options={durationOptions}
         selected={form.duration}
         onSelect={(v) => {
@@ -1624,18 +1604,31 @@ export default function MasterClassEditorScreen() {
         value={form.date}
         timeZone={serverClass?.timezone}
         onConfirm={(date) => {
-          // A time that already passed on the new day has to be picked again
           const keepTime =
             !!form.time && isClassDateTimeInFuture(date, form.time, serverClass?.timezone);
-          setForm((prev) => ({ ...prev, date, time: keepTime ? prev.time : null }));
-          clearError(["date", "time"]);
+          setForm((prev) => {
+            const endDate =
+              !prev.endDate || prev.endDate < date ? date : prev.endDate;
+            return { ...prev, date, time: keepTime ? prev.time : null, endDate };
+          });
+          clearError(["date", "time", "endDate"]);
           setFormError(null);
           setSheet(null);
           if (!keepTime) {
-            // iOS can't present a modal while another one is closing
             if (sheetTimer.current) clearTimeout(sheetTimer.current);
             sheetTimer.current = setTimeout(() => setSheet("time"), 450);
           }
+        }}
+        onClose={() => setSheet(null)}
+      />
+      <EditorDateSheet
+        visible={sheet === "endDate"}
+        value={form.endDate}
+        timeZone={serverClass?.timezone}
+        minDate={form.date ?? undefined}
+        onConfirm={(endDate) => {
+          setField("endDate", endDate, "endDate");
+          setSheet(null);
         }}
         onClose={() => setSheet(null)}
       />

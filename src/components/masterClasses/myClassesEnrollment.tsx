@@ -29,7 +29,7 @@ import type { ClassEnrollment, MasterClass } from "@/src/types/masterClass";
 import {
   ClassBadgeTone,
   formatClassDate,
-  formatClassDateTime,
+  formatClassDateRange,
   formatClassPrice,
   formatClassTime,
   formatDuration,
@@ -149,7 +149,7 @@ export function MyEnrollmentStatusBanner({
 export function MyEnrollmentRescheduledNotice({ cls }: { cls: MasterClass }) {
   const { t } = useTranslation();
   const { theme, styles } = useStyles();
-  const date = formatClassDateTime(cls.date, cls.time);
+  const date = formatClassDateRange(cls);
   return (
     <View style={styles.notice}>
       <Ionicons
