@@ -178,11 +178,7 @@ export default function HomeSlotOffersSection() {
   );
 
   const showEmptyBanner =
-    !loading && emptyNearby && (!items || items.length === 0);
-
-  if (!loading && !showEmptyBanner && (!items || items.length === 0)) {
-    return null;
-  }
+    !loading && (!items || items.length === 0);
 
   const handleInvite = () => {
     if (isGuest) {
