@@ -24,6 +24,7 @@ import SlotOfferCard from "@/src/components/slotOffer/SlotOfferCard";
 import InviteProBanner, {
   withInviteBanners,
 } from "@/src/components/invitePro/InviteProBanner";
+import RetryButton from "@/src/components/retryButton";
 import { setGuestModeModalVisible } from "@/src/state/slices/generalSlice";
 
 const HOME_LIMIT = 10;
@@ -68,6 +69,23 @@ const createStyles = (theme: Theme) =>
     loader: {
       paddingVertical: moderateHeightScale(20),
       alignItems: "center",
+    },
+    errorCard: {
+      marginHorizontal: moderateWidthScale(20),
+      backgroundColor: theme.white,
+      borderRadius: moderateWidthScale(14),
+      borderWidth: 1,
+      borderColor: theme.lightGreen015,
+      paddingHorizontal: moderateWidthScale(14),
+      paddingVertical: moderateHeightScale(24),
+      alignItems: "center" as const,
+      gap: moderateHeightScale(8),
+    },
+    errorText: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen5,
+      textAlign: "center" as const,
     },
     // Last-Minute Deals empty state (client sample 11-11)
     emptyCard: {
@@ -144,8 +162,10 @@ export default function HomeSlotOffersSection() {
 
   const [items, setItems] = useState<SlotOffer[]>([]);
   const [loading, setLoading] = useState(true);
-  const [emptyNearby, setEmptyNearby] = useState(false);
+  const [failed, setFailed] = useState(false);
   const requestIdRef = useRef(0);
+  const itemsRef = useRef(items);
+  itemsRef.current = items;
 
   const load = useCallback(async () => {
     const requestId = ++requestIdRef.current;
@@ -159,11 +179,11 @@ export default function HomeSlotOffersSection() {
       });
       if (requestId !== requestIdRef.current) return;
       setItems(deals);
-      setEmptyNearby(deals.length === 0);
+      setFailed(false);
     } catch (err) {
       if (requestId !== requestIdRef.current) return;
       Logger.error("Failed to load home slot offers:", err);
-      setEmptyNearby(false);
+      if (requestIdRef.current === requestId && itemsRef.current.length === 0) setFailed(true);
     } finally {
       if (requestId === requestIdRef.current) setLoading(false);
     }
@@ -178,7 +198,7 @@ export default function HomeSlotOffersSection() {
   );
 
   const showEmptyBanner =
-    !loading && (!items || items.length === 0);
+    !loading && !failed && (!items || items.length === 0);
 
   const handleInvite = () => {
     if (isGuest) {
@@ -209,6 +229,16 @@ export default function HomeSlotOffersSection() {
       {loading ? (
         <View style={styles.loader}>
           <ActivityIndicator color={theme.darkGreen} />
+        </View>
+      ) : failed && items.length === 0 ? (
+        <View style={styles.errorCard}>
+          <MaterialCommunityIcons
+            name="alert-circle-outline"
+            size={moderateWidthScale(32)}
+            color={theme.lightGreen}
+          />
+          <Text style={styles.errorText}>{t("failedToLoadBusinesses")}</Text>
+          <RetryButton onPress={load} loading={loading} />
         </View>
       ) : showEmptyBanner ? (
         <TouchableOpacity

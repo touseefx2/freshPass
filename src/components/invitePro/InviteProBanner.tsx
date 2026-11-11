@@ -118,14 +118,14 @@ const createStyles = (theme: Theme) =>
       letterSpacing: 1.2,
     },
     title: {
-      fontSize: fontSize.size18,
-      fontFamily: fonts.fontExtraBold,
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontBold,
       color: theme.darkGreen,
-      lineHeight: fontSize.size18 * 1.3,
+      lineHeight: fontSize.size14 * 1.3,
     },
     titleFull: {
-      fontSize: fontSize.size22,
-      lineHeight: fontSize.size22 * 1.2,
+      fontSize: fontSize.size16,
+      lineHeight: fontSize.size16 * 1.3,
     },
     button: {
       backgroundColor: theme.orangeBrown,
