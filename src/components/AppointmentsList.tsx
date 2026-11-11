@@ -613,7 +613,7 @@ export default function AppointmentsList({
         }
       }
     },
-    [statusFilter, effectiveStaffId, dateRange, inPersonPaymentStatus, fixedDateRange],
+    [statusFilter, effectiveStaffId, dateRange, inPersonPaymentStatus, fixedDateRange?.from, fixedDateRange?.to],
   );
 
   useEffect(() => {
