@@ -43,6 +43,7 @@ import { resetToRoute } from "@/src/utils/navigation";
 import Logger from "@/src/services/logger";
 import {
   clearPendingInviteCode,
+  captureInviteForBusinessSignup,
   getPendingInviteCode,
 } from "@/src/services/pendingInviteCode";
 
@@ -234,7 +235,10 @@ export default function RegisterPassword() {
   useEffect(() => {
     if (!isBusiness) return;
     let cancelled = false;
-    getPendingInviteCode().then((code) => {
+    // iPhone/iPad with no code yet: deferred click / clipboard, then fill
+    captureInviteForBusinessSignup()
+      .then(() => getPendingInviteCode())
+      .then((code) => {
       if (cancelled || !code) return;
       // Never overwrite what the user already typed
       setInviteCode((current) => current || sanitizeInviteCode(code));

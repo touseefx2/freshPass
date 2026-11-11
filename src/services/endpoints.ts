@@ -76,6 +76,8 @@ export const businessEndpoints = {
   agentCode: (code: string) => `/api/agent-codes/${encodeURIComponent(code)}`,
   /** Invite a Pro code check at business signup (public): { invite_code, inviter_first_name } */
   inviteCode: (code: string) => `/api/invite-codes/${encodeURIComponent(code)}`,
+  // iPhone: newest unclaimed invite click from this IP (48h); each click once
+  inviteCodeDeferred: `/api/invite-codes/deferred`,
   login: `/api/login`,
   logout: `/api/logout`,
   businessSearch: (search?: string, page = 1, perPage = 20) => {

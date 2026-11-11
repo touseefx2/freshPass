@@ -4694,6 +4694,7 @@
   "ipScreenCopy": "Copy Invite Link",
   "ipScreenShareTitle": "Join FreshPass",
   "ipScreenShareMessage": "Join FreshPass as a pro with my invite link: {{link}}",
+  "ipScreenShareMessageWithCode": "Join FreshPass as a pro with my invite link: {{link}}\n\nIf the link doesn't fill it in, enter my invite code when you sign up: {{code}}",
   "ipScreenLinkCopied": "Link copied",
   "ipScreenLinkCopiedMessage": "Your invite link is ready to paste.",
   "ipScreenLoadingLink": "Loading your invite link...",

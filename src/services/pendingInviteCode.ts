@@ -1,23 +1,34 @@
 import * as Application from "expo-application";
 import i18n from "i18next";
 import { Clipboard, InteractionManager, Platform } from "react-native";
-import { showToast } from "@/src/services/api";
+import { router } from "expo-router";
+import { ApiService, showToast } from "@/src/services/api";
+import { businessEndpoints } from "@/src/services/endpoints";
 import Logger from "@/src/services/logger";
 import { LocalStorageService } from "@/src/services/storage";
 import { store } from "@/src/state/store";
+import { setRole } from "@/src/state/slices/generalSlice";
+import { MAIN_ROUTES } from "@/src/constant/routes";
 
 /**
  * "Invite a Pro" code, held until a new business signs up:
  *   https://getfreshpass.com/invite/{code}   (universal / app link)
  *   com.freshpass://invite?code={CODE}       (web page "I already have the app")
  *   Play install referrer invite_code={CODE} (Android, first launch)
- *   Clipboard FRESHPASS-INVITE:{CODE}        (iPhone, read at business signup)
+ *   GET /api/invite-codes/deferred           (iPhone, first launch + business signup)
+ *   Clipboard FRESHPASS-INVITE:{CODE}        (iPad, read at business signup)
  * Kept in its own AsyncStorage key (not redux-persist), so it survives app
  * kill and sign-out. Sent as invite_code at business signup, then cleared.
  */
 const CODE_KEY = "pendingInviteCode";
 const REFERRER_CHECKED_KEY = "inviteReferrerChecked";
+const DEFERRED_CHECKED_KEY = "inviteDeferredChecked";
 const CLIPBOARD_PREFIX = "FRESHPASS-INVITE:";
+// Business signup waits at most this long for the deferred lookup
+const DEFERRED_SIGNUP_TIMEOUT_MS = 4000;
+
+const isIphone = Platform.OS === "ios" && !Platform.isPad;
+const isIpad = Platform.OS === "ios" && Platform.isPad;
 
 // Same as booking links: let home mount before showing the notice
 const OPEN_DELAY_MS = 100;
@@ -126,9 +137,10 @@ export function holdInviteFromLink(code: string | null): void {
 }
 
 /**
- * Called when home is up (resetToDashboardHome) and for a warm link.
+ * Called when home is up (resetToDashboardHome), at splash and for a warm link.
  * Signed in (any role or mode): "This invite is for new businesses", once;
- * nothing is recorded and the code stays held. Signed out / guest: silent.
+ * nothing is recorded and the code stays held. Signed out: business signup
+ * opens (openBusinessSignupForInvite). Guest: silent.
  */
 /** Signed in (any role or mode) and not a guest. */
 export function isInviteNoticeUserSignedIn(): boolean {
@@ -140,7 +152,10 @@ export function openPendingInviteNotice(): void {
   if (!noticePending) return;
   noticePending = false;
 
-  if (!isInviteNoticeUserSignedIn()) return;
+  if (!isInviteNoticeUserSignedIn()) {
+    openBusinessSignupForInvite();
+    return;
+  }
 
   InteractionManager.runAfterInteractions(() => {
     setTimeout(() => {
@@ -151,6 +166,23 @@ export function openPendingInviteNotice(): void {
         ? i18n.t("inviteLinkForNewBusinessesMessage")
         : "Only a new business account can use an invite code.";
       showToast(title, message, "info");
+    }, OPEN_DELAY_MS);
+  });
+}
+
+/**
+ * Signed out (not a guest) and an invite link was just opened: go straight to
+ * business signup (Business picked; the code fills the Invite code field).
+ * Skipped when Business is already picked — they are already in that flow.
+ */
+function openBusinessSignupForInvite(): void {
+  const state = store.getState();
+  if (state.user.isGuest || state.general.role === "business") return;
+  store.dispatch(setRole("business"));
+  InteractionManager.runAfterInteractions(() => {
+    setTimeout(() => {
+      router.push(`/(main)/${MAIN_ROUTES.SOCIAL_LOGIN}` as any);
+      Logger.log("------>invite link (signed out) -> business signup");
     }, OPEN_DELAY_MS);
   });
 }
@@ -225,13 +257,94 @@ export async function captureInstallReferrerInviteOnce(): Promise<void> {
 }
 
 /**
- * iPhone only, when the user picks business on the Role screen: the invite
- * page copies "FRESHPASS-INVITE:{CODE}" before opening the App Store.
+ * iPhone: GET /api/invite-codes/deferred — the newest unclaimed invite click
+ * from this IP (48h). Each click is handed out once, so only call it when no
+ * code is held. Returns the code (saved) or null. Never throws.
+ */
+async function fetchDeferredInvite(): Promise<string | null> {
+  const response = await ApiService.get<any>(
+    businessEndpoints.inviteCodeDeferred,
+  );
+  const payload = response?.data ?? response;
+  const code = normalizeInviteCode(payload?.invite_code);
+  Logger.log("------>deferred invite", code);
+  if (code && !cachedCode) saveCode(code);
+  return code;
+}
+
+/**
+ * iPhone, once per install (first launch): after an App Store install from an
+ * invite link. Skipped when a link already gave a code. A 404 (no click)
+ * counts as checked; a network error is retried next launch.
+ */
+export async function captureDeferredInviteOnFirstLaunch(): Promise<void> {
+  if (!isIphone) return;
+  try {
+    const checked = await LocalStorageService.getItem(DEFERRED_CHECKED_KEY);
+    if (checked) return;
+    await ensureLoaded();
+    if (cachedCode) {
+      await LocalStorageService.setItem(DEFERRED_CHECKED_KEY, "1");
+      return;
+    }
+    try {
+      await fetchDeferredInvite();
+    } catch (error: any) {
+      if (error?.status !== 404) {
+        Logger.warn("Deferred invite (first launch) failed:", error?.message);
+        return;
+      }
+    }
+    await LocalStorageService.setItem(DEFERRED_CHECKED_KEY, "1");
+  } catch (error) {
+    Logger.warn("captureDeferredInviteOnFirstLaunch failed:", error);
+  }
+}
+
+let deferredSignupChecked = false;
+
+/**
+ * iPhone, business signup with no code yet (e.g. the app was installed but an
+ * in-app browser still sent them to the App Store). At most once per session,
+ * waits at most DEFERRED_SIGNUP_TIMEOUT_MS. Never throws.
+ */
+export async function captureDeferredInviteForSignup(): Promise<void> {
+  if (!isIphone || deferredSignupChecked) return;
+  try {
+    await ensureLoaded();
+    if (cachedCode) return;
+    deferredSignupChecked = true;
+    await Promise.race([
+      fetchDeferredInvite().catch((error: any) => {
+        if (error?.status !== 404) {
+          Logger.warn("Deferred invite (signup) failed:", error?.message);
+        }
+        return null;
+      }),
+      new Promise((resolve) => setTimeout(resolve, DEFERRED_SIGNUP_TIMEOUT_MS)),
+    ]);
+  } catch (error) {
+    Logger.warn("captureDeferredInviteForSignup failed:", error);
+  }
+}
+
+/**
+ * Business signup on iPhone or iPad: iPhone asks the server (deferred click),
+ * iPad reads the clipboard the invite page wrote. Only when no code is held.
+ */
+export async function captureInviteForBusinessSignup(): Promise<void> {
+  if (isIpad) await captureIosClipboardInviteOnce();
+  else await captureDeferredInviteForSignup();
+}
+
+/**
+ * iPad only, when the user picks business: the invite page copies
+ * "FRESHPASS-INVITE:{CODE}" before opening the App Store.
  * At most once per app session, only when no code is held. Never throws.
  * (iOS shows its own "Allow Paste" prompt.)
  */
 export async function captureIosClipboardInviteOnce(): Promise<void> {
-  if (Platform.OS !== "ios" || clipboardChecked) return;
+  if (!isIpad || clipboardChecked) return;
   try {
     await ensureLoaded();
     if (cachedCode) return;

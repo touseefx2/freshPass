@@ -20,10 +20,46 @@ const facebookPlugin = facebookAppId
     ]
   : null;
 
+// Invite a Pro test links (https://dev.getfreshpass.com/invite/{code}): only
+// in builds that talk to the dev API, never in a release on the live API.
+const DEV_INVITE_HOST = "dev.getfreshpass.com";
+const usesDevApi = (process.env.EXPO_PUBLIC_API_BASE_URL || "").includes(
+  `//${DEV_INVITE_HOST}`,
+);
+
 module.exports = {
   ...appJson,
   expo: {
     ...appJson.expo,
+    ios: {
+      ...appJson.expo.ios,
+      associatedDomains: [
+        ...(appJson.expo.ios.associatedDomains || []),
+        ...(usesDevApi ? [`applinks:${DEV_INVITE_HOST}`] : []),
+      ],
+    },
+    android: {
+      ...appJson.expo.android,
+      intentFilters: [
+        ...(appJson.expo.android.intentFilters || []),
+        ...(usesDevApi
+          ? [
+              {
+                action: "VIEW",
+                autoVerify: true,
+                data: [
+                  {
+                    scheme: "https",
+                    host: DEV_INVITE_HOST,
+                    pathPrefix: "/invite/",
+                  },
+                ],
+                category: ["BROWSABLE", "DEFAULT"],
+              },
+            ]
+          : []),
+      ],
+    },
     plugins: [
       ...appJson.expo.plugins,
       "./plugins/withIosModularHeaders",

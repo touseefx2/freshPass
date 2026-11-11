@@ -109,13 +109,16 @@ export default function InviteProScreen() {
     try {
       // The link only in `message`: iOS would add `url` a second time
       await Share.share({
-        message: t("ipScreenShareMessage", { link: inviteLink }),
+        // Code as a backup if the app can't pick the invite up automatically
+        message: inviteCode
+          ? t("ipScreenShareMessageWithCode", { link: inviteLink, code: inviteCode })
+          : t("ipScreenShareMessage", { link: inviteLink }),
         title: t("ipScreenShareTitle"),
       });
     } catch (error) {
       Logger.warn("Invite share failed:", error);
     }
-  }, [inviteLink, t]);
+  }, [inviteCode, inviteLink, t]);
 
   const handleCopy = useCallback(() => {
     if (!inviteLink) return;

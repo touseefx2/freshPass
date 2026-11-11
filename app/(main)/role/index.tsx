@@ -12,7 +12,7 @@ import RadioOption from "@/src/components/radioOption";
 import Button from "@/src/components/button";
 import { setRole, UserRole } from "@/src/state/slices/generalSlice";
 import { handleNotificationPermission } from "@/src/services/notificationPermissionService";
-import { captureIosClipboardInviteOnce } from "@/src/services/pendingInviteCode";
+import { captureInviteForBusinessSignup } from "@/src/services/pendingInviteCode";
 
 export default function Role() {
   const { colors } = useTheme();
@@ -43,13 +43,14 @@ export default function Role() {
 
         return;
       }
-      // iPhone: the invite page copied FRESHPASS-INVITE:{CODE} before the
-      // App Store. Read it only here, when business is chosen (iOS asks to paste).
+      // Invite a Pro, business chosen: iPhone asks the server for the invite
+      // click saved before the App Store; iPad reads the clipboard the invite
+      // page wrote (iOS asks to paste). Only when no code is held.
       if (Platform.OS === "ios") {
         if (readingClipboardRef.current) return;
         readingClipboardRef.current = true;
         try {
-          await captureIosClipboardInviteOnce();
+          await captureInviteForBusinessSignup();
         } finally {
           readingClipboardRef.current = false;
         }

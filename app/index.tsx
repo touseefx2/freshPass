@@ -15,6 +15,7 @@ import {
   queueColdStartNotificationIfNeeded,
 } from "@/src/services/pendingNotificationNavigation";
 import {
+  captureDeferredInviteOnFirstLaunch,
   captureInstallReferrerInviteOnce,
   openPendingInviteNotice,
   preloadPendingInviteCode,
@@ -104,6 +105,8 @@ export default function Index() {
     // referrer once. Fire and forget — never delays the splash.
     preloadPendingInviteCode();
     void captureInstallReferrerInviteOnce();
+    // iPhone: invite click saved by the server before the App Store (once)
+    void captureDeferredInviteOnFirstLaunch();
     const fallbackTimer = setTimeout(
       onSplashFinish,
       SPLASH_FALLBACK_TIMEOUT_MS,
