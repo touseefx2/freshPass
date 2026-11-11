@@ -629,9 +629,10 @@ export default function BusinessEarningsScreen() {
     // shown separately and are not part of `total`.
     const collected = report.collectedAtLocation;
     const awaitingTotal = collected.awaitingConfirmation?.total ?? 0;
+    const unpaidTotal = collected.unpaid?.total ?? 0;
     const cashTipsTotal = collected.cashTips?.total ?? 0;
     const showCollectedCard =
-      collected.total > 0 || awaitingTotal > 0 || cashTipsTotal > 0;
+      collected.total > 0 || awaitingTotal > 0 || unpaidTotal > 0 || cashTipsTotal > 0;
 
     return (
       <View style={showFaded ? styles.contentFaded : undefined}>
@@ -744,7 +745,7 @@ export default function BusinessEarningsScreen() {
             {!!collected.note && (
               <Text style={styles.mutedNote}>{collected.note}</Text>
             )}
-            {(awaitingTotal > 0 || cashTipsTotal > 0) && (
+            {(awaitingTotal > 0 || unpaidTotal > 0 || cashTipsTotal > 0) && (
               <View style={styles.divider} />
             )}
             {awaitingTotal > 0 && (
@@ -761,6 +762,23 @@ export default function BusinessEarningsScreen() {
                 </Text>
                 <Text style={[styles.mutedRowValue, styles.awaitingText]}>
                   {formatMoney(awaitingTotal, currency)}
+                </Text>
+              </View>
+            )}
+            {unpaidTotal > 0 && (
+              <View style={styles.mutedRow}>
+                <Ionicons
+                  name="alert-circle-outline"
+                  size={iconScale(15)}
+                  color={theme.accentAmber}
+                />
+                <Text style={[styles.mutedRowLabel, styles.awaitingText]}>
+                  {t("earningsUnpaidVisits", {
+                    count: collected.unpaid?.appointmentsCount ?? 0,
+                  })}
+                </Text>
+                <Text style={[styles.mutedRowValue, styles.awaitingText]}>
+                  {formatMoney(unpaidTotal, currency)}
                 </Text>
               </View>
             )}

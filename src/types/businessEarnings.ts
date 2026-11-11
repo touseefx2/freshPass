@@ -106,6 +106,8 @@ export interface EarningsOverview {
   products?: OverviewLine;
   /** Cancellation and no-show fees */
   other: OverviewLine;
+  /** Completed pay-at-shop visits with no payment recorded. NOT part of totalRevenue. */
+  unpaidVisits?: OverviewLine;
 }
 
 export interface RevenueChartPoint {
@@ -180,6 +182,8 @@ export interface CollectedAtLocation {
   awaitingConfirmation?: CollectedAwaitingConfirmation;
   /** Optional: older backends omit it. */
   cashTips?: CollectedCashTips;
+  /** Completed visits with no payment recorded (not_paid or rejected claim). */
+  unpaid?: CollectedAwaitingConfirmation;
 }
 
 export interface FeeDataCoverage {

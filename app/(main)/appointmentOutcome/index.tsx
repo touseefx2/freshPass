@@ -895,6 +895,7 @@ export default function AppointmentOutcomeScreen() {
             ) : null}
           </View>
           {ready ? methodNote(false) : null}
+          {errorNote}
           {previewError ? (
             <InfoNote tone="error" icon="error-outline" text={previewError} />
           ) : null}

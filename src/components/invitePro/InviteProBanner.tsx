@@ -1,14 +1,6 @@
-// "Invite a Pro" banner for the deal lists (guide section 1).
-// - row:        inside the horizontal FreshPass Deals row (same 310 × 132
-//               footprint and radius as the deal cards, so the row stays even)
-// - strip:      inside the horizontal Last-Minute strip (290 wide like the
-//               compact SlotOfferCard; spacing via marginRight)
-// - list:       inside the vertical Last-Minute "See all" list (full width)
-// - standalone: shown on its own instead of a list when nothing is nearby
-// Same family as FreshyTryOnBanner / MarketplaceBanner (dark green surface,
-// orangeBrown eyebrow + CTA pill, white title), but with a gold hairline,
-// a soft gradient and an icon medallion instead of a photo, so it never
-// reads as a deal card.
+// "Invite a Pro" banner – cream/gold design matching the client sample (11-11).
+// Variants: row (FreshPass Deals horizontal), strip (Last-Minute strip),
+// list (Last-Minute vertical), standalone (empty-section fallback).
 
 import React, { useMemo } from "react";
 import {
@@ -19,7 +11,6 @@ import {
   View,
   ViewStyle,
 } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
@@ -33,7 +24,6 @@ import {
   widthScale,
 } from "@/src/theme/dimensions";
 import { setGuestModeModalVisible } from "@/src/state/slices/generalSlice";
-import { formatRewardMoney } from "@/src/utils/rewardMath";
 
 export type InviteProBannerVariant = "row" | "strip" | "list" | "standalone";
 
@@ -65,16 +55,13 @@ export function withInviteBanners<T>(items: T[]): WithInviteBanners<T>[] {
   return out;
 }
 
-/** The invite reward from the guide ($30), shown as "$30". */
-const INVITE_REWARD_DOLLARS = 30;
-
 /** Text inside a fixed-height card: cap OS font scaling so nothing clips. */
 const MAX_FONT_SCALE = 1.2;
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
     base: {
-      backgroundColor: theme.darkGreen,
+      backgroundColor: theme.noticeCream,
       borderWidth: 1,
       borderColor: theme.goldBorder,
       overflow: "hidden",
@@ -97,16 +84,6 @@ const createStyles = (theme: Theme) =>
     standalone: {
       marginHorizontal: moderateWidthScale(20),
       borderRadius: moderateWidthScale(14),
-    },
-    // Soft orange glow behind the medallion (decorative)
-    glow: {
-      position: "absolute",
-      right: -moderateWidthScale(36),
-      top: -moderateWidthScale(36),
-      width: moderateWidthScale(150),
-      height: moderateWidthScale(150),
-      borderRadius: moderateWidthScale(75),
-      backgroundColor: theme.orangeBrown015,
     },
     content: {
       flexGrow: 1,
@@ -135,34 +112,25 @@ const createStyles = (theme: Theme) =>
       marginBottom: moderateHeightScale(6),
     },
     eyebrow: {
-      fontSize: fontSize.size10,
+      fontSize: fontSize.size12,
       fontFamily: fonts.fontBold,
-      color: theme.orangeBrown,
+      color: theme.orangeBrownText,
       letterSpacing: 1.2,
     },
     title: {
-      fontSize: fontSize.size15,
-      fontFamily: fonts.fontBold,
-      color: theme.white,
-      lineHeight: fontSize.size15 * 1.3,
-      fontVariant: ["tabular-nums"],
+      fontSize: fontSize.size18,
+      fontFamily: fonts.fontExtraBold,
+      color: theme.darkGreen,
+      lineHeight: fontSize.size18 * 1.3,
     },
     titleFull: {
-      fontSize: fontSize.size17,
-      lineHeight: fontSize.size17 * 1.25,
-    },
-    subtitle: {
-      marginTop: moderateHeightScale(4),
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontRegular,
-      color: theme.white85,
-      lineHeight: fontSize.size12 * 1.4,
-      fontVariant: ["tabular-nums"],
+      fontSize: fontSize.size22,
+      lineHeight: fontSize.size22 * 1.2,
     },
     button: {
       backgroundColor: theme.orangeBrown,
-      paddingHorizontal: moderateWidthScale(14),
-      paddingVertical: moderateHeightScale(7),
+      paddingHorizontal: moderateWidthScale(16),
+      paddingVertical: moderateHeightScale(8),
       borderRadius: moderateWidthScale(999),
       flexDirection: "row",
       alignItems: "center",
@@ -170,12 +138,12 @@ const createStyles = (theme: Theme) =>
       gap: moderateWidthScale(6),
     },
     buttonFull: {
-      marginTop: moderateHeightScale(12),
-      paddingHorizontal: moderateWidthScale(16),
-      paddingVertical: moderateHeightScale(8),
+      marginTop: moderateHeightScale(14),
+      paddingHorizontal: moderateWidthScale(20),
+      paddingVertical: moderateHeightScale(10),
     },
     buttonText: {
-      fontSize: fontSize.size13,
+      fontSize: fontSize.size14,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
     },
@@ -183,20 +151,18 @@ const createStyles = (theme: Theme) =>
       width: moderateWidthScale(60),
       height: moderateWidthScale(60),
       borderRadius: moderateWidthScale(30),
-      backgroundColor: theme.orangeBrown30,
-      borderWidth: 1,
-      borderColor: theme.orangeBrown,
+      backgroundColor: theme.orangeBrown01,
       alignItems: "center",
       justifyContent: "center",
     },
     medallionFull: {
-      width: moderateWidthScale(68),
-      height: moderateWidthScale(68),
-      borderRadius: moderateWidthScale(34),
+      width: moderateWidthScale(72),
+      height: moderateWidthScale(72),
+      borderRadius: moderateWidthScale(36),
     },
   });
 
-/** Invite a Pro banner for the FreshPass Deals and Last-Minute Deals lists. */
+/** Invite a Pro banner for the deal lists and empty sections. */
 export default function InviteProBanner({
   variant,
   style,
@@ -210,16 +176,6 @@ export default function InviteProBanner({
   const isGuest = useAppSelector((state: any) => state.user.isGuest);
 
   const compact = variant === "row" || variant === "strip";
-  const amount = formatRewardMoney(INVITE_REWARD_DOLLARS).replace(/\.00$/, "");
-
-  const eyebrow = t("ipBannerEyebrow");
-  const title = compact
-    ? t("ipBannerCompactTitle", { amount })
-    : variant === "standalone"
-      ? t("ipBannerEmptyTitle")
-      : t("ipBannerTitle");
-  const subtitle = compact ? null : t("ipBannerSubtitle", { amount });
-  const cta = t("ipBannerCta");
 
   const handlePress = () => {
     if (isGuest) {
@@ -244,18 +200,9 @@ export default function InviteProBanner({
       onPress={handlePress}
       style={[styles.base, variantStyle, style]}
       accessibilityRole="button"
-      accessibilityLabel={[title, subtitle].filter(Boolean).join(". ")}
+      accessibilityLabel={t("ipBannerTitle")}
       accessibilityHint={t("ipBannerA11yHint")}
     >
-      <LinearGradient
-        colors={[theme.darkGreen, theme.darkGreenDeep]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={StyleSheet.absoluteFill}
-        pointerEvents="none"
-      />
-      <View style={styles.glow} pointerEvents="none" />
-
       <View
         style={[styles.content, !compact && styles.contentFull]}
         pointerEvents="none"
@@ -265,15 +212,15 @@ export default function InviteProBanner({
             <View style={styles.eyebrowRow}>
               <MaterialCommunityIcons
                 name="gift-outline"
-                size={moderateWidthScale(13)}
-                color={theme.orangeBrown}
+                size={moderateWidthScale(15)}
+                color={theme.orangeBrownText}
               />
               <Text
                 style={styles.eyebrow}
                 numberOfLines={1}
                 maxFontSizeMultiplier={MAX_FONT_SCALE}
               >
-                {eyebrow}
+                {t("ipBannerEyebrow")}
               </Text>
             </View>
             <Text
@@ -281,13 +228,8 @@ export default function InviteProBanner({
               numberOfLines={2}
               maxFontSizeMultiplier={compact ? MAX_FONT_SCALE : undefined}
             >
-              {title}
+              {t("ipBannerTitle")}
             </Text>
-            {subtitle ? (
-              <Text style={styles.subtitle} numberOfLines={3}>
-                {subtitle}
-              </Text>
-            ) : null}
           </View>
           <View style={[styles.button, !compact && styles.buttonFull]}>
             <Text
@@ -295,7 +237,7 @@ export default function InviteProBanner({
               numberOfLines={1}
               maxFontSizeMultiplier={MAX_FONT_SCALE}
             >
-              {cta}
+              {t("ipBannerCta")}
             </Text>
             <MaterialCommunityIcons
               name="arrow-right"
@@ -307,8 +249,8 @@ export default function InviteProBanner({
 
         <View style={[styles.medallion, !compact && styles.medallionFull]}>
           <MaterialCommunityIcons
-            name="store-plus-outline"
-            size={moderateWidthScale(compact ? 28 : 32)}
+            name="gift-outline"
+            size={moderateWidthScale(compact ? 28 : 34)}
             color={theme.orangeBrown}
           />
         </View>

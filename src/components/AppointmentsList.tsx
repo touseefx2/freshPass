@@ -329,6 +329,10 @@ interface AppointmentsListProps {
   initialStatus?: StatusFilter;
   /** Staff's own list: every row is theirs, so no barber line */
   hideStaffName?: boolean;
+  /** Extra filter on the in-person payment status (e.g. "unpaid" for unrecorded visits). */
+  inPersonPaymentStatus?: "claimed" | "confirmed" | "rejected" | "unpaid";
+  /** Lock the date range (hides the date preset pills). */
+  fixedDateRange?: { from: string; to: string } | null;
 }
 
 export default function AppointmentsList({
@@ -337,6 +341,8 @@ export default function AppointmentsList({
   showBarberFilter = false,
   initialStatus = "upcoming",
   hideStaffName = false,
+  inPersonPaymentStatus,
+  fixedDateRange,
 }: AppointmentsListProps) {
   const { t } = useTranslation();
   const { colors } = useTheme();
@@ -555,9 +561,13 @@ export default function AppointmentsList({
         const status = STATUS_PARAM[statusFilter];
         if (status) params.status = status;
         if (effectiveStaffId) params.staff_id = effectiveStaffId;
-        if (dateRange) {
-          params.appointment_from_date = dateRange.from;
-          params.appointment_to_date = dateRange.to;
+        const activeDateRange = fixedDateRange ?? dateRange;
+        if (activeDateRange) {
+          params.appointment_from_date = activeDateRange.from;
+          params.appointment_to_date = activeDateRange.to;
+        }
+        if (inPersonPaymentStatus) {
+          params.in_person_payment_status = inPersonPaymentStatus;
         }
 
         const response = await ApiService.get<{
@@ -603,7 +613,7 @@ export default function AppointmentsList({
         }
       }
     },
-    [statusFilter, effectiveStaffId, dateRange],
+    [statusFilter, effectiveStaffId, dateRange, inPersonPaymentStatus, fixedDateRange],
   );
 
   useEffect(() => {
@@ -789,17 +799,19 @@ export default function AppointmentsList({
           })}
         </ScrollView>
         <View style={styles.dropdownRow}>
-          <TouchableOpacity
-            style={[styles.dropdown, datePreset !== "any" && styles.dropdownActive]}
-            onPress={() => setDateSheetVisible(true)}
-            activeOpacity={0.7}
-          >
-            <MaterialIcons name="calendar-today" size={iconScale(16)} color={theme.darkGreen} />
-            <Text style={styles.dropdownText} numberOfLines={1}>
-              {dateLabel}
-            </Text>
-            <Ionicons name="chevron-down" size={iconScale(16)} color={theme.darkGreen} />
-          </TouchableOpacity>
+          {!fixedDateRange && (
+            <TouchableOpacity
+              style={[styles.dropdown, datePreset !== "any" && styles.dropdownActive]}
+              onPress={() => setDateSheetVisible(true)}
+              activeOpacity={0.7}
+            >
+              <MaterialIcons name="calendar-today" size={iconScale(16)} color={theme.darkGreen} />
+              <Text style={styles.dropdownText} numberOfLines={1}>
+                {dateLabel}
+              </Text>
+              <Ionicons name="chevron-down" size={iconScale(16)} color={theme.darkGreen} />
+            </TouchableOpacity>
+          )}
           {showStaffDropdown && (
             <TouchableOpacity
               style={[styles.dropdown, selectedStaffId != null && styles.dropdownActive]}

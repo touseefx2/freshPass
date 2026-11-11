@@ -9,8 +9,8 @@ import {
 } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { MaterialIcons } from "@expo/vector-icons";
-import { useAppSelector, useTheme } from "@/src/hooks/hooks";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import {
@@ -24,6 +24,7 @@ import SlotOfferCard from "@/src/components/slotOffer/SlotOfferCard";
 import InviteProBanner, {
   withInviteBanners,
 } from "@/src/components/invitePro/InviteProBanner";
+import { setGuestModeModalVisible } from "@/src/state/slices/generalSlice";
 
 const HOME_LIMIT = 10;
 
@@ -68,6 +69,65 @@ const createStyles = (theme: Theme) =>
       paddingVertical: moderateHeightScale(20),
       alignItems: "center",
     },
+    // Last-Minute Deals empty state (client sample 11-11)
+    emptyCard: {
+      marginHorizontal: moderateWidthScale(20),
+      backgroundColor: theme.noticeCream,
+      borderWidth: 1,
+      borderColor: theme.goldBorder,
+      borderRadius: moderateWidthScale(14),
+      flexDirection: "row",
+      alignItems: "center",
+      paddingHorizontal: moderateWidthScale(16),
+      paddingVertical: moderateHeightScale(16),
+      gap: moderateWidthScale(12),
+    },
+    emptyTextCol: {
+      flex: 1,
+    },
+    emptyTitle: {
+      fontSize: fontSize.size20,
+      fontFamily: fonts.fontExtraBold,
+      color: theme.darkGreen,
+      lineHeight: fontSize.size20 * 1.25,
+    },
+    emptyBody: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+      marginTop: moderateHeightScale(8),
+      lineHeight: fontSize.size14 * 1.45,
+    },
+    emptyInvite: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
+      marginTop: moderateHeightScale(4),
+    },
+    emptyButton: {
+      backgroundColor: theme.orangeBrown,
+      paddingHorizontal: moderateWidthScale(20),
+      paddingVertical: moderateHeightScale(10),
+      borderRadius: moderateWidthScale(999),
+      flexDirection: "row",
+      alignItems: "center",
+      alignSelf: "flex-start",
+      gap: moderateWidthScale(6),
+      marginTop: moderateHeightScale(14),
+    },
+    emptyButtonText: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    emptyMedallion: {
+      width: moderateWidthScale(64),
+      height: moderateWidthScale(64),
+      borderRadius: moderateWidthScale(32),
+      backgroundColor: theme.orangeBrown01,
+      alignItems: "center",
+      justifyContent: "center",
+    },
   });
 
 export default function HomeSlotOffersSection() {
@@ -76,15 +136,14 @@ export default function HomeSlotOffersSection() {
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [theme]);
   const router = useRouter();
+  const dispatch = useAppDispatch();
+  const isGuest = useAppSelector((state: any) => state.user.isGuest);
 
-  // Customer location, both or neither (the server sets the 20-mile area)
   const lat = useAppSelector((state: any) => state.user.location?.lat);
   const lng = useAppSelector((state: any) => state.user.location?.long);
 
   const [items, setItems] = useState<SlotOffer[]>([]);
   const [loading, setLoading] = useState(true);
-  // Last load succeeded with no deals → Invite a Pro banner instead of the
-  // strip. An error keeps today's behaviour (strip hidden).
   const [emptyNearby, setEmptyNearby] = useState(false);
   const requestIdRef = useRef(0);
 
@@ -125,6 +184,14 @@ export default function HomeSlotOffersSection() {
     return null;
   }
 
+  const handleInvite = () => {
+    if (isGuest) {
+      dispatch(setGuestModeModalVisible(true));
+      return;
+    }
+    router.push("/(main)/invitePro" as any);
+  };
+
   return (
     <View style={styles.section}>
       <View style={styles.headerRow}>
@@ -148,7 +215,35 @@ export default function HomeSlotOffersSection() {
           <ActivityIndicator color={theme.darkGreen} />
         </View>
       ) : showEmptyBanner ? (
-        <InviteProBanner variant="standalone" />
+        <TouchableOpacity
+          activeOpacity={0.85}
+          onPress={handleInvite}
+          style={styles.emptyCard}
+          accessibilityRole="button"
+        >
+          <View style={styles.emptyTextCol}>
+            <Text style={styles.emptyTitle}>{t("sdEmptyDealsTitle")}</Text>
+            <Text style={styles.emptyBody}>{t("sdEmptyDealsBody")}</Text>
+            <Text style={styles.emptyInvite}>
+              {t("sdEmptyDealsInvite")}
+            </Text>
+            <View style={styles.emptyButton}>
+              <Text style={styles.emptyButtonText}>{t("ipBannerCta")}</Text>
+              <MaterialCommunityIcons
+                name="arrow-right"
+                size={moderateWidthScale(16)}
+                color={theme.darkGreen}
+              />
+            </View>
+          </View>
+          <View style={styles.emptyMedallion}>
+            <MaterialCommunityIcons
+              name="clock-outline"
+              size={moderateWidthScale(28)}
+              color={theme.orangeBrown}
+            />
+          </View>
+        </TouchableOpacity>
       ) : (
         <ScrollView
           horizontal

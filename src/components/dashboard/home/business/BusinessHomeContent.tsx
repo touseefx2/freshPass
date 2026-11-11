@@ -27,6 +27,7 @@ import {
   AppointmentCountTiles,
   RevenueBreakdownTiles,
   RevenueRatingCards,
+  UnpaidVisitsBanner,
 } from "./HomeStatCards";
 import BookingProfileCard from "./BookingProfileCard";
 import HomeQuickCards from "./HomeQuickCards";
@@ -208,6 +209,16 @@ export default function BusinessHomeContent({
           ratingLoading={data.stats == null}
           onRevenuePress={() => openTransactions()}
           onRatingPress={() => router.push("/(main)/userReviews")}
+        />
+        <UnpaidVisitsBanner
+          count={overview?.unpaidVisits?.count ?? 0}
+          amount={overview?.unpaidVisits?.amount ?? 0}
+          onPress={() =>
+            router.push({
+              pathname: "/(main)/unpaidAppointments" as any,
+              params: { from: period.from, to: period.to },
+            })
+          }
         />
         <AppointmentCountTiles counts={data.stats?.appointments ?? null} />
       </View>

@@ -39,7 +39,7 @@ import {
 } from "@/src/utils/dashboardPeriod";
 import PeriodTabs from "./PeriodTabs";
 import DateRangeSheet from "./DateRangeSheet";
-import { RevenueBreakdownGrid } from "./HomeStatCards";
+import { RevenueBreakdownGrid, UnpaidVisitsBanner } from "./HomeStatCards";
 import { ListEmpty, ListSkeleton, StaffAppointmentsCard } from "./AppointmentRows";
 import {
   RevenueBarChart,
@@ -351,6 +351,17 @@ export default function TransactionsScreen() {
             </View>
           </LinearGradient>
         </View>
+
+        <UnpaidVisitsBanner
+          count={overview?.unpaidVisits?.count ?? 0}
+          amount={overview?.unpaidVisits?.amount ?? 0}
+          onPress={() =>
+            router.push({
+              pathname: "/(main)/unpaidAppointments" as any,
+              params: { from: period.from, to: period.to },
+            })
+          }
+        />
 
         <View style={styles.breakdown}>
           <RevenueBreakdownGrid

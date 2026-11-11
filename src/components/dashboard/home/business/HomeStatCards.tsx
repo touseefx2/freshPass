@@ -339,6 +339,72 @@ export function RevenueRatingCards({
   );
 }
 
+/* ── Unpaid visits banner ──────────────────────────────────────────── */
+
+export function UnpaidVisitsBanner({
+  count,
+  amount,
+  onPress,
+}: {
+  count: number;
+  amount: number;
+  onPress: () => void;
+}) {
+  const { colors } = useTheme();
+  const theme = colors as Theme;
+  const styles = useMemo(() => createStyles(theme), [colors]);
+  const { t } = useTranslation();
+
+  if (count <= 0) return null;
+
+  return (
+    <TouchableOpacity
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        gap: moderateWidthScale(10),
+        backgroundColor: theme.tilePeach,
+        borderRadius: moderateWidthScale(12),
+        paddingHorizontal: moderateWidthScale(14),
+        paddingVertical: moderateHeightScale(12),
+        marginTop: moderateHeightScale(10),
+        borderWidth: 1,
+        borderColor: theme.accentAmber,
+      }}
+      activeOpacity={0.75}
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={`${t("bhUnpaidVisits", { count })} · ${formatAmountCompact(amount)}`}
+    >
+      <Ionicons name="alert-circle" size={iconScale(20)} color={theme.accentAmber} />
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <Text
+          style={{
+            fontSize: fontSize.size14,
+            fontFamily: fonts.fontBold,
+            color: theme.darkGreen,
+          }}
+          numberOfLines={1}
+        >
+          {t("bhUnpaidVisits", { count })} · {formatAmountCompact(amount)}
+        </Text>
+        <Text
+          style={{
+            fontSize: fontSize.size12,
+            fontFamily: fonts.fontRegular,
+            color: theme.darkGreen,
+            marginTop: moderateHeightScale(1),
+          }}
+          numberOfLines={1}
+        >
+          {t("bhRecordPayments")}
+        </Text>
+      </View>
+      <Feather name="chevron-right" size={iconScale(18)} color={theme.darkGreen} />
+    </TouchableOpacity>
+  );
+}
+
 /* ── Appointments / Completed / Awaiting / Canceled ─────────────────── */
 
 export function AppointmentCountTiles({

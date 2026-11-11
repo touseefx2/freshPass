@@ -27,6 +27,7 @@ import {
   AppointmentCountTiles,
   RevenueBreakdownTiles,
   RevenueRatingCards,
+  UnpaidVisitsBanner,
 } from "./HomeStatCards";
 import { PeriodAppointmentsCard } from "./AppointmentRows";
 import {
@@ -179,6 +180,16 @@ export default function StaffHomeContent({
           ratingLoading={data.stats == null}
           onRevenuePress={() => openTransactions()}
           onRatingPress={openReviews}
+        />
+        <UnpaidVisitsBanner
+          count={overview?.unpaidVisits?.count ?? 0}
+          amount={overview?.unpaidVisits?.amount ?? 0}
+          onPress={() =>
+            router.push({
+              pathname: "/(main)/unpaidAppointments" as any,
+              params: { from: period.from, to: period.to },
+            })
+          }
         />
         <AppointmentCountTiles counts={data.stats?.appointments ?? null} />
       </View>

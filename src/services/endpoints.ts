@@ -406,8 +406,8 @@ export const appointmentsEndpoints = {
     appointment_to_date?: string;
     staff_id?: number;
     appointment_type?: string;
-    /** "I paid at the salon" claims: claimed (waiting), confirmed, rejected */
-    in_person_payment_status?: "claimed" | "confirmed" | "rejected";
+    /** "I paid at the salon" claims: claimed (waiting), confirmed, rejected; unpaid = no payment recorded */
+    in_person_payment_status?: "claimed" | "confirmed" | "rejected" | "unpaid";
   }) => {
     const queryParams = new URLSearchParams();
 
