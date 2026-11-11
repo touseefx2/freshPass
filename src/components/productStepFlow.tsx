@@ -47,6 +47,7 @@ import {
   emptyVariantForm,
   formToVariant,
   getCategoryIcon,
+  getPhotoLimits,
   mapServerErrorKey,
   MAX_PRODUCT_PHOTOS,
   moneyText,
@@ -62,6 +63,7 @@ import {
   withNewImages,
   withoutImage,
   type EditorStep,
+  type PhotoLimits,
   type ProductFieldKey,
   type ProductServerError,
   type VariantErrorKey,
@@ -540,6 +542,14 @@ export default function ProductStepFlow({
   const saleValid = sale != null && sale < price;
   const buyerPrice = saleValid ? sale! : price;
 
+  const allOptionPhotos = variants.reduce((n, v) => n + v.images.length, 0);
+  const photoLimits: PhotoLimits = useMemo(
+    () => getPhotoLimits(variants.length, images.length, allOptionPhotos),
+    [variants.length, images.length, allOptionPhotos],
+  );
+  const totalPhotos = images.length + allOptionPhotos;
+  const sharedRoom = Math.max(0, MAX_PRODUCT_PHOTOS - totalPhotos);
+
   const finalDraft = useMemo<ProductFormDraft>(
     () => ({
       ...draft,
@@ -622,6 +632,9 @@ export default function ProductStepFlow({
         if (own == null) e.sale = t("mpPfOptionSaleNeedsPrice");
         else if (ownSale >= own) e.sale = t("mpPfSaleBelowPrice");
       }
+      if (variants.length >= 5 && v.images.length > 1) {
+        e.photos = t("mpPfOptionOnePhoto");
+      }
       if (Object.keys(e).length) out[v.key] = e;
     });
     return out;
@@ -636,6 +649,11 @@ export default function ProductStepFlow({
     if (s === STEP_PHOTOS || all) {
       if (!draft.name.trim()) e.name = t("productNameRequired");
       if (!draft.brand.trim()) e.brand = t("productBrandRequired");
+      if (!photoLimits.mainAllowed && images.length > 0) {
+        e.photos = t("mpPfMainPhotosBlocked");
+      } else if (variants.length <= 4 && totalPhotos > MAX_PRODUCT_PHOTOS) {
+        e.photos = t("mpPfPhotosLimit", { count: MAX_PRODUCT_PHOTOS });
+      }
     }
     // The API rejects a product without a description.
     if ((s === STEP_DETAILS || all) && !draft.description.trim()) {
@@ -859,10 +877,14 @@ export default function ProductStepFlow({
     setPickerOpen(false);
     if (!target || !uris.length) return;
     if (target === "product") {
-      const room = MAX_PRODUCT_PHOTOS - images.length;
+      if (!photoLimits.mainAllowed) return;
+      const mainRoom = Math.max(0, photoLimits.mainMax - images.length);
+      const room = variants.length <= 4
+        ? Math.min(mainRoom, sharedRoom)
+        : 0;
       setDraft((prev) => ({
         ...prev,
-        images: withNewImages(prev.images ?? [], uris),
+        images: withNewImages(prev.images ?? [], uris, (prev.images ?? []).length + room),
       }));
       setSubmitError(null);
       if (uris.length > room) {
@@ -875,9 +897,17 @@ export default function ProductStepFlow({
       }
       return;
     }
+    const option = variants.find((v) => v.key === target);
+    const maxPerOpt = photoLimits.perOption;
+    const optRoom = Math.max(0, maxPerOpt - (option?.images.length ?? 0));
+    const room = variants.length <= 4
+      ? Math.min(optRoom, sharedRoom)
+      : optRoom;
     setVariants((prev) =>
       prev.map((v) =>
-        v.key === target ? { ...v, images: withNewImages(v.images, uris) } : v,
+        v.key === target
+          ? { ...v, images: withNewImages(v.images, uris, v.images.length + room) }
+          : v,
       ),
     );
     setVariantErrors((prev) => {
@@ -930,6 +960,25 @@ export default function ProductStepFlow({
   };
 
   const addVariant = () => {
+    const newCount = variants.length + 1;
+    if (newCount >= 5 && (images.length > 0 || variants.some((v) => v.images.length > 1))) {
+      Alert.alert(
+        t("mpPfPhotoLimitChangeTitle"),
+        t("mpPfPhotoLimitChangeMessage"),
+        [
+          { text: t("cancel"), style: "cancel" },
+          {
+            text: t("mpPfAddOptionAnyway"),
+            onPress: () => {
+              void Haptics.selectionAsync();
+              setVariants((prev) => [...prev, emptyVariantForm()]);
+              setSubmitError(null);
+            },
+          },
+        ],
+      );
+      return;
+    }
     void Haptics.selectionAsync();
     setVariants((prev) => [...prev, emptyVariantForm()]);
     setSubmitError(null);
@@ -963,25 +1012,61 @@ export default function ProductStepFlow({
 
   // ── Steps ───────────────────────────────────────────────────────────
 
-  const renderPhotoAndName = () => (
+  const renderPhotoAndName = () => {
+    const mainBlocked = !photoLimits.mainAllowed;
+    const mainCap = mainBlocked ? 0 : Math.min(MAX_PRODUCT_PHOTOS, photoLimits.mainMax);
+    return (
     <>
       <FlowTitle
         title={t("productFlowNameTitle")}
         subtitle={t("mpPfPhotosSubtitle")}
       />
       <View style={styles.section}>
-        <SectionLabel
-          label={t("photos")}
-          meta={`${t("optional")} · ${images.length}/${MAX_PRODUCT_PHOTOS}`}
-        />
-        <PhotoSlots
-          images={images}
-          onAdd={() => openPicker("product")}
-          onRemove={removeProductPhoto}
-          error={errors.photos}
-          disabled={submitting}
-        />
-        <Text style={styles.hint}>{t("mpPfPhotosHint")}</Text>
+        {mainBlocked && images.length > 0 ? (
+          <>
+            <InfoNote
+              icon="info"
+              tone="warm"
+              text={t("mpPfMainPhotosBlocked")}
+            />
+            <PhotoSlots
+              images={images}
+              max={images.length}
+              onAdd={() => {}}
+              onRemove={removeProductPhoto}
+              error={errors.photos}
+              disabled={submitting}
+            />
+          </>
+        ) : mainBlocked ? (
+          <InfoNote
+            icon="info"
+            tone="warm"
+            text={t("mpPfMainPhotosBlocked")}
+          />
+        ) : (
+          <>
+            <SectionLabel
+              label={t("photos")}
+              meta={`${t("optional")} · ${totalPhotos}/${MAX_PRODUCT_PHOTOS}`}
+            />
+            <PhotoSlots
+              images={images}
+              max={Math.max(images.length, mainCap)}
+              onAdd={() => openPicker("product")}
+              onRemove={removeProductPhoto}
+              error={errors.photos}
+              disabled={submitting || (sharedRoom <= 0 && images.length === 0)}
+            />
+            {hasVariants && variants.length <= 4 ? (
+              <Text style={styles.hint}>
+                {t("mpPfPhotosSharedHint", { count: MAX_PRODUCT_PHOTOS })}
+              </Text>
+            ) : (
+              <Text style={styles.hint}>{t("mpPfPhotosHint")}</Text>
+            )}
+          </>
+        )}
       </View>
       <TapField
         label={t("productName")}
@@ -1017,6 +1102,7 @@ export default function ProductStepFlow({
       />
     </>
   );
+  };
 
   const renderCategoryAndDetails = () => (
     <>
@@ -1331,6 +1417,7 @@ export default function ProductStepFlow({
             key={option.key}
             index={index}
             form={option}
+            maxPhotos={Math.max(option.images.length, photoLimits.perOption)}
             errors={variantErrors[option.key]}
             onChange={(patch) => updateVariant(option.key, patch)}
             onRemove={() => removeVariant(option)}

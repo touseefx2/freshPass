@@ -12,7 +12,6 @@ import PhotoSlots from "./photoSlots";
 import {
   cleanInt,
   cleanMoney,
-  MAX_PRODUCT_PHOTOS,
   type VariantErrors,
   type VariantForm,
 } from "./editorUtils";
@@ -20,6 +19,7 @@ import {
 type Props = {
   index: number;
   form: VariantForm;
+  maxPhotos?: number;
   errors?: VariantErrors;
   onChange: (patch: Partial<VariantForm>) => void;
   onRemove: () => void;
@@ -76,10 +76,10 @@ const createStyles = (theme: Theme) =>
     photos: { gap: moderateHeightScale(8) },
   });
 
-/** One colour / model: name, stock, optional own price and sale, up to 4 photos. */
 export default function VariantCard({
   index,
   form,
+  maxPhotos = 4,
   errors,
   onChange,
   onRemove,
@@ -178,12 +178,13 @@ export default function VariantCard({
       <View style={styles.photos}>
         <SectionLabel
           label={t("photos")}
-          meta={`${t("optional")} · ${form.images.length}/${MAX_PRODUCT_PHOTOS}`}
+          meta={`${t("optional")} · ${form.images.length}/${maxPhotos}`}
         />
         <PhotoSlots
           compact
           showMain={false}
           images={form.images}
+          max={maxPhotos}
           onAdd={onAddPhotos}
           onRemove={onRemovePhoto}
           error={errors?.photos}

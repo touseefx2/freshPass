@@ -4153,6 +4153,12 @@
   "mpPfPhotosSubtitle": "Add up to 4 photos and the name customers will see.",
   "mpPfPhotosHint": "The first photo is the main one customers see. Clear photos on a plain background sell best.",
   "mpPfPhotosLimit": "You can add up to {{count}} photos. We kept the first ones.",
+  "mpPfPhotosSharedHint": "Main and option photos share a total of {{count}}. Clear photos on a plain background sell best.",
+  "mpPfMainPhotosBlocked": "With 5 or more options, each option gets its own photo. Remove main photos to save.",
+  "mpPfOptionOnePhoto": "With 5 or more options each one can have one photo.",
+  "mpPfPhotoLimitChangeTitle": "Photo limit will change",
+  "mpPfPhotoLimitChangeMessage": "With 5 or more options, main photos aren't allowed and each option can have only 1 photo. You'll need to remove extra photos before saving.",
+  "mpPfAddOptionAnyway": "Add option",
   "mpPfBenefits": "Benefits",
   "mpPfBenefitsHint": "Short selling points, shown to buyers with green ticks.",
   "mpPfBenefitPlaceholder": "e.g. Restores moisture",
@@ -4754,5 +4760,12 @@
   "rwTryOnPaidFromBalance": "Paid from your reward balance",
   "rwTryOnSplitEstimate": "{{reward}} from your balance, {{card}} by card",
   "rwTryOnBalanceChangedTitle": "Reward balance changed",
-  "rwTryOnBalanceChangedMessage": "Your balance no longer covers this pack. Opening the normal purchase at full price."
+  "rwTryOnBalanceChangedMessage": "Your balance no longer covers this pack. Opening the normal purchase at full price.",
+
+  "homeEmptyReels": "New reels are added daily — check back soon!",
+  "homeEmptyDeals": "No deals nearby right now — explore and invite your favorite pro!",
+  "homeEmptyFavorites": "Follow businesses you love and they'll appear here",
+  "homeEmptyAppointments": "No upcoming appointments today",
+  "homeEmptyProTips": "Pro tips are on the way — stay tuned!",
+  "homeEmptySlotOffers": "No last-minute deals nearby right now"
 }

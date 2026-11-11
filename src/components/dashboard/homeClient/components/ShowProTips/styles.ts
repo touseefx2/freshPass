@@ -49,4 +49,21 @@ export const createStyles = (theme: Theme) =>
       color: theme.lightGreen,
       textAlign: "center",
     },
+    emptyCard: {
+      marginHorizontal: moderateWidthScale(20),
+      backgroundColor: theme.white,
+      borderRadius: moderateWidthScale(14),
+      borderWidth: 1,
+      borderColor: theme.lightGreen015,
+      paddingHorizontal: moderateWidthScale(14),
+      paddingVertical: moderateHeightScale(24),
+      alignItems: "center" as const,
+      gap: moderateHeightScale(8),
+    },
+    emptyText: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen5,
+      textAlign: "center" as const,
+    },
   });

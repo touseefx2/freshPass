@@ -4,9 +4,37 @@ import type {
   ProductDraftVariant,
 } from "@/src/components/productFormScreen";
 
-/** Gallery size for a product and for each option (guide §1). */
+/** Hard cap when 0-4 options: main + option photos share this total. */
 export const MAX_PRODUCT_PHOTOS = 4;
 export const MAX_BENEFITS = 10;
+
+export type PhotoLimits = {
+  /** false when 5+ options: main photos are not allowed. */
+  mainAllowed: boolean;
+  /** Max photos for main (0 when blocked). */
+  mainMax: number;
+  /** Max photos per option. */
+  perOption: number;
+  /** The overall cap. */
+  total: number;
+};
+
+/** Compute photo limits from the current option count. */
+export function getPhotoLimits(
+  optionCount: number,
+  mainPhotos: number,
+  allOptionPhotos: number,
+): PhotoLimits {
+  if (optionCount >= 5) {
+    return { mainAllowed: false, mainMax: 0, perOption: 1, total: optionCount };
+  }
+  return {
+    mainAllowed: true,
+    mainMax: Math.max(0, MAX_PRODUCT_PHOTOS - allOptionPhotos),
+    perOption: MAX_PRODUCT_PHOTOS,
+    total: MAX_PRODUCT_PHOTOS,
+  };
+}
 export const MAX_BENEFIT_LENGTH = 120;
 
 /** Editor steps: Photos & name → Category & details → Price & stock → Options → Marketplace → Review. */

@@ -9,6 +9,7 @@ import {
 } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
+import { MaterialIcons } from "@expo/vector-icons";
 import { useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
@@ -80,12 +81,15 @@ const createStyles = (theme: Theme) =>
       borderWidth: 1,
       borderColor: theme.lightGreen015,
       paddingHorizontal: moderateWidthScale(14),
-      paddingVertical: moderateHeightScale(14),
+      paddingVertical: moderateHeightScale(24),
+      alignItems: "center" as const,
+      gap: moderateHeightScale(8),
     },
     emptyText: {
       fontSize: fontSize.size13,
       fontFamily: fonts.fontRegular,
       color: theme.lightGreen5,
+      textAlign: "center" as const,
     },
   });
 
@@ -137,9 +141,6 @@ export default function HomeAvailableNowSection() {
       params: { within_minutes: "1440" },
     } as any);
 
-  // Optional section — hide on error rather than show a broken strip
-  if (failed && items.length === 0) return null;
-
   return (
     <View style={styles.section}>
       <View style={styles.headerRow}>
@@ -162,8 +163,12 @@ export default function HomeAvailableNowSection() {
           <ActivityIndicator size="small" color={theme.darkGreen} />
         </View>
       ) : items.length === 0 ? (
-        // Nothing left today, so a wider list would be empty too
         <View style={styles.emptyCard}>
+          <MaterialIcons
+            name="access-time"
+            size={moderateWidthScale(32)}
+            color={theme.lightGreen}
+          />
           <Text style={styles.emptyText}>{t("anHomeEmpty")}</Text>
         </View>
       ) : (

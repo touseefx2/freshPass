@@ -1,5 +1,7 @@
 import React, { useMemo } from "react";
 import { View, Text, ScrollView, ActivityIndicator } from "react-native";
+import { MaterialIcons } from "@expo/vector-icons";
+import { useTranslation } from "react-i18next";
 import { useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import ProTipCard, { ProTipCardItem } from "@/src/components/proTipCard";
@@ -41,6 +43,7 @@ export default function ShowProTips({
   onCardPress,
 }: ShowProTipsProps) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
 
@@ -81,7 +84,16 @@ export default function ShowProTips({
             />
           ))}
         </ScrollView>
-      ) : null}
+      ) : (
+        <View style={styles.emptyCard}>
+          <MaterialIcons
+            name="lightbulb-outline"
+            size={32}
+            color={theme.lightGreen}
+          />
+          <Text style={styles.emptyText}>{t("homeEmptyProTips")}</Text>
+        </View>
+      )}
     </View>
   );
 }

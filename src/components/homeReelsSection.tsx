@@ -158,6 +158,23 @@ const createStyles = (theme: Theme) =>
       color: theme.lightGreen,
       textAlign: "center",
     },
+    emptyCard: {
+      marginHorizontal: moderateWidthScale(20),
+      backgroundColor: theme.white,
+      borderRadius: moderateWidthScale(14),
+      borderWidth: 1,
+      borderColor: theme.lightGreen015,
+      paddingHorizontal: moderateWidthScale(16),
+      paddingVertical: moderateHeightScale(24),
+      alignItems: "center" as const,
+      gap: moderateHeightScale(8),
+    },
+    emptyText: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen5,
+      textAlign: "center" as const,
+    },
   });
 
 export default function HomeReelsSection({
@@ -236,17 +253,22 @@ export default function HomeReelsSection({
     [router],
   );
 
-  if (!loading && !error && cards.length === 0) {
-    return null;
-  }
-
   return (
     <View style={styles.section}>
       <View style={styles.headerRow}>
         <Text style={styles.title}>{t("freshPassReels")}</Text>
       </View>
 
-      {loading && cards.length === 0 ? (
+      {!loading && !error && cards.length === 0 ? (
+        <View style={styles.emptyCard}>
+          <MaterialIcons
+            name="play-circle-outline"
+            size={moderateWidthScale(32)}
+            color={theme.lightGreen}
+          />
+          <Text style={styles.emptyText}>{t("homeEmptyReels")}</Text>
+        </View>
+      ) : loading && cards.length === 0 ? (
         <View style={styles.loader}>
           <ActivityIndicator size="small" color={theme.darkGreen} />
         </View>

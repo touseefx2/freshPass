@@ -15,6 +15,7 @@ import {
   NativeScrollEvent,
   NativeSyntheticEvent,
 } from "react-native";
+import { MaterialIcons } from "@expo/vector-icons";
 import { useAppSelector, useTheme, useAppDispatch } from "@/src/hooks/hooks";
 import { useTranslation } from "react-i18next";
 import dayjs from "dayjs";
@@ -460,6 +461,23 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
       paddingHorizontal: moderateWidthScale(20),
+    },
+    emptyCard: {
+      marginHorizontal: moderateWidthScale(20),
+      backgroundColor: theme.white,
+      borderRadius: moderateWidthScale(14),
+      borderWidth: 1,
+      borderColor: theme.lightGreen015,
+      paddingHorizontal: moderateWidthScale(14),
+      paddingVertical: moderateHeightScale(24),
+      alignItems: "center" as const,
+      gap: moderateHeightScale(8),
+    },
+    emptyText: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen5,
+      textAlign: "center" as const,
     },
   });
 
@@ -1190,42 +1208,40 @@ export default function DashboardContent() {
         </View>
       )}
 
-      {(verifiedSalonsDeals.length > 0 ||
-        dealClasses.length > 0 ||
-        dealsLoading ||
-        (dealClassesLoading && !dealClassesLoaded) ||
-        dealsError ||
-        dealsNothingNearby) && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{t("freshPassDeals")}</Text>
-          {dealsNothingNearby ? (
-            <>
-              <InviteProBanner variant="standalone" />
-              {onlineDealClasses.length > 0 ? (
-                <ShowBusiness
-                  businessesLoading={false}
-                  businessesError={false}
-                  verifiedSalons={[]}
-                  onRetry={retryDeals}
-                  classes={onlineDealClasses}
-                />
-              ) : null}
-            </>
-          ) : (
-            <ShowBusiness
-              businessesLoading={
-                dealsLoading ||
-                (!dealClassesLoaded && verifiedSalonsDeals.length === 0)
-              }
-              businessesError={dealsError}
-              verifiedSalons={verifiedSalonsDeals}
-              onRetry={retryDeals}
-              classes={dealClasses}
-              showInviteBanner
-            />
-          )}
-        </View>
-      )}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>{t("freshPassDeals")}</Text>
+        {dealsNothingNearby ||
+        (!dealsLoading &&
+          !dealsError &&
+          !(dealClassesLoading && !dealClassesLoaded) &&
+          verifiedSalonsDeals.length === 0 &&
+          dealClasses.length === 0) ? (
+          <>
+            <InviteProBanner variant="standalone" />
+            {onlineDealClasses.length > 0 ? (
+              <ShowBusiness
+                businessesLoading={false}
+                businessesError={false}
+                verifiedSalons={[]}
+                onRetry={retryDeals}
+                classes={onlineDealClasses}
+              />
+            ) : null}
+          </>
+        ) : (
+          <ShowBusiness
+            businessesLoading={
+              dealsLoading ||
+              (!dealClassesLoaded && verifiedSalonsDeals.length === 0)
+            }
+            businessesError={dealsError}
+            verifiedSalons={verifiedSalonsDeals}
+            onRetry={retryDeals}
+            classes={dealClasses}
+            showInviteBanner
+          />
+        )}
+      </View>
 
       {isCusotmerandGuest && (
         <View style={styles.section}>
@@ -1239,42 +1255,60 @@ export default function DashboardContent() {
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>{t("recommended")}</Text>
-        <ShowBusiness
-          businessesLoading={businessesLoading}
-          businessesError={businessesError}
-          verifiedSalons={verifiedSalons}
-          onRetry={fetchBusinesses}
-        />
+        {!businessesLoading &&
+        !businessesError &&
+        verifiedSalons.length === 0 ? (
+          <InviteProBanner variant="standalone" />
+        ) : (
+          <ShowBusiness
+            businessesLoading={businessesLoading}
+            businessesError={businessesError}
+            verifiedSalons={verifiedSalons}
+            onRetry={fetchBusinesses}
+          />
+        )}
       </View>
 
-      {userRole === "customer" &&
-        (favoriteBusinesses.length > 0 ||
-          favoritesLoading ||
-          favoritesError) && (
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.favoriteSectionTitle}>
-                {t("favoriteBusinesses")}
+      {userRole === "customer" && (
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.favoriteSectionTitle}>
+              {t("favoriteBusinesses")}
+            </Text>
+            {favoriteBusinesses.length > 3 && (
+              <Text
+                style={styles.sectionViewMore}
+                onPress={() =>
+                  router.push("/(main)/dashboard/(home)/favourite" as any)
+                }
+              >
+                {t("seeAll")}
               </Text>
-              {favoriteBusinesses.length > 3 && (
-                <Text
-                  style={styles.sectionViewMore}
-                  onPress={() =>
-                    router.push("/(main)/dashboard/(home)/favourite" as any)
-                  }
-                >
-                  {t("seeAll")}
-                </Text>
-              )}
+            )}
+          </View>
+          {!favoritesLoading &&
+          !favoritesError &&
+          favoriteBusinesses.length === 0 ? (
+            <View style={styles.emptyCard}>
+              <MaterialIcons
+                name="favorite-border"
+                size={moderateWidthScale(32)}
+                color={theme.lightGreen}
+              />
+              <Text style={styles.emptyText}>
+                {t("homeEmptyFavorites")}
+              </Text>
             </View>
+          ) : (
             <ShowFavorites
               favorites={favoriteBusinesses}
               loading={favoritesLoading}
               error={favoritesError}
               onRetry={fetchFavoriteBusinesses}
             />
-          </View>
-        )}
+          )}
+        </View>
+      )}
 
       <View
         onLayout={(e: LayoutChangeEvent) => {
@@ -1290,39 +1324,55 @@ export default function DashboardContent() {
 
       <HomeSlotOffersSection />
 
-      {userRole === "customer" && appointments.length > 0 && (
+      {userRole === "customer" && (
         <View style={styles.section}>
-          <ShowAppointments appointments={appointments} />
+          {appointments.length > 0 ? (
+            <ShowAppointments appointments={appointments} />
+          ) : (
+            <>
+              <Text style={styles.sectionTitle}>
+                {t("upcomingAppointment")}
+              </Text>
+              <View style={styles.emptyCard}>
+                <MaterialIcons
+                  name="event-available"
+                  size={moderateWidthScale(32)}
+                  color={theme.lightGreen}
+                />
+                <Text style={styles.emptyText}>
+                  {t("homeEmptyAppointments")}
+                </Text>
+              </View>
+            </>
+          )}
         </View>
       )}
 
-      {(proTipData?.cards?.length ?? 0) > 0 || proTipLoading || proTipError ? (
-        <View style={styles.section}>
-          <ShowProTips
-            heading={proTipData?.heading ?? "Pro Tips"}
-            subheading={
-              proTipData?.subheading ??
-              "Expert advice to keep you and your clients looking and feeling great."
-            }
-            actionLabel={proTipData?.action_label ?? "Action"}
-            benefitLabel={proTipData?.benefit_label ?? "Benefit"}
-            standardLabel={proTipData?.standard_label ?? "Standard"}
-            cards={proTipData?.cards ?? []}
-            loading={proTipLoading}
-            error={proTipError}
-            onRetry={fetchProTipCards}
-            onCardPress={(item) => {
-              router.push({
-                pathname: "/(main)/tipDetail",
-                params: {
-                  title: item.title,
-                  slug: item.slug,
-                },
-              } as any);
-            }}
-          />
-        </View>
-      ) : null}
+      <View style={styles.section}>
+        <ShowProTips
+          heading={proTipData?.heading ?? "Pro Tips"}
+          subheading={
+            proTipData?.subheading ??
+            "Expert advice to keep you and your clients looking and feeling great."
+          }
+          actionLabel={proTipData?.action_label ?? "Action"}
+          benefitLabel={proTipData?.benefit_label ?? "Benefit"}
+          standardLabel={proTipData?.standard_label ?? "Standard"}
+          cards={proTipData?.cards ?? []}
+          loading={proTipLoading}
+          error={proTipError}
+          onRetry={fetchProTipCards}
+          onCardPress={(item) => {
+            router.push({
+              pathname: "/(main)/tipDetail",
+              params: {
+                title: item.title,
+                slug: item.slug,
+              },
+            } as any);
+          }}
+        />
+      </View>
     </ScrollView>
   );
 }
