@@ -25,6 +25,7 @@ import AvailableNowCard, {
   bookAvailableNow,
   openAvailableNowProfile,
 } from "@/src/components/availableNow/AvailableNowCard";
+import RetryButton from "@/src/components/retryButton";
 
 const HOME_LIMIT = 10;
 
@@ -161,6 +162,16 @@ export default function HomeAvailableNowSection() {
       {loading && items.length === 0 ? (
         <View style={styles.loader}>
           <ActivityIndicator size="small" color={theme.darkGreen} />
+        </View>
+      ) : failed && items.length === 0 ? (
+        <View style={styles.emptyCard}>
+          <MaterialIcons
+            name="error-outline"
+            size={moderateWidthScale(32)}
+            color={theme.lightGreen}
+          />
+          <Text style={styles.emptyText}>{t("failedToLoadBusinesses")}</Text>
+          <RetryButton onPress={load} loading={loading} />
         </View>
       ) : items.length === 0 ? (
         <View style={styles.emptyCard}>
