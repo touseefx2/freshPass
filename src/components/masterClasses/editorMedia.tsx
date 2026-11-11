@@ -43,6 +43,8 @@ export type UploadedClassMedia = {
   /** Local preview (photo or first video frame), else the server thumbnail. */
   previewUri: string | null;
   isVideo: boolean;
+  /** Playable video URL from the server (videos only). */
+  videoUrl: string | null;
 };
 
 // iOS hands over an H.264 copy instead of the HEVC original (the server rejects HEVC).
@@ -185,6 +187,7 @@ export function useClassMediaUpload(
         id: uploaded.id,
         previewUri: previewUri ?? uploaded.thumbnail_url ?? null,
         isVideo,
+        videoUrl: isVideo ? (uploaded.playback_url || uploaded.url || null) : null,
       });
     } catch (err: any) {
       if (isUploadCancelled(err) || !mountedRef.current) return;
@@ -227,6 +230,7 @@ export function useClassMediaUpload(
           id: uploaded.id,
           previewUri: imageUri,
           isVideo: false,
+          videoUrl: null,
         });
       } catch (err: any) {
         if (isUploadCancelled(err) || !mountedRef.current) return;

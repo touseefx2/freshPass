@@ -110,6 +110,7 @@ import { useOpenStripeConnect } from "@/src/components/masterClasses/useOpenStri
 import { openFullImageModal } from "@/src/state/slices/generalSlice";
 import ImagePickerModal from "@/src/components/imagePickerModal";
 import PhotoEditorModal from "@/src/components/PhotoEditorModal";
+import LocalVideoPreviewModal from "@/src/components/localVideoPreviewModal";
 
 /**
  * Create / Edit Class (client sample, Design 3).
@@ -506,8 +507,10 @@ export default function MasterClassEditorScreen() {
   const [mediaPreview, setMediaPreview] = useState<{
     uri: string | null;
     isVideo: boolean;
+    videoUrl: string | null;
   } | null>(null);
   const [showPickerModal, setShowPickerModal] = useState(false);
+  const [videoPreviewUri, setVideoPreviewUri] = useState<string | null>(null);
   const [editorUri, setEditorUri] = useState("");
   const [editorVisible, setEditorVisible] = useState(false);
   const [businessAddress, setBusinessAddress] = useState<string | null>(null);
@@ -657,7 +660,7 @@ export default function MasterClassEditorScreen() {
   // ── Media ───────────────────────────────────────────────────────────
   const media = useClassMediaUpload((uploaded) => {
     setField("mediaAssetId", uploaded.id, "media");
-    setMediaPreview({ uri: uploaded.previewUri, isVideo: uploaded.isVideo });
+    setMediaPreview({ uri: uploaded.previewUri, isVideo: uploaded.isVideo, videoUrl: uploaded.videoUrl });
   });
   // Read by the leave handler, which must see the upload as it is right now
   const mediaUploadingRef = useRef(media.uploading);
@@ -1334,10 +1337,15 @@ export default function MasterClassEditorScreen() {
                   const isVideo = pending
                     ? pending.isVideo
                     : (mediaPreview?.isVideo ?? savedMedia?.type === "video");
-                  const uri = isVideo
-                    ? (pending?.uri ?? mediaPreview?.uri ?? savedMedia?.thumbnail_url)
-                    : (pending?.uri ?? mediaPreview?.uri ?? savedMedia?.url ?? savedMedia?.thumbnail_url);
-                  if (uri) dispatch(openFullImageModal({ images: [uri] }));
+                  if (isVideo) {
+                    const videoUrl =
+                      mediaPreview?.videoUrl ?? savedMedia?.url;
+                    if (videoUrl) setVideoPreviewUri(videoUrl);
+                  } else {
+                    const uri =
+                      pending?.uri ?? mediaPreview?.uri ?? savedMedia?.url ?? savedMedia?.thumbnail_url;
+                    if (uri) dispatch(openFullImageModal({ images: [uri] }));
+                  }
                 }}
               />
             </View>
@@ -1677,6 +1685,11 @@ export default function MasterClassEditorScreen() {
         onCancel={handleEditorCancel}
         cropShape="square"
         cropAspectRatio={MEDIA_CROP_ASPECT}
+      />
+      <LocalVideoPreviewModal
+        visible={!!videoPreviewUri}
+        uri={videoPreviewUri}
+        onClose={() => setVideoPreviewUri(null)}
       />
     </View>
   );
