@@ -298,12 +298,11 @@ export function EditorDateSheet({
         <DateStrip
           value={date}
           onChange={setDate}
-          today={(() => {
-            const t = salonToday();
-            if (!minDate) return t;
+          today={salonToday()}
+          isDisabled={minDate ? (day) => {
             const m = dayjs(minDate);
-            return m.isValid() && m.isAfter(t, "day") ? m : t;
-          })()}
+            return m.isValid() && day.isBefore(m, "day");
+          } : undefined}
         />
         <View style={styles.summary} accessibilityLiveRegion="polite">
           <Ionicons
