@@ -123,6 +123,8 @@ export interface MasterClass {
   location: MasterClassLocation | null;
   /** Pro and paid students only. */
   meeting_url: string | null;
+  schedule_type?: "weekly" | "specific_dates" | null;
+  meeting_days?: number[] | null;
 
   media: MasterClassMedia | null;
   business: MasterClassBusiness | null;
@@ -218,6 +220,8 @@ export interface MasterClassPayload {
   longitude?: number | null;
   meeting_url?: string | null;
   media_asset_id?: number | null;
+  schedule_type?: "weekly" | "specific_dates";
+  meeting_days?: number[];
 }
 
 /** `GET /master-classes` — same filters as the Deals business call. */

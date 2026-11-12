@@ -4,6 +4,7 @@ import {
   Image,
   InteractionManager,
   Platform,
+  StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -462,6 +463,7 @@ export default function StripeConnectOnboardingScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
+      <StatusBar barStyle="light-content" />
       <View style={styles.header}>
         <View style={styles.headerSide}>
           {phase !== "checking" ? (
@@ -585,10 +587,10 @@ export default function StripeConnectOnboardingScreen() {
             <View style={styles.buttonWrap}>
               {errorNeedsProfileFix ? (
                 <Button
-                  title={t("stripeConnectUpdateProfile")}
+                  title={t("stripeConnectUpdateLocation")}
                   onPress={() => {
-                    router.replace(
-                      "/(main)/dashboard/(account)/(businessProfileSettings)/editBusinessProfile" as any,
+                    router.push(
+                      "/(main)/dashboard/(account)/(businessProfileSettings)/location" as any,
                     );
                   }}
                 />

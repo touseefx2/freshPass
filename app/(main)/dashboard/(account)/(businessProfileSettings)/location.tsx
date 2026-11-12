@@ -466,6 +466,7 @@ export default function LocationScreen() {
     async (placeId: string, description: string) => {
       if (!apiKey) {
         setStreetAddress(description);
+        StatusBar.setBarStyle("light-content");
         setSearchModalVisible(false);
         return;
       }
@@ -500,6 +501,7 @@ export default function LocationScreen() {
           });
         }
 
+        StatusBar.setBarStyle("light-content");
         setSearchModalVisible(false);
         setAddressSearch("");
         setPredictions([]);
@@ -581,6 +583,7 @@ export default function LocationScreen() {
       });
     }
 
+    StatusBar.setBarStyle("light-content");
     setSearchModalVisible(false);
     setAddressSearch("");
     setModalBanner({ visible: false, title: "", message: "", type: "info" });
@@ -629,6 +632,7 @@ export default function LocationScreen() {
       setLatitude(selectedLocation.latitude.toString());
       setLongitude(selectedLocation.longitude.toString());
     }
+    StatusBar.setBarStyle("light-content");
     setMapModalVisible(false);
   }, [selectedLocation]);
 
@@ -915,6 +919,7 @@ export default function LocationScreen() {
         animationType="none"
         transparent={false}
         onRequestClose={() => {
+          StatusBar.setBarStyle("light-content");
           setSearchModalVisible(false);
           setAddressSearch("");
           setPredictions([]);
@@ -927,20 +932,18 @@ export default function LocationScreen() {
           });
         }}
         statusBarTranslucent={true}
+        onShow={() => StatusBar.setBarStyle("dark-content")}
+        onDismiss={() => StatusBar.setBarStyle("light-content")}
       >
         <StatusBar barStyle="dark-content" />
 
         <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-          <View
-            style={[
-              styles.modalContainer,
-              { paddingVertical: Platform.OS === "android" ? 30 : 45 },
-            ]}
-          >
+          <SafeAreaView style={styles.modalContainer} edges={["top", "bottom"]}>
             <View style={styles.modalHeader}>
               <TouchableOpacity
                 onPress={() => {
                   Keyboard.dismiss();
+                  StatusBar.setBarStyle("light-content");
                   setSearchModalVisible(false);
                   setAddressSearch("");
                   setPredictions([]);
@@ -995,7 +998,7 @@ export default function LocationScreen() {
                 setModalBanner((prev) => ({ ...prev, visible: false }))
               }
             />
-          </View>
+          </SafeAreaView>
         </TouchableWithoutFeedback>
       </Modal>
 
@@ -1005,15 +1008,23 @@ export default function LocationScreen() {
           visible={mapModalVisible}
           animationType="slide"
           transparent={false}
-          onRequestClose={() => setMapModalVisible(false)}
+          onRequestClose={() => {
+            StatusBar.setBarStyle("light-content");
+            setMapModalVisible(false);
+          }}
           statusBarTranslucent
+          onShow={() => StatusBar.setBarStyle("dark-content")}
+          onDismiss={() => StatusBar.setBarStyle("light-content")}
         >
           <StatusBar barStyle="dark-content" />
           <SafeAreaView style={styles.modalContainer} edges={["top", "bottom"]}>
             <View style={styles.modalHeader}>
               <View style={styles.modalHeaderTop}>
                 <TouchableOpacity
-                  onPress={() => setMapModalVisible(false)}
+                  onPress={() => {
+                    StatusBar.setBarStyle("light-content");
+                    setMapModalVisible(false);
+                  }}
                   style={styles.modalCloseButton}
                   activeOpacity={0.7}
                 >

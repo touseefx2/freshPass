@@ -39,6 +39,7 @@ import {
   moderateWidthScale,
 } from "@/src/theme/dimensions";
 import StackHeader from "@/src/components/StackHeader";
+import FlowHeader from "@/src/components/reelFlow/flowHeader";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { isStripeOnboardingCompleted } from "@/src/state/slices/userSlice";
 import { ApiService } from "@/src/services/api";
@@ -107,6 +108,21 @@ import {
   useClassMediaUpload,
 } from "@/src/components/masterClasses/editorMedia";
 import { useOpenStripeConnect } from "@/src/components/masterClasses/useOpenStripeConnect";
+import {
+  WeekdayChips,
+  SessionSummaryCard,
+  ReviewCourseCard,
+  DealPlacementCard,
+  calculateWeeklySessions,
+  getWeekdaysText,
+  getWeekdaysShort,
+  getTimezoneLabel,
+  endTimeText,
+  type EditorStep,
+  type ClassType,
+  type ScheduleType,
+  type Weekday,
+} from "@/src/components/masterClasses/editorStepParts";
 import { openFullImageModal } from "@/src/state/slices/generalSlice";
 import ImagePickerModal from "@/src/components/imagePickerModal";
 import PhotoEditorModal from "@/src/components/PhotoEditorModal";
@@ -149,6 +165,9 @@ type FormState = {
   meetingUrl: string;
   cancellationWindow: CancellationWindowHours;
   mediaAssetId: number | null;
+  classType: ClassType;
+  scheduleType: ScheduleType;
+  meetingDays: Weekday[];
 };
 
 type FieldKey =
@@ -160,6 +179,7 @@ type FieldKey =
   | "time"
   | "endDate"
   | "duration"
+  | "meetingDays"
   | "capacity"
   | "price"
   | "discountedPrice"
@@ -171,22 +191,48 @@ type Errors = Partial<Record<FieldKey, string>>;
 
 /** Top-to-bottom order, for "scroll to the first error". */
 const FIELD_ORDER: FieldKey[] = [
-  "media",
-  "title",
-  "description",
-  "prerequisites",
   "date",
   "time",
   "endDate",
   "duration",
-  "capacity",
+  "meetingDays",
+  "media",
+  "title",
+  "description",
+  "prerequisites",
   "price",
   "discountedPrice",
+  "capacity",
   "format",
   "address",
   "meetingUrl",
   "window",
 ];
+
+/** Which wizard step each field lives on. */
+const FIELD_STEP: Record<FieldKey, EditorStep> = {
+  media: 1,
+  title: 1,
+  description: 1,
+  prerequisites: 1,
+  date: 1,
+  time: 1,
+  endDate: 1,
+  duration: 1,
+  meetingDays: 1,
+  price: 2,
+  discountedPrice: 2,
+  capacity: 2,
+  format: 2,
+  address: 2,
+  meetingUrl: 2,
+  window: 2,
+};
+
+function stepForFirstError(errs: Errors): EditorStep | null {
+  const first = FIELD_ORDER.find((k) => errs[k]);
+  return first ? FIELD_STEP[first] : null;
+}
 
 /** Server field (422 `errors` and draft `missing`) → form field. */
 const SERVER_FIELDS: Record<string, FieldKey> = {
@@ -232,6 +278,9 @@ const BLANK_FORM: FormState = {
   meetingUrl: "",
   cancellationWindow: DEFAULT_CANCELLATION_WINDOW,
   mediaAssetId: null,
+  classType: "one_time",
+  scheduleType: "weekly",
+  meetingDays: [],
 };
 
 // Keeps "12." while typing; one decimal point, two decimals max.
@@ -281,6 +330,9 @@ function formFromClass(cls: MasterClass): FormState {
     meetingUrl: cls.meeting_url ?? "",
     cancellationWindow: window,
     mediaAssetId: cls.media?.id ?? null,
+    classType: cls.end_date && cls.end_date !== cls.date ? "multi_session" : "one_time",
+    scheduleType: cls.schedule_type === "specific_dates" ? "specific_dates" : "weekly",
+    meetingDays: Array.isArray(cls.meeting_days) ? cls.meeting_days as Weekday[] : [],
   };
 }
 
@@ -311,6 +363,10 @@ function payloadFromForm(f: FormState): MasterClassPayload {
     capacity: toInt(f.capacity),
     price: toMoney(f.price),
     end_date: f.endDate || null,
+    schedule_type: f.classType === "multi_session" ? f.scheduleType : undefined,
+    meeting_days: f.classType === "multi_session" && f.scheduleType === "weekly" && f.meetingDays.length
+      ? f.meetingDays
+      : undefined,
   };
   // Date and time travel together: both or neither
   const hasWhen = !!(f.date && f.time);
@@ -445,6 +501,9 @@ function validate(
       e.date = t("mcErrorFutureDateTime");
     }
     if (!f.duration) e.duration = t("mcErrorDurationRequired");
+    if (f.classType === "multi_session" && f.scheduleType === "weekly" && !f.meetingDays.length) {
+      e.meetingDays = t("mcErrorMeetingDaysRequired");
+    }
     if (kind === "publish" && !f.endDate) e.endDate = t("mcErrorEndDateRequired");
     if (f.endDate && f.date && f.endDate < f.date) {
       e.endDate = t("mcErrorEndDateBeforeStart");
@@ -520,6 +579,18 @@ export default function MasterClassEditorScreen() {
   const scrollRef = useRef<React.ElementRef<typeof KeyboardAwareScrollView>>(null);
   const fieldY = useRef<Partial<Record<FieldKey, number>>>({});
   const descriptionRef = useRef<TextInput>(null);
+
+  const [step, setStep] = useState<EditorStep>(1);
+
+  const goToStep = useCallback((s: EditorStep) => {
+    if (s <= step) setStep(s);
+  }, [step]);
+
+  // nextStep defined after scrollToFirst / warn so it can validate
+
+  const prevStep = useCallback(() => {
+    if (step > 1) setStep((s) => (s - 1) as EditorStep);
+  }, [step]);
 
   const mode: "create" | "edit" | "reschedule" | "locked" = !serverClass
     ? "create"
@@ -657,6 +728,26 @@ export default function MasterClassEditorScreen() {
   const warn = () =>
     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
 
+  const nextStep = useCallback(() => {
+    if (step >= 3) return;
+    Keyboard.dismiss();
+    const e = validate(form, "publish", t, serverClass?.timezone);
+    const stepErrors: Errors = {};
+    Object.entries(e).forEach(([k, v]) => {
+      if (FIELD_STEP[k as FieldKey] === step) stepErrors[k as FieldKey] = v;
+    });
+    if (hasErrors(stepErrors)) {
+      setErrors(stepErrors);
+      setFormError(t("mcErrorFixFields"));
+      scrollToFirst(stepErrors);
+      warn();
+      return;
+    }
+    setErrors({});
+    setFormError(null);
+    setStep((s) => (s + 1) as EditorStep);
+  }, [step, form, serverClass?.timezone, scrollToFirst, t]);
+
   // ── Media ───────────────────────────────────────────────────────────
   const media = useClassMediaUpload((uploaded) => {
     setField("mediaAssetId", uploaded.id, "media");
@@ -733,8 +824,10 @@ export default function MasterClassEditorScreen() {
         setStripeError(stripe);
         scrollRef.current?.scrollTo({ y: 0, animated: true });
       } else if (hasErrors(mapped)) {
+        const target = stepForFirstError(mapped);
+        if (target && target !== step) setStep(target);
         setErrors((prev) => ({ ...prev, ...mapped }));
-        scrollToFirst(mapped);
+        setTimeout(() => scrollToFirst(mapped), 100);
       }
       const message =
         parsed.status === 403
@@ -748,7 +841,7 @@ export default function MasterClassEditorScreen() {
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       return { ...parsed, message: stripe ?? parsed.message };
     },
-    [scrollToFirst, t],
+    [scrollToFirst, step, t],
   );
 
   const leave = useCallback(() => {
@@ -767,9 +860,11 @@ export default function MasterClassEditorScreen() {
     }
     const e = validate(form, "publish", t, serverClass?.timezone);
     if (hasErrors(e)) {
+      const target = stepForFirstError(e);
+      if (target && target !== step) setStep(target);
       setErrors(e);
       setFormError(t("mcErrorFixFields"));
-      scrollToFirst(e);
+      setTimeout(() => scrollToFirst(e), 100);
       warn();
       return;
     }
@@ -785,18 +880,19 @@ export default function MasterClassEditorScreen() {
         if (key && !mapped[key]) mapped[key] = message;
       });
       if (Object.keys(missing).length) {
-        // Only Stripe left (e.g. Connect revoked): show the Connect card
         if (missing.stripe) {
           setStripeError(missing.stripe);
           scrollRef.current?.scrollTo({ y: 0, animated: true });
         }
+        const target = stepForFirstError(mapped);
+        if (target && target !== step) setStep(target);
         setErrors(mapped);
         setFormError(
           hasErrors(mapped)
             ? t("mcMissingToPublishTitle")
             : Object.values(missing)[0] ?? t("mcMissingToPublishTitle"),
         );
-        scrollToFirst(mapped);
+        setTimeout(() => scrollToFirst(mapped), 100);
         warn();
         return;
       }
@@ -821,9 +917,11 @@ export default function MasterClassEditorScreen() {
     }
     const e = validate(form, "draft", t);
     if (hasErrors(e)) {
+      const target = stepForFirstError(e);
+      if (target && target !== step) setStep(target);
       setErrors(e);
       setFormError(t("mcErrorFixFields"));
-      scrollToFirst(e);
+      setTimeout(() => scrollToFirst(e), 100);
       warn();
       return;
     }
@@ -1003,6 +1101,46 @@ export default function MasterClassEditorScreen() {
     { value: "online", label: t("mcFormatOnline"), icon: "videocam-outline" },
   ];
 
+  const sessionCount = useMemo(() => {
+    if (form.classType !== "multi_session" || form.scheduleType !== "weekly") return 0;
+    return calculateWeeklySessions(form.date, form.endDate, form.meetingDays);
+  }, [form.classType, form.scheduleType, form.date, form.endDate, form.meetingDays]);
+
+  const sessionTimeRange = useMemo(() => {
+    if (!form.time) return "";
+    const start = formatClassTime(form.time);
+    const end = endTimeText(form.time, form.duration);
+    return end ? `${start} – ${end}` : start;
+  }, [form.time, form.duration]);
+
+  const reviewMeta = useMemo(() => {
+    const meta: { icon: string; text: string }[] = [];
+    if (form.date) {
+      const dateRange = form.endDate && form.endDate !== form.date
+        ? `${formatClassDate(form.date)} – ${formatClassDate(form.endDate)}`
+        : formatClassDate(form.date);
+      meta.push({ icon: "calendar-outline", text: dateRange });
+    }
+    if (form.classType === "multi_session" && sessionCount > 0) {
+      meta.push({
+        icon: "calendar-outline",
+        text: `${sessionCount} session${sessionCount !== 1 ? "s" : ""} · ${getWeekdaysShort(form.meetingDays)}`,
+      });
+    }
+    if (form.time) {
+      const tz = getTimezoneLabel(serverClass?.timezone);
+      meta.push({ icon: "time-outline", text: `${sessionTimeRange}${tz ? ` · ${tz}` : ""}` });
+    }
+    if (form.price) {
+      meta.push({ icon: "pricetag-outline", text: `$${form.price} per student · Entire course` });
+    }
+    if (form.capacity) {
+      const fmtLabel = form.format === "online" ? "Online" : "In person";
+      meta.push({ icon: "people-outline", text: `${form.capacity} seats · ${fmtLabel}` });
+    }
+    return meta;
+  }, [form, sessionCount, sessionTimeRange, serverClass?.timezone]);
+
   const savedMedia =
     serverClass?.media && serverClass.media.id === form.mediaAssetId
       ? serverClass.media
@@ -1020,6 +1158,21 @@ export default function MasterClassEditorScreen() {
     : paramId
       ? t("mcEditClass")
       : t("mcCreateClass");
+
+  const STEP_TITLES: Record<EditorStep, string> = {
+    1: paramId ? t("mcEditClass") : t("mcCreateClass"),
+    2: "Enrollment & Location",
+    3: "Review Your Course",
+  };
+  const stepTitle = reschedule ? t("mcRescheduleClass") : STEP_TITLES[step];
+
+  const onFlowBack = useCallback(() => {
+    if (step === 1) {
+      router.back();
+    } else {
+      prevStep();
+    }
+  }, [step, router, prevStep]);
 
   // ── Render ──────────────────────────────────────────────────────────
   const header = <StackHeader title="" centerLogo />;
@@ -1153,7 +1306,16 @@ export default function MasterClassEditorScreen() {
 
   return (
     <View style={styles.root}>
-      {header}
+      {reschedule ? (
+        header
+      ) : (
+        <FlowHeader
+          title={stepTitle}
+          step={{ current: step, total: 3 }}
+          onBack={onFlowBack}
+          backIcon={step === 1 ? "close" : "back"}
+        />
+      )}
       <KeyboardAwareScrollView
         ref={scrollRef}
         style={styles.flex}
@@ -1163,17 +1325,13 @@ export default function MasterClassEditorScreen() {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.titleBlock}>
-          <Text style={styles.heading} accessibilityRole="header">
-            {heading}
-          </Text>
-          {!reschedule ? (
-            <Text style={styles.requiredHint}>
-              <Text style={styles.requiredStar}>* </Text>
-              {t("mcRequiredHint").replace(/^\*\s*/, "")}
+        {reschedule ? (
+          <View style={styles.titleBlock}>
+            <Text style={styles.heading} accessibilityRole="header">
+              {heading}
             </Text>
-          ) : null}
-        </View>
+          </View>
+        ) : null}
 
         {showStripeCard ? (
           <View style={styles.stripeCard} accessibilityLiveRegion="polite">
@@ -1309,280 +1467,537 @@ export default function MasterClassEditorScreen() {
           </>
         ) : (
           <>
-            <View style={styles.section} onLayout={recordY(["media"])}>
-              <EditorMediaBox
-                previewUri={pending ? pending.uri : (mediaPreview?.uri ?? null)}
-                isVideo={
-                  pending
-                    ? pending.isVideo
-                    : (mediaPreview?.isVideo ?? savedMedia?.type === "video")
-                }
-                media={pending ? null : savedMedia}
-                hasMedia={form.mediaAssetId != null}
-                uploading={media.uploading}
-                percent={media.percent}
-                error={media.error || errors.media}
-                onPick={() => {
-                  Keyboard.dismiss();
-                  media.clearError();
-                  setShowPickerModal(true);
-                }}
-                onRemove={() => {
-                  setField("mediaAssetId", null, "media");
-                  setMediaPreview(null);
-                  media.clearError();
-                }}
-                onCancelUpload={media.cancel}
-                onPreviewPress={() => {
-                  const isVideo = pending
-                    ? pending.isVideo
-                    : (mediaPreview?.isVideo ?? savedMedia?.type === "video");
-                  if (isVideo) {
-                    const videoUrl =
-                      mediaPreview?.videoUrl ?? savedMedia?.url;
-                    if (videoUrl) setVideoPreviewUri(videoUrl);
-                  } else {
-                    const uri =
-                      pending?.uri ?? mediaPreview?.uri ?? savedMedia?.url ?? savedMedia?.thumbnail_url;
-                    if (uri) dispatch(openFullImageModal({ images: [uri] }));
-                  }
-                }}
-              />
-            </View>
-
-            <View style={styles.section} onLayout={recordY(["title"])}>
-              <EditorTextInput
-                label={t("mcFieldTitle")}
-                required
-                value={form.title}
-                onChangeText={(v) => setField("title", v, "title")}
-                placeholder={t("mcFieldTitlePlaceholder")}
-                maxLength={CLASS_LIMITS.titleMax}
-                counterMax={CLASS_LIMITS.titleMax}
-                autoCapitalize="words"
-                returnKeyType="next"
-                onSubmitEditing={() => descriptionRef.current?.focus()}
-                error={errors.title}
-              />
-            </View>
-
-            <View style={styles.section} onLayout={recordY(["description"])}>
-              <EditorTextInput
-                ref={descriptionRef}
-                label={t("mcFieldDescription")}
-                required
-                value={form.description}
-                onChangeText={(v) => setField("description", v, "description")}
-                placeholder={t("mcFieldDescriptionPlaceholder")}
-                multiline
-                minLines={4}
-                autoCapitalize="sentences"
-                error={errors.description}
-              />
-            </View>
-
-            <View style={styles.section} onLayout={recordY(["prerequisites"])}>
-              <EditorTextInput
-                label={t("mcFieldPrerequisites")}
-                value={form.prerequisites}
-                onChangeText={(v) => setField("prerequisites", v, "prerequisites")}
-                placeholder={t("mcFieldPrerequisitesPlaceholder")}
-                multiline
-                minLines={3}
-                autoCapitalize="sentences"
-                error={errors.prerequisites}
-              />
-            </View>
-
-            {dateTimeRow}
-            {endDateRow}
-
-            <View onLayout={recordY(["duration", "capacity"])}>
-              <EditorRow
-                labels={[
-                  { label: t("mcFieldClassDuration"), required: true },
-                  { label: t("mcFieldSeats"), required: true },
-                ]}
-              >
-                {durationPicker}
-                <EditorTextInput
-                  value={form.capacity}
-                  onChangeText={(v) =>
-                    setField("capacity", v.replace(/[^0-9]/g, "").slice(0, 4), "capacity")
-                  }
-                  placeholder={t("mcFieldSeatsPlaceholder")}
-                  keyboardType="number-pad"
-                  maxLength={4}
-                  accessibilityLabel={`${t("mcFieldSeats")}, required`}
-                  error={errors.capacity}
-                />
-              </EditorRow>
-            </View>
-
-            <View onLayout={recordY(["price", "discountedPrice"])}>
-              <EditorRow
-                labels={[
-                  { label: t("mcFieldPrice"), required: true },
-                  { label: t("mcFieldDiscountedPrice") },
-                ]}
-              >
-                <EditorTextInput
-                  prefix="$"
-                  value={form.price}
-                  onChangeText={(v) =>
-                    setField("price", cleanMoney(v), ["price", "discountedPrice"])
-                  }
-                  placeholder={t("mcFieldPricePlaceholder")}
-                  keyboardType="decimal-pad"
-                  accessibilityLabel={`${t("mcFieldPrice")}, required`}
-                  error={errors.price}
-                />
-                <EditorTextInput
-                  prefix="$"
-                  value={form.discountedPrice}
-                  onChangeText={(v) =>
-                    setField("discountedPrice", cleanMoney(v), "discountedPrice")
-                  }
-                  placeholder={t("mcFieldPricePlaceholder")}
-                  keyboardType="decimal-pad"
-                  accessibilityLabel={t("mcFieldDiscountedPrice")}
-                  error={errors.discountedPrice}
-                />
-              </EditorRow>
-            </View>
-
-            <View style={styles.section} onLayout={recordY(["format"])}>
-              <EditorLabel label={t("mcFieldFormat")} required />
-              <EditorSegmented
-                options={formatOptions}
-                value={form.format}
-                accessibilityLabel={t("mcFieldFormat")}
-                onChange={(v) => {
-                  Keyboard.dismiss();
-                  setField("format", v, ["format", "address", "meetingUrl"]);
-                }}
-              />
-              <EditorFieldError message={errors.format} />
-            </View>
-
-            {form.format === "in_person" ? (
-              <View style={styles.section} onLayout={recordY(["address"])}>
-                <EditorLabel label={t("mcFieldLocation")} required />
-                <View style={styles.radioList} accessibilityRole="radiogroup">
-                  <EditorRadioCard
-                    title={t("mcLocationBusiness")}
-                    subtitle={businessAddress}
-                    icon="storefront-outline"
-                    selected={form.locationType === "business"}
-                    onPress={() => setField("locationType", "business", "address")}
-                  />
-                  <EditorRadioCard
-                    title={t("mcLocationCustom")}
-                    icon="navigate-outline"
-                    selected={form.locationType === "custom"}
-                    onPress={() => {
-                      setField("locationType", "custom");
-                      if (!form.address.trim()) setSheet("address");
+            {/* ── Step 1: Schedule ─────────────────────────────── */}
+            {step === 1 ? (
+              <>
+                {/* Class type toggle — FIRST field per client sample */}
+                <View style={styles.section}>
+                  <EditorLabel label="Class type" required />
+                  <EditorSegmented
+                    options={[
+                      { value: "one_time" as const, label: "One-time class" },
+                      { value: "multi_session" as const, label: "Multi-session course" },
+                    ]}
+                    value={form.classType}
+                    accessibilityLabel="Class type"
+                    onChange={(v) => {
+                      if (v === "one_time") {
+                        setForm((prev) => ({
+                          ...prev,
+                          classType: "one_time" as ClassType,
+                          endDate: prev.date,
+                          meetingDays: [],
+                        }));
+                      } else {
+                        setForm((prev) => ({
+                          ...prev,
+                          classType: "multi_session" as ClassType,
+                        }));
+                      }
                     }}
                   />
                 </View>
-                {form.locationType === "custom" ? (
-                  <EditorPickerBox
-                    label={t("mcFieldAddress")}
-                    required
-                    icon="location-outline"
-                    value={form.address || null}
-                    placeholder={t("mcFieldAddressPlaceholder")}
-                    onPress={() => {
-                      Keyboard.dismiss();
-                      setSheet("address");
-                    }}
-                    trailingIcon="search"
-                    numberOfLines={2}
-                    error={errors.address}
-                  />
-                ) : (
-                  <EditorFieldError message={errors.address} />
-                )}
-              </View>
-            ) : (
-              <View style={styles.section} onLayout={recordY(["meetingUrl"])}>
-                <EditorTextInput
-                  label={t("mcFieldMeetingUrl")}
-                  required
-                  value={form.meetingUrl}
-                  onChangeText={(v) => setField("meetingUrl", v.trim(), "meetingUrl")}
-                  placeholder={t("mcFieldMeetingUrlPlaceholder")}
-                  keyboardType="url"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  textContentType="URL"
-                  helper={t("mcMeetingUrlHelper")}
-                  error={errors.meetingUrl}
-                />
-              </View>
-            )}
 
-            <View style={styles.section} onLayout={recordY(["window"])}>
-              <EditorLabel label={t("mcFieldCancellationWindow")} required />
-              <EditorChips
-                options={windowOptions}
-                value={form.cancellationWindow}
-                accessibilityLabel={t("mcFieldCancellationWindow")}
-                onChange={(v) => setField("cancellationWindow", v, "window")}
-              />
-              <EditorFieldError message={errors.window} />
-              {!errors.window ? (
-                <EditorHelper
-                  icon="information-circle-outline"
-                  text={t("mcCancellationWindowHelper", {
-                    hours: form.cancellationWindow,
-                  })}
-                />
-              ) : null}
-            </View>
-
-            {formError ? (
-              <View style={styles.formError} accessibilityLiveRegion="polite">
-                <EditorFieldError message={formError} />
-              </View>
-            ) : null}
-
-            <View style={styles.actions}>
-              <PrimaryButton
-                label={t("mcPublishClass")}
-                loading={busy === "publish"}
-                disabled={busy !== null}
-                onPress={() => void onPublish()}
-                styles={styles}
-                theme={theme}
-              />
-              <Text style={styles.feeHint}>
-                {t("mcPublishFeeHint", { fee: formatClassPrice(fee), days })}
-              </Text>
-              <TouchableOpacity
-                activeOpacity={0.75}
-                onPress={() => void onSaveDraft()}
-                disabled={busy !== null}
-                style={[styles.secondary, busy !== null && styles.disabled]}
-                accessibilityRole="button"
-                accessibilityState={{ disabled: busy !== null, busy: busy === "draft" }}
-                accessibilityLabel={t("mcSaveAsDraft")}
-              >
-                {busy === "draft" ? (
-                  <ActivityIndicator color={theme.darkGreen} />
+                {form.classType === "one_time" ? (
+                  <>
+                    {/* One-time: Date, Start time, Duration */}
+                    <View onLayout={recordY(["date"])}>
+                      <EditorPickerBox
+                        label={t("mcFieldDate")}
+                        required
+                        icon="calendar-outline"
+                        value={form.date ? formatClassDate(form.date) : null}
+                        placeholder={t("mcSelectDate")}
+                        onPress={() => {
+                          Keyboard.dismiss();
+                          setSheet("date");
+                        }}
+                        error={errors.date}
+                      />
+                    </View>
+                    <View onLayout={recordY(["time", "duration"])}>
+                      <EditorRow
+                        labels={[
+                          { label: t("mcFieldStartTime"), required: true },
+                          { label: t("mcFieldClassDuration"), required: true },
+                        ]}
+                      >
+                        <EditorPickerBox
+                          icon="time-outline"
+                          value={form.time ? formatClassTime(form.time) : null}
+                          placeholder={t("mcSelectTime")}
+                          onPress={() => {
+                            Keyboard.dismiss();
+                            setSheet("time");
+                          }}
+                          invalid={!!errors.time}
+                          trailingIcon={null}
+                        />
+                        <EditorPickerBox
+                          value={form.duration ? formatDuration(form.duration) : null}
+                          placeholder={t("mcSelectDuration")}
+                          onPress={() => {
+                            Keyboard.dismiss();
+                            setSheet("duration");
+                          }}
+                          invalid={!!errors.duration}
+                        />
+                      </EditorRow>
+                      {(errors.time || errors.duration) ? (
+                        <View style={styles.rowError}>
+                          <EditorFieldError message={errors.time || errors.duration} />
+                        </View>
+                      ) : null}
+                    </View>
+                  </>
                 ) : (
                   <>
-                    <Ionicons
-                      name="document-outline"
-                      size={iconScale(18)}
-                      color={theme.darkGreen}
+                    {/* Multi-session: Course start + Course end side-by-side */}
+                    <View onLayout={recordY(["date", "endDate"])}>
+                      <EditorRow
+                        labels={[
+                          { label: t("mcFieldStartDate"), required: true },
+                          { label: t("mcFieldEndDate"), required: true },
+                        ]}
+                      >
+                        <EditorPickerBox
+                          icon="calendar-outline"
+                          value={form.date ? formatClassDate(form.date) : null}
+                          placeholder={t("mcSelectDate")}
+                          onPress={() => {
+                            Keyboard.dismiss();
+                            setSheet("date");
+                          }}
+                          invalid={!!errors.date}
+                          trailingIcon={null}
+                        />
+                        <EditorPickerBox
+                          icon="calendar-outline"
+                          value={form.endDate ? formatClassDate(form.endDate) : null}
+                          placeholder={t("mcSelectEndDate")}
+                          onPress={() => {
+                            Keyboard.dismiss();
+                            setSheet("endDate");
+                          }}
+                          invalid={!!errors.endDate}
+                          trailingIcon={null}
+                        />
+                      </EditorRow>
+                      {(errors.date || errors.endDate) ? (
+                        <View style={styles.rowError}>
+                          <EditorFieldError message={errors.date || errors.endDate} />
+                        </View>
+                      ) : null}
+                    </View>
+
+                    {/* Schedule type */}
+                    <View style={styles.section}>
+                      <EditorLabel label="Schedule" required />
+                      <EditorSegmented
+                        options={[
+                          { value: "weekly" as const, label: "Weekly" },
+                          { value: "specific_dates" as const, label: "Specific dates" },
+                        ]}
+                        value={form.scheduleType}
+                        accessibilityLabel="Schedule type"
+                        onChange={(v) =>
+                          setForm((prev) => ({
+                            ...prev,
+                            scheduleType: v as ScheduleType,
+                            meetingDays: v === "specific_dates" ? [] : prev.meetingDays,
+                          }))
+                        }
+                      />
+                    </View>
+
+                    {/* Meeting days (weekly only) */}
+                    {form.scheduleType === "weekly" ? (
+                      <View style={styles.section} onLayout={recordY(["meetingDays"])}>
+                        <EditorLabel label="Meeting days" required />
+                        <WeekdayChips
+                          selected={form.meetingDays}
+                          onChange={(days) => {
+                            setForm((prev) => ({ ...prev, meetingDays: days }));
+                            clearError("meetingDays");
+                          }}
+                        />
+                        <EditorFieldError message={errors.meetingDays} />
+                      </View>
+                    ) : null}
+
+                    {/* Start time + Session duration side-by-side */}
+                    <View onLayout={recordY(["time", "duration"])}>
+                      <EditorRow
+                        labels={[
+                          { label: t("mcFieldStartTime"), required: true },
+                          { label: t("mcFieldClassDuration"), required: true },
+                        ]}
+                      >
+                        <EditorPickerBox
+                          icon="time-outline"
+                          value={form.time ? formatClassTime(form.time) : null}
+                          placeholder={t("mcSelectTime")}
+                          onPress={() => {
+                            Keyboard.dismiss();
+                            setSheet("time");
+                          }}
+                          invalid={!!errors.time}
+                          trailingIcon={null}
+                        />
+                        <EditorPickerBox
+                          value={form.duration ? formatDuration(form.duration) : null}
+                          placeholder={t("mcSelectDuration")}
+                          onPress={() => {
+                            Keyboard.dismiss();
+                            setSheet("duration");
+                          }}
+                          invalid={!!errors.duration}
+                        />
+                      </EditorRow>
+                      {(errors.time || errors.duration) ? (
+                        <View style={styles.rowError}>
+                          <EditorFieldError message={errors.time || errors.duration} />
+                        </View>
+                      ) : null}
+                    </View>
+
+                    {/* Timezone display */}
+                    {serverClass?.timezone ? (
+                      <View style={styles.section}>
+                        <EditorLabel label="Time zone" />
+                        <EditorPickerBox
+                          icon="globe-outline"
+                          value={getTimezoneLabel(serverClass.timezone)}
+                          placeholder="Detecting..."
+                          onPress={() => {}}
+                        />
+                      </View>
+                    ) : null}
+
+                    {/* Session summary */}
+                    <SessionSummaryCard
+                      sessions={sessionCount}
+                      daysText={getWeekdaysText(form.meetingDays)}
+                      timeText={sessionTimeRange}
                     />
-                    <Text style={styles.secondaryText}>{t("mcSaveAsDraft")}</Text>
                   </>
                 )}
-              </TouchableOpacity>
-            </View>
+
+                {/* Media, title, description, prerequisites — below scheduling */}
+                <View style={styles.section} onLayout={recordY(["media"])}>
+                  <EditorMediaBox
+                    previewUri={pending ? pending.uri : (mediaPreview?.uri ?? null)}
+                    isVideo={
+                      pending
+                        ? pending.isVideo
+                        : (mediaPreview?.isVideo ?? savedMedia?.type === "video")
+                    }
+                    media={pending ? null : savedMedia}
+                    hasMedia={form.mediaAssetId != null}
+                    uploading={media.uploading}
+                    percent={media.percent}
+                    error={media.error || errors.media}
+                    onPick={() => {
+                      Keyboard.dismiss();
+                      media.clearError();
+                      setShowPickerModal(true);
+                    }}
+                    onRemove={() => {
+                      setField("mediaAssetId", null, "media");
+                      setMediaPreview(null);
+                      media.clearError();
+                    }}
+                    onCancelUpload={media.cancel}
+                    onPreviewPress={() => {
+                      const isVideo = pending
+                        ? pending.isVideo
+                        : (mediaPreview?.isVideo ?? savedMedia?.type === "video");
+                      if (isVideo) {
+                        const videoUrl =
+                          mediaPreview?.videoUrl ?? savedMedia?.url;
+                        if (videoUrl) setVideoPreviewUri(videoUrl);
+                      } else {
+                        const uri =
+                          pending?.uri ?? mediaPreview?.uri ?? savedMedia?.url ?? savedMedia?.thumbnail_url;
+                        if (uri) dispatch(openFullImageModal({ images: [uri] }));
+                      }
+                    }}
+                  />
+                </View>
+
+                <View style={styles.section} onLayout={recordY(["title"])}>
+                  <EditorTextInput
+                    label={t("mcFieldTitle")}
+                    required
+                    value={form.title}
+                    onChangeText={(v) => setField("title", v, "title")}
+                    placeholder={t("mcFieldTitlePlaceholder")}
+                    maxLength={CLASS_LIMITS.titleMax}
+                    counterMax={CLASS_LIMITS.titleMax}
+                    autoCapitalize="words"
+                    returnKeyType="next"
+                    onSubmitEditing={() => descriptionRef.current?.focus()}
+                    error={errors.title}
+                  />
+                </View>
+
+                <View style={styles.section} onLayout={recordY(["description"])}>
+                  <EditorTextInput
+                    ref={descriptionRef}
+                    label={t("mcFieldDescription")}
+                    required
+                    value={form.description}
+                    onChangeText={(v) => setField("description", v, "description")}
+                    placeholder={t("mcFieldDescriptionPlaceholder")}
+                    multiline
+                    minLines={4}
+                    autoCapitalize="sentences"
+                    error={errors.description}
+                  />
+                </View>
+
+                <View style={styles.section} onLayout={recordY(["prerequisites"])}>
+                  <EditorTextInput
+                    label={t("mcFieldPrerequisites")}
+                    value={form.prerequisites}
+                    onChangeText={(v) => setField("prerequisites", v, "prerequisites")}
+                    placeholder={t("mcFieldPrerequisitesPlaceholder")}
+                    multiline
+                    minLines={3}
+                    autoCapitalize="sentences"
+                    error={errors.prerequisites}
+                  />
+                </View>
+
+                <View style={styles.actions}>
+                  <PrimaryButton
+                    label="Next"
+                    loading={false}
+                    disabled={false}
+                    onPress={nextStep}
+                    styles={styles}
+                    theme={theme}
+                  />
+                </View>
+              </>
+            ) : null}
+
+            {/* ── Step 2: Enrollment & Location ───────────────── */}
+            {step === 2 ? (
+              <>
+                <View onLayout={recordY(["price"])}>
+                  <EditorTextInput
+                    label={t("mcFieldPrice")}
+                    required
+                    prefix="$"
+                    value={form.price}
+                    onChangeText={(v) =>
+                      setField("price", cleanMoney(v), ["price", "discountedPrice"])
+                    }
+                    placeholder={t("mcFieldPricePlaceholder")}
+                    keyboardType="decimal-pad"
+                    accessibilityLabel={`${t("mcFieldPrice")}, required`}
+                    error={errors.price}
+                  />
+                  {form.price && sessionCount > 0 ? (
+                    <EditorHelper
+                      icon="information-circle-outline"
+                      text={`Per student · Includes all ${sessionCount} sessions`}
+                    />
+                  ) : null}
+                </View>
+
+                <View style={styles.section} onLayout={recordY(["discountedPrice"])}>
+                  <EditorTextInput
+                    label={t("mcFieldDiscountedPrice")}
+                    prefix="$"
+                    value={form.discountedPrice}
+                    onChangeText={(v) =>
+                      setField("discountedPrice", cleanMoney(v), "discountedPrice")
+                    }
+                    placeholder={t("mcFieldPricePlaceholder")}
+                    keyboardType="decimal-pad"
+                    accessibilityLabel={t("mcFieldDiscountedPrice")}
+                    error={errors.discountedPrice}
+                  />
+                </View>
+
+                <View style={styles.section} onLayout={recordY(["capacity"])}>
+                  <EditorTextInput
+                    label={t("mcFieldSeats")}
+                    required
+                    value={form.capacity}
+                    onChangeText={(v) =>
+                      setField("capacity", v.replace(/[^0-9]/g, "").slice(0, 4), "capacity")
+                    }
+                    placeholder={t("mcFieldSeatsPlaceholder")}
+                    keyboardType="number-pad"
+                    maxLength={4}
+                    accessibilityLabel={`${t("mcFieldSeats")}, required`}
+                    error={errors.capacity}
+                  />
+                  <EditorHelper
+                    icon="information-circle-outline"
+                    text="Each enrollment reserves all sessions."
+                  />
+                </View>
+
+                <View style={styles.section} onLayout={recordY(["format"])}>
+                  <EditorLabel label={t("mcFieldFormat")} required />
+                  <EditorSegmented
+                    options={formatOptions}
+                    value={form.format}
+                    accessibilityLabel={t("mcFieldFormat")}
+                    onChange={(v) => {
+                      Keyboard.dismiss();
+                      setField("format", v, ["format", "address", "meetingUrl"]);
+                    }}
+                  />
+                  <EditorFieldError message={errors.format} />
+                </View>
+
+                {form.format === "in_person" ? (
+                  <View style={styles.section} onLayout={recordY(["address"])}>
+                    <EditorLabel label={t("mcFieldLocation")} required />
+                    <View style={styles.radioList} accessibilityRole="radiogroup">
+                      <EditorRadioCard
+                        title={t("mcLocationBusiness")}
+                        subtitle={businessAddress}
+                        icon="storefront-outline"
+                        selected={form.locationType === "business"}
+                        onPress={() => setField("locationType", "business", "address")}
+                      />
+                      <EditorRadioCard
+                        title={t("mcLocationCustom")}
+                        icon="navigate-outline"
+                        selected={form.locationType === "custom"}
+                        onPress={() => {
+                          setField("locationType", "custom");
+                          if (!form.address.trim()) setSheet("address");
+                        }}
+                      />
+                    </View>
+                    {form.locationType === "custom" ? (
+                      <EditorPickerBox
+                        label={t("mcFieldAddress")}
+                        required
+                        icon="location-outline"
+                        value={form.address || null}
+                        placeholder={t("mcFieldAddressPlaceholder")}
+                        onPress={() => {
+                          Keyboard.dismiss();
+                          setSheet("address");
+                        }}
+                        trailingIcon="search"
+                        numberOfLines={2}
+                        error={errors.address}
+                      />
+                    ) : (
+                      <EditorFieldError message={errors.address} />
+                    )}
+                  </View>
+                ) : (
+                  <View style={styles.section} onLayout={recordY(["meetingUrl"])}>
+                    <EditorTextInput
+                      label={t("mcFieldMeetingUrl")}
+                      required
+                      value={form.meetingUrl}
+                      onChangeText={(v) => setField("meetingUrl", v.trim(), "meetingUrl")}
+                      placeholder={t("mcFieldMeetingUrlPlaceholder")}
+                      keyboardType="url"
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      textContentType="URL"
+                      helper={t("mcMeetingUrlHelper")}
+                      error={errors.meetingUrl}
+                    />
+                  </View>
+                )}
+
+                <View style={styles.section} onLayout={recordY(["window"])}>
+                  <EditorLabel label={t("mcFieldCancellationWindow")} required />
+                  <EditorChips
+                    options={windowOptions}
+                    value={form.cancellationWindow}
+                    accessibilityLabel={t("mcFieldCancellationWindow")}
+                    onChange={(v) => setField("cancellationWindow", v, "window")}
+                  />
+                  <EditorFieldError message={errors.window} />
+                  {!errors.window ? (
+                    <EditorHelper
+                      icon="information-circle-outline"
+                      text={t("mcCancellationWindowHelper", {
+                        hours: form.cancellationWindow,
+                      })}
+                    />
+                  ) : null}
+                </View>
+
+                <View style={styles.actions}>
+                  <PrimaryButton
+                    label="Next"
+                    loading={false}
+                    disabled={false}
+                    onPress={nextStep}
+                    styles={styles}
+                    theme={theme}
+                  />
+                </View>
+              </>
+            ) : null}
+
+            {/* ── Step 3: Review & Publish ────────────────────── */}
+            {step === 3 ? (
+              <>
+
+                <ReviewCourseCard
+                  title={form.title || "Untitled Class"}
+                  meta={reviewMeta}
+                  onEdit={() => setStep(1)}
+                />
+
+                <DealPlacementCard fee={fee} days={days} />
+
+                {formError ? (
+                  <View style={styles.formError} accessibilityLiveRegion="polite">
+                    <EditorFieldError message={formError} />
+                  </View>
+                ) : null}
+
+                <View style={styles.actions}>
+                  <PrimaryButton
+                    label={`Continue to Payment — ${formatClassPrice(fee)}`}
+                    loading={busy === "publish"}
+                    disabled={busy !== null}
+                    onPress={() => void onPublish()}
+                    styles={styles}
+                    theme={theme}
+                  />
+                  <TouchableOpacity
+                    activeOpacity={0.75}
+                    onPress={() => void onSaveDraft()}
+                    disabled={busy !== null}
+                    style={[styles.secondary, busy !== null && styles.disabled]}
+                    accessibilityRole="button"
+                    accessibilityState={{ disabled: busy !== null, busy: busy === "draft" }}
+                    accessibilityLabel={t("mcSaveAsDraft")}
+                  >
+                    {busy === "draft" ? (
+                      <ActivityIndicator color={theme.darkGreen} />
+                    ) : (
+                      <>
+                        <Ionicons
+                          name="document-outline"
+                          size={iconScale(18)}
+                          color={theme.darkGreen}
+                        />
+                        <Text style={styles.secondaryText}>{t("mcSaveAsDraft")}</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </>
+            ) : null}
           </>
         )}
       </KeyboardAwareScrollView>
@@ -1941,4 +2356,5 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
     },
+    // Steps
   });

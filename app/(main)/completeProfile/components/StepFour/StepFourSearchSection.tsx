@@ -35,10 +35,9 @@ interface StepFourSearchSectionProps {
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
     container: {
-      // gap: moderateHseightScale(12),
       marginTop: moderateHeightScale(12),
-      flex: 1,
       paddingHorizontal: moderateWidthScale(20),
+      gap: moderateHeightScale(16),
     },
     suggestionsContainer: {
       borderRadius: moderateWidthScale(16),
@@ -115,7 +114,7 @@ export default function StepFourSearchSection({
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
       <View style={styles.container}>
-        <Pressable style={{ flex: 1 }} onPress={Keyboard.dismiss}>
+        <Pressable onPress={Keyboard.dismiss}>
           <FloatingInput
             label={t("search")}
             value={addressSearch}
