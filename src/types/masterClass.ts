@@ -220,8 +220,8 @@ export interface MasterClassPayload {
   longitude?: number | null;
   meeting_url?: string | null;
   media_asset_id?: number | null;
-  schedule_type?: "weekly" | "specific_dates";
-  meeting_days?: number[];
+  schedule_type?: "weekly" | "specific_dates" | null;
+  meeting_days?: number[] | null;
 }
 
 /** `GET /master-classes` — same filters as the Deals business call. */

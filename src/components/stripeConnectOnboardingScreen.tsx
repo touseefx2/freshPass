@@ -11,7 +11,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import {
   ConnectAccountOnboarding,
@@ -204,6 +204,7 @@ export default function StripeConnectOnboardingScreen() {
   /** X-Stripe-Mode from the key resolved once in init — no extra config call per request */
   const modeHeadersRef = useRef<Record<string, string> | undefined>(undefined);
   const connectUiReadyRef = useRef(false);
+  const sentToLocationRef = useRef(false);
   const [phase, setPhase] = useState<ScreenPhase>("loading");
   const [errorMessage, setErrorMessage] = useState("");
   const [errorNeedsProfileFix, setErrorNeedsProfileFix] = useState(false);
@@ -461,6 +462,15 @@ export default function StripeConnectOnboardingScreen() {
     }
   };
 
+  useFocusEffect(
+    useCallback(() => {
+      if (sentToLocationRef.current) {
+        sentToLocationRef.current = false;
+        handleRetry();
+      }
+    }, []),
+  );
+
   return (
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
       <StatusBar barStyle="light-content" />
@@ -589,6 +599,7 @@ export default function StripeConnectOnboardingScreen() {
                 <Button
                   title={t("stripeConnectUpdateLocation")}
                   onPress={() => {
+                    sentToLocationRef.current = true;
                     router.push(
                       "/(main)/dashboard/(account)/(businessProfileSettings)/location" as any,
                     );

@@ -363,10 +363,10 @@ function payloadFromForm(f: FormState): MasterClassPayload {
     capacity: toInt(f.capacity),
     price: toMoney(f.price),
     end_date: f.endDate || null,
-    schedule_type: f.classType === "multi_session" ? f.scheduleType : undefined,
+    schedule_type: f.classType === "multi_session" ? f.scheduleType : null,
     meeting_days: f.classType === "multi_session" && f.scheduleType === "weekly" && f.meetingDays.length
       ? f.meetingDays
-      : undefined,
+      : null,
   };
   // Date and time travel together: both or neither
   const hasWhen = !!(f.date && f.time);
@@ -494,6 +494,10 @@ function validate(
     }
   }
 
+  if (f.classType === "multi_session" && f.scheduleType === "weekly" && !f.meetingDays.length) {
+    e.meetingDays = t("mcErrorMeetingDaysRequired");
+  }
+
   if (kind === "publish" || kind === "reschedule") {
     if (!f.date) e.date = t("mcErrorDateRequired");
     if (!f.time) e.time = t("mcErrorTimeRequired");
@@ -501,10 +505,9 @@ function validate(
       e.date = t("mcErrorFutureDateTime");
     }
     if (!f.duration) e.duration = t("mcErrorDurationRequired");
-    if (f.classType === "multi_session" && f.scheduleType === "weekly" && !f.meetingDays.length) {
-      e.meetingDays = t("mcErrorMeetingDaysRequired");
+    if (kind === "publish" && f.classType === "multi_session" && !f.endDate) {
+      e.endDate = t("mcErrorEndDateRequired");
     }
-    if (kind === "publish" && !f.endDate) e.endDate = t("mcErrorEndDateRequired");
     if (f.endDate && f.date && f.endDate < f.date) {
       e.endDate = t("mcErrorEndDateBeforeStart");
     }
@@ -731,7 +734,7 @@ export default function MasterClassEditorScreen() {
   const nextStep = useCallback(() => {
     if (step >= 3) return;
     Keyboard.dismiss();
-    const e = validate(form, "publish", t, serverClass?.timezone);
+    const e = validate(form, "draft", t, serverClass?.timezone);
     const stepErrors: Errors = {};
     Object.entries(e).forEach(([k, v]) => {
       if (FIELD_STEP[k as FieldKey] === step) stepErrors[k as FieldKey] = v;
@@ -1958,12 +1961,6 @@ export default function MasterClassEditorScreen() {
 
                 <DealPlacementCard fee={fee} days={days} />
 
-                {formError ? (
-                  <View style={styles.formError} accessibilityLiveRegion="polite">
-                    <EditorFieldError message={formError} />
-                  </View>
-                ) : null}
-
                 <View style={styles.actions}>
                   <PrimaryButton
                     label={`Continue to Payment — ${formatClassPrice(fee)}`}
@@ -1997,6 +1994,12 @@ export default function MasterClassEditorScreen() {
                   </TouchableOpacity>
                 </View>
               </>
+            ) : null}
+
+            {formError ? (
+              <View style={styles.formError} accessibilityLiveRegion="polite">
+                <EditorFieldError message={formError} />
+              </View>
             ) : null}
           </>
         )}
