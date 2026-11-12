@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Dimensions,
+  Modal,
   Platform,
   RefreshControl,
   ScrollView,
@@ -300,63 +300,131 @@ function EmptyState({ onAdd, theme }: { onAdd: () => void; theme: Theme }) {
   const { t } = useTranslation();
   return (
     <View style={emptyStyles.container}>
-      {/* Ghost card */}
-      <View style={[emptyStyles.ghostCard, { backgroundColor: theme.orangeBrown015 }]}>
-        <View style={emptyStyles.ghostTopRow}>
-          <View style={[emptyStyles.ghostChip, { backgroundColor: theme.darkGreen15 }]} />
-          <View style={[emptyStyles.ghostBrand, { backgroundColor: theme.darkGreen15 }]} />
-        </View>
-        <View style={emptyStyles.ghostDotsRow}>
-          <View style={[emptyStyles.ghostDot, { backgroundColor: theme.darkGreen15 }]} />
-          <View style={[emptyStyles.ghostDot, { backgroundColor: theme.darkGreen15 }]} />
-          <View style={[emptyStyles.ghostDot, { backgroundColor: theme.darkGreen15 }]} />
-          <View style={[emptyStyles.ghostDotLast, { backgroundColor: theme.darkGreen15 }]} />
-        </View>
-        <View style={emptyStyles.ghostBottomRow}>
-          <View style={[emptyStyles.ghostLine, { backgroundColor: theme.darkGreen15 }]} />
-          <View style={[emptyStyles.ghostLineShort, { backgroundColor: theme.darkGreen15 }]} />
-        </View>
-        <View
-          style={[
-            emptyStyles.ghostPlusCircle,
-            { backgroundColor: theme.darkGreen, borderColor: theme.background },
-          ]}
+      {/* Stacked ghost cards for wallet feel */}
+      <View style={emptyStyles.cardStack}>
+        <LinearGradient
+          colors={["#1A1F71", "#2B3494"]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={emptyStyles.ghostCardBack2}
+        />
+        <LinearGradient
+          colors={["#1A1A2E", "#2D2D44"]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={emptyStyles.ghostCardBack}
+        />
+        <LinearGradient
+          colors={["#283618", "#3A5226"]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={emptyStyles.ghostCard}
         >
-          <Feather name="plus" size={iconScale(20)} color="#FFFFFF" />
-        </View>
+          <View style={emptyStyles.ghostTopRow}>
+            <View style={emptyStyles.ghostChip}>
+              <View style={emptyStyles.ghostChipLineH} />
+              <View style={emptyStyles.ghostChipLineV} />
+            </View>
+            <View style={emptyStyles.ghostBrand} />
+          </View>
+          <View style={emptyStyles.ghostDotsRow}>
+            <View style={emptyStyles.ghostDot} />
+            <View style={emptyStyles.ghostDot} />
+            <View style={emptyStyles.ghostDot} />
+            <View style={emptyStyles.ghostDotLast} />
+          </View>
+          <View style={emptyStyles.ghostBottomRow}>
+            <View style={emptyStyles.ghostLine} />
+            <View style={emptyStyles.ghostLineShort} />
+          </View>
+          <View style={emptyStyles.ghostDecoCircle} />
+          <View style={emptyStyles.ghostDecoCircle2} />
+        </LinearGradient>
       </View>
-      <Text style={[emptyStyles.title, { color: theme.darkGreen }]}>
-        {t("walletEmpty")}
-      </Text>
+
+      {/* Icon badge */}
+      <View style={[emptyStyles.iconBadge, { backgroundColor: theme.darkGreen }]}>
+        <MaterialCommunityIcons
+          name="wallet-outline"
+          size={iconScale(22)}
+          color="#fff"
+        />
+      </View>
+
       <Text style={[emptyStyles.subtitle, { color: theme.textMuted }]}>
-        {t("walletEmptySubtitle")}
+        Save your cards for faster{"\n"}and easier checkout
       </Text>
-      <Button
-        title={t("walletAddCard")}
+
+      <TouchableOpacity
         onPress={onAdd}
-        leftIcon={<Feather name="plus" size={iconScale(18)} color="#FFFFFF" />}
-        backgroundColor={theme.darkGreen}
-        containerStyle={emptyStyles.button}
-      />
+        activeOpacity={0.7}
+        style={[emptyStyles.addBtn, { backgroundColor: theme.darkGreen }]}
+      >
+        <Feather name="plus" size={iconScale(20)} color="#FFFFFF" />
+        <Text style={emptyStyles.addBtnText}>{t("walletAddCard")}</Text>
+      </TouchableOpacity>
+
+      <View style={emptyStyles.secureRow}>
+        <Feather name="shield" size={iconScale(15)} color={theme.textMuted} />
+        <Text style={[emptyStyles.secureText, { color: theme.textMuted }]}>
+          {t("securelyProcessedByStripe")}
+        </Text>
+      </View>
     </View>
   );
 }
 
+const GHOST_W = moderateWidthScale(270);
+const GHOST_H = moderateHeightScale(165);
+
 const emptyStyles = StyleSheet.create({
   container: {
     alignItems: "center",
-    paddingTop: moderateHeightScale(40),
+    paddingTop: moderateHeightScale(60),
     paddingHorizontal: moderateWidthScale(24),
-    gap: moderateHeightScale(10),
+  },
+  cardStack: {
+    width: GHOST_W + moderateWidthScale(24),
+    height: GHOST_H + moderateHeightScale(24),
+    alignItems: "center",
+    justifyContent: "flex-end",
+  },
+  ghostCardBack2: {
+    position: "absolute",
+    top: 0,
+    width: GHOST_W - moderateWidthScale(32),
+    height: GHOST_H,
+    borderRadius: moderateWidthScale(14),
+    opacity: 0.2,
+    transform: [{ rotate: "4deg" }],
+  },
+  ghostCardBack: {
+    position: "absolute",
+    top: moderateHeightScale(8),
+    width: GHOST_W - moderateWidthScale(16),
+    height: GHOST_H,
+    borderRadius: moderateWidthScale(14),
+    opacity: 0.35,
+    transform: [{ rotate: "2deg" }],
   },
   ghostCard: {
-    width: moderateWidthScale(260),
-    height: moderateHeightScale(160),
+    width: GHOST_W,
+    height: GHOST_H,
     borderRadius: moderateWidthScale(16),
     padding: moderateWidthScale(20),
     justifyContent: "space-between",
-    marginBottom: moderateHeightScale(12),
-    opacity: 0.7,
+    overflow: "hidden",
+    opacity: 0.6,
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.22,
+        shadowRadius: 16,
+      },
+      android: { elevation: 8, shadowColor: "#000" },
+      default: {},
+    }),
   },
   ghostTopRow: {
     flexDirection: "row",
@@ -364,14 +432,33 @@ const emptyStyles = StyleSheet.create({
     alignItems: "center",
   },
   ghostChip: {
-    width: moderateWidthScale(34),
-    height: moderateWidthScale(26),
+    width: moderateWidthScale(32),
+    height: moderateWidthScale(24),
     borderRadius: moderateWidthScale(5),
+    backgroundColor: "rgba(255,215,0,0.35)",
+    borderWidth: 0.5,
+    borderColor: "rgba(255,215,0,0.45)",
+    justifyContent: "center",
+    alignItems: "center",
+    overflow: "hidden",
+  },
+  ghostChipLineH: {
+    position: "absolute",
+    width: "100%",
+    height: 0.5,
+    backgroundColor: "rgba(255,215,0,0.4)",
+  },
+  ghostChipLineV: {
+    position: "absolute",
+    width: 0.5,
+    height: "100%",
+    backgroundColor: "rgba(255,215,0,0.4)",
   },
   ghostBrand: {
-    width: moderateWidthScale(50),
-    height: moderateWidthScale(20),
-    borderRadius: moderateWidthScale(4),
+    width: moderateWidthScale(48),
+    height: moderateWidthScale(12),
+    borderRadius: moderateWidthScale(3),
+    backgroundColor: "rgba(255,255,255,0.18)",
   },
   ghostDotsRow: {
     flexDirection: "row",
@@ -379,64 +466,116 @@ const emptyStyles = StyleSheet.create({
     alignItems: "center",
   },
   ghostDot: {
-    width: moderateWidthScale(36),
-    height: moderateHeightScale(10),
+    width: moderateWidthScale(32),
+    height: moderateHeightScale(9),
     borderRadius: moderateWidthScale(5),
+    backgroundColor: "rgba(255,255,255,0.14)",
   },
   ghostDotLast: {
-    width: moderateWidthScale(42),
-    height: moderateHeightScale(12),
+    width: moderateWidthScale(38),
+    height: moderateHeightScale(11),
     borderRadius: moderateWidthScale(6),
+    backgroundColor: "rgba(255,255,255,0.22)",
   },
   ghostBottomRow: {
     flexDirection: "row",
     justifyContent: "space-between",
   },
   ghostLine: {
-    width: moderateWidthScale(80),
-    height: moderateHeightScale(10),
+    width: moderateWidthScale(65),
+    height: moderateHeightScale(9),
     borderRadius: moderateWidthScale(5),
+    backgroundColor: "rgba(255,255,255,0.14)",
   },
   ghostLineShort: {
-    width: moderateWidthScale(44),
-    height: moderateHeightScale(10),
+    width: moderateWidthScale(40),
+    height: moderateHeightScale(9),
     borderRadius: moderateWidthScale(5),
+    backgroundColor: "rgba(255,255,255,0.12)",
   },
-  ghostPlusCircle: {
+  ghostDecoCircle: {
     position: "absolute",
-    alignSelf: "center",
-    top: "50%",
-    marginTop: -moderateWidthScale(22),
-    width: moderateWidthScale(44),
-    height: moderateWidthScale(44),
-    borderRadius: moderateWidthScale(22),
-    borderWidth: 3,
-    alignItems: "center",
+    top: -moderateWidthScale(22),
+    right: -moderateWidthScale(18),
+    width: moderateWidthScale(80),
+    height: moderateWidthScale(80),
+    borderRadius: moderateWidthScale(40),
+    backgroundColor: "rgba(255,255,255,0.06)",
+  },
+  ghostDecoCircle2: {
+    position: "absolute",
+    bottom: -moderateWidthScale(30),
+    left: -moderateWidthScale(20),
+    width: moderateWidthScale(60),
+    height: moderateWidthScale(60),
+    borderRadius: moderateWidthScale(30),
+    backgroundColor: "rgba(255,255,255,0.04)",
+  },
+  iconBadge: {
+    width: moderateWidthScale(48),
+    height: moderateWidthScale(48),
+    borderRadius: moderateWidthScale(24),
     justifyContent: "center",
+    alignItems: "center",
+    marginTop: moderateHeightScale(24),
+    marginBottom: moderateHeightScale(16),
     ...Platform.select({
       ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.15,
+        shadowColor: "#283618",
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.25,
         shadowRadius: 6,
       },
-      android: { elevation: 4, shadowColor: "#000" },
+      android: { elevation: 4, shadowColor: "#283618" },
       default: {},
     }),
   },
   title: {
-    fontSize: fontSize.size20,
-    fontFamily: fonts.fontBold,
+    fontSize: fontSize.size22,
+    fontFamily: fonts.fontSemiBold,
+    marginBottom: moderateHeightScale(8),
   },
   subtitle: {
-    fontSize: fontSize.size14,
+    fontSize: fontSize.size16,
     fontFamily: fonts.fontRegular,
     textAlign: "center",
-    lineHeight: fontSize.size20,
+    lineHeight: fontSize.size24,
+    paddingHorizontal: moderateWidthScale(8),
+    marginBottom: moderateHeightScale(28),
   },
-  button: {
+  addBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: moderateWidthScale(10),
     width: "100%",
-    marginTop: moderateHeightScale(8),
+    paddingVertical: moderateHeightScale(16),
+    borderRadius: moderateWidthScale(14),
+    ...Platform.select({
+      ios: {
+        shadowColor: "#283618",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.25,
+        shadowRadius: 8,
+      },
+      android: { elevation: 5, shadowColor: "#283618" },
+      default: {},
+    }),
+  },
+  addBtnText: {
+    fontSize: fontSize.size18,
+    fontFamily: fonts.fontBold,
+    color: "#FFFFFF",
+  },
+  secureRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: moderateWidthScale(6),
+    marginTop: moderateHeightScale(16),
+  },
+  secureText: {
+    fontSize: fontSize.size13,
+    fontFamily: fonts.fontRegular,
   },
 });
 
@@ -627,6 +766,8 @@ export default function PaymentMethodsScreen() {
   const [saving, setSaving] = useState(false);
   const [settingDefault, setSettingDefault] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<WalletCard | null>(null);
+  const [defaultTarget, setDefaultTarget] = useState<WalletCard | null>(null);
   const typedBrandRef = useRef<string | null>(null);
 
   const fetchCards = useCallback(
@@ -700,8 +841,19 @@ export default function PaymentMethodsScreen() {
     }
   };
 
-  const handleSetDefault = async (card: WalletCard) => {
+  const handleSetDefault = (card: WalletCard) => {
     if (card.is_default || settingDefault) return;
+    setDefaultTarget(card);
+  };
+
+  const confirmDefaultAndClose = () => {
+    if (!defaultTarget) return;
+    const card = defaultTarget;
+    setDefaultTarget(null);
+    void doSetDefault(card);
+  };
+
+  const doSetDefault = async (card: WalletCard) => {
     setSettingDefault(card.id);
     try {
       const res = await ApiService.put<SetDefaultResponse>(
@@ -726,19 +878,14 @@ export default function PaymentMethodsScreen() {
   };
 
   const handleDelete = (card: WalletCard) => {
-    const label = formatCardLabel(t, card.last4, card.brand);
-    Alert.alert(
-      t("walletDeleteConfirmTitle"),
-      t("walletDeleteConfirmMessage", { card: label }),
-      [
-        { text: t("cancel"), style: "cancel" },
-        {
-          text: t("walletDeleteCard"),
-          style: "destructive",
-          onPress: () => void doDelete(card),
-        },
-      ],
-    );
+    setDeleteTarget(card);
+  };
+
+  const confirmDeleteAndClose = () => {
+    if (!deleteTarget) return;
+    const card = deleteTarget;
+    setDeleteTarget(null);
+    void doDelete(card);
   };
 
   const doDelete = async (card: WalletCard) => {
@@ -917,6 +1064,98 @@ export default function PaymentMethodsScreen() {
           </View>
         )}
       </ScrollView>
+
+      {/* Delete confirmation modal */}
+      <Modal
+        visible={!!deleteTarget}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setDeleteTarget(null)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <View style={styles.modalIconCircle}>
+              <Feather name="trash-2" size={iconScale(22)} color="#D44" />
+            </View>
+            <Text style={styles.modalTitle}>{t("walletDeleteConfirmTitle")}</Text>
+            <Text style={styles.modalMessage}>
+              {deleteTarget
+                ? `${(deleteTarget.brand ?? "Card").charAt(0).toUpperCase()}${(deleteTarget.brand ?? "card").slice(1)} •••• ${deleteTarget.last4} will be permanently removed.`
+                : ""}
+            </Text>
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={styles.modalCancelBtn}
+                onPress={() => setDeleteTarget(null)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.modalCancelText}>{t("cancel")}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.modalRemoveBtn}
+                onPress={confirmDeleteAndClose}
+                activeOpacity={0.7}
+              >
+                <Feather
+                  name="trash-2"
+                  size={iconScale(14)}
+                  color="#fff"
+                  style={{ marginRight: moderateWidthScale(6) }}
+                />
+                <Text style={styles.modalRemoveText}>Remove Card</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Make default confirmation modal */}
+      <Modal
+        visible={!!defaultTarget}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setDefaultTarget(null)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <View style={styles.modalIconCircleGreen}>
+              <MaterialCommunityIcons
+                name="star"
+                size={iconScale(22)}
+                color={theme.darkGreen}
+              />
+            </View>
+            <Text style={styles.modalTitle}>Set as default?</Text>
+            <Text style={styles.modalMessage}>
+              {defaultTarget
+                ? `${(defaultTarget.brand ?? "Card").charAt(0).toUpperCase()}${(defaultTarget.brand ?? "card").slice(1)} •••• ${defaultTarget.last4} will be used for all future payments.`
+                : ""}
+            </Text>
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={styles.modalCancelBtn}
+                onPress={() => setDefaultTarget(null)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.modalCancelText}>{t("cancel")}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.modalConfirmBtn}
+                onPress={confirmDefaultAndClose}
+                activeOpacity={0.7}
+              >
+                <MaterialCommunityIcons
+                  name="star"
+                  size={iconScale(14)}
+                  color="#fff"
+                  style={{ marginRight: moderateWidthScale(6) }}
+                />
+                <Text style={styles.modalRemoveText}>Set Default</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -1001,5 +1240,106 @@ const createStyles = (theme: Theme) =>
       fontSize: fontSize.size13,
       fontFamily: fonts.fontRegular,
       color: theme.textMuted,
+    },
+
+    /* Delete modal */
+    modalBackdrop: {
+      flex: 1,
+      backgroundColor: "rgba(0,0,0,0.55)",
+      justifyContent: "center",
+      alignItems: "center",
+      paddingHorizontal: moderateWidthScale(28),
+    },
+    modalCard: {
+      width: "100%",
+      backgroundColor: theme.white,
+      borderRadius: moderateWidthScale(20),
+      paddingVertical: moderateHeightScale(28),
+      paddingHorizontal: moderateWidthScale(24),
+      alignItems: "center",
+      ...Platform.select({
+        ios: {
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 8 },
+          shadowOpacity: 0.18,
+          shadowRadius: 24,
+        },
+        android: { elevation: 12 },
+        default: {},
+      }),
+    },
+    modalIconCircle: {
+      width: moderateWidthScale(52),
+      height: moderateWidthScale(52),
+      borderRadius: moderateWidthScale(26),
+      backgroundColor: "rgba(221,68,68,0.1)",
+      justifyContent: "center",
+      alignItems: "center",
+      marginBottom: moderateHeightScale(14),
+    },
+    modalTitle: {
+      fontSize: fontSize.size18,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+      marginBottom: moderateHeightScale(8),
+    },
+    modalMessage: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontRegular,
+      color: theme.textMuted,
+      textAlign: "center",
+      lineHeight: fontSize.size20,
+      marginBottom: moderateHeightScale(24),
+    },
+    modalButtons: {
+      flexDirection: "row",
+      gap: moderateWidthScale(12),
+      width: "100%",
+    },
+    modalCancelBtn: {
+      flex: 1,
+      paddingVertical: moderateHeightScale(13),
+      borderRadius: moderateWidthScale(12),
+      borderWidth: 1,
+      borderColor: theme.lightGreen1,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    modalCancelText: {
+      fontSize: fontSize.size15,
+      fontFamily: fonts.fontSemiBold,
+      color: theme.textMuted,
+    },
+    modalRemoveBtn: {
+      flex: 1,
+      flexDirection: "row",
+      paddingVertical: moderateHeightScale(13),
+      borderRadius: moderateWidthScale(12),
+      backgroundColor: "#D44",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    modalConfirmBtn: {
+      flex: 1,
+      flexDirection: "row",
+      paddingVertical: moderateHeightScale(13),
+      borderRadius: moderateWidthScale(12),
+      backgroundColor: theme.darkGreen,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    modalIconCircleGreen: {
+      width: moderateWidthScale(52),
+      height: moderateWidthScale(52),
+      borderRadius: moderateWidthScale(26),
+      backgroundColor: "rgba(40, 54, 24, 0.12)",
+      justifyContent: "center",
+      alignItems: "center",
+      marginBottom: moderateHeightScale(14),
+    },
+    modalRemoveText: {
+      fontSize: fontSize.size15,
+      fontFamily: fonts.fontSemiBold,
+      color: "#fff",
     },
   });
