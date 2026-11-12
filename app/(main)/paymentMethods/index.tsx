@@ -95,10 +95,19 @@ const CARD_FIELD_STYLE = {
 };
 
 const BRAND_GRADIENTS: Record<string, [string, string]> = {
-  visa: ["#1A1F71", "#2B3494"],
-  mastercard: ["#1A1A2E", "#2D2D44"],
-  amex: ["#006FCF", "#1580D4"],
-  discover: ["#FF6000", "#E55600"],
+  visa: ["#0a1551", "#1a2980"],
+  mastercard: ["#141414", "#252525"],
+  amex: ["#006FCF", "#1A8FE3"],
+  americanexpress: ["#006FCF", "#1A8FE3"],
+  discover: ["#F5F5F0", "#E8E4DA"],
+  jcb: ["#F5F5F5", "#E8E8E8"],
+  unionpay: ["#1C3A6E", "#0D2240"],
+  diners: ["#F0F0F0", "#D8D8D8"],
+  dinersclub: ["#F0F0F0", "#D8D8D8"],
+  maestro: ["#141414", "#252525"],
+  elo: ["#1A1A1A", "#2D2D2D"],
+  rupay: ["#0D2C54", "#1A4075"],
+  cartebancaire: ["#1A237E", "#283593"],
   default: ["#283618", "#3A5226"],
 };
 
@@ -120,8 +129,12 @@ const BRAND_DISPLAY: Record<string, string> = {
   discover: "DISCOVER",
   jcb: "JCB",
   unionpay: "UnionPay",
-  diners: "Diners",
-  dinersclub: "Diners",
+  diners: "Diners Club",
+  dinersclub: "Diners Club",
+  maestro: "Maestro",
+  elo: "Elo",
+  rupay: "RuPay",
+  cartebancaire: "CB",
 };
 
 function getServerBody(err: any): any {
@@ -136,6 +149,85 @@ function getServerMessage(err: any, fallback: string): string {
 function getBrandDisplay(brand: string): string {
   const key = (brand ?? "").toLowerCase().replace(/[\s_-]/g, "");
   return BRAND_DISPLAY[key] ?? brand ?? "Card";
+}
+
+const LIGHT_BRANDS = new Set(["discover", "jcb", "diners", "dinersclub"]);
+
+function BrandLogo({ brand }: { brand: string }) {
+  const key = (brand ?? "").toLowerCase().replace(/[\s_-]/g, "");
+  switch (key) {
+    case "mastercard":
+      return (
+        <View style={cardStyles.mcLogo}>
+          <View style={cardStyles.mcCircleRed} />
+          <View style={cardStyles.mcCircleYellow} />
+        </View>
+      );
+    case "visa":
+      return <Text style={cardStyles.visaLogo}>VISA</Text>;
+    case "amex":
+    case "americanexpress":
+      return (
+        <View style={cardStyles.amexLogoWrap}>
+          <Text style={cardStyles.amexLine1}>AMERICAN</Text>
+          <Text style={cardStyles.amexLine2}>EXPRESS</Text>
+        </View>
+      );
+    case "discover":
+      return (
+        <View style={cardStyles.discoverLogo}>
+          <View style={cardStyles.discoverCircle} />
+          <Text style={cardStyles.discoverTextDark}>DISCOVER</Text>
+        </View>
+      );
+    case "diners":
+    case "dinersclub":
+      return (
+        <View style={cardStyles.dinersLogoWrap}>
+          <View style={cardStyles.dinersLogo}>
+            <View style={cardStyles.dinersCircleLeft} />
+            <View style={cardStyles.dinersCircleRight} />
+          </View>
+          <Text style={cardStyles.dinersText}>Diners Club</Text>
+        </View>
+      );
+    case "jcb":
+      return (
+        <View style={cardStyles.jcbLogo}>
+          <View style={[cardStyles.jcbStripe, { backgroundColor: "#0B4EA2" }]} />
+          <View style={[cardStyles.jcbStripe, { backgroundColor: "#C62828" }]} />
+          <View style={[cardStyles.jcbStripe, { backgroundColor: "#2E7D32" }]} />
+          <Text style={cardStyles.jcbText}>JCB</Text>
+        </View>
+      );
+    case "unionpay":
+      return (
+        <View style={cardStyles.unionpayLogo}>
+          <View style={cardStyles.unionpayRed} />
+          <View style={cardStyles.unionpayBlue} />
+          <Text style={cardStyles.unionpayText}>UP</Text>
+        </View>
+      );
+    case "maestro":
+      return (
+        <View style={cardStyles.mcLogo}>
+          <View style={cardStyles.maestroCircleBlue} />
+          <View style={cardStyles.mcCircleRed} />
+        </View>
+      );
+    case "elo":
+      return (
+        <View style={cardStyles.eloBadge}>
+          <View style={cardStyles.eloYellow} />
+          <View style={cardStyles.eloRed} />
+          <View style={cardStyles.eloBlue} />
+        </View>
+      );
+    default:
+      return (
+        <Text style={cardStyles.brandText}>{getBrandDisplay(brand)}</Text>
+      );
+  }
 }
 
 function CreditCard({
@@ -156,6 +248,8 @@ function CreditCard({
   const { t } = useTranslation();
   const gradient = getBrandGradient(card.brand);
   const busy = isSettingDefault || isDeleting;
+  const brandKey = (card.brand ?? "").toLowerCase().replace(/[\s_-]/g, "");
+  const isLight = LIGHT_BRANDS.has(brandKey);
 
   return (
     <View style={cardStyles.wrapper}>
@@ -163,25 +257,42 @@ function CreditCard({
         colors={gradient}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        style={[cardStyles.card, card.is_default && cardStyles.cardDefault]}
+        style={[
+          cardStyles.card,
+          card.is_default && cardStyles.cardDefault,
+          isLight && cardStyles.cardLight,
+        ]}
       >
         <View style={cardStyles.topRow}>
-          <View style={cardStyles.chip}>
-            <View style={cardStyles.chipLineH} />
-            <View style={cardStyles.chipLineV} />
+          <View style={cardStyles.chipRow}>
+            <View style={cardStyles.chip}>
+              <View style={cardStyles.chipLineH} />
+              <View style={cardStyles.chipLineV} />
+              <View style={cardStyles.chipCornerTL} />
+              <View style={cardStyles.chipCornerTR} />
+              <View style={cardStyles.chipCornerBL} />
+              <View style={cardStyles.chipCornerBR} />
+            </View>
+            <MaterialCommunityIcons
+              name="contactless-payment"
+              size={moderateWidthScale(16)}
+              color={isLight ? "rgba(0,0,0,0.3)" : "rgba(255,255,255,0.45)"}
+            />
           </View>
-          <Text style={cardStyles.brandText}>
-            {getBrandDisplay(card.brand)}
-          </Text>
+          <BrandLogo brand={card.brand} />
         </View>
 
         <View style={cardStyles.numberRow}>
-          <Text style={cardStyles.dots}>••••</Text>
-          <Text style={cardStyles.last4}>{card.last4}</Text>
+          <Text style={[cardStyles.dots, isLight && cardStyles.dotsLight]}>
+            ••••
+          </Text>
+          <Text style={[cardStyles.last4, isLight && cardStyles.last4Light]}>
+            {card.last4}
+          </Text>
         </View>
 
         <View style={cardStyles.bottomRow}>
-          <Text style={cardStyles.expiry}>
+          <Text style={[cardStyles.expiry, isLight && cardStyles.expiryLight]}>
             {String(card.exp_month).padStart(2, "0")}/
             {String(card.exp_year).slice(-2)}
           </Text>
@@ -189,14 +300,23 @@ function CreditCard({
             <MaterialCommunityIcons
               name="shield-check"
               size={moderateWidthScale(16)}
-              color="rgba(255,215,0,0.85)"
+              color={isLight ? "#BC6C25" : "rgba(255,215,0,0.85)"}
             />
           )}
         </View>
 
-        <View style={cardStyles.decoCircle} />
-        <View style={cardStyles.decoCircle2} />
-        <View style={cardStyles.decoShine} />
+        <View
+          style={[cardStyles.decoCircle, isLight && cardStyles.decoCircleLight]}
+        />
+        <View
+          style={[
+            cardStyles.decoCircle2,
+            isLight && cardStyles.decoCircleLight,
+          ]}
+        />
+        <View
+          style={[cardStyles.decoShine, isLight && cardStyles.decoShineLight]}
+        />
       </LinearGradient>
 
       <View style={cardStyles.actions}>
@@ -608,18 +728,32 @@ const cardStyles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: "rgba(221,161,94,0.6)",
   },
+  cardLight: {
+    borderWidth: 1,
+    borderColor: "rgba(0,0,0,0.1)",
+  },
+  dotsLight: { color: "rgba(0,0,0,0.25)" },
+  last4Light: { color: "#1A1A1A" },
+  expiryLight: { color: "rgba(0,0,0,0.45)" },
+  decoCircleLight: { backgroundColor: "rgba(0,0,0,0.03)" },
+  decoShineLight: { backgroundColor: "rgba(0,0,0,0.02)" },
   topRow: {
     flexDirection: "row",
     justifyContent: "space-between",
+    alignItems: "flex-start",
+  },
+  chipRow: {
+    flexDirection: "row",
     alignItems: "center",
+    gap: moderateWidthScale(6),
   },
   chip: {
-    width: moderateWidthScale(28),
-    height: moderateWidthScale(20),
+    width: moderateWidthScale(30),
+    height: moderateWidthScale(22),
     borderRadius: moderateWidthScale(4),
-    backgroundColor: "rgba(255,215,0,0.35)",
+    backgroundColor: "rgba(255,215,0,0.4)",
     borderWidth: 0.5,
-    borderColor: "rgba(255,215,0,0.5)",
+    borderColor: "rgba(255,215,0,0.55)",
     justifyContent: "center",
     alignItems: "center",
     overflow: "hidden",
@@ -628,19 +762,241 @@ const cardStyles = StyleSheet.create({
     position: "absolute",
     width: "100%",
     height: 0.5,
-    backgroundColor: "rgba(255,215,0,0.45)",
+    backgroundColor: "rgba(255,215,0,0.5)",
   },
   chipLineV: {
     position: "absolute",
     width: 0.5,
     height: "100%",
-    backgroundColor: "rgba(255,215,0,0.45)",
+    backgroundColor: "rgba(255,215,0,0.5)",
+  },
+  chipCornerTL: {
+    position: "absolute",
+    top: 2,
+    left: 2,
+    width: moderateWidthScale(8),
+    height: moderateWidthScale(6),
+    borderRadius: 1,
+    borderLeftWidth: 0.5,
+    borderTopWidth: 0.5,
+    borderColor: "rgba(255,215,0,0.35)",
+  },
+  chipCornerTR: {
+    position: "absolute",
+    top: 2,
+    right: 2,
+    width: moderateWidthScale(8),
+    height: moderateWidthScale(6),
+    borderRadius: 1,
+    borderRightWidth: 0.5,
+    borderTopWidth: 0.5,
+    borderColor: "rgba(255,215,0,0.35)",
+  },
+  chipCornerBL: {
+    position: "absolute",
+    bottom: 2,
+    left: 2,
+    width: moderateWidthScale(8),
+    height: moderateWidthScale(6),
+    borderRadius: 1,
+    borderLeftWidth: 0.5,
+    borderBottomWidth: 0.5,
+    borderColor: "rgba(255,215,0,0.35)",
+  },
+  chipCornerBR: {
+    position: "absolute",
+    bottom: 2,
+    right: 2,
+    width: moderateWidthScale(8),
+    height: moderateWidthScale(6),
+    borderRadius: 1,
+    borderRightWidth: 0.5,
+    borderBottomWidth: 0.5,
+    borderColor: "rgba(255,215,0,0.35)",
   },
   brandText: {
     fontSize: fontSize.size13,
     fontFamily: fonts.fontExtraBold,
-    color: "rgba(255,255,255,0.7)",
+    color: "rgba(255,255,255,0.75)",
     letterSpacing: 1,
+  },
+  visaLogo: {
+    fontSize: fontSize.size16,
+    fontFamily: fonts.fontExtraBold,
+    color: "#FFFFFF",
+    fontStyle: "italic",
+    letterSpacing: 2,
+  },
+  amexLogoWrap: {
+    alignItems: "flex-end",
+  },
+  amexLine1: {
+    fontSize: fontSize.size8,
+    fontFamily: fonts.fontExtraBold,
+    color: "rgba(255,255,255,0.9)",
+    letterSpacing: 2.5,
+    lineHeight: fontSize.size10,
+  },
+  amexLine2: {
+    fontSize: fontSize.size10,
+    fontFamily: fonts.fontExtraBold,
+    color: "rgba(255,255,255,0.9)",
+    letterSpacing: 2,
+    lineHeight: fontSize.size12,
+  },
+  discoverLogo: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: moderateWidthScale(3),
+  },
+  discoverCircle: {
+    width: moderateWidthScale(16),
+    height: moderateWidthScale(16),
+    borderRadius: moderateWidthScale(8),
+    backgroundColor: "#FF6000",
+  },
+  discoverTextDark: {
+    fontSize: fontSize.size9,
+    fontFamily: fonts.fontExtraBold,
+    color: "#333333",
+    letterSpacing: 1,
+  },
+  dinersLogoWrap: {
+    alignItems: "flex-end",
+  },
+  dinersText: {
+    fontSize: fontSize.size7,
+    fontFamily: fonts.fontBold,
+    color: "#1565C0",
+    letterSpacing: 0.5,
+    marginTop: moderateHeightScale(2),
+  },
+  mcLogo: {
+    flexDirection: "row",
+    alignItems: "center",
+    width: moderateWidthScale(32),
+    height: moderateWidthScale(20),
+  },
+  mcCircleRed: {
+    width: moderateWidthScale(18),
+    height: moderateWidthScale(18),
+    borderRadius: moderateWidthScale(9),
+    backgroundColor: "#EB001B",
+    opacity: 0.9,
+  },
+  mcCircleYellow: {
+    width: moderateWidthScale(18),
+    height: moderateWidthScale(18),
+    borderRadius: moderateWidthScale(9),
+    backgroundColor: "#F79E1B",
+    opacity: 0.9,
+    marginLeft: -moderateWidthScale(8),
+  },
+  maestroCircleBlue: {
+    width: moderateWidthScale(18),
+    height: moderateWidthScale(18),
+    borderRadius: moderateWidthScale(9),
+    backgroundColor: "#0099DF",
+    opacity: 0.9,
+  },
+  dinersLogo: {
+    flexDirection: "row",
+    alignItems: "center",
+    width: moderateWidthScale(22),
+    height: moderateWidthScale(22),
+    borderRadius: moderateWidthScale(11),
+    borderWidth: 1.5,
+    borderColor: "#1565C0",
+    justifyContent: "center",
+    overflow: "hidden",
+  },
+  dinersCircleLeft: {
+    width: moderateWidthScale(6),
+    height: moderateWidthScale(12),
+    borderTopLeftRadius: moderateWidthScale(6),
+    borderBottomLeftRadius: moderateWidthScale(6),
+    backgroundColor: "#1565C0",
+  },
+  dinersCircleRight: {
+    width: moderateWidthScale(6),
+    height: moderateWidthScale(12),
+    borderTopRightRadius: moderateWidthScale(6),
+    borderBottomRightRadius: moderateWidthScale(6),
+    backgroundColor: "#1565C0",
+    marginLeft: moderateWidthScale(2),
+  },
+  jcbLogo: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderRadius: moderateWidthScale(4),
+    overflow: "hidden",
+    height: moderateWidthScale(18),
+    width: moderateWidthScale(32),
+    position: "relative",
+  },
+  jcbStripe: {
+    flex: 1,
+    height: "100%",
+  },
+  jcbText: {
+    position: "absolute",
+    width: "100%",
+    textAlign: "center",
+    fontSize: fontSize.size9,
+    fontFamily: fonts.fontExtraBold,
+    color: "#FFFFFF",
+    letterSpacing: 1,
+  },
+  unionpayLogo: {
+    width: moderateWidthScale(32),
+    height: moderateWidthScale(20),
+    borderRadius: moderateWidthScale(3),
+    overflow: "hidden",
+    flexDirection: "row",
+    position: "relative",
+  },
+  unionpayRed: {
+    flex: 1,
+    backgroundColor: "#E21836",
+  },
+  unionpayBlue: {
+    flex: 1,
+    backgroundColor: "#00447C",
+  },
+  unionpayText: {
+    position: "absolute",
+    width: "100%",
+    height: "100%",
+    textAlign: "center",
+    textAlignVertical: "center",
+    fontSize: fontSize.size10,
+    fontFamily: fonts.fontExtraBold,
+    color: "#FFFFFF",
+    letterSpacing: 1,
+    lineHeight: moderateWidthScale(20),
+  },
+  eloBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: moderateWidthScale(2),
+  },
+  eloYellow: {
+    width: moderateWidthScale(8),
+    height: moderateWidthScale(8),
+    borderRadius: moderateWidthScale(4),
+    backgroundColor: "#FFCB05",
+  },
+  eloRed: {
+    width: moderateWidthScale(8),
+    height: moderateWidthScale(8),
+    borderRadius: moderateWidthScale(4),
+    backgroundColor: "#EF4123",
+  },
+  eloBlue: {
+    width: moderateWidthScale(8),
+    height: moderateWidthScale(8),
+    borderRadius: moderateWidthScale(4),
+    backgroundColor: "#00A4E0",
   },
   numberRow: {
     flexDirection: "row",
@@ -1013,12 +1369,11 @@ export default function PaymentMethodsScreen() {
             <CardField
               style={styles.cardField}
               disabled={saving}
-              postalCodeEnabled
+              postalCodeEnabled={false}
               placeholders={{
                 number: t("cardNumber"),
                 expiration: t("expiryPlaceholder"),
                 cvc: t("cvc"),
-                postalCode: t("zipCode"),
               }}
               onCardChange={(details) => {
                 setCardComplete(!!details?.complete);
