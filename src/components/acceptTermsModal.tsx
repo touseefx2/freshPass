@@ -192,7 +192,6 @@ export default function AcceptTermsModal({
   };
 
   return (
-  <>
     <Modal
       visible={visible}
       transparent={false}
@@ -280,13 +279,12 @@ export default function AcceptTermsModal({
           </View>
         </View>
       </View>
+      <WebViewModal
+        visible={webViewVisible}
+        url={webViewUrl}
+        title={webViewTitle}
+        onClose={() => setWebViewVisible(false)}
+      />
     </Modal>
-    <WebViewModal
-      visible={webViewVisible}
-      url={webViewUrl}
-      title={webViewTitle}
-      onClose={() => setWebViewVisible(false)}
-    />
-  </>
   );
 }

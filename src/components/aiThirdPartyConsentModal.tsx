@@ -172,7 +172,6 @@ export default function AiThirdPartyConsentModal({
   }, [t]);
 
   return (
-  <>
     <Modal
       transparent
       visible={visible}
@@ -217,7 +216,6 @@ export default function AiThirdPartyConsentModal({
             style={styles.declineContainer}
             onPress={onDecline}
             activeOpacity={0.7}
-            // Agree is 12 above and Privacy 8 below, so keep vertical slop small
             hitSlop={{ top: 6, bottom: 6, left: 16, right: 16 }}
           >
             <Text style={styles.declineText}>{t("aiDataConsentDecline")}</Text>
@@ -230,13 +228,12 @@ export default function AiThirdPartyConsentModal({
           </TouchableOpacity>
         </Pressable>
       </View>
+      <WebViewModal
+        visible={webViewVisible}
+        url={PRIVACY_POLICY_URL}
+        title={t("privacyPolicy")}
+        onClose={() => setWebViewVisible(false)}
+      />
     </Modal>
-    <WebViewModal
-      visible={webViewVisible}
-      url={PRIVACY_POLICY_URL}
-      title={t("privacyPolicy")}
-      onClose={() => setWebViewVisible(false)}
-    />
-  </>
   );
 }

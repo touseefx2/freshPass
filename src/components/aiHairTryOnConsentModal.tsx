@@ -194,7 +194,6 @@ export default function AiHairTryOnConsentModal({
   }, [t]);
 
   return (
-  <>
     <Modal
       transparent
       visible={visible}
@@ -262,13 +261,12 @@ export default function AiHairTryOnConsentModal({
           </TouchableOpacity>
         </Pressable>
       </View>
+      <WebViewModal
+        visible={webViewVisible}
+        url={PRIVACY_POLICY_URL}
+        title={t("privacyPolicy")}
+        onClose={() => setWebViewVisible(false)}
+      />
     </Modal>
-    <WebViewModal
-      visible={webViewVisible}
-      url={PRIVACY_POLICY_URL}
-      title={t("privacyPolicy")}
-      onClose={() => setWebViewVisible(false)}
-    />
-  </>
   );
 }
