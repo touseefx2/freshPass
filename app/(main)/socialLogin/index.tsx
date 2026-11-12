@@ -1,8 +1,8 @@
 import { useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { useSocialLogin } from "@/src/hooks/useSocialLogin";
 import { useTranslation } from "react-i18next";
-import React, { useMemo, useCallback } from "react";
-import { View, Text, StatusBar, Platform, Linking, Alert } from "react-native";
+import React, { useMemo, useCallback, useState } from "react";
+import { View, Text, StatusBar, Platform, Alert } from "react-native";
 import { Image } from "expo-image";
 import {
   SafeAreaView,
@@ -21,7 +21,7 @@ import { useRouter } from "expo-router";
 import { MAIN_ROUTES } from "@/src/constant/routes";
 import SocialAuthOptions from "@/src/components/socialAuthOptions";
 import SectionSeparator from "@/src/components/sectionSeparator";
-import Logger from "@/src/services/logger";
+import WebViewModal from "@/src/components/webViewModal";
 
 const TERMS_AND_CONDITIONS_URL = process.env.EXPO_PUBLIC_TERMS_URL || "";
 const PRIVACY_POLICY_URL = process.env.EXPO_PUBLIC_PRIVACY_URL || "";
@@ -35,6 +35,9 @@ export default function SocialLogin() {
   const router = useRouter();
   const selectedRole = useAppSelector((state) => state.general.role);
   const { handleSocialLogin } = useSocialLogin();
+  const [webViewUrl, setWebViewUrl] = useState("");
+  const [webViewTitle, setWebViewTitle] = useState("");
+  const [webViewVisible, setWebViewVisible] = useState(false);
 
   const handleSignInOrRegister = () => {
     router.push(`/${MAIN_ROUTES.LOGIN}`);
@@ -44,39 +47,30 @@ export default function SocialLogin() {
     router.push(`/${MAIN_ROUTES.INTRODUCTION_CLIENT}`);
   };
 
-  const handleOpenLink = useCallback(
-    async (url: string, title: string) => {
-      if (!url) {
-        Alert.alert(t("error"), `${title} ${t("urlNotConfigured")}`);
-        return;
-      }
-
-      try {
-        const supported = await Linking.canOpenURL(url);
-        if (supported) {
-          await Linking.openURL(url);
-        } else {
-          Alert.alert(t("error"), `${t("cannotOpen")} ${title}`);
-        }
-      } catch (error) {
-        Logger.error("Error opening link:", error);
-        Alert.alert(t("error"), `${t("failedToOpenLink")} ${title}`);
-      }
-    },
-    [t],
-  );
-
   const handleTermsPress = useCallback(() => {
-    handleOpenLink(TERMS_AND_CONDITIONS_URL, "Terms of Services");
-  }, [handleOpenLink]);
+    if (!TERMS_AND_CONDITIONS_URL) {
+      Alert.alert(t("error"), `Terms of Services ${t("urlNotConfigured")}`);
+      return;
+    }
+    setWebViewUrl(TERMS_AND_CONDITIONS_URL);
+    setWebViewTitle(t("termsOfService"));
+    setWebViewVisible(true);
+  }, [t]);
 
   const handlePrivacyPress = useCallback(() => {
-    handleOpenLink(PRIVACY_POLICY_URL, "Privacy Policy");
-  }, [handleOpenLink]);
+    if (!PRIVACY_POLICY_URL) {
+      Alert.alert(t("error"), `Privacy Policy ${t("urlNotConfigured")}`);
+      return;
+    }
+    setWebViewUrl(PRIVACY_POLICY_URL);
+    setWebViewTitle(t("privacyPolicy"));
+    setWebViewVisible(true);
+  }, [t]);
 
   const isGuest = selectedRole === "customer" ? true : false; // Set to true to show guest login button
 
   return (
+  <>
     <SafeAreaView style={styles.container}>
       <StatusBar
         animated
@@ -156,5 +150,12 @@ export default function SocialLogin() {
         </View>
       </View>
     </SafeAreaView>
+    <WebViewModal
+      visible={webViewVisible}
+      url={webViewUrl}
+      title={webViewTitle}
+      onClose={() => setWebViewVisible(false)}
+    />
+  </>
   );
 }

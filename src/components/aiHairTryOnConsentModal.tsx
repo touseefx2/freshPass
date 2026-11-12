@@ -1,4 +1,4 @@
-import React, { useMemo, useCallback, useEffect } from "react";
+import React, { useMemo, useCallback, useEffect, useState } from "react";
 import {
   Modal,
   View,
@@ -8,7 +8,6 @@ import {
   TouchableOpacity,
   ScrollView,
   Alert,
-  Linking,
   Platform,
 } from "react-native";
 import { useTranslation } from "react-i18next";
@@ -28,6 +27,7 @@ import { businessEndpoints } from "@/src/services/endpoints";
 import { setAiService } from "@/src/state/slices/generalSlice";
 import type { AdditionalServiceItem } from "@/src/state/slices/generalSlice";
 import Logger from "@/src/services/logger";
+import WebViewModal from "@/src/components/webViewModal";
 
 const PRIVACY_POLICY_URL = process.env.EXPO_PUBLIC_PRIVACY_URL || "";
 
@@ -183,24 +183,18 @@ export default function AiHairTryOnConsentModal({
     };
   }, [visible, dispatch, onAppStoreConfigMissing]);
 
-  const handlePrivacyPress = useCallback(async () => {
+  const [webViewVisible, setWebViewVisible] = useState(false);
+
+  const handlePrivacyPress = useCallback(() => {
     if (!PRIVACY_POLICY_URL) {
       Alert.alert(t("error"), t("urlNotConfigured"));
       return;
     }
-    try {
-      const supported = await Linking.canOpenURL(PRIVACY_POLICY_URL);
-      if (supported) {
-        await Linking.openURL(PRIVACY_POLICY_URL);
-      } else {
-        Alert.alert(t("error"), `${t("cannotOpen")} Privacy Policy`);
-      }
-    } catch {
-      Alert.alert(t("error"), t("failedToOpenLink"));
-    }
+    setWebViewVisible(true);
   }, [t]);
 
   return (
+  <>
     <Modal
       transparent
       visible={visible}
@@ -269,5 +263,12 @@ export default function AiHairTryOnConsentModal({
         </Pressable>
       </View>
     </Modal>
+    <WebViewModal
+      visible={webViewVisible}
+      url={PRIVACY_POLICY_URL}
+      title={t("privacyPolicy")}
+      onClose={() => setWebViewVisible(false)}
+    />
+  </>
   );
 }

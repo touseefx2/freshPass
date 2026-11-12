@@ -9,7 +9,6 @@ import {
   ActivityIndicator,
   StatusBar,
   Platform,
-  Linking,
   Alert,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
@@ -51,6 +50,7 @@ import {
   setBusinessPlanPurchasedCongratsVisible,
   setSuppressBusinessPlansAutoOpen,
 } from "@/src/state/slices/generalSlice";
+import WebViewModal from "@/src/components/webViewModal";
 
 const TERMS_AND_CONDITIONS_URL = process.env.EXPO_PUBLIC_TERMS_URL || "";
 const PRIVACY_POLICY_URL = process.env.EXPO_PUBLIC_PRIVACY_URL || "";
@@ -523,35 +523,29 @@ function BusinessPlansModalContent({
   /** Trial already used → show Subscribe instead of Start trial */
   const showSubscribeInsteadOfTrial = hasUsedTrial;
   const dispatch = useAppDispatch();
-
-  const handleOpenLink = useCallback(
-    async (url: string, title: string) => {
-      if (!url) {
-        Alert.alert(t("error"), `${title} ${t("urlNotConfigured")}`);
-        return;
-      }
-
-      try {
-        const supported = await Linking.canOpenURL(url);
-        if (supported) {
-          await Linking.openURL(url);
-        } else {
-          Alert.alert(t("error"), `${t("cannotOpen")} ${title}`);
-        }
-      } catch {
-        Alert.alert(t("error"), `${t("failedToOpenLink")} ${title}`);
-      }
-    },
-    [t],
-  );
+  const [webViewUrl, setWebViewUrl] = useState("");
+  const [webViewTitle, setWebViewTitle] = useState("");
+  const [webViewVisible, setWebViewVisible] = useState(false);
 
   const handleTermsPress = useCallback(() => {
-    handleOpenLink(TERMS_AND_CONDITIONS_URL, t("termsOfUse"));
-  }, [handleOpenLink, t]);
+    if (!TERMS_AND_CONDITIONS_URL) {
+      Alert.alert(t("error"), `${t("termsOfUse")} ${t("urlNotConfigured")}`);
+      return;
+    }
+    setWebViewUrl(TERMS_AND_CONDITIONS_URL);
+    setWebViewTitle(t("termsOfUse"));
+    setWebViewVisible(true);
+  }, [t]);
 
   const handlePrivacyPress = useCallback(() => {
-    handleOpenLink(PRIVACY_POLICY_URL, t("privacyPolicy"));
-  }, [handleOpenLink, t]);
+    if (!PRIVACY_POLICY_URL) {
+      Alert.alert(t("error"), `${t("privacyPolicy")} ${t("urlNotConfigured")}`);
+      return;
+    }
+    setWebViewUrl(PRIVACY_POLICY_URL);
+    setWebViewTitle(t("privacyPolicy"));
+    setWebViewVisible(true);
+  }, [t]);
 
   const getTrialDisclosure = useCallback(
     (totalPrice: string) => {
@@ -1288,6 +1282,13 @@ function BusinessPlansModalContent({
           </View>
         </View>
       )}
+
+      <WebViewModal
+        visible={webViewVisible}
+        url={webViewUrl}
+        title={webViewTitle}
+        onClose={() => setWebViewVisible(false)}
+      />
 
     </View>
   );

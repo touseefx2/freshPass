@@ -99,6 +99,7 @@ import { fetchBusinessJobPosts } from "@/src/services/jobService";
 import type { JobPost } from "@/src/types/jobs";
 import { hasMoreJobPages } from "@/src/utils/jobHelpers";
 import { isPaymentsEnabled } from "@/src/utils/paymentsEnabled";
+import WebViewModal from "@/src/components/webViewModal";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 const VIEWER_BANNER_CONTENT_HEIGHT = moderateHeightScale(28);
@@ -2434,17 +2435,11 @@ export default function BusinessDetailScreen() {
     }
   };
 
-  const handlePrivacyPolicyPress = useCallback(async () => {
+  const [privacyWebViewVisible, setPrivacyWebViewVisible] = useState(false);
+  const handlePrivacyPolicyPress = useCallback(() => {
     const url = process.env.EXPO_PUBLIC_PRIVACY_URL;
     if (!url) return;
-    try {
-      const canOpen = await Linking.canOpenURL(url);
-      if (canOpen) {
-        await Linking.openURL(url);
-      }
-    } catch (_error) {
-      // Silently ignore if URL cannot be opened
-    }
+    setPrivacyWebViewVisible(true);
   }, []);
 
   // Report a Problem flow (business); the owner never sees the row
@@ -4596,6 +4591,7 @@ export default function BusinessDetailScreen() {
   }
 
   return (
+  <>
     <SafeAreaView edges={["bottom"]} style={styles.container}>
       <StatusBar
         backgroundColor={"transparent"}
@@ -5325,5 +5321,12 @@ export default function BusinessDetailScreen() {
         </Pressable>
       </Modal>
     </SafeAreaView>
+    <WebViewModal
+      visible={privacyWebViewVisible}
+      url={process.env.EXPO_PUBLIC_PRIVACY_URL || ""}
+      title="Privacy Policy"
+      onClose={() => setPrivacyWebViewVisible(false)}
+    />
+  </>
   );
 }

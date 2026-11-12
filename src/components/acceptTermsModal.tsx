@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   BackHandler,
   StatusBar,
-  Linking,
   Pressable,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
@@ -25,6 +24,10 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect } from "expo-router";
 import Button from "@/src/components/button";
 import { LeafLogo } from "@/assets/icons";
+import WebViewModal from "@/src/components/webViewModal";
+
+const TERMS_AND_CONDITIONS_URL = process.env.EXPO_PUBLIC_TERMS_URL || "";
+const PRIVACY_POLICY_URL = process.env.EXPO_PUBLIC_PRIVACY_URL || "";
 
 interface AcceptTermsModalProps {
   visible: boolean;
@@ -146,6 +149,9 @@ export default function AcceptTermsModal({
   const theme = colors as Theme;
   const insets = useSafeAreaInsets();
   const [isAgreed, setIsAgreed] = useState(false);
+  const [webViewUrl, setWebViewUrl] = useState("");
+  const [webViewTitle, setWebViewTitle] = useState("");
+  const [webViewVisible, setWebViewVisible] = useState(false);
 
   // Handle back button press
   useFocusEffect(
@@ -168,13 +174,15 @@ export default function AcceptTermsModal({
   );
 
   const handleTermsPress = () => {
-    // Open Terms of Use link
-    Linking.openURL("https://freshpass.com/terms"); // Update with actual URL
+    setWebViewUrl(TERMS_AND_CONDITIONS_URL);
+    setWebViewTitle("Terms of Use");
+    setWebViewVisible(true);
   };
 
   const handlePrivacyPress = () => {
-    // Open Privacy Notice link
-    Linking.openURL("https://freshpass.com/privacy"); // Update with actual URL
+    setWebViewUrl(PRIVACY_POLICY_URL);
+    setWebViewTitle("Privacy Notice");
+    setWebViewVisible(true);
   };
 
   const handleContinue = () => {
@@ -184,6 +192,7 @@ export default function AcceptTermsModal({
   };
 
   return (
+  <>
     <Modal
       visible={visible}
       transparent={false}
@@ -272,5 +281,12 @@ export default function AcceptTermsModal({
         </View>
       </View>
     </Modal>
+    <WebViewModal
+      visible={webViewVisible}
+      url={webViewUrl}
+      title={webViewTitle}
+      onClose={() => setWebViewVisible(false)}
+    />
+  </>
   );
 }

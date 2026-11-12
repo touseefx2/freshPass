@@ -1,12 +1,10 @@
-import React, { useMemo } from "react";
-import Logger from "@/src/services/logger";
+import React, { useMemo, useState } from "react";
 import {
   StyleSheet,
   Text,
   View,
   ScrollView,
   TouchableOpacity,
-  Linking,
   Alert,
 } from "react-native";
 import { useTheme } from "@/src/hooks/hooks";
@@ -18,6 +16,7 @@ import {
   moderateWidthScale,
 } from "@/src/theme/dimensions";
 import StackHeader from "@/src/components/StackHeader";
+import WebViewModal from "@/src/components/webViewModal";
 
 // Links from environment or constants
 const TERMS_AND_CONDITIONS_URL = process.env.EXPO_PUBLIC_TERMS_URL || "";
@@ -61,19 +60,18 @@ export default function RulesAndTermsScreen() {
   const { t } = useTranslation();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
+  const [webViewUrl, setWebViewUrl] = useState("");
+  const [webViewTitle, setWebViewTitle] = useState("");
+  const [webViewVisible, setWebViewVisible] = useState(false);
 
-  const handleOpenLink = async (url: string, title: string) => {
-    try {
-      const supported = await Linking.canOpenURL(url);
-      if (supported) {
-        await Linking.openURL(url);
-      } else {
-        Alert.alert(t("error"), `${t("cannotOpen")} ${title}. URL: ${url}`);
-      }
-    } catch (error) {
-      Logger.error("Error opening link:", error);
-      Alert.alert(t("error"), `${t("failedToOpen")} ${title}`);
+  const handleOpenLink = (url: string, title: string) => {
+    if (!url) {
+      Alert.alert(t("error"), `${t("cannotOpen")} ${title}`);
+      return;
     }
+    setWebViewUrl(url);
+    setWebViewTitle(title);
+    setWebViewVisible(true);
   };
 
   const rows = [
@@ -119,6 +117,12 @@ export default function RulesAndTermsScreen() {
           ))}
         </View>
       </ScrollView>
+      <WebViewModal
+        visible={webViewVisible}
+        url={webViewUrl}
+        title={webViewTitle}
+        onClose={() => setWebViewVisible(false)}
+      />
     </View>
   );
 }

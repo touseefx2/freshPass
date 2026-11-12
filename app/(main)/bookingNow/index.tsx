@@ -17,7 +17,6 @@ import {
   ActivityIndicator,
   TextInput,
   Pressable,
-  Linking,
   Modal,
   BackHandler,
   Keyboard,
@@ -120,6 +119,7 @@ import isoWeek from "dayjs/plugin/isoWeek";
 import {
   getDefaultAvatarImage,
 } from "@/src/services/remoteConfigService";
+import WebViewModal from "@/src/components/webViewModal";
 
 /*
  * Step-by-step booking (2026-10-16), same look as the reel / product flows.
@@ -2945,9 +2945,9 @@ export default function BookingNow() {
 
   const formatMoney = (value: number) => `$${value.toFixed(2)} USD`;
 
+  const [privacyWebViewVisible, setPrivacyWebViewVisible] = useState(false);
   const openPrivacy = () => {
-    const url = process.env.EXPO_PUBLIC_PRIVACY_URL;
-    if (url) Linking.openURL(url);
+    setPrivacyWebViewVisible(true);
   };
 
   const renderServices = () => (
@@ -4103,6 +4103,12 @@ export default function BookingNow() {
         onImagesSelected={(uris) => {
           setGalleryImageUris((prev) => [...prev, ...uris]);
         }}
+      />
+      <WebViewModal
+        visible={privacyWebViewVisible}
+        url={process.env.EXPO_PUBLIC_PRIVACY_URL || ""}
+        title="Privacy Policy"
+        onClose={() => setPrivacyWebViewVisible(false)}
       />
     </View>
   );

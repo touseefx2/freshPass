@@ -22,7 +22,6 @@ import {
   ActivityIndicator,
   TextInput,
   Pressable,
-  Linking,
   Dimensions,
   Modal,
   Platform,
@@ -106,6 +105,7 @@ import isoWeek from "dayjs/plugin/isoWeek";
 import {
   getDefaultAvatarImage,
 } from "@/src/services/remoteConfigService";
+import WebViewModal from "@/src/components/webViewModal";
 
 dayjs.extend(weekOfYear);
 dayjs.extend(isoWeek);
@@ -1671,6 +1671,7 @@ export default function BookingNow() {
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
   const { showBanner } = useNotificationContext();
+  const [privacyWebViewVisible, setPrivacyWebViewVisible] = useState(false);
   const router = useRouter();
   const dispatch = useAppDispatch();
   const params = useLocalSearchParams<{
@@ -2822,6 +2823,7 @@ export default function BookingNow() {
   };
 
   return (
+  <>
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" />
       {/* Header */}
@@ -3248,10 +3250,7 @@ export default function BookingNow() {
                 By placing this order, you agree to our{" "}
                 <Text
                   style={styles.privacyLink}
-                  onPress={() => {
-                    const url = process.env.EXPO_PUBLIC_PRIVACY_URL;
-                    if (url) Linking.openURL(url);
-                  }}
+                  onPress={() => setPrivacyWebViewVisible(true)}
                 >
                   Privacy Policy
                 </Text>
@@ -3500,10 +3499,7 @@ export default function BookingNow() {
                 By placing this order, you agree to our{" "}
                 <Text
                   style={styles.privacyLink}
-                  onPress={() => {
-                    const url = process.env.EXPO_PUBLIC_PRIVACY_URL;
-                    if (url) Linking.openURL(url);
-                  }}
+                  onPress={() => setPrivacyWebViewVisible(true)}
                 >
                   Privacy Policy
                 </Text>
@@ -3995,5 +3991,12 @@ export default function BookingNow() {
         }}
       />
     </SafeAreaView>
+    <WebViewModal
+      visible={privacyWebViewVisible}
+      url={process.env.EXPO_PUBLIC_PRIVACY_URL || ""}
+      title="Privacy Policy"
+      onClose={() => setPrivacyWebViewVisible(false)}
+    />
+  </>
   );
 }
