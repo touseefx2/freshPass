@@ -1082,12 +1082,19 @@ export function navigateFromNotificationData(
 
   if (type === "subscription") {
     const userRole = store.getState().user.userRole;
+    const event = (data as Record<string, unknown>).event as
+      | string
+      | undefined;
+    const isPaymentFailed = event === "subscription_payment_failed";
+
     const subscriptionPath =
-      userRole === "business"
-        ? "/(main)/dashboard/(account)/subscription"
-        : userRole === "customer"
-          ? "/(main)/dashboard/(account)/subscriptionCustomer"
-          : null;
+      isPaymentFailed && userRole === "customer"
+        ? "/(main)/paymentMethods"
+        : userRole === "business"
+          ? "/(main)/dashboard/(account)/subscription"
+          : userRole === "customer"
+            ? "/(main)/dashboard/(account)/subscriptionCustomer"
+            : null;
 
     if (subscriptionPath) {
       const navigateToSubscriptions = () => {
@@ -1110,11 +1117,11 @@ export function navigateFromNotificationData(
 
       Logger.log(
         `------>navigateFromNotificationData (subscription) -> account -> ${
-          userRole === "business" ? "subscription" : "subscriptionCustomer"
+          subscriptionPath.split("/").pop()
         }`,
         {
           model_id: data.model_id,
-          event: data.event,
+          event,
           userRole,
           fromInAppList: options?.fromInAppList ?? false,
         },

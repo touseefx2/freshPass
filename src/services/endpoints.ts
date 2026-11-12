@@ -213,6 +213,17 @@ export const stripeEndpoints = {
 };
 
 /**
+ * Wallet (saved payment methods) endpoints
+ */
+export const walletEndpoints = {
+  list: `/api/payment-methods`,
+  setupIntent: `/api/payment-methods/setup-intent`,
+  setDefault: `/api/payment-methods/default`,
+  delete: (paymentMethodId: string) =>
+    `/api/payment-methods/${encodeURIComponent(paymentMethodId)}`,
+};
+
+/**
  * Apple In-App Purchase endpoints
  */
 export const iapEndpoints = {

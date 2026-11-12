@@ -790,7 +790,9 @@ export default function AccountScreen() {
   };
 
   const handleRowPress = async (key: string) => {
-    if (key === "personal") {
+    if (key === "paymentMethods") {
+      router.push("/(main)/paymentMethods" as any);
+    } else if (key === "personal") {
       router.push("./(profile)");
     } else if (key === "barberProfile") {
       router.push("./barberProfile");
@@ -917,6 +919,8 @@ export default function AccountScreen() {
         return { name: "people", family: "material" };
       case "followers":
         return { name: "group", family: "material" };
+      case "paymentMethods":
+        return { name: "credit-card", family: "material" };
       case "country":
         return { name: "public", family: "material" };
       case "language":
@@ -1019,6 +1023,7 @@ export default function AccountScreen() {
     };
 
     const accountSettingsRows: SettingsRowItem[] = [
+      { key: "paymentMethods", title: t("walletProfileRow") },
       { key: "language", title: t("language") },
       { key: "notifications", title: t("notificationSettings") },
       { key: "rules", title: t("rulesAndTerms") },
@@ -1130,6 +1135,9 @@ export default function AccountScreen() {
           // AI reel requests + generate reel live inside AI Tools
           { key: "aiTools", title: t("aiTools") },
         ]
+      : []),
+    ...(isCustomer && !isGuest
+      ? [{ key: "paymentMethods", title: t("walletProfileRow") }]
       : []),
     ...(isCustomer
       ? [{ key: "country", title: t("country") }]

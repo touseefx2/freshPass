@@ -56,6 +56,7 @@ export type SoloRowKey =
   | "myAppointments"
   | "uploadWork"
   | "leaveRequest"
+  | "paymentMethods"
   | "language"
   | "notifications"
   | "rules"
@@ -299,6 +300,14 @@ export default function SoloProfileView({
   ];
 
   const settingsRows: SoloRow[] = [
+    {
+      key: "paymentMethods",
+      title: t("walletProfileRow"),
+      subtitle: t("walletProfileRowSub"),
+      icon: "credit-card-outline",
+      tileBg: theme.selectCard,
+      iconColor: theme.white,
+    },
     {
       key: "language",
       title: t("language"),
