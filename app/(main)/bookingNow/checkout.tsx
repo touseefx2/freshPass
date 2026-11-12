@@ -89,8 +89,29 @@ const isWebUrl = (u?: string) => !!u && /^https?:\/\//i.test(u);
 // presentPaymentSheet never resolves. Hide the loader first, then wait for it.
 const waitForLoaderDismiss = () =>
   Platform.OS === "ios"
-    ? new Promise<void>((resolve) => setTimeout(resolve, 500))
+    ? new Promise<void>((resolve) => setTimeout(resolve, 1000))
     : Promise.resolve();
+
+const PRESENT_SHEET_TIMEOUT_MS = 120_000;
+
+const presentWithTimeout = (
+  present: () => ReturnType<ReturnType<typeof useStripe>["presentPaymentSheet"]>,
+) =>
+  Promise.race([
+    present(),
+    new Promise<{ error: { code: string; message: string } }>((resolve) =>
+      setTimeout(
+        () =>
+          resolve({
+            error: {
+              code: "Timeout",
+              message: "The payment sheet did not respond. Please try again.",
+            },
+          }),
+        PRESENT_SHEET_TIMEOUT_MS,
+      ),
+    ),
+  ]);
 
 const buildAppointmentFormData = (
   body: Record<string, any>,
@@ -1457,10 +1478,11 @@ function CheckoutContent() {
           }
 
           await waitForLoaderDismiss();
-          const { error: presentError } = await presentPaymentSheet();
+          const { error: presentError } = await presentWithTimeout(
+            presentPaymentSheet,
+          );
 
           if (presentError) {
-            // Sheet closed without paying — nothing was booked; user can retry Pay Now.
             if (!presentError.code?.includes("Canceled")) {
               showBanner(
                 "Payment Failed",
@@ -1562,7 +1584,7 @@ function CheckoutContent() {
             setProcessingPayment(false);
           }
         } finally {
-          await useStripeAccount(null);
+          useStripeAccount(null).catch(() => {});
           // Held / spent balance changed: keep the shown balance current.
           if (sheetPaid) {
             saveHeldReward(0, false);
@@ -1788,7 +1810,9 @@ function CheckoutContent() {
 
             dispatch(setActionLoader(false));
             await waitForLoaderDismiss();
-            const { error: presentError } = await presentPaymentSheet();
+            const { error: presentError } = await presentWithTimeout(
+              presentPaymentSheet,
+            );
             if (presentError) {
               if (!presentError.code?.includes("Canceled")) {
                 showBanner(
@@ -1801,7 +1825,11 @@ function CheckoutContent() {
               return;
             }
           } finally {
-            await useStripeAccount(null);
+            // Fire-and-forget: initStripe can hang on iOS right after the
+            // PaymentSheet dismisses if the SDK hasn't cleaned up yet.
+            // Blocking here prevents the outer finally from resetting
+            // policyConfirming, which locks the sheet.
+            useStripeAccount(null).catch(() => {});
           }
         } catch (error: any) {
           Logger.error("Card setup error:", error);
