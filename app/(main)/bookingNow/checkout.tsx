@@ -50,6 +50,12 @@ import {
   widthScale,
 } from "@/src/theme/dimensions";
 import CancellationPolicySheet from "@/src/components/CancellationPolicySheet";
+import OutcomeConfirmSheet from "@/src/components/OutcomeConfirmSheet";
+import {
+  getPromotionRefusal,
+  normalizeQuotePromotion,
+} from "@/src/services/promotionService";
+import type { QuotePromotion } from "@/src/types/promotion";
 import { useTranslation } from "react-i18next";
 import {
   formatCustomerScheduleDate,
@@ -383,6 +389,69 @@ const createStyles = (theme: Theme) =>
       color: theme.successGreen,
       fontFamily: fonts.fontSemiBold,
     },
+    pbkPriceCol: {
+      alignItems: "flex-end",
+    },
+    pbkStruck: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+      textDecorationLine: "line-through",
+      fontVariant: ["tabular-nums"],
+    },
+    pbkOfferLabel: {
+      flex: 1,
+      color: theme.darkGreen,
+      fontFamily: fonts.fontMedium,
+    },
+    pbkAppliedPill: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(6),
+      alignSelf: "stretch",
+      paddingVertical: moderateHeightScale(8),
+      paddingHorizontal: moderateWidthScale(12),
+      borderRadius: moderateWidthScale(10),
+      backgroundColor: theme.noticeCream,
+      borderWidth: 1,
+      borderColor: theme.goldBorder,
+    },
+    pbkAppliedText: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontSemiBold,
+      color: theme.orangeBrownText,
+    },
+    pbkVerified: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(12),
+      padding: moderateWidthScale(14),
+      borderRadius: moderateWidthScale(14),
+      backgroundColor: theme.successCardBg,
+      borderWidth: 1,
+      borderColor: theme.successCardBorder,
+    },
+    pbkVerifiedTitle: {
+      fontSize: fontSize.size15,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    pbkNotice: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(10),
+      padding: moderateWidthScale(14),
+      borderRadius: moderateWidthScale(14),
+      backgroundColor: theme.noticeCream,
+      borderWidth: 1,
+      borderColor: theme.goldBorder,
+    },
+    pbkNoticeText: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
+      lineHeight: fontSize.size20,
+    },
     ckPhotos: {
       flexDirection: "row",
       flexWrap: "wrap",
@@ -591,6 +660,9 @@ function CheckoutContent() {
     saved_look_id?: string;
     slot_offer_id?: string;
     auto_open_policy?: string;
+    /** Profile Promotion picked on the business profile (service bookings). */
+    promotion_id?: string;
+    promotion_source?: string;
   }>();
 
   const attributionReelId = params.reel_id ? Number(params.reel_id) : null;
@@ -770,8 +842,6 @@ function CheckoutContent() {
   );
   // Tax rate (5% = 0.1)
   const taxRate = 0.0;
-  const tax = totalPrice * taxRate;
-  const estimatedTotal = totalPrice + tax;
 
   // Update selected staff member when staff ID or auto-assigned staff changes
   useEffect(() => {
@@ -818,6 +888,125 @@ function CheckoutContent() {
     subscriptionId != null && subscriptionData,
   );
 
+  // ── Profile Promotion ──────────────────────────────────────────────
+  // The server prices the offer (quote `promotion`); the app only shows it.
+  // Not eligible / refused → the booking goes on at the regular price,
+  // sent without promotion_id.
+  const promotionParamId = useMemo(() => {
+    if (isSubscriptionMode || params.slot_offer_id) return null;
+    const id = Number(resolveRouteParam(params.promotion_id));
+    return Number.isFinite(id) && id > 0 ? id : null;
+  }, [isSubscriptionMode, params.slot_offer_id, params.promotion_id]);
+  const promotionSource = ["profile", "reel", "link", "email"].includes(
+    resolveRouteParam(params.promotion_source),
+  )
+    ? resolveRouteParam(params.promotion_source)
+    : "profile";
+  const [promotionDropped, setPromotionDropped] = useState(false);
+  // Same value for submit code that runs before the next render.
+  const promotionDroppedRef = useRef(false);
+  const [promoQuote, setPromoQuote] = useState<QuotePromotion | null>(null);
+  const [promoLoading, setPromoLoading] = useState(false);
+  // Calm notice: the offer doesn't apply, regular price instead.
+  const [promoNotice, setPromoNotice] = useState<string | null>(null);
+  // 422 on booking: offer can't be used — book at regular price?
+  const [promoRefusal, setPromoRefusal] = useState<string | null>(null);
+  const activePromotionId =
+    promotionParamId != null && !promotionDropped ? promotionParamId : null;
+  const currentPromotionId = () =>
+    promotionParamId != null && !promotionDroppedRef.current
+      ? promotionParamId
+      : null;
+  const dropPromotion = (message: string | null) => {
+    promotionDroppedRef.current = true;
+    setPromotionDropped(true);
+    setPromoQuote(null);
+    if (message != null) setPromoNotice(message);
+  };
+  /** promotion_id + source + staff for both quote calls (read at call time). */
+  const promotionQuoteParams = () => {
+    const id = currentPromotionId();
+    return id != null
+      ? {
+          promotion_id: id,
+          promotion_source: promotionSource,
+          staff_id: resolveAppointmentStaffId({
+            selectedStaff: selectedStaffId,
+            assignedStaffId,
+          }),
+        }
+      : {};
+  };
+  /** Quote `promotion`: not eligible → drop it and say why. */
+  const applyQuotePromotion = (quote: unknown): boolean => {
+    if (currentPromotionId() == null) return true;
+    const promo = normalizeQuotePromotion((quote as any)?.promotion);
+    if (!promo) return true;
+    if (!promo.eligible) {
+      dropPromotion(promo.message || t("pbkOfferNotApplied"));
+      return false;
+    }
+    setPromoQuote(promo);
+    return true;
+  };
+  const promoServiceIdsKey = selectedServices.map((s) => s.id).join(",");
+  const promoKey = `${reduxSelectedDate}|${reduxSelectedTimeSlot}|${promoServiceIdsKey}|${selectedStaffId}|${assignedStaffId ?? ""}`;
+  // New date / time / services / staff: check the offer again.
+  const lastPromoKey = useRef(promoKey);
+  useEffect(() => {
+    if (lastPromoKey.current === promoKey) return;
+    lastPromoKey.current = promoKey;
+    promotionDroppedRef.current = false;
+    setPromotionDropped(false);
+    setPromoNotice(null);
+    setPromoQuote(null);
+  }, [promoKey]);
+  useEffect(() => {
+    if (activePromotionId == null || isGuest) return;
+    if (!resolvedCheckoutBusinessId || !reduxSelectedDate || !reduxSelectedTimeSlot) return;
+    if (selectedServices.length === 0) return;
+    let cancelled = false;
+    setPromoLoading(true);
+    ApiService.get<{ success?: boolean; data?: CancellationPolicyQuote }>(
+      appointmentsEndpoints.cancellationPolicyQuote({
+        business_id: parseInt(resolvedCheckoutBusinessId, 10),
+        appointment_date: reduxSelectedDate,
+        appointment_time: reduxSelectedTimeSlot,
+        service_ids: selectedServices.map((service) => service.id),
+        ...promotionQuoteParams(),
+      }),
+    )
+      .then((res) => {
+        if (cancelled || !res?.data) return;
+        applyQuotePromotion(res.data);
+      })
+      .catch((err) => {
+        // The booking still checks the offer; a 422 there is handled.
+        Logger.error("Promotion quote error:", err);
+      })
+      .finally(() => {
+        if (!cancelled) setPromoLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activePromotionId, promoKey, resolvedCheckoutBusinessId, isGuest]);
+
+  const promoApplied =
+    activePromotionId != null && promoQuote != null && promoQuote.eligible;
+  const promoDiscount = promoApplied ? Math.max(0, promoQuote!.discount) : 0;
+  /** Per-service offer price, when the offer covers that service. */
+  const promoServiceLine = (serviceId: number) => {
+    if (!promoApplied) return null;
+    const line = promoQuote!.services.find((s) => s.id === serviceId);
+    return line && line.discount > 0 ? line : null;
+  };
+  // Service total after the offer (tips are never discounted).
+  const serviceTotal = Math.max(0, totalPrice - promoDiscount);
+  const tax = serviceTotal * taxRate;
+  const estimatedTotal = serviceTotal + tax;
+
   // Reward balance (pay-now service bookings only; never tips or memberships).
   // Held reward (see heldReward) is added back so the retry offers (and
   // sends) the same balance again.
@@ -842,7 +1031,7 @@ function CheckoutContent() {
   const rewardApplied = canUseRewardBalance && useRewardBalance;
   // Estimate only; the real split comes back from checkout. Card keeps >= $0.50.
   const rewardEstimate = rewardApplied
-    ? estimateAppointmentReward(rewardBalanceCents, totalPrice)
+    ? estimateAppointmentReward(rewardBalanceCents, serviceTotal)
     : 0;
   const cardTotalEstimate = Math.max(0, estimatedTotal - rewardEstimate);
 
@@ -877,8 +1066,10 @@ function CheckoutContent() {
             appointment_time: reduxSelectedTimeSlot || "",
             service_ids: selectedServices.map((service) => service.id),
             ...dealQuoteParams,
+            ...promotionQuoteParams(),
           }),
         );
+        if (quoteResponse?.data) applyQuotePromotion(quoteResponse.data);
         if (quoteResponse?.success && quoteResponse.data && quoteResponse.data.policyActive !== false) {
           setPolicyQuote(quoteResponse.data);
           setPolicySheetVisible(true);
@@ -1223,8 +1414,14 @@ function CheckoutContent() {
           appointment_time: reduxSelectedTimeSlot || "",
           service_ids: selectedServices.map((service) => service.id),
           ...dealQuoteParams,
+          ...promotionQuoteParams(),
         }),
       );
+
+      // Offer no longer applies: show the regular price before booking.
+      if (quoteResponse?.data && !applyQuotePromotion(quoteResponse.data)) {
+        return;
+      }
 
       if (!quoteResponse?.success || !quoteResponse.data) {
         showBanner(
@@ -1323,6 +1520,8 @@ function CheckoutContent() {
       saved_look_id?: number;
       slot_offer_id?: number;
       use_reward_balance?: boolean;
+      promotion_id?: number;
+      promotion_source?: string;
     } = {
       business_id: parseInt(resolvedCheckoutBusinessId, 10),
       appointment_type: "service",
@@ -1358,6 +1557,12 @@ function CheckoutContent() {
 
     if (params.slot_offer_id) {
       requestBody.slot_offer_id = Number(params.slot_offer_id);
+    }
+
+    const bookingPromotionId = currentPromotionId();
+    if (bookingPromotionId != null) {
+      requestBody.promotion_id = bookingPromotionId;
+      requestBody.promotion_source = promotionSource;
     }
 
     // Balance pays part of the service price; the card pays the rest + any tip.
@@ -1400,7 +1605,7 @@ function CheckoutContent() {
         }
 
         const chargedService =
-          typeof serviceAmount === "number" ? serviceAmount : totalPrice;
+          typeof serviceAmount === "number" ? serviceAmount : serviceTotal;
         const chargedReward =
           typeof rewardAmount === "number" && rewardAmount > 0
             ? rewardAmount
@@ -1665,7 +1870,7 @@ function CheckoutContent() {
               selectedDate: reduxSelectedDate || "",
               selectedTimeSlot: reduxSelectedTimeSlot || "",
               paymentMethod: paymentMethod,
-              totalPrice: totalPrice.toFixed(2),
+              totalPrice: serviceTotal.toFixed(2),
               tax: tax.toFixed(2),
               estimatedTotal: estimatedTotal.toFixed(2),
               businessId: resolvedCheckoutBusinessId,
@@ -1687,6 +1892,14 @@ function CheckoutContent() {
       setProcessingPayment(false);
 
       Logger.error("Appointment API Error:", error);
+      // Offer can't be used (dates, staff, last use taken…): offer the
+      // regular price instead of failing.
+      const promoRefused =
+        requestBody.promotion_id != null ? getPromotionRefusal(error) : null;
+      if (promoRefused) {
+        setPromoRefusal(promoRefused.message);
+        return;
+      }
       if (
         handleTimeRefused(
           error,
@@ -2077,9 +2290,25 @@ function CheckoutContent() {
                       <Text style={styles.ckRowSub}>{service.duration}</Text>
                     ) : null}
                   </View>
-                  <Text style={styles.ckLinePrice}>
-                    ${service.price.toFixed(2)}
-                  </Text>
+                  {promoServiceLine(service.id) ? (
+                    <View style={styles.pbkPriceCol}>
+                      <Text style={styles.ckLinePrice}>
+                        ${promoServiceLine(service.id)!.finalPrice.toFixed(2)}
+                      </Text>
+                      <Text
+                        style={styles.pbkStruck}
+                        accessibilityLabel={t("pbkWasPrice", {
+                          price: `$${service.price.toFixed(2)}`,
+                        })}
+                      >
+                        ${service.price.toFixed(2)}
+                      </Text>
+                    </View>
+                  ) : (
+                    <Text style={styles.ckLinePrice}>
+                      ${service.price.toFixed(2)}
+                    </Text>
+                  )}
                 </View>
               ))}
             </View>
@@ -2090,6 +2319,35 @@ function CheckoutContent() {
                 ${totalPrice.toFixed(2)} USD
               </Text>
             </View>
+            {promoApplied && promoDiscount > 0 ? (
+              <>
+                <View
+                  style={styles.ckLine}
+                  accessible
+                  accessibilityLabel={`${promoQuote!.title || t("pbkOfferLine")}, \u2212$${promoDiscount.toFixed(2)} USD`}
+                >
+                  <Text
+                    style={[styles.ckLineLabel, styles.pbkOfferLabel]}
+                    numberOfLines={2}
+                  >
+                    {promoQuote!.title || t("pbkOfferLine")}
+                  </Text>
+                  <Text style={[styles.ckLineValue, styles.ckRewardValue]}>
+                    {"\u2212"}${promoDiscount.toFixed(2)} USD
+                  </Text>
+                </View>
+                <View style={styles.pbkAppliedPill}>
+                  <MaterialIcons
+                    name="local-offer"
+                    size={moderateWidthScale(14)}
+                    color={theme.orangeBrownText}
+                  />
+                  <Text style={styles.pbkAppliedText}>
+                    {t("pbkOfferApplied")}
+                  </Text>
+                </View>
+              </>
+            ) : null}
             <View style={styles.ckLine}>
               <Text style={styles.ckLineLabel}>{t("bkCheckoutTax")}</Text>
               <Text style={styles.ckLineValue}>${tax.toFixed(2)} USD</Text>
@@ -2120,6 +2378,41 @@ function CheckoutContent() {
         ) : (
           renderPlanCard()
         )}
+
+        {activePromotionId != null && promoLoading && !promoQuote ? (
+          <View style={styles.pbkNotice}>
+            <ActivityIndicator size="small" color={theme.darkGreen} />
+            <Text style={styles.pbkNoticeText}>{t("pbkCheckingOffer")}</Text>
+          </View>
+        ) : null}
+        {promoApplied ? (
+          <View style={styles.pbkVerified} accessibilityRole="text">
+            <MaterialIcons
+              name="check-circle"
+              size={moderateWidthScale(22)}
+              color={theme.successCheck}
+            />
+            <View style={styles.ckRowText}>
+              <Text style={styles.pbkVerifiedTitle}>
+                {t("pbkOfferVerifiedTitle")}
+              </Text>
+              <Text style={styles.ckRowSub}>{t("pbkOfferVerifiedSub")}</Text>
+            </View>
+          </View>
+        ) : null}
+        {promotionParamId != null && promoNotice ? (
+          <View style={styles.pbkNotice} accessibilityRole="text">
+            <MaterialIcons
+              name="info-outline"
+              size={moderateWidthScale(20)}
+              color={theme.orangeBrownText}
+            />
+            <View style={styles.ckRowText}>
+              <Text style={styles.pbkNoticeText}>{promoNotice}</Text>
+              <Text style={styles.ckRowSub}>{t("pbkRegularPriceNote")}</Text>
+            </View>
+          </View>
+        ) : null}
 
         {/* Photos & note: always shown so they can be added or changed here */}
         <FlowCard style={styles.ckSummary}>
@@ -2186,6 +2479,22 @@ function CheckoutContent() {
           </View>
         </View>
       )}
+
+      <OutcomeConfirmSheet
+        visible={promoRefusal != null}
+        onClose={() => setPromoRefusal(null)}
+        onConfirm={() => {
+          const message = promoRefusal;
+          setPromoRefusal(null);
+          dropPromotion(message);
+          // Re-quote at the regular price, then the usual confirm steps.
+          void handleBookNow();
+        }}
+        title={t("pbkOfferUnavailableTitle")}
+        question={t("pbkOfferUnavailableQuestion")}
+        message={promoRefusal ?? ""}
+        confirmLabel={t("pbkBookRegularPrice")}
+      />
 
       <CancellationPolicySheet
         visible={policySheetVisible}

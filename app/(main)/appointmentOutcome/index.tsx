@@ -53,6 +53,11 @@ import {
   checkoutTipAmount,
   type CheckoutTip,
 } from "@/src/components/afterVisit/checkoutParts";
+import {
+  PromotionConflictNote,
+  promotionAmounts,
+} from "@/src/components/afterVisit/promotionBreakdown";
+import { promotionConflictText } from "@/src/services/promotionService";
 import { ApiService } from "@/src/services/api";
 import { appointmentsEndpoints } from "@/src/services/endpoints";
 import { getStripeModeHeaders } from "@/src/services/stripeService";
@@ -111,6 +116,8 @@ type Appointment = {
   canRejectInPersonPayment?: boolean;
   inPersonPayment?: InPersonPayment | null;
   receipt?: VisitReceipt | null;
+  /** Profile Promotion as booked (null without an offer) */
+  promotion?: unknown;
 };
 
 const createStyles = (theme: Theme) =>
@@ -697,6 +704,36 @@ export default function AppointmentOutcomeScreen() {
     });
   };
 
+  // Profile Promotion as booked: the preview / appointment / in-person
+  // payment carry the amounts; servicePrice above is already the final price.
+  const previewPromotion = (
+    completedPreview as (OutcomePreview & { promotion?: unknown }) | null
+  )?.promotion;
+  const offer =
+    (completedPreview?.appointmentType ?? appt?.appointmentType) === "subscription"
+      ? null
+      : promotionAmounts(
+          mode === "collect" ? appt?.promotion : (previewPromotion ?? appt?.promotion),
+          appt?.inPersonPayment,
+        );
+  const offerConflict = promotionConflictText(
+    offer?.conflict,
+    t("padConflictFallback"),
+  );
+  const offerRows =
+    offer && offer.discount > 0 ? (
+      <>
+        <MoneyRow label={t("padOriginalPrice")} value={money(offer.originalPrice)} />
+        <MoneyRow
+          label={offer.title || t("padOfferDiscount")}
+          value={`\u2212${money(offer.discount)}`}
+        />
+      </>
+    ) : null;
+  const offerConflictNote = offerConflict ? (
+    <PromotionConflictNote text={offerConflict} />
+  ) : null;
+
   // ── Pieces ─────────────────────────────────────────────────────────────
   const customerName = appt?.user?.trim() || t("aoCustomer");
   const service = serviceLabel(appt);
@@ -849,16 +886,20 @@ export default function AppointmentOutcomeScreen() {
             image={appt?.userProfilePic}
           >
             {ready ? (
-              <MoneyRow
-                label={mode === "collect" ? t("ckStillOwed") : t("ckServiceTotal")}
-                value={money(servicePrice)}
-              />
+              <>
+                {offerRows}
+                <MoneyRow
+                  label={mode === "collect" ? t("ckStillOwed") : t("ckServiceTotal")}
+                  value={money(servicePrice)}
+                />
+              </>
             ) : (
               <View style={styles.previewLoading}>
                 <ActivityIndicator color={theme.darkGreen} />
               </View>
             )}
           </VisitSummaryCard>
+          {ready ? offerConflictNote : null}
           {mode === "collect" && claim ? (
             <InfoNote
               tone="warm"
@@ -955,11 +996,13 @@ export default function AppointmentOutcomeScreen() {
               </View>
             </View>
             <SummaryDivider />
+            {method !== "membership" ? offerRows : null}
             <MoneyRow
               label={t("ckServiceTotal")}
               value={method === "membership" ? t("ckCovered") : money(servicePrice)}
             />
           </VisitSummaryCard>
+          {offerConflictNote}
 
           {showTipInput ? (
             <View style={styles.group}>

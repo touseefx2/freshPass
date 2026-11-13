@@ -231,14 +231,25 @@ export const createStyles = (theme: Theme) =>
       color: theme.darkGreen,
       textTransform: "uppercase",
     },
-    servicePriceText: {
+    servicePriceCol: {
       flexShrink: 0,
       maxWidth: "32%",
       alignSelf: "flex-start",
+      alignItems: "flex-end",
       marginTop: moderateHeightScale(2),
+    },
+    servicePriceText: {
       fontSize: fontSize.size19,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
+      textAlign: "right",
+    },
+    /** Price before the Profile Promotion, struck through under the price */
+    serviceOriginalPriceText: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen5,
+      textDecorationLine: "line-through",
       textAlign: "right",
     },
     serviceSubtitle: {

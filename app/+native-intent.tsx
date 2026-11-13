@@ -13,6 +13,12 @@ import {
   openPendingInviteNotice,
   parseInviteLinkCode,
 } from "@/src/services/pendingInviteCode";
+import {
+  isOfferLink,
+  openPendingOfferLink,
+  parseOfferLink,
+  setPendingOfferLink,
+} from "@/src/services/pendingOfferLink";
 
 /** Stripe billing portal "return" link: com.freshpass://dashboard/subscription */
 function isSubscriptionReturnLink(path: string): boolean {
@@ -58,6 +64,16 @@ export function redirectSystemPath({
       if (isAppShellReady() || !isInviteNoticeUserSignedIn()) {
         openPendingInviteNotice();
       }
+      return "";
+    }
+
+    // Shared offer link (/offers/{id}): held until home is up, like booking
+    if (isOfferLink(path)) {
+      const target = parseOfferLink(path);
+      if (!target) return initial ? "/" : "";
+      setPendingOfferLink(target);
+      if (initial) return "/";
+      if (isAppShellReady()) openPendingOfferLink();
       return "";
     }
 

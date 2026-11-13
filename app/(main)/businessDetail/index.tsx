@@ -100,6 +100,18 @@ import type { JobPost } from "@/src/types/jobs";
 import { hasMoreJobPages } from "@/src/utils/jobHelpers";
 import { isPaymentsEnabled } from "@/src/utils/paymentsEnabled";
 import WebViewModal from "@/src/components/webViewModal";
+import PromotionDetailsSheet from "@/src/components/promotion/PromotionDetailsSheet";
+import {
+  fetchBusinessPromotions,
+  fetchPublicPromotion,
+} from "@/src/services/promotionService";
+import type { Promotion, PromotionSource } from "@/src/types/promotion";
+import {
+  formatOfferPrice,
+  getRememberedPromotion,
+  pickServiceOffer,
+  rememberPromotion,
+} from "@/src/utils/promotionDisplay";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 const VIEWER_BANNER_CONTENT_HEIGHT = moderateHeightScale(28);
@@ -356,6 +368,48 @@ const createStyles = (theme: Theme) =>
       paddingVertical: moderateHeightScale(6),
       borderRadius: moderateWidthScale(999),
       backgroundColor: theme.orangeBrown,
+      borderWidth: 1.5,
+      borderColor: theme.goldGlowRim,
+    },
+    offerBanner: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(8),
+      marginBottom: moderateHeightScale(10),
+      paddingHorizontal: moderateWidthScale(12),
+      paddingVertical: moderateHeightScale(9),
+      borderRadius: moderateWidthScale(10),
+      backgroundColor: theme.tileGoldCream,
+      borderWidth: 1,
+      borderColor: theme.goldBorder,
+      minHeight: moderateHeightScale(40),
+    },
+    offerBannerText: {
+      flex: 1,
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontBold,
+      color: theme.orangeBrownText,
+    },
+    offerBannerNote: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontRegular,
+      color: theme.goldTextDark,
+    },
+    serviceOfferTag: {
+      flexDirection: "row",
+      alignItems: "center",
+      alignSelf: "flex-end",
+      gap: moderateWidthScale(3),
+      marginTop: moderateHeightScale(4),
+      paddingHorizontal: moderateWidthScale(7),
+      paddingVertical: moderateHeightScale(2),
+      borderRadius: moderateWidthScale(6),
+      backgroundColor: theme.tileGoldCream,
+    },
+    serviceOfferTagText: {
+      fontSize: fontSize.size11,
+      fontFamily: fonts.fontMedium,
+      color: theme.orangeBrownText,
     },
     offerChipText: {
       fontSize: fontSize.size12,
@@ -1653,6 +1707,9 @@ export default function BusinessDetailScreen() {
     staff_id?: string;
     scroll_to?: string;
     viewMode?: string;
+    /** Shared offer link / email: open with this offer active */
+    promotion_id?: string;
+    promotion_source?: string;
   }>();
   const isViewMode = params.viewMode === "true";
   const attributionReelId = params.reel_id
@@ -1799,6 +1856,31 @@ export default function BusinessDetailScreen() {
   const [detailsVersion, setDetailsVersion] = useState(0);
   const scrolledToJobsRef = useRef(false);
 
+  // Profile offers (server works out prices + who qualifies)
+  const [profilePromotions, setProfilePromotions] = useState<Promotion[]>([]);
+  const [promotionChipLabel, setPromotionChipLabel] = useState<string | null>(
+    null,
+  );
+  // Offer from a shared link / email (private offers never come in the profile list)
+  const [linkedPromotion, setLinkedPromotion] = useState<Promotion | null>(null);
+  const [activePromotionId, setActivePromotionId] = useState<number | null>(
+    null,
+  );
+  const [promoSheetVisible, setPromoSheetVisible] = useState(false);
+  const [promoSheetInitialId, setPromoSheetInitialId] = useState<number | null>(
+    null,
+  );
+  const linkedPromotionId = params.promotion_id
+    ? Number(params.promotion_id)
+    : null;
+  const linkedPromotionSource: PromotionSource =
+    params.promotion_source === "link" ||
+    params.promotion_source === "email" ||
+    params.promotion_source === "reel"
+      ? params.promotion_source
+      : "profile";
+  const linkedPromotionAppliedRef = useRef(false);
+
   // Deep link / notification: open memberships segment (R-16 follow_new_membership)
   useEffect(() => {
     if (scrollToTarget !== "memberships") return;
@@ -1903,11 +1985,54 @@ export default function BusinessDetailScreen() {
     }
   };
 
+  // Offers + eligibility depend on who is signed in: refetch on focus and login
+  const loadPromotions = useCallback(async () => {
+    if (!params.business_id) return;
+    try {
+      const res = await fetchBusinessPromotions(params.business_id);
+      setProfilePromotions(res.promotions);
+      setPromotionChipLabel(res.chip_label);
+    } catch (err) {
+      Logger.error("Failed to load business promotions:", err);
+    }
+    if (linkedPromotionId != null) {
+      try {
+        // offerDetail keeps the one it loaded, so no second view is counted.
+        // Fetch again only when it was loaded signed out and now isn't.
+        const cached = getRememberedPromotion(linkedPromotionId);
+        const stale =
+          !cached ||
+          (!isGuest && !!user.accessToken && cached.eligibility?.eligible == null);
+        const offer = stale
+          ? await fetchPublicPromotion(linkedPromotionId, linkedPromotionSource)
+          : cached;
+        if (offer && stale) rememberPromotion(offer);
+        if (offer && (!offer.business || String(offer.business.id) === String(params.business_id))) {
+          setLinkedPromotion(offer);
+        }
+      } catch (err) {
+        Logger.error("Failed to load linked promotion:", err);
+      }
+    }
+  }, [
+    params.business_id,
+    linkedPromotionId,
+    linkedPromotionSource,
+    isGuest,
+    user.accessToken,
+  ]);
+
   useFocusEffect(
     useCallback(() => {
       fetchBusinessDetails();
       fetchReviews();
     }, []),
+  );
+
+  useFocusEffect(
+    useCallback(() => {
+      void loadPromotions();
+    }, [loadPromotions]),
   );
 
   const isHiring = businessData?.is_hiring === true;
@@ -2850,6 +2975,64 @@ export default function BusinessDetailScreen() {
     }
   }, [isSoloPlan, activeTab]);
 
+  // Profile offers + a linked (shared / email) offer, without duplicates
+  const allPromotions = useMemo(() => {
+    if (!linkedPromotion) return profilePromotions;
+    if (profilePromotions.some((p) => p.id === linkedPromotion.id)) {
+      return profilePromotions;
+    }
+    return [...profilePromotions, linkedPromotion];
+  }, [profilePromotions, linkedPromotion]);
+
+  // Picked offer, or the only one there is
+  const effectivePromotionId = useMemo(() => {
+    if (
+      activePromotionId != null &&
+      allPromotions.some((p) => p.id === activePromotionId)
+    ) {
+      return activePromotionId;
+    }
+    return allPromotions.length === 1 ? allPromotions[0].id : null;
+  }, [activePromotionId, allPromotions]);
+  const effectivePromotion =
+    effectivePromotionId != null
+      ? (allPromotions.find((p) => p.id === effectivePromotionId) ?? null)
+      : null;
+
+  /** Show the offer's services: Service tab, individual services, all rows. */
+  const showPromotionServices = (promotion: Promotion) => {
+    setActivePromotionId(promotion.id);
+    setServiceSegment("individual");
+    setSelectedServiceFilter("All");
+    setShowAllIndividualServices(true);
+    setTimeout(() => handleTabPress("Service"), 350);
+  };
+
+  // Shared offer link / email: open with that offer active, once
+  useEffect(() => {
+    if (linkedPromotionAppliedRef.current) return;
+    if (!linkedPromotion || loading || !businessData) return;
+    linkedPromotionAppliedRef.current = true;
+    showPromotionServices(linkedPromotion);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [linkedPromotion, loading, businessData]);
+
+  const openPromotionSheet = (promotionId: number | null = null) => {
+    setPromoSheetInitialId(promotionId);
+    setPromoSheetVisible(true);
+  };
+
+  const handlePromotionSignIn = () => {
+    setPromoSheetVisible(false);
+    // Let the sheet close before the sign-in popup opens
+    setTimeout(() => dispatch(setGuestModeModalVisible(true)), 350);
+  };
+
+  const handleViewPromotionServices = (promotion: Promotion) => {
+    setPromoSheetVisible(false);
+    showPromotionServices(promotion);
+  };
+
   const measureSectionPosition = (
     sectionRef: React.RefObject<View | null>,
     key: string,
@@ -3599,6 +3782,19 @@ export default function BusinessDetailScreen() {
     const bookParams: Record<string, string> = {};
     if (attributionReelId) bookParams.reel_id = String(attributionReelId);
     if (params.staff_id) bookParams.staff_id = params.staff_id;
+    // Offer price shown on this row → book with that offer (server checks again)
+    const rowOffer = pickServiceOffer(
+      allPromotions,
+      effectivePromotionId,
+      service.id,
+    );
+    if (rowOffer?.showDiscount) {
+      bookParams.promotion_id = String(rowOffer.promotion.id);
+      bookParams.promotion_source =
+        rowOffer.promotion.id === linkedPromotionId
+          ? linkedPromotionSource
+          : "profile";
+    }
     router.push({
       pathname: "/(main)/bookingNow",
       params: Object.keys(bookParams).length > 0 ? bookParams : undefined,
@@ -3896,6 +4092,30 @@ export default function BusinessDetailScreen() {
               selectedServiceFilter,
               setSelectedServiceFilter,
             )}
+          {hasAnyIndividualServices && !!effectivePromotion && (
+            <TouchableOpacity
+              style={styles.offerBanner}
+              activeOpacity={0.8}
+              onPress={() => openPromotionSheet(effectivePromotion.id)}
+              accessibilityRole="button"
+              accessibilityHint={t("pcuChipHint")}
+            >
+              <MaterialIcons
+                name="local-offer"
+                size={moderateWidthScale(15)}
+                color={theme.orangeBrownText}
+              />
+              <Text style={styles.offerBannerText} numberOfLines={2}>
+                {[effectivePromotion.savings_label, effectivePromotion.audience_label]
+                  .filter(Boolean)
+                  .join(" · ")}
+                <Text style={styles.offerBannerNote}>
+                  {"  "}
+                  {t("pcuEligibilityCheckedAtBooking")}
+                </Text>
+              </Text>
+            </TouchableOpacity>
+          )}
           <View style={[styles.serviceSection, styles.cardShadow]}>
             {hasFilteredIndividualServices ? (
               <>
@@ -3943,18 +4163,47 @@ export default function BusinessDetailScreen() {
                             )}
                           </View>
                           <View style={styles.serviceCardRight}>
-                            <Text style={styles.servicePrice}>
-                              ${service.price.toFixed(2)}
-                              <Text style={styles.serviceCurrency}> USD</Text>
-                            </Text>
-                            <Text
-                              style={[
-                                styles.serviceOriginalPrice,
-                                styles.serviceOriginalPriceSpaced,
-                              ]}
-                            >
-                              ${service.originalPrice.toFixed(2)}
-                            </Text>
+                            {(() => {
+                              // Offer price only when the server says the customer qualifies
+                              const offer = pickServiceOffer(
+                                allPromotions,
+                                effectivePromotionId,
+                                service.id,
+                              );
+                              const shownPrice = offer?.showDiscount
+                                ? offer.service.final_price
+                                : service.price;
+                              return (
+                                <>
+                                  <Text style={styles.servicePrice}>
+                                    {formatOfferPrice(shownPrice)}
+                                    <Text style={styles.serviceCurrency}> USD</Text>
+                                  </Text>
+                                  {offer?.showDiscount && (
+                                    <Text
+                                      style={[
+                                        styles.serviceOriginalPrice,
+                                        styles.serviceOriginalPriceSpaced,
+                                      ]}
+                                    >
+                                      {formatOfferPrice(offer.service.original_price)}
+                                    </Text>
+                                  )}
+                                  {!!offer?.promotion.savings_label && (
+                                    <View style={styles.serviceOfferTag}>
+                                      <MaterialIcons
+                                        name="local-offer"
+                                        size={moderateWidthScale(11)}
+                                        color={theme.orangeBrownText}
+                                      />
+                                      <Text style={styles.serviceOfferTagText}>
+                                        {offer.promotion.savings_label}
+                                      </Text>
+                                    </View>
+                                  )}
+                                </>
+                              );
+                            })()}
                             <TouchableOpacity
                               style={[
                                 styles.bookNowButton,
@@ -4763,16 +5012,29 @@ export default function BusinessDetailScreen() {
                   {t("platformVerified")}
                 </Text>
               </View>
-              <View style={styles.offerChip}>
-                <MaterialIcons
-                  name="local-offer"
-                  size={moderateWidthScale(14)}
-                  color={theme.darkGreen}
-                />
-                <Text style={styles.offerChipText}>
-                  {t("discountBadgeText")}
-                </Text>
-              </View>
+              {!!promotionChipLabel && profilePromotions.length > 0 && (
+                <TouchableOpacity
+                  style={styles.offerChip}
+                  activeOpacity={0.8}
+                  hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
+                  onPress={() => openPromotionSheet()}
+                  accessibilityRole="button"
+                  accessibilityLabel={promotionChipLabel}
+                  accessibilityHint={t("pcuChipHint")}
+                >
+                  <MaterialIcons
+                    name="local-offer"
+                    size={moderateWidthScale(14)}
+                    color={theme.darkGreen}
+                  />
+                  <Text style={styles.offerChipText}>{promotionChipLabel}</Text>
+                  <MaterialIcons
+                    name="chevron-right"
+                    size={moderateWidthScale(16)}
+                    color={theme.darkGreen}
+                  />
+                </TouchableOpacity>
+              )}
             </View>
 
             {isHiring ? (
@@ -5113,6 +5375,18 @@ export default function BusinessDetailScreen() {
         title={t("breakHours")}
       />
 
+      {/* Profile offer details (chip / services banner) */}
+      <PromotionDetailsSheet
+        visible={promoSheetVisible}
+        promotions={
+          promoSheetInitialId != null ? allPromotions : profilePromotions
+        }
+        initialPromotionId={promoSheetInitialId}
+        onClose={() => setPromoSheetVisible(false)}
+        onViewServices={handleViewPromotionServices}
+        onSignIn={isGuest ? handlePromotionSignIn : undefined}
+      />
+
       {/* Service Details Sheet */}
       <Modal
         visible={serviceDetails != null}
@@ -5131,9 +5405,19 @@ export default function BusinessDetailScreen() {
             <View style={styles.serviceSheetHandle} />
             {serviceDetails &&
               (() => {
-                const price = Number(serviceDetails.price ?? 0);
-                const originalPrice = Number(serviceDetails.originalPrice ?? 0);
-                const hasDiscount = originalPrice > price;
+                // Struck-through price only for a real offer the customer qualifies for
+                const offer = pickServiceOffer(
+                  allPromotions,
+                  effectivePromotionId,
+                  serviceDetails.id,
+                );
+                const hasDiscount = !!offer?.showDiscount;
+                const price = hasDiscount
+                  ? offer!.service.final_price
+                  : Number(serviceDetails.price ?? 0);
+                const originalPrice = hasDiscount
+                  ? offer!.service.original_price
+                  : price;
                 const description = String(
                   serviceDetails.description ?? "",
                 ).trim();

@@ -2,6 +2,7 @@ import { Href, router } from "expo-router";
 import { MAIN_ROUTES } from "@/src/constant/routes";
 import { openPendingBookingLink } from "@/src/services/pendingBookingLink";
 import { openPendingInviteNotice } from "@/src/services/pendingInviteCode";
+import { openPendingOfferLink } from "@/src/services/pendingOfferLink";
 
 /**
  * Clears the auth/onboarding stack and navigates to a single destination.
@@ -21,6 +22,8 @@ export function resetToDashboardHome() {
   openPendingBookingLink();
   // An invite link was just opened while signed in → one-time notice
   openPendingInviteNotice();
+  // A shared offer link (/offers/{id}) waiting for home
+  openPendingOfferLink();
 }
 
 /** Profile tab → a Business Management screen, so back returns to Profile. */

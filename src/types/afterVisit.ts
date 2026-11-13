@@ -71,6 +71,10 @@ export interface InPersonPayment {
   totalAmount?: number | null;
   resolvedAt: string | null;
   resolvedByName: string | null;
+  /** Profile Promotion: service price before the offer */
+  originalServiceAmount?: number | null;
+  discountAmount?: number | null;
+  promotionTitle?: string | null;
 }
 
 /**
@@ -137,7 +141,16 @@ export interface ViewAndPay {
   appointmentTime: string;
   business: { id: number; title: string; logoUrl: string | null };
   staff: { id: number; name: string; image: string | null } | null;
-  services: Array<{ id: number; name: string; price: number }>;
+  /** `price` = what is charged; offer services also carry originalPrice + discount */
+  services: Array<{
+    id: number;
+    name: string;
+    price: number;
+    originalPrice?: number | null;
+    discount?: number | null;
+  }>;
+  /** Profile Promotion as booked (null without an offer) */
+  promotion?: unknown;
   payment: ViewAndPayPayment;
   tip: ViewAndPayTip;
   review: {

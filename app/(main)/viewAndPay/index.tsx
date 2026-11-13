@@ -52,6 +52,11 @@ import {
   type TipChoice,
 } from "@/src/components/afterVisit/afterVisitParts";
 import { checkoutMethodLabel } from "@/src/components/afterVisit/checkoutParts";
+import {
+  PromotionSavedLine,
+  PromotionServiceRow,
+  promotionAmounts,
+} from "@/src/components/afterVisit/promotionBreakdown";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import {
   claimPaidInPerson,
@@ -791,6 +796,11 @@ export default function ViewAndPayScreen() {
     formatTipRecipientName(data?.tip.recipient?.name) || proName;
   const tipRecipientImage = data?.tip.recipient?.image ?? data?.staff?.image;
 
+  // Profile Promotion as booked (tips are never discounted)
+  const visitPromotion = data
+    ? promotionAmounts(data.promotion, data.payment.inPersonPayment)
+    : null;
+
   const renderVisitCard = (showAmountDue: boolean) => {
     if (!data) return null;
     return (
@@ -801,13 +811,31 @@ export default function ViewAndPayScreen() {
           image={data.staff?.image ?? data.business.logoUrl}
         />
         <RowDivider />
-        {data.services.map((service) => (
-          <MoneyRow
-            key={service.id}
-            label={service.name}
-            value={money(service.price)}
+        {data.services.map((service) => {
+          const off = Number(service.discount) || 0;
+          return off > 0 ? (
+            <PromotionServiceRow
+              key={service.id}
+              name={service.name}
+              price={money(service.price)}
+              originalPrice={money(
+                Number(service.originalPrice) || service.price + off,
+              )}
+            />
+          ) : (
+            <MoneyRow
+              key={service.id}
+              label={service.name}
+              value={money(service.price)}
+            />
+          );
+        })}
+        {visitPromotion && visitPromotion.discount > 0 ? (
+          <PromotionSavedLine
+            title={visitPromotion.title}
+            saved={money(visitPromotion.discount)}
           />
-        ))}
+        ) : null}
         <View style={styles.metaRow}>
           <MaterialIcons
             name="event"

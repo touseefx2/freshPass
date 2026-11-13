@@ -66,6 +66,8 @@ import {
   resolveAppointmentStaffId,
 } from "@/src/services/endpoints";
 import { assignAnyoneStaff } from "@/src/services/anyoneStaffService";
+import { getPromotionRefusal } from "@/src/services/promotionService";
+import { fetchReschedulePromotion } from "@/src/components/booking/promotionBooking";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
@@ -250,6 +252,8 @@ const normalizeAvailableSlots = (raw: unknown): AvailableSlot[] => {
   }
   return slots;
 };
+
+const PROMOTION_SOURCES = ["profile", "reel", "link", "email"];
 
 const resolveRouteParam = (
   value: string | string[] | undefined | null,
@@ -1310,6 +1314,9 @@ export default function BookingNow() {
     deal_normal_price?: string;
     /** "1" = no service chosen yet (Available Now): start empty and open the picker. */
     pick_service?: string;
+    /** Profile Promotion: server limits slots + prices to the offer. */
+    promotion_id?: string;
+    promotion_source?: string;
   }>();
 
   // Customer mode can't book the user's own business — leave before any call
@@ -1332,6 +1339,17 @@ export default function BookingNow() {
   const isDealBooking = Boolean(params.slot_offer_id);
   const hasAppliedStaffParam = useRef(false);
   const isSubscriptionBooking = Boolean(params.subscription_id && params.item);
+  // Profile Promotion: only for a new service booking (never memberships,
+  // Last-Minute Deals or reschedules — those use their own rules).
+  const promotionId = useMemo(() => {
+    if (isReschedule || isDealBooking || isSubscriptionBooking) return null;
+    const id = Number(params.promotion_id);
+    return Number.isFinite(id) && id > 0 ? id : null;
+  }, [params.promotion_id, isReschedule, isDealBooking, isSubscriptionBooking]);
+  const promotionSource =
+    promotionId != null && PROMOTION_SOURCES.includes(params.promotion_source ?? "")
+      ? (params.promotion_source as string)
+      : "profile";
   const subscriptionData: SubscriptionData | null = useMemo(() => {
     if (params.item) {
       try {
@@ -1460,7 +1478,19 @@ export default function BookingNow() {
     string | null
   >(null);
   const [continueLoading, setContinueLoading] = useState(false);
+  // Offer booking moved to a time the offer doesn't cover (reschedule-preview).
+  const [promotionRescheduleNotice, setPromotionRescheduleNotice] = useState<{
+    message: string;
+    /** Paid online: can't keep the move — pick a time the offer covers. */
+    blocked: boolean;
+  } | null>(null);
+  const lateFeeAcceptedRef = useRef(false);
+  const promotionChangeAcceptedRef = useRef(false);
   const hasInitializedReschedulePreset = useRef(false);
+  // A new time / staff needs a fresh offer check (reschedule-preview).
+  useEffect(() => {
+    promotionChangeAcceptedRef.current = false;
+  }, [selectedTimeSlot, selectedDate, selectedStaff]);
 
   // Pre-fill note when in reschedule mode and notes param is passed
   useEffect(() => {
@@ -2054,6 +2084,8 @@ export default function BookingNow() {
         slot_minutes: slotMinutes,
         // The visit being moved doesn't block times overlapping its own slot.
         exclude_appointment_id: excludeAppointmentId,
+        // Offer: only its visit dates, weekdays, hours and staff come back.
+        promotion_id: promotionId ?? undefined,
       }),
     )
       .then((res) => {
@@ -2095,6 +2127,7 @@ export default function BookingNow() {
     selectedStaff,
     isReschedule,
     slotMinutes,
+    promotionId,
   ]);
 
   const availableTimeSlots = useMemo(
@@ -2596,8 +2629,12 @@ export default function BookingNow() {
     );
   }
 
-  const submitReschedule = async (lateFeeAccepted: boolean) => {
+  const submitReschedule = async (
+    lateFeeAccepted: boolean,
+    promotionChangeAccepted = false,
+  ) => {
     if (dropPassedSlot()) return;
+    lateFeeAcceptedRef.current = lateFeeAccepted;
     const bookingId = params.booking_id;
     const businessId = params.business_id;
     if (!bookingId || !businessId) {
@@ -2677,6 +2714,7 @@ export default function BookingNow() {
         service_ids?: number[];
         subscription_id?: number;
         late_fee_accepted?: boolean;
+        promotion_change_accepted?: boolean;
       } = {
         business_id: parseInt(businessId, 10),
         appointment_type: appointmentType,
@@ -2700,6 +2738,26 @@ export default function BookingNow() {
 
       if (lateFeeAccepted) {
         body.late_fee_accepted = true;
+      }
+
+      // Booking made with an offer: the new time may not be covered.
+      if (appointmentType === "service" && !promotionChangeAccepted) {
+        const promo = await fetchReschedulePromotion(bookingId, {
+          appointment_date: appointmentDate,
+          appointment_time: appointmentTime,
+          staff_id: resolvedStaffId ?? undefined,
+          service_ids: serviceIds,
+        });
+        if (promo && !promo.applies) {
+          setPromotionRescheduleNotice({
+            message: promo.message || t("pbkRescheduleOfferLost"),
+            blocked: promo.paidOnline,
+          });
+          return;
+        }
+      }
+      if (promotionChangeAccepted) {
+        body.promotion_change_accepted = true;
       }
 
       const response = await ApiService.put<{
@@ -2735,6 +2793,16 @@ export default function BookingNow() {
         setRescheduleFeeMessage(err?.data?.message || err?.message || "");
         return;
       }
+      // Offer no longer covers the new time: confirm the price change, or
+      // (paid online) pick a time the offer covers.
+      const promoRefusal = err?.status === 422 ? getPromotionRefusal(err) : null;
+      if (promoRefusal) {
+        setPromotionRescheduleNotice({
+          message: promoRefusal.message,
+          blocked: !err?.data?.errors?.promotion_change_accepted,
+        });
+        return;
+      }
       // Time passed or taken at the salon: say why, drop it, show fresh slots.
       const timeError = bookingTimeError(err);
       if (timeError) {
@@ -2760,7 +2828,41 @@ export default function BookingNow() {
 
   const handleConfirmRescheduleFee = () => {
     setRescheduleFeeMessage(null);
-    submitReschedule(true);
+    lateFeeAcceptedRef.current = true;
+    submitReschedule(true, promotionChangeAcceptedRef.current);
+  };
+
+  /** Customer agreed to lose the offer price on the new time. */
+  const handleAcceptPromotionChange = () => {
+    const notice = promotionRescheduleNotice;
+    setPromotionRescheduleNotice(null);
+    if (!notice) return;
+    if (notice.blocked) {
+      // Paid online: the offer must still cover the new time. Pick another.
+      setSelectedTimeSlotState(null);
+      dispatch(setSelectedTimeSlot(null));
+      if (stepKey === "time") fetchAvailableSlots();
+      else goToStep("time");
+      return;
+    }
+    promotionChangeAcceptedRef.current = true;
+    submitReschedule(lateFeeAcceptedRef.current, true);
+  };
+
+  /**
+   * "Anyone" + offer: assign-anyone doesn't know the offer, but the slot's
+   * available_staff is already limited to the offer's staff. Keep the
+   * assigned pro when allowed, else the first allowed one.
+   */
+  const offerStaffFor = (assignedId: number): number => {
+    if (promotionId == null) return assignedId;
+    const allowed = (
+      apiSlots.find((slot) => slot.start === selectedTimeSlot)?.available_staff ?? []
+    )
+      .map((member) => Number(member?.id))
+      .filter((id) => Number.isFinite(id) && id > 0);
+    if (allowed.length === 0 || allowed.includes(assignedId)) return assignedId;
+    return allowed[0];
   };
 
   const handleContinue = async () => {
@@ -2893,7 +2995,7 @@ export default function BookingNow() {
           date: selectedDate.format("YYYY-MM-DD"),
           start_time: selectedTimeSlot,
         });
-        dispatch(setAssignedStaffId(assigned.staff_id));
+        dispatch(setAssignedStaffId(offerStaffFor(assigned.staff_id)));
       } catch (err: any) {
         showBanner(
           t("error"),
@@ -2936,6 +3038,12 @@ export default function BookingNow() {
           : {}),
         ...(params.slot_offer_id
           ? { slot_offer_id: params.slot_offer_id }
+          : {}),
+        ...(promotionId != null
+          ? {
+              promotion_id: String(promotionId),
+              promotion_source: promotionSource,
+            }
           : {}),
       },
     });
@@ -3921,7 +4029,11 @@ export default function BookingNow() {
           icon: "event-available",
           loading: rescheduleLoading,
           disabled: rescheduleLoading || !!blockedHint,
-          onPress: () => submitReschedule(params.late_fee_accepted === "1"),
+          onPress: () =>
+            submitReschedule(
+              params.late_fee_accepted === "1" || lateFeeAcceptedRef.current,
+              promotionChangeAcceptedRef.current,
+            ),
         }
       : {
           label: t("bkFlowToCheckout"),
@@ -4074,6 +4186,24 @@ export default function BookingNow() {
         question={t("lateRescheduleFeeQuestion")}
         message={rescheduleFeeMessage ?? ""}
         confirmLabel={t("acceptFeeAndReschedule")}
+      />
+
+      <OutcomeConfirmSheet
+        visible={promotionRescheduleNotice != null}
+        onClose={() => setPromotionRescheduleNotice(null)}
+        onConfirm={handleAcceptPromotionChange}
+        title={t("pbkRescheduleOfferTitle")}
+        question={
+          promotionRescheduleNotice?.blocked
+            ? t("pbkRescheduleOfferBlockedQuestion")
+            : t("pbkRescheduleOfferQuestion")
+        }
+        message={promotionRescheduleNotice?.message ?? ""}
+        confirmLabel={
+          promotionRescheduleNotice?.blocked
+            ? t("pbkPickAnotherTime")
+            : t("pbkRescheduleAtNewPrice")
+        }
       />
 
       <AddServiceBottomSheet

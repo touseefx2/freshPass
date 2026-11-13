@@ -42,6 +42,7 @@ const TILE_META = {
   orders: { titleKey: "ordersTitle", icon: "receipt-long", family: "material", variant: "dark" },
   hiring: { titleKey: "jobHiringTitle", icon: "work-outline", family: "material", variant: "accent" },
   myDeals: { titleKey: "sdMyDeals", icon: "local-offer", family: "material", variant: "accent" },
+  offers: { titleKey: "proListTitle", icon: "sell", family: "material", variant: "dark" },
   affiliation: { titleKey: "bmAffiliationRequests", icon: "handshake", family: "community", variant: "dark" },
   mediaLibrary: { titleKey: "mediaLibrary", icon: "video-library", family: "material", variant: "dark" },
   aiTools: { titleKey: "aiTools", icon: "smart-toy", family: "material", variant: "dark" },
@@ -259,6 +260,12 @@ export default function BusinessManagementGrid({
       onPress: () => {
         if (ensureCanPostDeals()) router.push("/(main)/myDeals" as any);
       },
+    },
+    // Profile Promotions: owner / Solo only (staff get 403); the list
+    // itself asks for a plan before creating
+    {
+      key: "offers",
+      onPress: () => router.push("/(main)/promotions" as any),
     },
     ...(businessStatus?.subscription_status === "active" &&
     businessStatus?.subscription_is_single === false

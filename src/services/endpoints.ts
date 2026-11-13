@@ -470,6 +470,9 @@ export const appointmentsEndpoints = {
     appointment_type?: "service" | "subscription";
     slot_offer_id?: number;
     staff_id?: number;
+    /** Profile Promotions: quote gains `promotion` with the offer price */
+    promotion_id?: number;
+    promotion_source?: string;
   }) => {
     const q = new URLSearchParams({
       business_id: String(params.business_id),
@@ -488,6 +491,12 @@ export const appointmentsEndpoints = {
     if (params.staff_id != null) {
       q.append("staff_id", String(params.staff_id));
     }
+    if (params.promotion_id != null) {
+      q.append("promotion_id", String(params.promotion_id));
+      if (params.promotion_source) {
+        q.append("promotion_source", params.promotion_source);
+      }
+    }
     return `/api/appointments/cancellation-policy?${q.toString()}`;
   },
   cardSetup: `/api/appointments/card-setup`,
@@ -498,8 +507,26 @@ export const appointmentsEndpoints = {
     `/api/appointments/checkout/${checkoutId}`,
   cancellationPreview: (id: string | number) =>
     `/api/appointments/${id}/cancellation-preview`,
-  reschedulePreview: (id: string | number) =>
-    `/api/appointments/${id}/reschedule-preview`,
+  /** Optional new values: a booking made with an offer gains `promotion`. */
+  reschedulePreview: (
+    id: string | number,
+    params?: {
+      appointment_date?: string;
+      appointment_time?: string;
+      staff_id?: number;
+      service_ids?: number[];
+    },
+  ) => {
+    const q = new URLSearchParams();
+    if (params?.appointment_date) q.append("appointment_date", params.appointment_date);
+    if (params?.appointment_time) q.append("appointment_time", params.appointment_time);
+    if (params?.staff_id != null) q.append("staff_id", String(params.staff_id));
+    (params?.service_ids ?? []).forEach((sid) =>
+      q.append("service_ids[]", String(sid)),
+    );
+    const query = q.toString();
+    return `/api/appointments/${id}/reschedule-preview${query ? `?${query}` : ""}`;
+  },
   awaitingOutcome: (params?: { per_page?: number; page?: number }) => {
     const q = new URLSearchParams();
     if (params?.per_page != null)
@@ -540,6 +567,8 @@ export const appointmentsEndpoints = {
     exclude_appointment_id?: number;
     /** Free times for these services' full length (owner booking). */
     service_ids?: number[];
+    /** Profile Promotions: only the offer's dates, days, hours and staff */
+    promotion_id?: number;
   }) => {
     const queryParams = new URLSearchParams();
     queryParams.append("business_id", params.business_id.toString());
@@ -556,6 +585,8 @@ export const appointmentsEndpoints = {
         "exclude_appointment_id",
         params.exclude_appointment_id.toString(),
       );
+    if (params.promotion_id != null)
+      queryParams.append("promotion_id", params.promotion_id.toString());
     return `/api/available-slots?${queryParams.toString()}`;
   },
 };
@@ -1409,4 +1440,28 @@ export const classEnrollmentEndpoints = {
     `/api/class-enrollments${mcQuery(params)}`,
   byId: (id: number | string) => `/api/class-enrollments/${id}`,
   cancel: (id: number | string) => `/api/class-enrollments/${id}/cancel`,
+};
+
+/** Profile Promotions (owner offers, included in the plan — not an IAP). */
+export const promotionEndpoints = {
+  mine: (params: { status?: string; page?: number; per_page?: number } = {}) => {
+    const q = new URLSearchParams();
+    if (params.status) q.append("status", params.status);
+    if (params.page != null) q.append("page", String(params.page));
+    if (params.per_page != null) q.append("per_page", String(params.per_page));
+    const query = q.toString();
+    return `/api/promotions/mine${query ? `?${query}` : ""}`;
+  },
+  mineById: (id: number | string) => `/api/promotions/mine/${id}`,
+  create: `/api/promotions`,
+  /** POST (multipart with image) or PATCH (no image) */
+  update: (id: number | string) => `/api/promotions/${id}`,
+  status: (id: number | string) => `/api/promotions/${id}/status`,
+  remove: (id: number | string) => `/api/promotions/${id}`,
+  /** Customer: chip + open offers on a business profile (guest token ok) */
+  forBusiness: (businessId: number | string, source = "profile") =>
+    `/api/businesses/${businessId}/promotions?source=${encodeURIComponent(source)}`,
+  /** Customer: one offer (counts a view) */
+  publicById: (id: number | string, source?: string) =>
+    `/api/promotions/${id}${source ? `?source=${encodeURIComponent(source)}` : ""}`,
 };

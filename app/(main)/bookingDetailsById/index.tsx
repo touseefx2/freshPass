@@ -100,6 +100,13 @@ import {
   fetchViewAndPay,
 } from "@/src/services/afterVisitService";
 import InPersonPaymentCard from "@/src/components/afterVisit/inPersonPaymentCard";
+import {
+  PromotionBreakdownCard,
+  promotionAmounts as readPromotionAmounts,
+  promotionServiceLines,
+  type PromotionAmounts,
+  type PromotionServiceLine,
+} from "@/src/components/afterVisit/promotionBreakdown";
 import { createStyles } from "./styles";
 import { salonNow } from "@/src/utils/salonTimezone";
 import {
@@ -375,6 +382,10 @@ interface BookingItem {
   canRejectInPersonPayment?: boolean;
   /** This visit's review (one per appointment) */
   review?: AppointmentReview | null;
+  /** Profile Promotion amounts as booked (null = no offer) */
+  promotion?: PromotionAmounts | null;
+  /** Services the offer discounted */
+  promotionServices?: PromotionServiceLine[];
   /** false = guest booked by the owner (no FreshPass app) */
   customerHasAppAccount?: boolean | null;
   userEmail?: string | null;
@@ -422,7 +433,10 @@ interface ApiBookingResponse {
     label?: string | null;
     image?: string | null;
     image_url?: string | null;
+    /** What is charged (after any offer) */
     price: string;
+    originalPrice?: number | string | null;
+    discount?: number | string | null;
     duration: {
       hours: number;
       minutes: number;
@@ -506,6 +520,8 @@ interface ApiBookingResponse {
   canConfirmInPersonPayment?: boolean;
   canRejectInPersonPayment?: boolean;
   review?: AppointmentReview | null;
+  /** Profile Promotion as booked: id, title, source, originalPrice, discount, finalPrice, conflict */
+  promotion?: unknown;
 }
 
 export default function BookingDetailsById() {
@@ -987,6 +1003,11 @@ export default function BookingDetailsById() {
       canConfirmInPersonPayment: apiData.canConfirmInPersonPayment ?? false,
       canRejectInPersonPayment: apiData.canRejectInPersonPayment ?? false,
       review: apiData.review ?? null,
+      promotion: readPromotionAmounts(
+        apiData.promotion,
+        apiData.inPersonPayment as any,
+      ),
+      promotionServices: promotionServiceLines(services),
       customerHasAppAccount: apiData.customerHasAppAccount ?? null,
       userEmail: apiData.userEmail ?? null,
       images:
@@ -2647,16 +2668,35 @@ export default function BookingDetailsById() {
                   ) : null}
                 </View>
               </View>
-              <Text
-                style={styles.servicePriceText}
-                numberOfLines={1}
-                adjustsFontSizeToFit
-                minimumFontScale={0.7}
-              >
-                {booking.price}
-              </Text>
+              <View style={styles.servicePriceCol}>
+                <Text
+                  style={styles.servicePriceText}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.7}
+                >
+                  {booking.price}
+                </Text>
+                {!isSubscription &&
+                booking.promotion &&
+                booking.promotion.discount > 0 ? (
+                  <Text style={styles.serviceOriginalPriceText} numberOfLines={1}>
+                    {formatPrice(booking.promotion.originalPrice)}
+                  </Text>
+                ) : null}
+              </View>
             </View>
           </View>
+
+          {/* Profile Promotion as booked (never changes with the offer) */}
+          {!isSubscription && booking.promotion ? (
+            <PromotionBreakdownCard
+              amounts={booking.promotion}
+              services={booking.promotionServices ?? []}
+              format={(n) => formatPrice(n)}
+              showConflict={!isCustomerView}
+            />
+          ) : null}
 
           {/* Info rows list */}
           <View style={[styles.infoListCard, styles.cardShadow]}>

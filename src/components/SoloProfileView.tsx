@@ -289,6 +289,11 @@ export default function SoloProfileView({
     soloTile("hiring"),
     soloTile("myDeals"),
     {
+      key: "offers",
+      // Profile Promotions (owner / Solo only); opened here like Master Classes
+      onPress: () => router.push("/(main)/promotions" as any),
+    },
+    {
       // Solo side of affiliation: link yourself to the shop you work at
       ...soloTile("affiliation"),
       title: t("soloAffiliationTitle"),
