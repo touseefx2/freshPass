@@ -9,6 +9,32 @@ import { fontSize, fonts } from "@/src/theme/fonts";
 import { moderateHeightScale, moderateWidthScale } from "@/src/theme/dimensions";
 import { EditorSheet } from "@/src/components/masterClasses/editorSheets";
 import FlowButton from "@/src/components/reelFlow/flowButton";
+import { useAppSelector } from "@/src/hooks/hooks";
+import { fetchOwnerBusinessHours } from "@/src/services/ownerBookingService";
+import { salonNow } from "@/src/utils/salonTimezone";
+
+// The server checks "today" on the salon clock. Ahead-of-salon phones (e.g.
+// Pakistan vs Detroit) would otherwise offer a day the server calls future.
+let cachedSalonZone: string | null | undefined;
+function useSalonToday(): string | null {
+  const user = useAppSelector((state: any) => state.user);
+  const businessId = Number(user?.business_id);
+  const [zone, setZone] = useState<string | null | undefined>(cachedSalonZone);
+  useEffect(() => {
+    if (zone !== undefined || !Number.isFinite(businessId) || businessId <= 0) return;
+    let alive = true;
+    fetchOwnerBusinessHours(businessId)
+      .then((h) => {
+        cachedSalonZone = h?.timezone ?? null;
+        if (alive) setZone(cachedSalonZone);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [zone, businessId]);
+  return zone ? salonNow(null, zone).day : null;
+}
 
 /**
  * Month calendar for dates in the past (last visit, consent date, filters).
@@ -38,10 +64,12 @@ export default function PastDateSheet({
   const styles = useMemo(() => createStyles(theme), [theme]);
   const { t } = useTranslation();
 
-  const max = useMemo(
-    () => (maxDate && dayjs(maxDate).isValid() ? dayjs(maxDate) : dayjs()),
-    [maxDate],
-  );
+  const salonToday = useSalonToday();
+  const max = useMemo(() => {
+    const cap = dayjs(salonToday ?? undefined);
+    const given = maxDate && dayjs(maxDate).isValid() ? dayjs(maxDate) : cap;
+    return given.isAfter(cap, "day") ? cap : given;
+  }, [maxDate, salonToday]);
   const min = useMemo(
     () => (minDate && dayjs(minDate).isValid() ? dayjs(minDate) : null),
     [minDate],
