@@ -15,7 +15,10 @@ import { Theme } from "@/src/theme/colors";
 import { heightScale, widthScale } from "@/src/theme/dimensions";
 import { PlatformVerifiedStarIcon, StarIconSmall } from "@/assets/icons";
 import RetryButton from "@/src/components/retryButton";
-import { HiringCornerBadge } from "@/src/components/jobs/jobBadges";
+import {
+  BusinessCornerBadges,
+  hasBusinessGoldFrame,
+} from "@/src/components/jobs/jobBadges";
 import { createStyles } from "./styles";
 import ClassDealCard from "@/src/components/masterClasses/ClassDealCard";
 import type { MasterClass } from "@/src/types/masterClass";
@@ -35,6 +38,7 @@ interface VerifiedSalon {
   image: string | null;
   ownerName?: string | null;
   isHiring?: boolean;
+  hasClass?: boolean;
 }
 
 interface ShowBusinessProps {
@@ -63,7 +67,7 @@ export default function ShowBusiness({
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
   const router = useRouter();
-  const hasHiring = verifiedSalons.some((salon) => salon.isHiring);
+  const hasHiring = verifiedSalons.some(hasBusinessGoldFrame);
   const hasClasses = classes.length > 0;
   const hasCornerBadge = hasHiring || hasClasses;
   const dealItems = useMemo(
@@ -106,10 +110,10 @@ export default function ShowBusiness({
       key={salon.id}
       style={[
         styles.verifiedSalonCardNew,
-        salon.isHiring && styles.verifiedSalonCardHiring,
+        hasBusinessGoldFrame(salon) && styles.verifiedSalonCardHiring,
       ]}
     >
-      {salon.isHiring ? <HiringCornerBadge /> : null}
+      <BusinessCornerBadges hiring={salon.isHiring} hasClass={salon.hasClass} />
       <AppImage
         uri={salon.image}
         style={styles.verifiedSalonImage}

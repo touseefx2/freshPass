@@ -2523,26 +2523,24 @@ export default function ReelTemplatesScreen() {
           </FlowCard>
         ) : null}
 
-        {/* Reels always use the business's category; the picker is only a fallback when it can't be resolved */}
-        {resolvedBusinessCategory?.id == null ? (
-          <SelectField
-            label={t("category")}
-            required
-            value={categoryName || null}
-            placeholder={t("selectCategory")}
-            open={showCategoryPicker}
-            loading={loadingCategories}
-            options={categories}
-            selectedId={categoryId}
-            onToggle={() => void openCategoryPicker()}
-            onSelect={(cat) => {
-              userPickedCategoryRef.current = true;
-              setCategoryId(cat.id);
-              setCategoryName(cat.name);
-              setShowCategoryPicker(false);
-            }}
-          />
-        ) : null}
+        {/* Defaults to the business's category; pros can post into any category */}
+        <SelectField
+          label={t("category")}
+          required
+          value={categoryName || null}
+          placeholder={t("selectCategory")}
+          open={showCategoryPicker}
+          loading={loadingCategories}
+          options={categories}
+          selectedId={categoryId}
+          onToggle={() => void openCategoryPicker()}
+          onSelect={(cat) => {
+            userPickedCategoryRef.current = true;
+            setCategoryId(cat.id);
+            setCategoryName(cat.name);
+            setShowCategoryPicker(false);
+          }}
+        />
         {services.length > 0 ? (
           <ChoiceChips
             label={t("serviceOptional")}

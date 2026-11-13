@@ -739,26 +739,24 @@ export default function StudioPublishStep({
 
         {moreOpen ? (
           <View style={styles.moreBody}>
-            {/* Reels always use the business's category; the picker is only a fallback when it can't be resolved */}
-            {resolvedBusinessCategory?.id == null ? (
-              <SelectField
-                label={t("category")}
-                required
-                value={selectedCategoryName || null}
-                placeholder={t("selectCategory")}
-                open={categoryOpen}
-                loading={loadingCategories}
-                options={categories}
-                selectedId={categoryId}
-                onToggle={() => void toggleCategory()}
-                onSelect={(cat) => {
-                  userPickedCategoryRef.current = true;
-                  setCategoryId(cat.id);
-                  setCategoryName(cat.name);
-                  setCategoryOpen(false);
-                }}
-              />
-            ) : null}
+            {/* Defaults to the business's category; pros can post into any category */}
+            <SelectField
+              label={t("category")}
+              required
+              value={selectedCategoryName || null}
+              placeholder={t("selectCategory")}
+              open={categoryOpen}
+              loading={loadingCategories}
+              options={categories}
+              selectedId={categoryId}
+              onToggle={() => void toggleCategory()}
+              onSelect={(cat) => {
+                userPickedCategoryRef.current = true;
+                setCategoryId(cat.id);
+                setCategoryName(cat.name);
+                setCategoryOpen(false);
+              }}
+            />
             {services.length > 0 ? (
               <ChoiceChips
                 label={t("serviceOptional")}

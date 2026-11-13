@@ -248,10 +248,12 @@ export async function fetchBusinessPromotions(
 export async function fetchPublicPromotion(
   id: number | string,
   source?: PromotionSource,
+  /** Claim code from a Bring Customers Back email (private offers) */
+  claim?: string,
 ): Promise<Promotion | null> {
   try {
     const res = unwrapData(
-      await ApiService.get(promotionEndpoints.publicById(id, source)),
+      await ApiService.get(promotionEndpoints.publicById(id, source, claim)),
     );
     const body = asRecord(res);
     return normalizePromotion(asRecord(body?.promotion) ?? body);

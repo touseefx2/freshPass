@@ -1782,22 +1782,20 @@ export default function AutoReelScreen() {
             />
             {autoBuilt ? (
               <>
-                {/* Reels always use the business's category; the picker is only a fallback when it can't be resolved */}
-                {categoryId == null ? (
-                  <SelectField
-                    label={t("category")}
-                    required
-                    value={categoryName || null}
-                    placeholder={t("selectCategory")}
-                    open={categoryPickerOpen}
-                    loading={loadingCategories}
-                    options={categories}
-                    selectedId={categoryId}
-                    onToggle={() => void toggleCategoryPicker()}
-                    onSelect={selectCategory}
-                    helper={needsCategory ? t("autoReelNeedCategory") : null}
-                  />
-                ) : null}
+                {/* Defaults to the business's category; pros can post into any category */}
+                <SelectField
+                  label={t("category")}
+                  required
+                  value={categoryName || null}
+                  placeholder={t("selectCategory")}
+                  open={categoryPickerOpen}
+                  loading={loadingCategories}
+                  options={categories}
+                  selectedId={categoryId}
+                  onToggle={() => void toggleCategoryPicker()}
+                  onSelect={selectCategory}
+                  helper={needsCategory ? t("autoReelNeedCategory") : null}
+                />
                 {services.length > 0 ? (
                   <ChoiceChips
                     label={t("serviceOptional")}

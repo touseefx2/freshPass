@@ -948,83 +948,81 @@ export default function PublishReelScreen() {
             ) : null}
           </View>
 
-          {/* Reels always use the business's category (the reel's own on edit); the picker is only a fallback */}
-          {categoryId == null ? (
-            <View style={styles.field}>
-              <Text style={[styles.label, { marginBottom: moderateHeightScale(8) }]}>
-                {t("category")} <Text style={styles.required}>*</Text>
-              </Text>
-              <View style={styles.categoryShell}>
-                <TouchableOpacity
-                  activeOpacity={0.75}
-                  onPress={handleChangeCategory}
-                  disabled={loadingCategories}
-                  style={styles.categoryRow}
-                >
-                  <View style={styles.categoryDot} />
-                  <View style={styles.categoryTextCol}>
-                    <Text style={styles.categoryMeta}>
-                      {showCategoryPicker ? t("hideCategories") : t("changeCategory")}
-                    </Text>
-                    <Text style={styles.categoryValue} numberOfLines={1}>
-                      {selectedCategoryName || t("none")}
-                    </Text>
-                  </View>
-                  <MaterialIcons
-                    name={showCategoryPicker ? "keyboard-arrow-up" : "keyboard-arrow-down"}
-                    size={moderateWidthScale(22)}
-                    color={theme.lightGreen}
-                  />
-                </TouchableOpacity>
+          {/* Defaults to the business's category; pros can post into any category */}
+          <View style={styles.field}>
+            <Text style={[styles.label, { marginBottom: moderateHeightScale(8) }]}>
+              {t("category")} <Text style={styles.required}>*</Text>
+            </Text>
+            <View style={styles.categoryShell}>
+              <TouchableOpacity
+                activeOpacity={0.75}
+                onPress={handleChangeCategory}
+                disabled={loadingCategories}
+                style={styles.categoryRow}
+              >
+                <View style={styles.categoryDot} />
+                <View style={styles.categoryTextCol}>
+                  <Text style={styles.categoryMeta}>
+                    {showCategoryPicker ? t("hideCategories") : t("changeCategory")}
+                  </Text>
+                  <Text style={styles.categoryValue} numberOfLines={1}>
+                    {selectedCategoryName || t("none")}
+                  </Text>
+                </View>
+                <MaterialIcons
+                  name={showCategoryPicker ? "keyboard-arrow-up" : "keyboard-arrow-down"}
+                  size={moderateWidthScale(22)}
+                  color={theme.lightGreen}
+                />
+              </TouchableOpacity>
 
-                {showCategoryPicker && (
-                  <ScrollView
-                    style={styles.categoryPickerWrap}
-                    nestedScrollEnabled
-                    keyboardShouldPersistTaps="handled"
-                  >
-                    {loadingCategories ? (
-                      <View style={styles.categoryLoading}>
-                        <ActivityIndicator size="small" color={theme.darkGreen} />
-                      </View>
-                    ) : (
-                      categories.map((cat) => {
-                        const active = categoryId === cat.id;
-                        return (
-                          <TouchableOpacity
-                            key={cat.id}
+              {showCategoryPicker && (
+                <ScrollView
+                  style={styles.categoryPickerWrap}
+                  nestedScrollEnabled
+                  keyboardShouldPersistTaps="handled"
+                >
+                  {loadingCategories ? (
+                    <View style={styles.categoryLoading}>
+                      <ActivityIndicator size="small" color={theme.darkGreen} />
+                    </View>
+                  ) : (
+                    categories.map((cat) => {
+                      const active = categoryId === cat.id;
+                      return (
+                        <TouchableOpacity
+                          key={cat.id}
+                          style={[
+                            styles.categoryOption,
+                            active && styles.categoryOptionActive,
+                          ]}
+                          onPress={() => handleSelectCategory(cat)}
+                          activeOpacity={0.7}
+                        >
+                          <Text
                             style={[
-                              styles.categoryOption,
-                              active && styles.categoryOptionActive,
+                              styles.categoryOptionText,
+                              active && styles.categoryOptionTextActive,
                             ]}
-                            onPress={() => handleSelectCategory(cat)}
-                            activeOpacity={0.7}
+                            numberOfLines={1}
                           >
-                            <Text
-                              style={[
-                                styles.categoryOptionText,
-                                active && styles.categoryOptionTextActive,
-                              ]}
-                              numberOfLines={1}
-                            >
-                              {cat.name}
-                            </Text>
-                            {active ? (
-                              <MaterialIcons
-                                name="check"
-                                size={moderateWidthScale(18)}
-                                color={theme.darkGreen}
-                              />
-                            ) : null}
-                          </TouchableOpacity>
-                        );
-                      })
-                    )}
-                  </ScrollView>
-                )}
-              </View>
+                            {cat.name}
+                          </Text>
+                          {active ? (
+                            <MaterialIcons
+                              name="check"
+                              size={moderateWidthScale(18)}
+                              color={theme.darkGreen}
+                            />
+                          ) : null}
+                        </TouchableOpacity>
+                      );
+                    })
+                  )}
+                </ScrollView>
+              )}
             </View>
-          ) : null}
+          </View>
 
           <View style={styles.field}>
             <Text style={[styles.label, { marginBottom: moderateHeightScale(8) }]}>

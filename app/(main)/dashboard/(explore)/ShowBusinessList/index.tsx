@@ -22,7 +22,10 @@ import { PlatformVerifiedStarIcon, StarIconSmall } from "@/assets/icons";
 import RetryButton from "@/src/components/retryButton";
 import Button from "@/src/components/button";
 import InclusionsModal from "@/src/components/inclusionsModal";
-import { HiringCornerBadge } from "@/src/components/jobs/jobBadges";
+import {
+  BusinessCornerBadges,
+  hasBusinessGoldFrame,
+} from "@/src/components/jobs/jobBadges";
 import { createStyles } from "./styles";
 import type {
   ServiceItem,
@@ -39,6 +42,7 @@ export interface VerifiedSalon {
   ownerName?: string | null;
   /** Has at least one open job post */
   isHiring?: boolean;
+  hasClass?: boolean;
   services?: ServiceItem[];
   subscriptions?: SubscriptionItem[];
 }
@@ -68,10 +72,10 @@ export function BusinessCard({
       activeOpacity={0.9}
       style={[
         styles.verifiedSalonCardNew,
-        salon.isHiring && styles.verifiedSalonCardHiring,
+        hasBusinessGoldFrame(salon) && styles.verifiedSalonCardHiring,
       ]}
     >
-      {salon.isHiring ? <HiringCornerBadge /> : null}
+      <BusinessCornerBadges hiring={salon.isHiring} hasClass={salon.hasClass} />
       <AppImage
         uri={salon.image}
         style={styles.verifiedSalonImage}

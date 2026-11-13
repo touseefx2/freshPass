@@ -14,7 +14,9 @@ import {
   parseInviteLinkCode,
 } from "@/src/services/pendingInviteCode";
 import {
+  isOfferEmailClickLink,
   isOfferLink,
+  openOfferEmailClickInBrowser,
   openPendingOfferLink,
   parseOfferLink,
   setPendingOfferLink,
@@ -65,6 +67,13 @@ export function redirectSystemPath({
         openPendingInviteNotice();
       }
       return "";
+    }
+
+    // Offer email button (/o/{token}): only the website can resolve the
+    // token, so open it in the browser (it redirects to /offers/{id}?claim=…)
+    if (isOfferEmailClickLink(path)) {
+      openOfferEmailClickInBrowser(path);
+      return initial ? "/" : "";
     }
 
     // Shared offer link (/offers/{id}): held until home is up, like booking

@@ -17,6 +17,7 @@ import { usePreventRemove } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { useStripe } from "@stripe/stripe-react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
@@ -208,6 +209,15 @@ export default function ViewAndPayScreen() {
   const { colors } = useTheme();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const insets = useSafeAreaInsets();
+  // Keep the last button (Go Home) above Android's 3-button nav bar.
+  const contentStyle = useMemo(
+    () => [
+      styles.content,
+      { paddingBottom: moderateHeightScale(28) + insets.bottom + moderateHeightScale(16) },
+    ],
+    [styles.content, insets.bottom],
+  );
   const { showBanner } = useNotificationContext();
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
   const user = useAppSelector((state) => state.user);
@@ -936,7 +946,7 @@ export default function ViewAndPayScreen() {
     return (
       <>
         <ScrollView
-          contentContainerStyle={styles.content}
+          contentContainerStyle={contentStyle}
           showsVerticalScrollIndicator={false}
         >
           <SuccessHero
@@ -998,7 +1008,7 @@ export default function ViewAndPayScreen() {
     return (
       <>
         <ScrollView
-          contentContainerStyle={styles.content}
+          contentContainerStyle={contentStyle}
           showsVerticalScrollIndicator={false}
         >
           <FlowTitle
@@ -1070,7 +1080,7 @@ export default function ViewAndPayScreen() {
     return (
       <>
         <KeyboardAwareScrollView
-          contentContainerStyle={styles.content}
+          contentContainerStyle={contentStyle}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
           bottomOffset={moderateHeightScale(24)}
@@ -1127,7 +1137,7 @@ export default function ViewAndPayScreen() {
     return (
       <>
         <KeyboardAwareScrollView
-          contentContainerStyle={styles.content}
+          contentContainerStyle={contentStyle}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
           bottomOffset={moderateHeightScale(24)}
@@ -1367,7 +1377,7 @@ export default function ViewAndPayScreen() {
 
     return (
       <ScrollView
-        contentContainerStyle={styles.content}
+        contentContainerStyle={contentStyle}
         showsVerticalScrollIndicator={false}
       >
         {renderDoneHero()}
@@ -1387,6 +1397,12 @@ export default function ViewAndPayScreen() {
                   : money(receipt.serviceAmount)
               }
             />
+            {visitPromotion && visitPromotion.discount > 0 && receipt.status !== "covered" ? (
+              <PromotionSavedLine
+                title={visitPromotion.title}
+                saved={money(visitPromotion.discount)}
+              />
+            ) : null}
             {receiptReward > 0 ? (
               <>
                 <MoneyRow
@@ -1501,7 +1517,7 @@ export default function ViewAndPayScreen() {
     return (
       <>
         <KeyboardAwareScrollView
-          contentContainerStyle={styles.content}
+          contentContainerStyle={contentStyle}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
           bottomOffset={moderateHeightScale(24)}
@@ -1540,7 +1556,7 @@ export default function ViewAndPayScreen() {
     return (
       <>
         <KeyboardAwareScrollView
-          contentContainerStyle={styles.content}
+          contentContainerStyle={contentStyle}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
           bottomOffset={moderateHeightScale(24)}

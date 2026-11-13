@@ -54,8 +54,13 @@ export type OwnerBookingRequest = {
   time: string;
   notes: string;
 } & (
-  | { userId: number; newCustomer?: undefined }
-  | { userId?: undefined; newCustomer: NewCustomerInput }
+  | { userId: number; newCustomer?: undefined; marketingOptIn?: undefined }
+  | {
+      userId?: undefined;
+      newCustomer: NewCustomerInput;
+      /** Walk-in agreed to offer emails ("Send me offers"); sent only when true */
+      marketingOptIn?: boolean;
+    }
 );
 
 /** 422 body: `message` is ready to show, `errors` names the field. */
@@ -395,6 +400,7 @@ export async function createOwnerBooking(
       phone: phone.trim(),
       ...(email.trim() ? { email: email.trim() } : {}),
     };
+    if (request.marketingOptIn) body.marketing_opt_in = true;
   } else {
     body.user_id = request.userId;
   }

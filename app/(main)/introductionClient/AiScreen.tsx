@@ -15,7 +15,7 @@ export default function AiScreen({ onNext }: AiScreenProps) {
   const features = [
     {
       icon: AiHairTryOnIcon,
-      title: "AI Hair Try-On",
+      title: "FRESHY TRY-ON",
       description:
         "Visualize new hairstyles on yourself before booking, using our AI virtual mirror.",
     },

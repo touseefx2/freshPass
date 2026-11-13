@@ -436,6 +436,24 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
     },
+    pmkOptInRow: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: moderateWidthScale(12),
+      paddingVertical: moderateHeightScale(14),
+      paddingHorizontal: moderateWidthScale(14),
+      minHeight: moderateHeightScale(48),
+      borderRadius: moderateWidthScale(14),
+      backgroundColor: theme.white,
+      borderWidth: 1,
+      borderColor: theme.borderLight,
+    },
+    pmkOptInTitle: {
+      fontSize: fontSize.size15,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
+      lineHeight: fontSize.size20,
+    },
     pbkNotice: {
       flexDirection: "row",
       alignItems: "center",
@@ -663,6 +681,10 @@ function CheckoutContent() {
     /** Profile Promotion picked on the business profile (service bookings). */
     promotion_id?: string;
     promotion_source?: string;
+    /** Bring Customers Back email: claim code for a private offer */
+    promotion_claim?: string;
+    /** Offer's savings_label ("15% off"); the quote has none */
+    promotion_label?: string;
   }>();
 
   const attributionReelId = params.reel_id ? Number(params.reel_id) : null;
@@ -902,6 +924,9 @@ function CheckoutContent() {
   )
     ? resolveRouteParam(params.promotion_source)
     : "profile";
+  const promotionClaim = resolveRouteParam(params.promotion_claim).trim() || undefined;
+  // "Send me offers from this business" — unticked by default; sent only when ticked.
+  const [marketingOptIn, setMarketingOptIn] = useState(false);
   const [promotionDropped, setPromotionDropped] = useState(false);
   // Same value for submit code that runs before the next render.
   const promotionDroppedRef = useRef(false);
@@ -930,6 +955,7 @@ function CheckoutContent() {
       ? {
           promotion_id: id,
           promotion_source: promotionSource,
+          ...(promotionClaim ? { promotion_claim: promotionClaim } : {}),
           staff_id: resolveAppointmentStaffId({
             selectedStaff: selectedStaffId,
             assignedStaffId,
@@ -1002,6 +1028,16 @@ function CheckoutContent() {
     const line = promoQuote!.services.find((s) => s.id === serviceId);
     return line && line.discount > 0 ? line : null;
   };
+  /** Services as booked: offer price as `price`, old price as `originalPrice`. */
+  const servicesForReceipt = () =>
+    JSON.stringify(
+      selectedServices.map((s) => {
+        const line = promoServiceLine(s.id);
+        return line
+          ? { ...s, price: line.finalPrice, originalPrice: line.originalPrice }
+          : s;
+      }),
+    );
   // Service total after the offer (tips are never discounted).
   const serviceTotal = Math.max(0, totalPrice - promoDiscount);
   const tax = serviceTotal * taxRate;
@@ -1175,6 +1211,7 @@ function CheckoutContent() {
       service_ids: number[];
       image_urls?: string[];
       policy_accepted: boolean;
+      marketing_opt_in?: boolean;
     } = {
       business_id: parseInt(resolvedCheckoutBusinessId, 10),
       appointment_type: "subscription",
@@ -1191,6 +1228,9 @@ function CheckoutContent() {
     }
     if (subscriptionId != null) {
       requestBody.subscription_id = subscriptionId;
+    }
+    if (marketingOptIn) {
+      requestBody.marketing_opt_in = true;
     }
     Logger.log("requestBody (subscription)", requestBody);
     try {
@@ -1522,6 +1562,8 @@ function CheckoutContent() {
       use_reward_balance?: boolean;
       promotion_id?: number;
       promotion_source?: string;
+      promotion_claim?: string;
+      marketing_opt_in?: boolean;
     } = {
       business_id: parseInt(resolvedCheckoutBusinessId, 10),
       appointment_type: "service",
@@ -1563,6 +1605,11 @@ function CheckoutContent() {
     if (bookingPromotionId != null) {
       requestBody.promotion_id = bookingPromotionId;
       requestBody.promotion_source = promotionSource;
+      if (promotionClaim) requestBody.promotion_claim = promotionClaim;
+    }
+
+    if (marketingOptIn) {
+      requestBody.marketing_opt_in = true;
     }
 
     // Balance pays part of the service price; the card pays the rest + any tip.
@@ -1722,7 +1769,7 @@ function CheckoutContent() {
                     ? appointmentId.toString()
                     : "",
                   bookingId: bookingId,
-                  selectedServices: JSON.stringify(selectedServices),
+                  selectedServices: servicesForReceipt(),
                   selectedStaff: isSoloPlan ? "" : selectedStaffId,
                   selectedStaffMember: selectedStaffMember
                     ? JSON.stringify(selectedStaffMember)
@@ -1862,7 +1909,7 @@ function CheckoutContent() {
             params: {
               appointmentId: appointmentId ? appointmentId.toString() : "",
               bookingId: bookingId,
-              selectedServices: JSON.stringify(selectedServices),
+              selectedServices: servicesForReceipt(),
               selectedStaff: isSoloPlan ? "" : selectedStaffId,
               selectedStaffMember: selectedStaffMember
                 ? JSON.stringify(selectedStaffMember)
@@ -2343,7 +2390,11 @@ function CheckoutContent() {
                     color={theme.orangeBrownText}
                   />
                   <Text style={styles.pbkAppliedText}>
-                    {t("pbkOfferApplied")}
+                    {resolveRouteParam(params.promotion_label).trim()
+                      ? t("pbkOfferAppliedLabel", {
+                          label: resolveRouteParam(params.promotion_label).trim(),
+                        })
+                      : t("pbkOfferApplied")}
                   </Text>
                 </View>
               </>
@@ -2413,6 +2464,27 @@ function CheckoutContent() {
             </View>
           </View>
         ) : null}
+
+        {/* Optional offer-email consent: unticked by default, sent only when ticked */}
+        <TouchableOpacity
+          style={styles.pmkOptInRow}
+          activeOpacity={0.8}
+          onPress={() => setMarketingOptIn((v) => !v)}
+          accessibilityRole="checkbox"
+          accessibilityState={{ checked: marketingOptIn }}
+          accessibilityLabel={t("pmkOptInTitle")}
+          hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
+        >
+          <MaterialIcons
+            name={marketingOptIn ? "check-box" : "check-box-outline-blank"}
+            size={moderateWidthScale(24)}
+            color={marketingOptIn ? theme.darkGreen : theme.lightGreen}
+          />
+          <View style={styles.ckRowText}>
+            <Text style={styles.pmkOptInTitle}>{t("pmkOptInTitle")}</Text>
+            <Text style={styles.ckRowSub}>{t("pmkOptInHint")}</Text>
+          </View>
+        </TouchableOpacity>
 
         {/* Photos & note: always shown so they can be added or changed here */}
         <FlowCard style={styles.ckSummary}>

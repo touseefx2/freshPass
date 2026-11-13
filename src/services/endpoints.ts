@@ -473,6 +473,8 @@ export const appointmentsEndpoints = {
     /** Profile Promotions: quote gains `promotion` with the offer price */
     promotion_id?: number;
     promotion_source?: string;
+    /** Private (email) offer: claim code from the email link */
+    promotion_claim?: string;
   }) => {
     const q = new URLSearchParams({
       business_id: String(params.business_id),
@@ -495,6 +497,9 @@ export const appointmentsEndpoints = {
       q.append("promotion_id", String(params.promotion_id));
       if (params.promotion_source) {
         q.append("promotion_source", params.promotion_source);
+      }
+      if (params.promotion_claim) {
+        q.append("promotion_claim", params.promotion_claim);
       }
     }
     return `/api/appointments/cancellation-policy?${q.toString()}`;
@@ -1425,6 +1430,7 @@ export const masterClassEndpoints = {
       longitude?: number;
       radius_km?: number;
       category_ids?: number[];
+      business_id?: number;
       page?: number;
       per_page?: number;
     } = {},
@@ -1462,6 +1468,11 @@ export const promotionEndpoints = {
   forBusiness: (businessId: number | string, source = "profile") =>
     `/api/businesses/${businessId}/promotions?source=${encodeURIComponent(source)}`,
   /** Customer: one offer (counts a view) */
-  publicById: (id: number | string, source?: string) =>
-    `/api/promotions/${id}${source ? `?source=${encodeURIComponent(source)}` : ""}`,
+  publicById: (id: number | string, source?: string, claim?: string) => {
+    const q = new URLSearchParams();
+    if (claim) q.append("claim", claim);
+    if (source) q.append("source", source);
+    const query = q.toString();
+    return `/api/promotions/${id}${query ? `?${query}` : ""}`;
+  },
 };

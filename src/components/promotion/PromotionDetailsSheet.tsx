@@ -17,6 +17,7 @@ import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import { moderateHeightScale, moderateWidthScale } from "@/src/theme/dimensions";
 import type { Promotion } from "@/src/types/promotion";
+import { fetchPublicPromotion } from "@/src/services/promotionService";
 import { savingsHeadline } from "@/src/utils/promotionDisplay";
 import PromotionDetailsContent from "./PromotionDetailsContent";
 
@@ -29,6 +30,8 @@ type Props = {
   /** "View eligible services" for the shown offer. */
   onViewServices: (promotion: Promotion) => void;
   onSignIn?: () => void;
+  /** Offer already counted elsewhere (opened from a link / email): no 2nd view. */
+  skipViewForId?: number | null;
 };
 
 /**
@@ -42,6 +45,7 @@ export default function PromotionDetailsSheet({
   onClose,
   onViewServices,
   onSignIn,
+  skipViewForId,
 }: Props) {
   const { colors } = useTheme();
   const theme = colors as Theme;
@@ -58,8 +62,31 @@ export default function PromotionDetailsSheet({
     else setSelectedId(null);
   }, [visible, initialPromotionId, promotions]);
 
-  const selected =
+  // Opening an offer's details counts one view (GET /api/promotions/{id}?source=profile)
+  // and returns the latest offer + eligibility. The profile list never counts.
+  const [fresh, setFresh] = useState<Record<number, Promotion>>({});
+  const viewedRef = React.useRef<Set<number>>(new Set());
+  useEffect(() => {
+    if (!visible) viewedRef.current = new Set();
+  }, [visible]);
+  useEffect(() => {
+    if (!visible || selectedId == null) return;
+    if (selectedId === skipViewForId || viewedRef.current.has(selectedId)) return;
+    viewedRef.current.add(selectedId);
+    let alive = true;
+    fetchPublicPromotion(selectedId, "profile")
+      .then((offer) => {
+        if (alive && offer?.id) setFresh((m) => ({ ...m, [offer.id]: offer }));
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [visible, selectedId, skipViewForId]);
+
+  const listed =
     selectedId != null ? promotions.find((p) => p.id === selectedId) : undefined;
+  const selected = listed && selectedId != null ? (fresh[selectedId] ?? listed) : listed;
   const canGoBackToList = !!selected && promotions.length > 1;
 
   return (

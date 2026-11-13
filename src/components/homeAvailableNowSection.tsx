@@ -188,7 +188,9 @@ export default function HomeAvailableNowSection() {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={[
             styles.listPad,
-            items.some((i) => i.business?.is_hiring) && styles.listPadHiring,
+            items.some(
+              (i) => i.business?.is_hiring || i.business?.has_active_class,
+            ) && styles.listPadHiring,
           ]}
         >
           {items.map((item) => (

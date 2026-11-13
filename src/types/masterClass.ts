@@ -230,6 +230,8 @@ export interface PublicClassListParams {
   longitude?: number;
   radius_km?: number;
   category_ids?: number[];
+  /** One business's listed classes (business profile); no distance limit. */
+  business_id?: number;
   page?: number;
   per_page?: number;
 }

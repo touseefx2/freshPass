@@ -16,7 +16,10 @@ import { Theme } from "@/src/theme/colors";
 import { heightScale, widthScale } from "@/src/theme/dimensions";
 import { StarIconSmall } from "@/assets/icons";
 import RetryButton from "@/src/components/retryButton";
-import { HiringCornerBadge } from "@/src/components/jobs/jobBadges";
+import {
+  BusinessCornerBadges,
+  hasBusinessGoldFrame,
+} from "@/src/components/jobs/jobBadges";
 import { createStyles } from "./styles";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -32,6 +35,7 @@ export interface FavoriteBusiness {
   ownerName?: string | null;
   isOfficial?: boolean;
   isHiring?: boolean;
+  hasClass?: boolean;
 }
 
 interface ShowFavoritesProps {
@@ -84,7 +88,7 @@ export default function ShowFavorites({
       style={styles.scroll}
       contentContainerStyle={[
         styles.scrollContent,
-        favorites.some((item) => item.isHiring) && styles.scrollContentHiring,
+        favorites.some(hasBusinessGoldFrame) && styles.scrollContentHiring,
       ]}
       nestedScrollEnabled
     >
@@ -92,7 +96,7 @@ export default function ShowFavorites({
         <TouchableOpacity
           key={item.id}
           activeOpacity={0.9}
-          style={[styles.card, item.isHiring && styles.cardHiring]}
+          style={[styles.card, hasBusinessGoldFrame(item) && styles.cardHiring]}
           onPress={() => {
             router.push({
               pathname: "/(main)/businessDetail",
@@ -107,7 +111,7 @@ export default function ShowFavorites({
               iconSize={widthScale(36)}
               iconColor={theme.white50}
             />
-            {!item.isHiring && (
+            {!hasBusinessGoldFrame(item) && (
               <View style={styles.heartBadge}>
                 <MaterialIcons
                   name={item.isOfficial ? "verified" : "person"}
@@ -124,7 +128,7 @@ export default function ShowFavorites({
               </View>
             )}
           </View>
-          {item.isHiring ? <HiringCornerBadge /> : null}
+          <BusinessCornerBadges hiring={item.isHiring} hasClass={item.hasClass} />
 
           <View style={styles.content}>
             <View

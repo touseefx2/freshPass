@@ -37,7 +37,16 @@ export default function OfferDetailScreen() {
   const router = useRouter();
   const dispatch = useAppDispatch();
   const insets = useSafeAreaInsets();
-  const params = useLocalSearchParams<{ id?: string; source?: string }>();
+  const params = useLocalSearchParams<{
+    id?: string;
+    source?: string;
+    /** Bring Customers Back email: unlocks a private offer */
+    claim?: string;
+  }>();
+  const claim =
+    typeof params.claim === "string" && params.claim.trim()
+      ? params.claim.trim()
+      : undefined;
   const isGuest = useAppSelector((state: any) => state.user.isGuest);
 
   const source: PromotionSource =
@@ -62,7 +71,7 @@ export default function OfferDetailScreen() {
     setLoading(true);
     setError(false);
     try {
-      const offer = await fetchPublicPromotion(id, source);
+      const offer = await fetchPublicPromotion(id, source, claim);
       if (!offer) {
         setNotFound(true);
       } else {
@@ -76,7 +85,7 @@ export default function OfferDetailScreen() {
     } finally {
       setLoading(false);
     }
-  }, [params.id, source]);
+  }, [params.id, source, claim]);
 
   // Reload after sign-in so eligibility is for this customer
   useEffect(() => {
@@ -97,6 +106,7 @@ export default function OfferDetailScreen() {
           : {
               promotion_id: String(promotion.id),
               promotion_source: source,
+              ...(claim ? { promotion_claim: claim } : {}),
             }),
       },
     });

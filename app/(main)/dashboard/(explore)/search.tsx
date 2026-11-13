@@ -45,7 +45,7 @@ import { SearchIcon, CloseIcon } from "@/assets/icons";
 import { ApiService } from "@/src/services/api";
 import { exploreEndpoints } from "@/src/services/endpoints";
 import {
-  HiringCornerBadge,
+  BusinessCornerBadges,
   HIRING_FRAME_WIDTH,
 } from "@/src/components/jobs/jobBadges";
 import {
@@ -83,6 +83,8 @@ export type BusinessSearchItem = {
   owner?: { id: number; name: string } | null;
   /** Has at least one open job post */
   is_hiring?: boolean;
+  /** Has a master class listed in Deals right now */
+  has_active_class?: boolean;
   createdAt: string;
 };
 
@@ -386,11 +388,13 @@ function RecentBusinessLogo({
 function BusinessLogoImage({
   logo,
   isHiring,
+  hasClass,
   theme,
   styles,
 }: {
   logo: string | null | undefined;
   isHiring?: boolean;
+  hasClass?: boolean;
   theme: Theme;
   styles: ReturnType<typeof createStyles>;
 }) {
@@ -402,7 +406,7 @@ function BusinessLogoImage({
       <View
         style={[
           styles.businessPlaceholder,
-          isHiring && styles.businessPlaceholderHiring,
+          (isHiring || hasClass) && styles.businessPlaceholderHiring,
         ]}
       >
         {showPlaceholder ? (
@@ -419,7 +423,7 @@ function BusinessLogoImage({
           />
         )}
       </View>
-      {isHiring ? <HiringCornerBadge size="sm" /> : null}
+      <BusinessCornerBadges hiring={isHiring} hasClass={hasClass} size="sm" />
     </View>
   );
 }
@@ -766,6 +770,7 @@ export default function SearchScreen() {
                     <BusinessLogoImage
                       logo={item.logo_url}
                       isHiring={item.is_hiring === true}
+                      hasClass={item.has_active_class === true}
                       theme={theme}
                       styles={styles}
                     />

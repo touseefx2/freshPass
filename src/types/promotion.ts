@@ -25,6 +25,10 @@ export type PromotionEligibilityReason =
   | "not_returning_customer"
   | "limit_reached"
   | "own_business"
+  /** Private email offer opened without the matching claim */
+  | "claim_required"
+  /** Imported customer whose visit history is unknown */
+  | "history_unverified"
   | (string & {});
 
 /** Extra reason codes on a refused booking / reschedule. */

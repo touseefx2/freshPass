@@ -122,6 +122,7 @@ import {
   getDefaultAvatarImage,
 } from "@/src/services/remoteConfigService";
 import WebViewModal from "@/src/components/webViewModal";
+import { getRememberedPromotion } from "@/src/utils/promotionDisplay";
 
 /*
  * Step-by-step booking (2026-10-16), same look as the reel / product flows.
@@ -1317,6 +1318,10 @@ export default function BookingNow() {
     /** Profile Promotion: server limits slots + prices to the offer. */
     promotion_id?: string;
     promotion_source?: string;
+    /** Bring Customers Back email: claim code for a private offer */
+    promotion_claim?: string;
+    /** Offer's savings_label ("15% off") for the checkout pill */
+    promotion_label?: string;
   }>();
 
   // Customer mode can't book the user's own business — leave before any call
@@ -1350,6 +1355,30 @@ export default function BookingNow() {
     promotionId != null && PROMOTION_SOURCES.includes(params.promotion_source ?? "")
       ? (params.promotion_source as string)
       : "profile";
+  const promotionClaim =
+    promotionId != null && typeof params.promotion_claim === "string"
+      ? params.promotion_claim.trim() || undefined
+      : undefined;
+  // Offer prices the profile already showed (server values, eligible only).
+  // Checkout's quote stays the source of truth.
+  const offerPriceById = useMemo(() => {
+    const map = new Map<number, { final: number; original: number }>();
+    if (promotionId == null) return map;
+    const offer = getRememberedPromotion(promotionId);
+    if (!offer || offer.eligibility?.eligible !== true) return map;
+    offer.services.forEach((s) => {
+      if (s.final_price < s.original_price) {
+        map.set(s.id, { final: s.final_price, original: s.original_price });
+      }
+    });
+    return map;
+  }, [promotionId]);
+  const shownPrice = (service: { id: number; price: number; originalPrice: number }) => {
+    const offer = offerPriceById.get(service.id);
+    return offer
+      ? { price: offer.final, original: offer.original }
+      : { price: service.price, original: service.originalPrice };
+  };
   const subscriptionData: SubscriptionData | null = useMemo(() => {
     if (params.item) {
       try {
@@ -1738,10 +1767,10 @@ export default function BookingNow() {
         const allServicesData = individualServices.map((s: any) => {
           // Convert price from string to number
           const price = parseFloat(s.price) || 0;
-          // Calculate originalPrice (10% more) or use same as price if not available
+          // Real original price only (no made-up "10% more" strike)
           const originalPrice = s.originalPrice
             ? parseFloat(s.originalPrice)
-            : parseFloat((price * 1.1).toFixed(2));
+            : price;
 
           // Format duration from hours and minutes
           const durationHours = s.duration_hours || 0;
@@ -2318,7 +2347,7 @@ export default function BookingNow() {
   }, [staffMembers, staffSearchQuery]);
 
   const totalPrice = selectedServices.reduce(
-    (sum, service) => sum + service.price,
+    (sum, service) => sum + shownPrice(service).price,
     0,
   );
   const taxRate = 0.0;
@@ -2611,6 +2640,9 @@ export default function BookingNow() {
   const photoSize = Math.floor((contentWidth - PHOTO_GAP * 2) / 3);
 
   const showTotalBar = !isSubscriptionBooking && !isReschedule;
+
+  // Must stay above the loading return (hooks run in the same order every render)
+  const [privacyWebViewVisible, setPrivacyWebViewVisible] = useState(false);
 
   // Show loading indicator while fetching data
   if (loading) {
@@ -3043,6 +3075,10 @@ export default function BookingNow() {
           ? {
               promotion_id: String(promotionId),
               promotion_source: promotionSource,
+              ...(promotionClaim ? { promotion_claim: promotionClaim } : {}),
+              ...(params.promotion_label
+                ? { promotion_label: params.promotion_label }
+                : {}),
             }
           : {}),
       },
@@ -3053,7 +3089,6 @@ export default function BookingNow() {
 
   const formatMoney = (value: number) => `$${value.toFixed(2)} USD`;
 
-  const [privacyWebViewVisible, setPrivacyWebViewVisible] = useState(false);
   const openPrivacy = () => {
     setPrivacyWebViewVisible(true);
   };
@@ -3088,10 +3123,12 @@ export default function BookingNow() {
                   </Text>
                 ) : null}
                 <View style={styles.priceRow}>
-                  <Text style={styles.price}>{formatMoney(service.price)}</Text>
-                  {service.originalPrice > service.price ? (
+                  <Text style={styles.price}>
+                    {formatMoney(shownPrice(service).price)}
+                  </Text>
+                  {shownPrice(service).original > shownPrice(service).price ? (
                     <Text style={styles.priceOriginal}>
-                      ${service.originalPrice.toFixed(2)}
+                      ${shownPrice(service).original.toFixed(2)}
                     </Text>
                   ) : null}
                 </View>
@@ -3672,10 +3709,12 @@ export default function BookingNow() {
               <Text style={styles.metaText}>{when}</Text>
             </View>
             <View style={styles.priceRow}>
-              <Text style={styles.price}>{formatMoney(service.price)}</Text>
-              {service.originalPrice > service.price ? (
+              <Text style={styles.price}>
+                {formatMoney(shownPrice(service).price)}
+              </Text>
+              {shownPrice(service).original > shownPrice(service).price ? (
                 <Text style={styles.priceOriginal}>
-                  ${service.originalPrice.toFixed(2)}
+                  ${shownPrice(service).original.toFixed(2)}
                 </Text>
               ) : null}
             </View>

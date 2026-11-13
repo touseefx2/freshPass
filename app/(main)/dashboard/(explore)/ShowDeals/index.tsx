@@ -15,7 +15,10 @@ import { Theme } from "@/src/theme/colors";
 import { heightScale, widthScale } from "@/src/theme/dimensions";
 import { PlatformVerifiedStarIcon, StarIconSmall } from "@/assets/icons";
 import RetryButton from "@/src/components/retryButton";
-import { HiringCornerBadge } from "@/src/components/jobs/jobBadges";
+import {
+  BusinessCornerBadges,
+  hasBusinessGoldFrame,
+} from "@/src/components/jobs/jobBadges";
 import { createStyles } from "./styles";
 import InviteProBanner, {
   withInviteBanners,
@@ -32,6 +35,7 @@ interface VerifiedSalon {
   image: string | null;
   ownerName?: string | null;
   isHiring?: boolean;
+  hasClass?: boolean;
 }
 
 interface ShowBusinessProps {
@@ -52,7 +56,7 @@ export default function ShowDeals({
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
   const router = useRouter();
-  const hasHiring = verifiedSalons.some((salon) => salon.isHiring);
+  const hasHiring = verifiedSalons.some(hasBusinessGoldFrame);
 
   const renderSalon = (salon: VerifiedSalon) => (
     <TouchableOpacity
@@ -66,10 +70,10 @@ export default function ShowDeals({
       key={salon.id}
       style={[
         styles.verifiedSalonCardNew,
-        salon.isHiring && styles.verifiedSalonCardHiring,
+        hasBusinessGoldFrame(salon) && styles.verifiedSalonCardHiring,
       ]}
     >
-      {salon.isHiring ? <HiringCornerBadge /> : null}
+      <BusinessCornerBadges hiring={salon.isHiring} hasClass={salon.hasClass} />
       <AppImage
         uri={salon.image}
         style={styles.verifiedSalonImage}

@@ -54,6 +54,8 @@ export type AvailableNowBusiness = {
   category?: { id: number; name: string } | null;
   /** Has an open job post — gold frame + HIRING corner badge, like other business cards */
   is_hiring?: boolean;
+  /** Has a master class listed in Deals — gold frame + class corner badge */
+  has_active_class?: boolean;
   is_official?: boolean;
   is_favorited?: boolean;
   /** true: Solo, or no staff yet — booked against the business's own hours */

@@ -93,7 +93,16 @@ import {
   getDefaultBusinessImage,
   getDefaultBusinessLogo,
 } from "@/src/services/remoteConfigService";
-import { HiringRing, HiringBanner } from "@/src/components/jobs/jobBadges";
+import {
+  HiringRing,
+  HiringBanner,
+  MasterClassBanner,
+  BusinessCornerBadges,
+  HIRING_CORNER_OVERHANG,
+} from "@/src/components/jobs/jobBadges";
+import ClassDealCard from "@/src/components/masterClasses/ClassDealCard";
+import { listPublic as listPublicClasses } from "@/src/services/masterClassService";
+import type { MasterClass } from "@/src/types/masterClass";
 import { JobListRow, JobRowsCard } from "@/src/components/jobs/jobCards";
 import { fetchBusinessJobPosts } from "@/src/services/jobService";
 import type { JobPost } from "@/src/types/jobs";
@@ -1077,6 +1086,19 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
     },
+    classesRow: {
+      paddingHorizontal: moderateWidthScale(20),
+      paddingTop: HIRING_CORNER_OVERHANG,
+      paddingBottom: moderateHeightScale(16),
+      gap: moderateWidthScale(12),
+    },
+    businessLogoWrap: {
+      position: "relative",
+    },
+    businessLogoClass: {
+      borderWidth: 2.5,
+      borderColor: theme.orangeBrown,
+    },
     jobsHead: {
       flexDirection: "row",
       alignItems: "flex-start",
@@ -1710,6 +1732,8 @@ export default function BusinessDetailScreen() {
     /** Shared offer link / email: open with this offer active */
     promotion_id?: string;
     promotion_source?: string;
+    /** Bring Customers Back email: claim code for a private offer */
+    promotion_claim?: string;
   }>();
   const isViewMode = params.viewMode === "true";
   const attributionReelId = params.reel_id
@@ -1852,6 +1876,10 @@ export default function BusinessDetailScreen() {
   const [jobPostsPage, setJobPostsPage] = useState(1);
   const [jobPostsTotal, setJobPostsTotal] = useState<number | null>(null);
   const [showAllJobs, setShowAllJobs] = useState(false);
+  // Master classes: listed while the business has `has_active_class`
+  const classesSectionRef = useRef<View>(null);
+  const [businessClasses, setBusinessClasses] = useState<MasterClass[]>([]);
+  const [businessClassesLoading, setBusinessClassesLoading] = useState(false);
   // Bumped on every details load, so the jobs list refreshes with the flag
   const [detailsVersion, setDetailsVersion] = useState(0);
   const scrolledToJobsRef = useRef(false);
@@ -1879,6 +1907,10 @@ export default function BusinessDetailScreen() {
     params.promotion_source === "reel"
       ? params.promotion_source
       : "profile";
+  const linkedPromotionClaim =
+    typeof params.promotion_claim === "string" && params.promotion_claim.trim()
+      ? params.promotion_claim.trim()
+      : undefined;
   const linkedPromotionAppliedRef = useRef(false);
 
   // Deep link / notification: open memberships segment (R-16 follow_new_membership)
@@ -1992,6 +2024,8 @@ export default function BusinessDetailScreen() {
       const res = await fetchBusinessPromotions(params.business_id);
       setProfilePromotions(res.promotions);
       setPromotionChipLabel(res.chip_label);
+      // bookingNow reads these to show the offer price before checkout
+      res.promotions.forEach(rememberPromotion);
     } catch (err) {
       Logger.error("Failed to load business promotions:", err);
     }
@@ -2004,7 +2038,11 @@ export default function BusinessDetailScreen() {
           !cached ||
           (!isGuest && !!user.accessToken && cached.eligibility?.eligible == null);
         const offer = stale
-          ? await fetchPublicPromotion(linkedPromotionId, linkedPromotionSource)
+          ? await fetchPublicPromotion(
+              linkedPromotionId,
+              linkedPromotionSource,
+              linkedPromotionClaim,
+            )
           : cached;
         if (offer && stale) rememberPromotion(offer);
         if (offer && (!offer.business || String(offer.business.id) === String(params.business_id))) {
@@ -2018,6 +2056,7 @@ export default function BusinessDetailScreen() {
     params.business_id,
     linkedPromotionId,
     linkedPromotionSource,
+    linkedPromotionClaim,
     isGuest,
     user.accessToken,
   ]);
@@ -2032,6 +2071,8 @@ export default function BusinessDetailScreen() {
   useFocusEffect(
     useCallback(() => {
       void loadPromotions();
+      // iOS keeps a Modal on top of screens pushed above this one: close on blur
+      return () => setPromoSheetVisible(false);
     }, [loadPromotions]),
   );
 
@@ -2074,6 +2115,40 @@ export default function BusinessDetailScreen() {
       setActiveTab((tab) => (tab === "Jobs" ? "Service" : tab));
     }
   }, [isHiring, detailsVersion, loadJobPosts]);
+
+  // `has_active_class` → that business's listed classes (no distance limit)
+  const hasActiveClass = businessData?.has_active_class === true;
+  useEffect(() => {
+    if (!hasActiveClass || !params.business_id) {
+      setBusinessClasses([]);
+      return;
+    }
+    let cancelled = false;
+    setBusinessClassesLoading(true);
+    listPublicClasses({ business_id: Number(params.business_id), per_page: 20 })
+      .then(({ items }) => {
+        if (!cancelled) setBusinessClasses(items.filter((c) => c && c.id));
+      })
+      .catch((err) => Logger.error("Failed to load business classes:", err))
+      .finally(() => {
+        if (!cancelled) setBusinessClassesLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [hasActiveClass, detailsVersion, params.business_id]);
+  const showClassesSection =
+    hasActiveClass && (businessClassesLoading || businessClasses.length > 0);
+
+  const scrollToClasses = () => {
+    const position = sectionPositions.current.classes;
+    if (position !== undefined && scrollViewRef.current) {
+      scrollViewRef.current.scrollTo({
+        y: Math.max(0, position - moderateHeightScale(80)),
+        animated: true,
+      });
+    }
+  };
 
   // Deep link / list card HIRING tag: open the Jobs section
   useEffect(() => {
@@ -3790,10 +3865,16 @@ export default function BusinessDetailScreen() {
     );
     if (rowOffer?.showDiscount) {
       bookParams.promotion_id = String(rowOffer.promotion.id);
-      bookParams.promotion_source =
-        rowOffer.promotion.id === linkedPromotionId
-          ? linkedPromotionSource
-          : "profile";
+      if (rowOffer.promotion.savings_label) {
+        bookParams.promotion_label = rowOffer.promotion.savings_label;
+      }
+      const isLinkedOffer = rowOffer.promotion.id === linkedPromotionId;
+      bookParams.promotion_source = isLinkedOffer
+        ? linkedPromotionSource
+        : "profile";
+      if (isLinkedOffer && linkedPromotionClaim) {
+        bookParams.promotion_claim = linkedPromotionClaim;
+      }
     }
     router.push({
       pathname: "/(main)/bookingNow",
@@ -4367,6 +4448,59 @@ export default function BusinessDetailScreen() {
       </View>
     );
   };
+
+  const renderClassesContent = () => (
+    <View
+      ref={classesSectionRef}
+      onLayout={() => {
+        measureSectionPosition(classesSectionRef, "classes");
+      }}
+      style={styles.contentContainer}
+    >
+      <View style={styles.sectionContentFullWidth}>
+        <View style={styles.jobsHead}>
+          <View style={styles.jobsHeadText}>
+            <Text style={styles.jobsTitle} accessibilityRole="header">
+              {t("mcProfileSectionTitle")}
+            </Text>
+            <Text style={styles.jobsSubtitle}>
+              {t("mcProfileSectionSubtitle", { name: businessName })}
+            </Text>
+          </View>
+          {isOwnerPreviewMode ? (
+            <TouchableOpacity
+              style={styles.jobsManage}
+              activeOpacity={0.7}
+              onPress={() => router.push("/(main)/masterClasses" as any)}
+              accessibilityRole="button"
+            >
+              <Text style={styles.jobsManageText}>{t("jobManage")}</Text>
+              <MaterialIcons
+                name="chevron-right"
+                size={moderateWidthScale(20)}
+                color={theme.buttonBack}
+              />
+            </TouchableOpacity>
+          ) : null}
+        </View>
+      </View>
+      {businessClasses.length === 0 ? (
+        <View style={styles.jobsLoading}>
+          <ActivityIndicator size="small" color={theme.darkGreen} />
+        </View>
+      ) : (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.classesRow}
+        >
+          {businessClasses.map((cls) => (
+            <ClassDealCard key={cls.id} masterClass={cls} />
+          ))}
+        </ScrollView>
+      )}
+    </View>
+  );
 
   const renderStaffContent = () => {
     if (staffMembers.length === 0) {
@@ -4947,11 +5081,17 @@ export default function BusinessDetailScreen() {
             style={styles.infoSheet}
           >
             <View style={styles.identityRow}>
-              <AppImage
-                uri={getBusinessLogoUrl()}
-                style={styles.businessLogo}
-                resizeMode="cover"
-              />
+              <View style={styles.businessLogoWrap}>
+                <AppImage
+                  uri={getBusinessLogoUrl()}
+                  style={[
+                    styles.businessLogo,
+                    hasActiveClass && styles.businessLogoClass,
+                  ]}
+                  resizeMode="cover"
+                />
+                <BusinessCornerBadges hasClass={hasActiveClass} size="sm" />
+              </View>
               <View style={styles.identityText}>
                 <View style={styles.nameRow}>
                   <Text style={styles.businessName} numberOfLines={2}>
@@ -5041,6 +5181,15 @@ export default function BusinessDetailScreen() {
               <HiringBanner
                 onPress={() => handleTabPress("Jobs")}
                 style={{ marginTop: moderateHeightScale(16) }}
+              />
+            ) : null}
+
+            {showClassesSection ? (
+              <MasterClassBanner
+                onPress={scrollToClasses}
+                style={{
+                  marginTop: moderateHeightScale(isHiring ? 10 : 16),
+                }}
               />
             ) : null}
 
@@ -5339,6 +5488,12 @@ export default function BusinessDetailScreen() {
 
           {renderServiceContent()}
           <View style={styles.divider} />
+          {showClassesSection && (
+            <>
+              {renderClassesContent()}
+              <View style={styles.divider} />
+            </>
+          )}
           {isHiring && (
             <>
               {renderJobsContent()}
@@ -5385,6 +5540,7 @@ export default function BusinessDetailScreen() {
         onClose={() => setPromoSheetVisible(false)}
         onViewServices={handleViewPromotionServices}
         onSignIn={isGuest ? handlePromotionSignIn : undefined}
+        skipViewForId={linkedPromotionId}
       />
 
       {/* Service Details Sheet */}

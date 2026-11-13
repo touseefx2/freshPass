@@ -4,8 +4,10 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View,
 } from "react-native";
+import { MaterialIcons } from "@expo/vector-icons";
 import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import { usePreventRemove } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
@@ -115,6 +117,20 @@ function isValidTime(value?: string | null): value is string {
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
     root: { flex: 1, backgroundColor: theme.background },
+    pmkOptInRow: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: moderateWidthScale(12),
+      paddingVertical: moderateHeightScale(12),
+      minHeight: moderateHeightScale(48),
+    },
+    pmkOptInText: {
+      flex: 1,
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
+      lineHeight: fontSize.size20,
+    },
     centered: {
       flex: 1,
       alignItems: "center",
@@ -295,6 +311,8 @@ export default function AddAppointmentScreen() {
 
   // ── Review / submit ────────────────────────────────────────────────────
   const [notes, setNotes] = useState("");
+  // New walk-in agreed to offer emails — unticked by default, sent only when ticked
+  const [marketingOptIn, setMarketingOptIn] = useState(false);
   const [busy, setBusy] = useState(false);
   const busyRef = useRef(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -631,7 +649,7 @@ export default function AddAppointmentScreen() {
         time,
         notes,
         ...(customerMode === "new"
-          ? { newCustomer }
+          ? { newCustomer, marketingOptIn }
           : { userId: customer!.id }),
       });
       setResult(booked);
@@ -782,6 +800,22 @@ export default function AddAppointmentScreen() {
               helper={t("oaEmailHelper")}
               error={newCustomerErrors.email}
             />
+            <TouchableOpacity
+              style={styles.pmkOptInRow}
+              activeOpacity={0.8}
+              onPress={() => setMarketingOptIn((v) => !v)}
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: marketingOptIn }}
+              accessibilityLabel={t("pmkWalkInOptIn")}
+              hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
+            >
+              <MaterialIcons
+                name={marketingOptIn ? "check-box" : "check-box-outline-blank"}
+                size={moderateWidthScale(24)}
+                color={marketingOptIn ? theme.darkGreen : theme.lightGreen}
+              />
+              <Text style={styles.pmkOptInText}>{t("pmkWalkInOptIn")}</Text>
+            </TouchableOpacity>
             {customerError ? (
               <InfoNote tone="error" icon="error-outline" text={customerError} />
             ) : null}

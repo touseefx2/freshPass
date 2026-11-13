@@ -7,7 +7,7 @@ import {
   type StyleProp,
   type ViewStyle,
 } from "react-native";
-import { MaterialIcons } from "@expo/vector-icons";
+import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
@@ -334,6 +334,106 @@ export function HiringCornerBadge({
     </View>
   );
 }
+
+/** Golden "Master Classes · View classes ›" banner on the business profile. */
+export function MasterClassBanner({
+  onPress,
+  style,
+}: {
+  onPress?: () => void;
+  style?: StyleProp<ViewStyle>;
+}) {
+  const { t } = useTranslation();
+  const { theme, styles } = useJobBadgeStyles();
+  return (
+    <TouchableOpacity
+      style={[styles.banner, style]}
+      onPress={onPress}
+      activeOpacity={0.85}
+      accessibilityRole="button"
+      accessibilityLabel={t("mcBusinessHasClassA11y")}
+    >
+      <View style={styles.bannerLeft}>
+        <Ionicons
+          name="school"
+          size={moderateWidthScale(16)}
+          color={theme.darkGreen}
+        />
+        <Text style={styles.bannerText}>{t("mcProfileBannerTitle")}</Text>
+      </View>
+      <View style={styles.bannerRight}>
+        <Text style={styles.bannerLink}>{t("mcProfileBannerLink")}</Text>
+        <MaterialIcons
+          name="chevron-right"
+          size={moderateWidthScale(18)}
+          color={theme.darkGreen}
+        />
+      </View>
+    </TouchableOpacity>
+  );
+}
+
+/** Gold circle with a cap: business has a master class listed. */
+function ClassCornerBadge({
+  size = "md",
+  shift = false,
+}: {
+  size?: "md" | "sm";
+  /** Sits left of a HIRING badge when the business has both. */
+  shift?: boolean;
+}) {
+  const { t } = useTranslation();
+  const { theme, styles } = useJobBadgeStyles();
+  const sm = size === "sm";
+  const step = sm ? moderateWidthScale(22) : HIRING_CORNER_OVERHANG * 2 + 4;
+  return (
+    <View
+      style={[
+        styles.cornerBadge,
+        sm ? styles.cornerBadgeSm : styles.cornerBadgeMd,
+        shift && {
+          right: (sm ? -moderateWidthScale(6) : -moderateWidthScale(4)) + step,
+        },
+      ]}
+      accessible
+      accessibilityLabel={t("mcBusinessHasClassA11y")}
+    >
+      <Ionicons
+        name="school"
+        size={moderateWidthScale(sm ? 11 : 15)}
+        color={theme.darkGreen}
+      />
+    </View>
+  );
+}
+
+/**
+ * Corner badges for a business card: HIRING briefcase (`is_hiring`) and/or
+ * master class cap (`has_active_class`). Pair with a gold frame when either
+ * is on (`hasBusinessGoldFrame`).
+ */
+export function BusinessCornerBadges({
+  hiring,
+  hasClass,
+  size = "md",
+}: {
+  hiring?: boolean;
+  hasClass?: boolean;
+  size?: "md" | "sm";
+}) {
+  return (
+    <>
+      {hiring ? <HiringCornerBadge size={size} /> : null}
+      {hasClass ? <ClassCornerBadge size={size} shift={!!hiring} /> : null}
+    </>
+  );
+}
+
+/** Gold frame + corner room: hiring or a listed master class. */
+export const hasBusinessGoldFrame = (b: {
+  isHiring?: boolean;
+  hasClass?: boolean;
+}) => b.isHiring === true || b.hasClass === true;
 
 const STATUS_ICONS: Record<JobPostStatus, IconName> = {
   open: "check-circle",

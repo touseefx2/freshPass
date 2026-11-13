@@ -7,7 +7,7 @@ import { StarIconSmall } from "@/assets/icons";
 import {
   HIRING_CORNER_OVERHANG,
   HIRING_FRAME_WIDTH,
-  HiringCornerBadge,
+  BusinessCornerBadges,
 } from "@/src/components/jobs/jobBadges";
 import { useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
@@ -209,6 +209,8 @@ export default function AvailableNowCard({
 
   const business = item.business;
   const isHiring = business?.is_hiring === true;
+  const hasClass = business?.has_active_class === true;
+  const goldFrame = isHiring || hasClass;
   const imageUri = businessImage(business);
   const ownerName = business?.owner?.name?.trim() || null;
   const badge = getAvailableNowBadge(item, t);
@@ -234,8 +236,8 @@ export default function AvailableNowCard({
       style={[
         styles.card,
         compact && styles.cardCompact,
-        isHiring && styles.cardHiring,
-        isHiring && !compact && styles.cardHiringSpaced,
+        goldFrame && styles.cardHiring,
+        goldFrame && !compact && styles.cardHiringSpaced,
       ]}
       onPress={() => onPress(item)}
       activeOpacity={0.9}
@@ -244,7 +246,7 @@ export default function AvailableNowCard({
         .filter(Boolean)
         .join(", ")}
     >
-      {isHiring ? <HiringCornerBadge /> : null}
+      <BusinessCornerBadges hiring={isHiring} hasClass={hasClass} />
       <AppImage
         uri={imageUri}
         style={styles.image}
