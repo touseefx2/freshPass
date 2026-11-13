@@ -15,24 +15,36 @@ import { salonNow } from "@/src/utils/salonTimezone";
 
 // The server checks "today" on the salon clock. Ahead-of-salon phones (e.g.
 // Pakistan vs Detroit) would otherwise offer a day the server calls future.
-let cachedSalonZone: string | null | undefined;
+// Keyed by business so a sign-out / account switch never reuses another salon's zone.
+const zoneByBusiness = new Map<number, string | null>();
 function useSalonToday(): string | null {
   const user = useAppSelector((state: any) => state.user);
   const businessId = Number(user?.business_id);
-  const [zone, setZone] = useState<string | null | undefined>(cachedSalonZone);
+  const validId = Number.isFinite(businessId) && businessId > 0;
+  const [fetched, setFetched] = useState<{ id: number; zone: string | null } | null>(
+    null,
+  );
+  const zone = !validId
+    ? null
+    : zoneByBusiness.has(businessId)
+      ? (zoneByBusiness.get(businessId) ?? null)
+      : fetched?.id === businessId
+        ? fetched.zone
+        : null;
   useEffect(() => {
-    if (zone !== undefined || !Number.isFinite(businessId) || businessId <= 0) return;
+    if (!validId || zoneByBusiness.has(businessId)) return;
     let alive = true;
     fetchOwnerBusinessHours(businessId)
       .then((h) => {
-        cachedSalonZone = h?.timezone ?? null;
-        if (alive) setZone(cachedSalonZone);
+        const z = h?.timezone ?? null;
+        zoneByBusiness.set(businessId, z);
+        if (alive) setFetched({ id: businessId, zone: z });
       })
       .catch(() => {});
     return () => {
       alive = false;
     };
-  }, [zone, businessId]);
+  }, [businessId, validId]);
   return zone ? salonNow(null, zone).day : null;
 }
 
