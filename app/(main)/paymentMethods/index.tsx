@@ -1,7 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Animated,
   Dimensions,
+  Easing,
   Modal,
   Platform,
   RefreshControl,
@@ -1106,6 +1108,219 @@ const cardStyles = StyleSheet.create({
   },
 });
 
+/* ── Loading: mini cards slide out of each other's corner, then tuck back ── */
+const MINI_W = moderateWidthScale(104);
+const MINI_H = moderateWidthScale(66);
+const FAN_X = moderateWidthScale(26);
+const FAN_Y = moderateWidthScale(20);
+
+function MiniCard({ colors }: { colors: [string, string] }) {
+  return (
+    <LinearGradient
+      colors={colors}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      style={loaderStyles.mini}
+    >
+      <View style={loaderStyles.miniChip} />
+      <View style={loaderStyles.miniDotsRow}>
+        <View style={loaderStyles.miniDot} />
+        <View style={loaderStyles.miniDot} />
+        <View style={loaderStyles.miniDotLast} />
+      </View>
+      <View style={loaderStyles.miniDeco} />
+    </LinearGradient>
+  );
+}
+
+function CardStackLoader() {
+  const second = useRef(new Animated.Value(0)).current;
+  const third = useRef(new Animated.Value(0)).current;
+  const float = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const out = (v: Animated.Value) =>
+      Animated.timing(v, {
+        toValue: 1,
+        duration: 420,
+        easing: Easing.out(Easing.back(1.4)),
+        useNativeDriver: true,
+      });
+    const back = (v: Animated.Value) =>
+      Animated.timing(v, {
+        toValue: 0,
+        duration: 340,
+        easing: Easing.inOut(Easing.cubic),
+        useNativeDriver: true,
+      });
+    const fan = Animated.loop(
+      Animated.sequence([
+        out(second),
+        out(third),
+        Animated.delay(380),
+        back(third),
+        back(second),
+        Animated.delay(220),
+      ]),
+    );
+    const bob = Animated.loop(
+      Animated.sequence([
+        Animated.timing(float, {
+          toValue: 1,
+          duration: 900,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+        Animated.timing(float, {
+          toValue: 0,
+          duration: 900,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+    fan.start();
+    bob.start();
+    return () => {
+      fan.stop();
+      bob.stop();
+    };
+  }, [second, third, float]);
+
+  const fanStyle = (v: Animated.Value, step: number) => ({
+    transform: [
+      { translateX: v.interpolate({ inputRange: [0, 1], outputRange: [0, FAN_X * step] }) },
+      { translateY: v.interpolate({ inputRange: [0, 1], outputRange: [0, FAN_Y * step] }) },
+      {
+        rotate: v.interpolate({
+          inputRange: [0, 1],
+          outputRange: ["0deg", `${7 * step}deg`],
+        }),
+      },
+    ],
+  });
+
+  return (
+    <View style={loaderStyles.wrap}>
+      <Animated.View
+        style={[
+          loaderStyles.stage,
+          {
+            transform: [
+              {
+                translateY: float.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0, -moderateWidthScale(6)],
+                }),
+              },
+            ],
+          },
+        ]}
+      >
+        <Animated.View style={[loaderStyles.layer, { zIndex: 1 }, fanStyle(third, 2)]}>
+          <MiniCard colors={BRAND_GRADIENTS.visa} />
+        </Animated.View>
+        <Animated.View style={[loaderStyles.layer, { zIndex: 2 }, fanStyle(second, 1)]}>
+          <MiniCard colors={BRAND_GRADIENTS.mastercard} />
+        </Animated.View>
+        <View style={[loaderStyles.layer, { zIndex: 3 }]}>
+          <MiniCard colors={BRAND_GRADIENTS.default} />
+        </View>
+      </Animated.View>
+    </View>
+  );
+}
+
+const loaderStyles = StyleSheet.create({
+  wrap: { alignItems: "center" },
+  stage: {
+    width: MINI_W + FAN_X * 2,
+    height: MINI_H + FAN_Y * 2 + moderateWidthScale(12),
+  },
+  layer: { position: "absolute", top: 0, left: 0 },
+  mini: {
+    width: MINI_W,
+    height: MINI_H,
+    borderRadius: moderateWidthScale(10),
+    padding: moderateWidthScale(10),
+    justifyContent: "space-between",
+    overflow: "hidden",
+    borderWidth: 0.5,
+    borderColor: "rgba(255,255,255,0.15)",
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.25,
+        shadowRadius: 8,
+      },
+      android: { elevation: 6, shadowColor: "#000" },
+      default: {},
+    }),
+  },
+  miniChip: {
+    width: moderateWidthScale(18),
+    height: moderateWidthScale(13),
+    borderRadius: moderateWidthScale(3),
+    backgroundColor: "rgba(255,215,0,0.45)",
+  },
+  miniDotsRow: { flexDirection: "row", gap: moderateWidthScale(5) },
+  miniDot: {
+    width: moderateWidthScale(16),
+    height: moderateWidthScale(5),
+    borderRadius: moderateWidthScale(3),
+    backgroundColor: "rgba(255,255,255,0.25)",
+  },
+  miniDotLast: {
+    width: moderateWidthScale(22),
+    height: moderateWidthScale(5),
+    borderRadius: moderateWidthScale(3),
+    backgroundColor: "rgba(255,255,255,0.45)",
+  },
+  miniDeco: {
+    position: "absolute",
+    top: -moderateWidthScale(14),
+    right: -moderateWidthScale(12),
+    width: moderateWidthScale(46),
+    height: moderateWidthScale(46),
+    borderRadius: moderateWidthScale(23),
+    backgroundColor: "rgba(255,255,255,0.06)",
+  },
+});
+
+/* ── Loaded cards rise in one by one ── */
+function RiseIn({ index, children }: { index: number; children: React.ReactNode }) {
+  const v = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    const anim = Animated.timing(v, {
+      toValue: 1,
+      duration: 620,
+      delay: 80 + Math.min(index, 6) * 180,
+      easing: Easing.out(Easing.back(1.3)),
+      useNativeDriver: true,
+    });
+    anim.start();
+    return () => anim.stop();
+  }, [v]);
+  return (
+    <Animated.View
+      style={{
+        opacity: v.interpolate({
+          inputRange: [0, 0.5],
+          outputRange: [0, 1],
+          extrapolate: "clamp",
+        }),
+        transform: [
+          { translateY: v.interpolate({ inputRange: [0, 1], outputRange: [70, 0] }) },
+          { scale: v.interpolate({ inputRange: [0, 1], outputRange: [0.88, 1] }) },
+        ],
+      }}
+    >
+      {children}
+    </Animated.View>
+  );
+}
+
 export default function PaymentMethodsScreen() {
   const { colors } = useTheme();
   const theme = colors as Theme;
@@ -1326,7 +1541,7 @@ export default function PaymentMethodsScreen() {
         {/* Loading */}
         {loading && cards.length === 0 && (
           <View style={styles.centered}>
-            <ActivityIndicator size="large" color={theme.darkGreen} />
+            <CardStackLoader />
           </View>
         )}
 
@@ -1338,22 +1553,25 @@ export default function PaymentMethodsScreen() {
         {/* Card grid */}
         {sortedCards.length > 0 && (
           <View style={styles.cardGrid}>
-            {sortedCards.map((card) => (
-              <CreditCard
-                key={card.id}
-                card={card}
-                onMakeDefault={() => handleSetDefault(card)}
-                onDelete={() => handleDelete(card)}
-                isSettingDefault={settingDefault === card.id}
-                isDeleting={deleting === card.id}
-                theme={theme}
-              />
+            {sortedCards.map((card, i) => (
+              <RiseIn key={card.id} index={i}>
+                <CreditCard
+                  card={card}
+                  onMakeDefault={() => handleSetDefault(card)}
+                  onDelete={() => handleDelete(card)}
+                  isSettingDefault={settingDefault === card.id}
+                  isDeleting={deleting === card.id}
+                  theme={theme}
+                />
+              </RiseIn>
             ))}
             {!showAddCard && (
-              <AddCardButton
-                onPress={() => setShowAddCard(true)}
-                theme={theme}
-              />
+              <RiseIn index={sortedCards.length}>
+                <AddCardButton
+                  onPress={() => setShowAddCard(true)}
+                  theme={theme}
+                />
+              </RiseIn>
             )}
           </View>
         )}
@@ -1519,13 +1737,16 @@ const createStyles = (theme: Theme) =>
   StyleSheet.create({
     container: { flex: 1, backgroundColor: theme.background },
     scroll: {
+      flexGrow: 1,
       paddingHorizontal: moderateWidthScale(16),
       paddingTop: moderateHeightScale(8),
       paddingBottom: moderateHeightScale(40),
     },
     centered: {
-      paddingVertical: moderateHeightScale(60),
+      flex: 1,
+      justifyContent: "center",
       alignItems: "center",
+      paddingBottom: moderateHeightScale(60),
     },
     cardGrid: {
       flexDirection: "row",
