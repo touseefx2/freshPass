@@ -1640,7 +1640,6 @@ export default function PaymentMethodsScreen() {
                 onPress={() => {
                   setShowAddCard(false);
                   setCardComplete(false);
-                  setCardholderName("");
                 }}
                 disabled={saving}
                 activeOpacity={0.7}

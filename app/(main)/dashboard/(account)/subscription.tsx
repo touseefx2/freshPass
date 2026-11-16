@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useCallback, useRef } from "react";
+import React, { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import {
   StyleSheet,
   ScrollView,
@@ -1117,8 +1117,17 @@ export default function SubscriptionScreen() {
   const [includesExpanded, setIncludesExpanded] = useState(false);
   const [managing, setManaging] = useState(false);
 
+  const userRole = useAppSelector((state) => state.user.userRole);
   const businessStatus = useAppSelector((state) => state.user.businessStatus);
   const isSoloPlanActive = isSoloSubscription(businessStatus);
+
+  // Business subscription screen should never be visible in customer mode.
+  // If the user switched modes while this screen was on the Account stack, pop it.
+  useEffect(() => {
+    if (userRole === "customer" && router.canGoBack()) {
+      router.back();
+    }
+  }, [userRole]);
 
   const isCancelled = isStripeCancelled(subscription?.stripeStatus);
   const isTrialing = subscription
