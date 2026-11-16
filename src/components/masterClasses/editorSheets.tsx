@@ -651,7 +651,7 @@ export function WheelTimePickerSheet({
         <View style={ws.highlightBand} pointerEvents="none">
           <View style={ws.highlightInner} />
         </View>
-        <View style={ws.colonWrap} pointerEvents="none">
+        <View style={ws.colonWrap}>
           <Text style={ws.colon}>:</Text>
         </View>
         <View style={ws.columns} key={key}>
@@ -906,18 +906,18 @@ const createWheelStyles = (theme: Theme) =>
     colonWrap: {
       position: "absolute",
       left: 0,
-      right: 0,
+      width: "66.66%",
       top: WHEEL_ITEM_H * 2,
       height: WHEEL_ITEM_H,
       justifyContent: "center",
       alignItems: "center",
       zIndex: 2,
+      pointerEvents: "none",
     },
     colon: {
       fontSize: fontSize.size28 ?? 28,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
-      marginRight: moderateWidthScale(2),
     },
     columns: {
       flexDirection: "row",
