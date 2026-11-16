@@ -84,6 +84,7 @@ function PreviewPlayer({
   // Same player as chat / AI results: expo-video with native controls.
   const player = useVideoPlayer(uri, (p) => {
     p.loop = false;
+    p.showNowPlayingNotification = true;
     p.play();
   });
 
