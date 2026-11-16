@@ -1,5 +1,6 @@
-import React, { useMemo, useState, useEffect, useRef } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import {
+  Alert,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -21,7 +22,7 @@ import {
   setDayAvailability,
 } from "@/src/state/slices/completeProfileSlice";
 import ModalizeBottomSheet from "@/src/components/modalizeBottomSheet";
-import PickerDropdown from "@/src/components/PickerDropdown";
+import { WheelTimePickerSheet } from "@/src/components/masterClasses/editorSheets";
 import {
   DayHoursBounds,
   formatBoundsLabel,
@@ -79,6 +80,16 @@ interface BreakTime {
   tillHours: number;
   tillMinutes: number;
 }
+
+type WheelTarget = "from" | "till" | `breakFrom-${number}` | `breakTill-${number}` | null;
+
+const toHHmm = (h: number, m: number): string =>
+  `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`;
+
+const fromHHmm = (hhmm: string): { hours: number; minutes: number } => {
+  const [h, m] = hhmm.split(":").map(Number);
+  return { hours: h ?? 0, minutes: m ?? 0 };
+};
 
 const DAYS = [
   "Sunday",
@@ -312,24 +323,11 @@ export default function BusinessHoursBottomSheet({
   const [breaks, setBreaks] = useState<BreakTime[]>(dayData.breaks || []);
   const [copyHoursEnabled, setCopyHoursEnabled] = useState(false);
   const [selectedDays, setSelectedDays] = useState<string[]>([]);
-  const [showFromDropdown, setShowFromDropdown] = useState(false);
-  const [showTillDropdown, setShowTillDropdown] = useState(false);
-  const [showBreakFromDropdown, setShowBreakFromDropdown] = useState<
-    number | null
-  >(null);
-  const [showBreakTillDropdown, setShowBreakTillDropdown] = useState<
-    number | null
-  >(null);
+  const [wheelTarget, setWheelTarget] = useState<WheelTarget>(null);
   const [openingHoursError, setOpeningHoursError] = useState<string | null>(
     null,
   );
   const [breakTimeError, setBreakTimeError] = useState<string | null>(null);
-
-  // Refs for dropdown positioning
-  const fromButtonRef = useRef<View>(null);
-  const tillButtonRef = useRef<View>(null);
-  const breakFromButtonRefs = useRef<{ [key: number]: View | null }>({});
-  const breakTillButtonRefs = useRef<{ [key: number]: View | null }>({});
 
   const copyableDays = useMemo(() => {
     const otherDays = DAYS.filter((d) => d !== day);
@@ -641,41 +639,6 @@ export default function BusinessHoursBottomSheet({
     }
   };
 
-  const handleTimeSelect = (
-    hours: number,
-    minutes: number,
-    type: "from" | "till" | "breakFrom" | "breakTill",
-    breakIndex?: number,
-  ) => {
-    if (type === "from") {
-      setFromHours(hours);
-      setFromMinutes(minutes);
-      setShowFromDropdown(false);
-    } else if (type === "till") {
-      setTillHours(hours);
-      setTillMinutes(minutes);
-      setShowTillDropdown(false);
-    } else if (type === "breakFrom" && breakIndex !== undefined) {
-      const updatedBreaks = [...breaks];
-      updatedBreaks[breakIndex] = {
-        ...updatedBreaks[breakIndex],
-        fromHours: hours,
-        fromMinutes: minutes,
-      };
-      setBreaks(updatedBreaks);
-      setShowBreakFromDropdown(null);
-    } else if (type === "breakTill" && breakIndex !== undefined) {
-      const updatedBreaks = [...breaks];
-      updatedBreaks[breakIndex] = {
-        ...updatedBreaks[breakIndex],
-        tillHours: hours,
-        tillMinutes: minutes,
-      };
-      setBreaks(updatedBreaks);
-      setShowBreakTillDropdown(null);
-    }
-  };
-
   const formatTime = (hours: number, minutes: number): string => {
     // Always format time, even if it's 12:00 AM (0,0)
     const period = hours >= 12 ? "PM" : "AM";
@@ -719,9 +682,8 @@ export default function BusinessHoursBottomSheet({
             <View style={styles.inputWrapper}>
               <Text style={styles.inputLabel}>From</Text>
               <TouchableOpacity
-                ref={fromButtonRef}
                 style={styles.dropdownButton}
-                onPress={() => setShowFromDropdown(true)}
+                onPress={() => setWheelTarget("from")}
               >
                 {fromHours !== undefined && fromMinutes !== undefined ? (
                   <Text style={styles.dropdownText}>
@@ -740,9 +702,8 @@ export default function BusinessHoursBottomSheet({
             <View style={styles.inputWrapper}>
               <Text style={styles.inputLabel}>Till</Text>
               <TouchableOpacity
-                ref={tillButtonRef}
                 style={styles.dropdownButton}
-                onPress={() => setShowTillDropdown(true)}
+                onPress={() => setWheelTarget("till")}
               >
                 {tillHours !== undefined && tillMinutes !== undefined ? (
                   <Text style={styles.dropdownText}>
@@ -785,13 +746,8 @@ export default function BusinessHoursBottomSheet({
               <View style={styles.inputWrapper}>
                 <Text style={styles.inputLabel}>From</Text>
                 <TouchableOpacity
-                  ref={(ref) => {
-                    if (ref) {
-                      breakFromButtonRefs.current[index] = ref;
-                    }
-                  }}
                   style={styles.dropdownButton}
-                  onPress={() => setShowBreakFromDropdown(index)}
+                  onPress={() => setWheelTarget(`breakFrom-${index}`)}
                 >
                   {breakTime.fromHours !== undefined &&
                   breakTime.fromMinutes !== undefined ? (
@@ -811,13 +767,8 @@ export default function BusinessHoursBottomSheet({
               <View style={styles.inputWrapper}>
                 <Text style={styles.inputLabel}>Till</Text>
                 <TouchableOpacity
-                  ref={(ref) => {
-                    if (ref) {
-                      breakTillButtonRefs.current[index] = ref;
-                    }
-                  }}
                   style={styles.dropdownButton}
-                  onPress={() => setShowBreakTillDropdown(index)}
+                  onPress={() => setWheelTarget(`breakTill-${index}`)}
                 >
                   {breakTime.tillHours !== undefined &&
                   breakTime.tillMinutes !== undefined ? (
@@ -938,84 +889,67 @@ export default function BusinessHoursBottomSheet({
         </View>
       </ModalizeBottomSheet>
 
-      <PickerDropdown
-        visible={showFromDropdown}
-        currentHours={fromHours}
-        currentMinutes={fromMinutes}
-        onSelect={(hours, minutes) => handleTimeSelect(hours, minutes, "from")}
-        onClose={() => setShowFromDropdown(false)}
-        buttonRef={fromButtonRef}
-        minHours={
-          constrainToBusiness ? businessBounds!.fromHours : undefined
-        }
-        minMinutes={
-          constrainToBusiness ? businessBounds!.fromMinutes : undefined
-        }
-        maxHours={
-          constrainToBusiness ? businessBounds!.tillHours : undefined
-        }
-        maxMinutes={
-          constrainToBusiness ? businessBounds!.tillMinutes : undefined
-        }
+      <WheelTimePickerSheet
+        visible={!!wheelTarget}
+        value={(() => {
+          if (wheelTarget === "from") return toHHmm(fromHours, fromMinutes);
+          if (wheelTarget === "till") return toHHmm(tillHours, tillMinutes);
+          if (wheelTarget?.startsWith("breakFrom-")) {
+            const idx = Number(wheelTarget.split("-")[1]);
+            const b = breaks[idx];
+            return b ? toHHmm(b.fromHours, b.fromMinutes) : null;
+          }
+          if (wheelTarget?.startsWith("breakTill-")) {
+            const idx = Number(wheelTarget.split("-")[1]);
+            const b = breaks[idx];
+            return b ? toHHmm(b.tillHours, b.tillMinutes) : null;
+          }
+          return null;
+        })()}
+        onConfirm={(time) => {
+          const { hours, minutes } = fromHHmm(time);
+          const isBreak = wheelTarget?.startsWith("breakFrom-") || wheelTarget?.startsWith("breakTill-");
+          if (isBreak) {
+            const totalSelected = getTotalMinutes(hours, minutes);
+            const openFrom = getTotalMinutes(fromHours, fromMinutes);
+            const openTill = getTotalMinutes(tillHours, tillMinutes);
+            const overnight = openFrom > openTill;
+            const outOfRange = overnight
+              ? totalSelected < openFrom && totalSelected > openTill
+              : totalSelected < openFrom || totalSelected > openTill;
+            if (outOfRange) {
+              Alert.alert(
+                "Invalid time",
+                `Break time must be within opening hours (${formatTime(fromHours, fromMinutes)} – ${formatTime(tillHours, tillMinutes)}).`,
+              );
+              return;
+            }
+          }
+          if (wheelTarget === "from") {
+            setFromHours(hours);
+            setFromMinutes(minutes);
+          } else if (wheelTarget === "till") {
+            setTillHours(hours);
+            setTillMinutes(minutes);
+          } else if (wheelTarget?.startsWith("breakFrom-")) {
+            const idx = Number(wheelTarget.split("-")[1]);
+            setBreaks((prev) => {
+              const next = [...prev];
+              next[idx] = { ...next[idx], fromHours: hours, fromMinutes: minutes };
+              return next;
+            });
+          } else if (wheelTarget?.startsWith("breakTill-")) {
+            const idx = Number(wheelTarget.split("-")[1]);
+            setBreaks((prev) => {
+              const next = [...prev];
+              next[idx] = { ...next[idx], tillHours: hours, tillMinutes: minutes };
+              return next;
+            });
+          }
+          setWheelTarget(null);
+        }}
+        onClose={() => setWheelTarget(null)}
       />
-
-      <PickerDropdown
-        visible={showTillDropdown}
-        currentHours={tillHours}
-        currentMinutes={tillMinutes}
-        onSelect={(hours, minutes) => handleTimeSelect(hours, minutes, "till")}
-        onClose={() => setShowTillDropdown(false)}
-        buttonRef={tillButtonRef}
-        minHours={
-          constrainToBusiness ? businessBounds!.fromHours : undefined
-        }
-        minMinutes={
-          constrainToBusiness ? businessBounds!.fromMinutes : undefined
-        }
-        maxHours={
-          constrainToBusiness ? businessBounds!.tillHours : undefined
-        }
-        maxMinutes={
-          constrainToBusiness ? businessBounds!.tillMinutes : undefined
-        }
-      />
-
-      {breaks.map((breakTime, index) => {
-        const breakFromRef = breakFromButtonRefs.current[index];
-        const breakTillRef = breakTillButtonRefs.current[index];
-        return (
-          <React.Fragment key={index}>
-            <PickerDropdown
-              visible={showBreakFromDropdown === index}
-              currentHours={breakTime.fromHours}
-              currentMinutes={breakTime.fromMinutes}
-              onSelect={(hours, minutes) =>
-                handleTimeSelect(hours, minutes, "breakFrom", index)
-              }
-              onClose={() => setShowBreakFromDropdown(null)}
-              buttonRef={breakFromRef ? { current: breakFromRef } : undefined}
-              minHours={fromHours}
-              minMinutes={fromMinutes}
-              maxHours={tillHours}
-              maxMinutes={tillMinutes}
-            />
-            <PickerDropdown
-              visible={showBreakTillDropdown === index}
-              currentHours={breakTime.tillHours}
-              currentMinutes={breakTime.tillMinutes}
-              onSelect={(hours, minutes) =>
-                handleTimeSelect(hours, minutes, "breakTill", index)
-              }
-              onClose={() => setShowBreakTillDropdown(null)}
-              buttonRef={breakTillRef ? { current: breakTillRef } : undefined}
-              minHours={fromHours}
-              minMinutes={fromMinutes}
-              maxHours={tillHours}
-              maxMinutes={tillMinutes}
-            />
-          </React.Fragment>
-        );
-      })}
     </>
   );
 }
