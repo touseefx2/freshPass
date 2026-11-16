@@ -125,6 +125,8 @@ export interface MasterClass {
   meeting_url: string | null;
   schedule_type?: "weekly" | "specific_dates" | null;
   meeting_days?: number[] | null;
+  /** "YYYY-MM-DD"[] — individual session dates for specific_dates schedule. */
+  specific_dates?: string[] | null;
 
   media: MasterClassMedia | null;
   business: MasterClassBusiness | null;
@@ -222,6 +224,8 @@ export interface MasterClassPayload {
   media_asset_id?: number | null;
   schedule_type?: "weekly" | "specific_dates" | null;
   meeting_days?: number[] | null;
+  /** "YYYY-MM-DD"[] — individual session dates for specific_dates schedule. */
+  specific_dates?: string[] | null;
 }
 
 /** `GET /master-classes` — same filters as the Deals business call. */

@@ -1,9 +1,11 @@
 // Bottom sheets for the class editor: option list (type / duration),
 // date (month strip, past days off) and time (period tabs + chips).
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Modal,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -34,7 +36,12 @@ import {
   type DayPeriod,
 } from "@/src/components/ownerBooking/ownerBookingParts";
 import type { IoniconName } from "@/src/components/masterClasses/parts";
-import { formatClassTime } from "@/src/utils/masterClassHelpers";
+import {
+  DURATION_OPTIONS,
+  formatClassTime,
+  formatDuration,
+} from "@/src/utils/masterClassHelpers";
+import { endTimeText, getTimezoneLabel } from "@/src/components/masterClasses/editorStepParts";
 import { salonNow } from "@/src/utils/salonTimezone";
 
 const useSheetStyles = () => {
@@ -459,6 +466,585 @@ export function EditorTimeSheet({
     </EditorSheet>
   );
 }
+
+// ── Wheel Time Picker ──────────────────────────────────────────────
+
+const WHEEL_ITEM_H = moderateHeightScale(52);
+const WHEEL_VISIBLE = 5;
+const WHEEL_PAD = WHEEL_ITEM_H * 2;
+
+const HOURS = Array.from({ length: 12 }, (_, i) => i + 1);
+const MINUTES = [0, 15, 30, 45];
+const AMPM = ["AM", "PM"];
+
+const padTwo = (n: number) => String(n).padStart(2, "0");
+
+function parseHHmm(value: string | null): {
+  hourIdx: number;
+  minuteIdx: number;
+  ampmIdx: number;
+} {
+  if (!value) return { hourIdx: 8, minuteIdx: 0, ampmIdx: 0 };
+  const [hStr, mStr] = value.split(":");
+  const h24 = parseInt(hStr, 10) || 0;
+  const m = parseInt(mStr, 10) || 0;
+  const h12 = h24 % 12 || 12;
+  const ampmIdx = h24 >= 12 ? 1 : 0;
+  let minuteIdx = MINUTES.indexOf(m);
+  if (minuteIdx < 0) {
+    minuteIdx = MINUTES.reduce(
+      (best, v, i) => (Math.abs(v - m) < Math.abs(MINUTES[best] - m) ? i : best),
+      0,
+    );
+  }
+  return { hourIdx: h12 - 1, minuteIdx, ampmIdx };
+}
+
+function toHHmm(hourIdx: number, minuteIdx: number, ampmIdx: number): string {
+  const h12 = HOURS[hourIdx] ?? 9;
+  const m = MINUTES[minuteIdx] ?? 0;
+  const h24 = ampmIdx === 0 ? (h12 === 12 ? 0 : h12) : h12 === 12 ? 12 : h12 + 12;
+  return `${padTwo(h24)}:${padTwo(m)}`;
+}
+
+function WheelColumn({
+  items,
+  selectedIdx,
+  onSelect,
+}: {
+  items: readonly string[];
+  selectedIdx: number;
+  onSelect: (idx: number) => void;
+}) {
+  const { colors } = useTheme();
+  const theme = colors as Theme;
+  const ws = useMemo(() => createWheelStyles(theme), [colors]);
+  const scrollRef = useRef<ScrollView>(null);
+  const ignoreNext = useRef(false);
+
+  // Position on mount only — the `key` prop on the columns container
+  // remounts this component when the sheet opens, so [] deps is correct.
+  useEffect(() => {
+    const t = setTimeout(() => {
+      scrollRef.current?.scrollTo({ y: selectedIdx * WHEEL_ITEM_H, animated: false });
+    }, 50);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleScrollEnd = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      if (ignoreNext.current) { ignoreNext.current = false; return; }
+      const y = e.nativeEvent.contentOffset.y;
+      const idx = Math.round(y / WHEEL_ITEM_H);
+      const clamped = Math.max(0, Math.min(items.length - 1, idx));
+      onSelect(clamped);
+      const target = clamped * WHEEL_ITEM_H;
+      if (Math.abs(y - target) > 2) {
+        ignoreNext.current = true;
+        scrollRef.current?.scrollTo({ y: target, animated: true });
+      }
+    },
+    [items.length, onSelect],
+  );
+
+  const tapItem = useCallback(
+    (i: number) => {
+      ignoreNext.current = true;
+      onSelect(i);
+      scrollRef.current?.scrollTo({ y: i * WHEEL_ITEM_H, animated: true });
+    },
+    [onSelect],
+  );
+
+  return (
+    <View style={ws.column}>
+      <ScrollView
+        ref={scrollRef}
+        showsVerticalScrollIndicator={false}
+        snapToInterval={WHEEL_ITEM_H}
+        decelerationRate={0.993}
+        onMomentumScrollEnd={handleScrollEnd}
+        onScrollEndDrag={handleScrollEnd}
+        contentContainerStyle={{ paddingVertical: WHEEL_PAD }}
+        nestedScrollEnabled
+        keyboardShouldPersistTaps="always"
+      >
+        {items.map((item, i) => {
+          const dist = Math.abs(i - selectedIdx);
+          const opacity = dist === 0 ? 1 : dist === 1 ? 0.55 : dist === 2 ? 0.25 : 0.12;
+          const isCenter = dist === 0;
+          return (
+            <TouchableOpacity
+              key={`${item}-${i}`}
+              style={ws.item}
+              activeOpacity={0.7}
+              onPress={() => tapItem(i)}
+            >
+              <Text style={[isCenter ? ws.itemTextCenter : ws.itemText, { opacity }]}>
+                {item}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
+    </View>
+  );
+}
+
+export function WheelTimePickerSheet({
+  visible,
+  value,
+  onConfirm,
+  onClose,
+}: {
+  visible: boolean;
+  value: string | null;
+  onConfirm: (time: string) => void;
+  onClose: () => void;
+}) {
+  const { colors } = useTheme();
+  const theme = colors as Theme;
+  const ws = useMemo(() => createWheelStyles(theme), [colors]);
+
+  const initial = parseHHmm(value);
+  const [hourIdx, setHourIdx] = useState(initial.hourIdx);
+  const [minuteIdx, setMinuteIdx] = useState(initial.minuteIdx);
+  const [ampmIdx, setAmpmIdx] = useState(initial.ampmIdx);
+  const [key, setKey] = useState(0);
+
+  useEffect(() => {
+    if (visible) {
+      const p = parseHHmm(value);
+      setHourIdx(p.hourIdx);
+      setMinuteIdx(p.minuteIdx);
+      setAmpmIdx(p.ampmIdx);
+      setKey((k) => k + 1);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible]);
+
+  const hourItems = useMemo(() => HOURS.map((h) => padTwo(h)), []);
+  const minuteItems = useMemo(() => MINUTES.map((m) => padTwo(m)), []);
+  const ampmItems = useMemo(() => [...AMPM], []);
+
+  const result = toHHmm(hourIdx, minuteIdx, ampmIdx);
+
+  return (
+    <EditorSheet
+      visible={visible}
+      title="Select Time"
+      onClose={onClose}
+      footer={
+        <SheetPrimaryButton
+          label={`Done · ${formatClassTime(result)}`}
+          onPress={() => onConfirm(result)}
+        />
+      }
+    >
+      <View style={ws.headers}>
+        <Text style={ws.headerText}>Hour</Text>
+        <Text style={ws.headerText}>Minute</Text>
+        <Text style={ws.headerText}>AM/PM</Text>
+      </View>
+      <View style={ws.pickerArea}>
+        <View style={ws.highlightBand} pointerEvents="none">
+          <View style={ws.highlightInner} />
+        </View>
+        <View style={ws.colonWrap} pointerEvents="none">
+          <Text style={ws.colon}>:</Text>
+        </View>
+        <View style={ws.columns} key={key}>
+          <WheelColumn
+            items={hourItems}
+            selectedIdx={hourIdx}
+            onSelect={setHourIdx}
+          />
+          <WheelColumn
+            items={minuteItems}
+            selectedIdx={minuteIdx}
+            onSelect={setMinuteIdx}
+          />
+          <WheelColumn
+            items={ampmItems}
+            selectedIdx={ampmIdx}
+            onSelect={setAmpmIdx}
+          />
+        </View>
+      </View>
+    </EditorSheet>
+  );
+}
+
+// ── Edit Session Sheet ─────────────────────────────────────────────
+
+export function EditSessionSheet({
+  visible,
+  date,
+  time,
+  duration,
+  timeZone,
+  onSave,
+  onRemove,
+  onClose,
+}: {
+  visible: boolean;
+  date: string;
+  time: string | null;
+  duration: number | null;
+  timeZone?: string | null;
+  onSave: (time: string | null, duration: number | null) => void;
+  onRemove: () => void;
+  onClose: () => void;
+}) {
+  const { colors } = useTheme();
+  const theme = colors as Theme;
+  const es = useMemo(() => createEditSessionStyles(theme), [colors]);
+
+  const [localTime, setLocalTime] = useState<string | null>(time);
+  const [localDuration, setLocalDuration] = useState<number | null>(duration);
+  const [showTimePicker, setShowTimePicker] = useState(false);
+  const [showDurationPicker, setShowDurationPicker] = useState(false);
+
+  useEffect(() => {
+    if (visible) {
+      setLocalTime(time);
+      setLocalDuration(duration);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible]);
+
+  const dateLabel = date ? dayjs(date).format("ddd, MMM D, YYYY") : "";
+  const endLabel = endTimeText(localTime, localDuration);
+  const tzLabel = getTimezoneLabel(timeZone);
+  const helperText =
+    endLabel && tzLabel
+      ? `Ends at ${endLabel} • ${tzLabel}`
+      : endLabel
+        ? `Ends at ${endLabel}`
+        : tzLabel || "";
+
+  const durationOptions = useMemo(() => {
+    const list = [...DURATION_OPTIONS];
+    if (localDuration && !list.includes(localDuration)) {
+      list.push(localDuration);
+      list.sort((a, b) => a - b);
+    }
+    return list.map((m) => ({ value: m, label: formatDuration(m) }));
+  }, [localDuration]);
+
+  return (
+    <>
+      <EditorSheet
+        visible={visible}
+        title="Edit session"
+        onClose={onClose}
+        scroll
+        footer={
+          <View style={es.footer}>
+            <SheetPrimaryButton
+              label="Save Changes"
+              onPress={() => onSave(localTime, localDuration)}
+            />
+            <TouchableOpacity
+              onPress={onRemove}
+              style={es.removeBtn}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel="Remove session"
+            >
+              <Text style={es.removeText}>Remove session</Text>
+            </TouchableOpacity>
+          </View>
+        }
+      >
+        <View style={es.body}>
+          <View style={es.field}>
+            <Text style={es.label}>
+              Date<Text style={es.required}> *</Text>
+            </Text>
+            <View style={es.readOnlyBox}>
+              <Ionicons
+                name="calendar-outline"
+                size={iconScale(18)}
+                color={theme.darkGreen}
+              />
+              <Text style={es.readOnlyText}>{dateLabel}</Text>
+            </View>
+          </View>
+
+          <View style={es.row}>
+            <View style={es.rowCol}>
+              <Text style={es.label}>
+                Start time<Text style={es.required}> *</Text>
+              </Text>
+              <TouchableOpacity
+                style={es.pickerBox}
+                activeOpacity={0.75}
+                onPress={() => setShowTimePicker(true)}
+                accessibilityRole="button"
+                accessibilityLabel="Start time"
+              >
+                <Ionicons
+                  name="time-outline"
+                  size={iconScale(18)}
+                  color={localTime ? theme.darkGreen : theme.lightGreen}
+                />
+                <Text
+                  style={[es.pickerText, !localTime && es.placeholder]}
+                  numberOfLines={1}
+                >
+                  {localTime ? formatClassTime(localTime) : "Select"}
+                </Text>
+              </TouchableOpacity>
+            </View>
+            <View style={es.rowCol}>
+              <Text style={es.label}>
+                Session duration<Text style={es.required}> *</Text>
+              </Text>
+              <TouchableOpacity
+                style={es.pickerBox}
+                activeOpacity={0.75}
+                onPress={() => setShowDurationPicker(true)}
+                accessibilityRole="button"
+                accessibilityLabel="Session duration"
+              >
+                <Text
+                  style={[es.pickerText, !localDuration && es.placeholder]}
+                  numberOfLines={1}
+                >
+                  {localDuration ? formatDuration(localDuration) : "Select"}
+                </Text>
+                <Ionicons
+                  name="chevron-down"
+                  size={iconScale(18)}
+                  color={theme.darkGreen}
+                />
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {helperText ? (
+            <Text style={es.helperText}>{helperText}</Text>
+          ) : null}
+
+          <View style={es.notice}>
+            <Ionicons
+              name="information-circle-outline"
+              size={iconScale(18)}
+              color={theme.goldTextDark}
+            />
+            <Text style={es.noticeText}>
+              Changes apply only to this session.
+            </Text>
+          </View>
+        </View>
+      </EditorSheet>
+
+      <WheelTimePickerSheet
+        visible={showTimePicker}
+        value={localTime}
+        onConfirm={(t) => {
+          setLocalTime(t);
+          setShowTimePicker(false);
+        }}
+        onClose={() => setShowTimePicker(false)}
+      />
+      <EditorOptionSheet
+        visible={showDurationPicker}
+        title="Session Duration"
+        options={durationOptions}
+        selected={localDuration}
+        onSelect={(v) => {
+          setLocalDuration(v);
+          setShowDurationPicker(false);
+        }}
+        onClose={() => setShowDurationPicker(false)}
+      />
+    </>
+  );
+}
+
+// ── Wheel styles ───────────────────────────────────────────────────
+
+const createWheelStyles = (theme: Theme) =>
+  StyleSheet.create({
+    headers: {
+      flexDirection: "row",
+      justifyContent: "space-around",
+      marginBottom: moderateHeightScale(4),
+    },
+    headerText: {
+      flex: 1,
+      textAlign: "center",
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontMedium,
+      color: theme.lightGreen,
+    },
+    pickerArea: {
+      height: WHEEL_ITEM_H * WHEEL_VISIBLE,
+      overflow: "hidden",
+    },
+    highlightBand: {
+      position: "absolute",
+      left: 0,
+      right: 0,
+      top: WHEEL_ITEM_H * 2,
+      height: WHEEL_ITEM_H,
+      justifyContent: "center",
+      zIndex: 0,
+    },
+    highlightInner: {
+      flex: 1,
+      backgroundColor: theme.tileMint,
+      borderTopWidth: 1.5,
+      borderBottomWidth: 1.5,
+      borderColor: theme.goldBorder,
+      borderRadius: moderateWidthScale(12),
+      marginHorizontal: moderateWidthScale(8),
+    },
+    colonWrap: {
+      position: "absolute",
+      left: 0,
+      right: 0,
+      top: WHEEL_ITEM_H * 2,
+      height: WHEEL_ITEM_H,
+      justifyContent: "center",
+      alignItems: "center",
+      zIndex: 2,
+    },
+    colon: {
+      fontSize: fontSize.size28 ?? 28,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+      marginRight: moderateWidthScale(2),
+    },
+    columns: {
+      flexDirection: "row",
+      flex: 1,
+      zIndex: 1,
+    },
+    column: {
+      flex: 1,
+    },
+    item: {
+      height: WHEEL_ITEM_H,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    itemText: {
+      fontSize: fontSize.size20,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
+    },
+    itemTextCenter: {
+      fontSize: fontSize.size28 ?? 28,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+  });
+
+// ── Edit session styles ────────────────────────────────────────────
+
+const createEditSessionStyles = (theme: Theme) =>
+  StyleSheet.create({
+    body: {
+      gap: moderateHeightScale(16),
+    },
+    field: {
+      gap: moderateHeightScale(7),
+    },
+    label: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    required: {
+      color: theme.red ?? "#c00",
+      fontFamily: fonts.fontBold,
+    },
+    readOnlyBox: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(10),
+      minHeight: heightScale(48),
+      borderRadius: moderateWidthScale(10),
+      borderWidth: 1,
+      borderColor: theme.borderNormal,
+      backgroundColor: theme.tileMint,
+      paddingHorizontal: moderateWidthScale(12),
+    },
+    readOnlyText: {
+      flex: 1,
+      fontSize: fontSize.size15,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
+    },
+    row: {
+      flexDirection: "row",
+      gap: moderateWidthScale(12),
+    },
+    rowCol: {
+      flex: 1,
+      gap: moderateHeightScale(7),
+    },
+    pickerBox: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(8),
+      minHeight: heightScale(48),
+      borderRadius: moderateWidthScale(10),
+      borderWidth: 1,
+      borderColor: theme.borderNormal,
+      backgroundColor: theme.white,
+      paddingHorizontal: moderateWidthScale(12),
+    },
+    pickerText: {
+      flex: 1,
+      fontSize: fontSize.size15,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
+    },
+    placeholder: {
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen5,
+    },
+    helperText: {
+      fontSize: fontSize.size13,
+      lineHeight: fontSize.size13 * 1.4,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+    },
+    notice: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: moderateWidthScale(10),
+      padding: moderateWidthScale(12),
+      borderRadius: moderateWidthScale(12),
+      borderWidth: 1,
+      borderColor: theme.goldBorder,
+      backgroundColor: theme.noticeCream,
+    },
+    noticeText: {
+      flex: 1,
+      fontSize: fontSize.size14,
+      lineHeight: fontSize.size14 * 1.4,
+      fontFamily: fonts.fontMedium,
+      color: theme.goldTextDark,
+    },
+    footer: {
+      gap: moderateHeightScale(12),
+    },
+    removeBtn: {
+      alignItems: "center",
+      paddingVertical: moderateHeightScale(10),
+    },
+    removeText: {
+      fontSize: fontSize.size15,
+      fontFamily: fonts.fontBold,
+      color: theme.red ?? "#c00",
+    },
+  });
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({

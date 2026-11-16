@@ -12,6 +12,7 @@ import {
   Keyboard,
   LayoutChangeEvent,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   TouchableOpacity,
@@ -96,7 +97,8 @@ import {
 import {
   EditorDateSheet,
   EditorOptionSheet,
-  EditorTimeSheet,
+  EditSessionSheet,
+  WheelTimePickerSheet,
   type EditorSheetOption,
 } from "@/src/components/masterClasses/editorSheets";
 import {
@@ -113,6 +115,9 @@ import {
   SessionSummaryCard,
   ReviewCourseCard,
   DealPlacementCard,
+  MultiDateCalendar,
+  SelectedDateChips,
+  SessionTimesList,
   calculateWeeklySessions,
   getWeekdaysText,
   getWeekdaysShort,
@@ -168,6 +173,9 @@ type FormState = {
   classType: ClassType;
   scheduleType: ScheduleType;
   meetingDays: Weekday[];
+  specificDates: string[];
+  sameTimeForAll: boolean;
+  sessionOverrides: Record<string, { time: string | null; duration: number | null }>;
 };
 
 type FieldKey =
@@ -180,6 +188,7 @@ type FieldKey =
   | "endDate"
   | "duration"
   | "meetingDays"
+  | "specificDates"
   | "capacity"
   | "price"
   | "discountedPrice"
@@ -196,6 +205,7 @@ const FIELD_ORDER: FieldKey[] = [
   "endDate",
   "duration",
   "meetingDays",
+  "specificDates",
   "media",
   "title",
   "description",
@@ -220,6 +230,7 @@ const FIELD_STEP: Record<FieldKey, EditorStep> = {
   endDate: 1,
   duration: 1,
   meetingDays: 1,
+  specificDates: 1,
   price: 2,
   discountedPrice: 2,
   capacity: 2,
@@ -281,6 +292,9 @@ const BLANK_FORM: FormState = {
   classType: "one_time",
   scheduleType: "weekly",
   meetingDays: [],
+  specificDates: [],
+  sameTimeForAll: true,
+  sessionOverrides: {},
 };
 
 // Keeps "12." while typing; one decimal point, two decimals max.
@@ -333,6 +347,9 @@ function formFromClass(cls: MasterClass): FormState {
     classType: cls.end_date && cls.end_date !== cls.date ? "multi_session" : "one_time",
     scheduleType: cls.schedule_type === "specific_dates" ? "specific_dates" : "weekly",
     meetingDays: Array.isArray(cls.meeting_days) ? cls.meeting_days as Weekday[] : [],
+    specificDates: Array.isArray(cls.specific_dates) ? [...cls.specific_dates].sort() : [],
+    sameTimeForAll: true,
+    sessionOverrides: {},
   };
 }
 
@@ -366,6 +383,9 @@ function payloadFromForm(f: FormState): MasterClassPayload {
     schedule_type: f.classType === "multi_session" ? f.scheduleType : null,
     meeting_days: f.classType === "multi_session" && f.scheduleType === "weekly" && f.meetingDays.length
       ? f.meetingDays
+      : null,
+    specific_dates: f.classType === "multi_session" && f.scheduleType === "specific_dates" && f.specificDates.length
+      ? f.specificDates
       : null,
   };
   // Date and time travel together: both or neither
@@ -497,6 +517,9 @@ function validate(
   if (f.classType === "multi_session" && f.scheduleType === "weekly" && !f.meetingDays.length) {
     e.meetingDays = t("mcErrorMeetingDaysRequired");
   }
+  if (f.classType === "multi_session" && f.scheduleType === "specific_dates" && f.specificDates.length < 2) {
+    e.specificDates = "Select at least 2 dates";
+  }
 
   if (kind === "publish" || kind === "reschedule") {
     if (!f.date) e.date = t("mcErrorDateRequired");
@@ -518,7 +541,7 @@ function validate(
 const hasErrors = (e: Errors) => Object.keys(e).length > 0;
 
 type Busy = null | "publish" | "draft" | "autosave" | "reschedule";
-type SheetName = null | "duration" | "date" | "time" | "endDate" | "address";
+type SheetName = null | "duration" | "date" | "time" | "endDate" | "address" | "editSession";
 
 export default function MasterClassEditorScreen() {
   const { t } = useTranslation();
@@ -559,6 +582,7 @@ export default function MasterClassEditorScreen() {
   const busyRef = useRef<Busy>(null);
   busyRef.current = busy;
   const [sheet, setSheet] = useState<SheetName>(null);
+  const [editSessionDate, setEditSessionDate] = useState<string | null>(null);
   const sheetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(
     () => () => {
@@ -1105,9 +1129,10 @@ export default function MasterClassEditorScreen() {
   ];
 
   const sessionCount = useMemo(() => {
-    if (form.classType !== "multi_session" || form.scheduleType !== "weekly") return 0;
+    if (form.classType !== "multi_session") return 0;
+    if (form.scheduleType === "specific_dates") return form.specificDates.length;
     return calculateWeeklySessions(form.date, form.endDate, form.meetingDays);
-  }, [form.classType, form.scheduleType, form.date, form.endDate, form.meetingDays]);
+  }, [form.classType, form.scheduleType, form.date, form.endDate, form.meetingDays, form.specificDates]);
 
   const sessionTimeRange = useMemo(() => {
     if (!form.time) return "";
@@ -1125,9 +1150,12 @@ export default function MasterClassEditorScreen() {
       meta.push({ icon: "calendar-outline", text: dateRange });
     }
     if (form.classType === "multi_session" && sessionCount > 0) {
+      const scheduleLabel = form.scheduleType === "specific_dates"
+        ? "Specific dates"
+        : getWeekdaysShort(form.meetingDays);
       meta.push({
         icon: "calendar-outline",
-        text: `${sessionCount} session${sessionCount !== 1 ? "s" : ""} · ${getWeekdaysShort(form.meetingDays)}`,
+        text: `${sessionCount} session${sessionCount !== 1 ? "s" : ""} · ${scheduleLabel}`,
       });
     }
     if (form.time) {
@@ -1555,45 +1583,7 @@ export default function MasterClassEditorScreen() {
                   </>
                 ) : (
                   <>
-                    {/* Multi-session: Course start + Course end side-by-side */}
-                    <View onLayout={recordY(["date", "endDate"])}>
-                      <EditorRow
-                        labels={[
-                          { label: t("mcFieldStartDate"), required: true },
-                          { label: t("mcFieldEndDate"), required: true },
-                        ]}
-                      >
-                        <EditorPickerBox
-                          icon="calendar-outline"
-                          value={form.date ? formatClassDate(form.date) : null}
-                          placeholder={t("mcSelectDate")}
-                          onPress={() => {
-                            Keyboard.dismiss();
-                            setSheet("date");
-                          }}
-                          invalid={!!errors.date}
-                          trailingIcon={null}
-                        />
-                        <EditorPickerBox
-                          icon="calendar-outline"
-                          value={form.endDate ? formatClassDate(form.endDate) : null}
-                          placeholder={t("mcSelectEndDate")}
-                          onPress={() => {
-                            Keyboard.dismiss();
-                            setSheet("endDate");
-                          }}
-                          invalid={!!errors.endDate}
-                          trailingIcon={null}
-                        />
-                      </EditorRow>
-                      {(errors.date || errors.endDate) ? (
-                        <View style={styles.rowError}>
-                          <EditorFieldError message={errors.date || errors.endDate} />
-                        </View>
-                      ) : null}
-                    </View>
-
-                    {/* Schedule type */}
+                    {/* Schedule type toggle */}
                     <View style={styles.section}>
                       <EditorLabel label="Schedule" required />
                       <EditorSegmented
@@ -1613,76 +1603,219 @@ export default function MasterClassEditorScreen() {
                       />
                     </View>
 
-                    {/* Meeting days (weekly only) */}
                     {form.scheduleType === "weekly" ? (
-                      <View style={styles.section} onLayout={recordY(["meetingDays"])}>
-                        <EditorLabel label="Meeting days" required />
-                        <WeekdayChips
-                          selected={form.meetingDays}
-                          onChange={(days) => {
-                            setForm((prev) => ({ ...prev, meetingDays: days }));
-                            clearError("meetingDays");
-                          }}
-                        />
-                        <EditorFieldError message={errors.meetingDays} />
-                      </View>
-                    ) : null}
-
-                    {/* Start time + Session duration side-by-side */}
-                    <View onLayout={recordY(["time", "duration"])}>
-                      <EditorRow
-                        labels={[
-                          { label: t("mcFieldStartTime"), required: true },
-                          { label: t("mcFieldClassDuration"), required: true },
-                        ]}
-                      >
-                        <EditorPickerBox
-                          icon="time-outline"
-                          value={form.time ? formatClassTime(form.time) : null}
-                          placeholder={t("mcSelectTime")}
-                          onPress={() => {
-                            Keyboard.dismiss();
-                            setSheet("time");
-                          }}
-                          invalid={!!errors.time}
-                          trailingIcon={null}
-                        />
-                        <EditorPickerBox
-                          value={form.duration ? formatDuration(form.duration) : null}
-                          placeholder={t("mcSelectDuration")}
-                          onPress={() => {
-                            Keyboard.dismiss();
-                            setSheet("duration");
-                          }}
-                          invalid={!!errors.duration}
-                        />
-                      </EditorRow>
-                      {(errors.time || errors.duration) ? (
-                        <View style={styles.rowError}>
-                          <EditorFieldError message={errors.time || errors.duration} />
+                      <>
+                        {/* Weekly: Course start + Course end */}
+                        <View onLayout={recordY(["date", "endDate"])}>
+                          <EditorRow
+                            labels={[
+                              { label: t("mcFieldStartDate"), required: true },
+                              { label: t("mcFieldEndDate"), required: true },
+                            ]}
+                          >
+                            <EditorPickerBox
+                              icon="calendar-outline"
+                              value={form.date ? formatClassDate(form.date) : null}
+                              placeholder={t("mcSelectDate")}
+                              onPress={() => {
+                                Keyboard.dismiss();
+                                setSheet("date");
+                              }}
+                              invalid={!!errors.date}
+                              trailingIcon={null}
+                            />
+                            <EditorPickerBox
+                              icon="calendar-outline"
+                              value={form.endDate ? formatClassDate(form.endDate) : null}
+                              placeholder={t("mcSelectEndDate")}
+                              onPress={() => {
+                                Keyboard.dismiss();
+                                setSheet("endDate");
+                              }}
+                              invalid={!!errors.endDate}
+                              trailingIcon={null}
+                            />
+                          </EditorRow>
+                          {(errors.date || errors.endDate) ? (
+                            <View style={styles.rowError}>
+                              <EditorFieldError message={errors.date || errors.endDate} />
+                            </View>
+                          ) : null}
                         </View>
-                      ) : null}
-                    </View>
 
-                    {/* Timezone display */}
-                    {serverClass?.timezone ? (
-                      <View style={styles.section}>
-                        <EditorLabel label="Time zone" />
-                        <EditorPickerBox
-                          icon="globe-outline"
-                          value={getTimezoneLabel(serverClass.timezone)}
-                          placeholder="Detecting..."
-                          onPress={() => {}}
+                        {/* Meeting days */}
+                        <View style={styles.section} onLayout={recordY(["meetingDays"])}>
+                          <EditorLabel label="Meeting days" required />
+                          <WeekdayChips
+                            selected={form.meetingDays}
+                            onChange={(days) => {
+                              setForm((prev) => ({ ...prev, meetingDays: days }));
+                              clearError("meetingDays");
+                            }}
+                          />
+                          <EditorFieldError message={errors.meetingDays} />
+                        </View>
+
+                        {/* Start time + Session duration */}
+                        <View onLayout={recordY(["time", "duration"])}>
+                          <EditorRow
+                            labels={[
+                              { label: t("mcFieldStartTime"), required: true },
+                              { label: t("mcFieldClassDuration"), required: true },
+                            ]}
+                          >
+                            <EditorPickerBox
+                              icon="time-outline"
+                              value={form.time ? formatClassTime(form.time) : null}
+                              placeholder={t("mcSelectTime")}
+                              onPress={() => {
+                                Keyboard.dismiss();
+                                setSheet("time");
+                              }}
+                              invalid={!!errors.time}
+                              trailingIcon={null}
+                            />
+                            <EditorPickerBox
+                              value={form.duration ? formatDuration(form.duration) : null}
+                              placeholder={t("mcSelectDuration")}
+                              onPress={() => {
+                                Keyboard.dismiss();
+                                setSheet("duration");
+                              }}
+                              invalid={!!errors.duration}
+                            />
+                          </EditorRow>
+                          {(errors.time || errors.duration) ? (
+                            <View style={styles.rowError}>
+                              <EditorFieldError message={errors.time || errors.duration} />
+                            </View>
+                          ) : null}
+                        </View>
+
+                        {/* Timezone */}
+                        {serverClass?.timezone ? (
+                          <View style={styles.section}>
+                            <EditorLabel label="Time zone" />
+                            <EditorPickerBox
+                              icon="globe-outline"
+                              value={getTimezoneLabel(serverClass.timezone)}
+                              placeholder="Detecting..."
+                              onPress={() => {}}
+                            />
+                          </View>
+                        ) : null}
+
+                        {/* Session summary */}
+                        <SessionSummaryCard
+                          sessions={sessionCount}
+                          daysText={getWeekdaysText(form.meetingDays)}
+                          timeText={sessionTimeRange}
                         />
-                      </View>
-                    ) : null}
+                      </>
+                    ) : (
+                      <>
+                        {/* Specific dates: multi-select calendar */}
+                        <View style={styles.section} onLayout={recordY(["specificDates"])}>
+                          <EditorLabel label="Select dates" required />
+                          <MultiDateCalendar
+                            selected={form.specificDates}
+                            onChange={(dates) => {
+                              const sorted = [...dates].sort();
+                              setForm((prev) => ({
+                                ...prev,
+                                specificDates: sorted,
+                                date: sorted[0] ?? null,
+                                endDate: sorted[sorted.length - 1] ?? null,
+                              }));
+                              clearError(["specificDates", "date", "endDate"]);
+                            }}
+                            timeZone={serverClass?.timezone}
+                          />
+                          <SelectedDateChips
+                            dates={form.specificDates}
+                            onRemove={(date) => {
+                              setForm((prev) => {
+                                const next = prev.specificDates.filter((d) => d !== date);
+                                const overrides = { ...prev.sessionOverrides };
+                                delete overrides[date];
+                                return {
+                                  ...prev,
+                                  specificDates: next,
+                                  date: next[0] ?? null,
+                                  endDate: next[next.length - 1] ?? null,
+                                  sessionOverrides: overrides,
+                                };
+                              });
+                            }}
+                          />
+                          <EditorFieldError message={errors.specificDates} />
+                        </View>
 
-                    {/* Session summary */}
-                    <SessionSummaryCard
-                      sessions={sessionCount}
-                      daysText={getWeekdaysText(form.meetingDays)}
-                      timeText={sessionTimeRange}
-                    />
+                        {/* Default time + duration for all sessions */}
+                        <View onLayout={recordY(["time", "duration"])}>
+                          <EditorRow
+                            labels={[
+                              { label: t("mcFieldStartTime"), required: true },
+                              { label: t("mcFieldClassDuration"), required: true },
+                            ]}
+                          >
+                            <EditorPickerBox
+                              icon="time-outline"
+                              value={form.time ? formatClassTime(form.time) : null}
+                              placeholder={t("mcSelectTime")}
+                              onPress={() => {
+                                Keyboard.dismiss();
+                                setSheet("time");
+                              }}
+                              invalid={!!errors.time}
+                              trailingIcon={null}
+                            />
+                            <EditorPickerBox
+                              value={form.duration ? formatDuration(form.duration) : null}
+                              placeholder={t("mcSelectDuration")}
+                              onPress={() => {
+                                Keyboard.dismiss();
+                                setSheet("duration");
+                              }}
+                              invalid={!!errors.duration}
+                            />
+                          </EditorRow>
+                          {(errors.time || errors.duration) ? (
+                            <View style={styles.rowError}>
+                              <EditorFieldError message={errors.time || errors.duration} />
+                            </View>
+                          ) : null}
+                        </View>
+
+                        {/* Timezone */}
+                        {serverClass?.timezone ? (
+                          <View style={styles.section}>
+                            <EditorLabel label="Time zone" />
+                            <EditorPickerBox
+                              icon="globe-outline"
+                              value={getTimezoneLabel(serverClass.timezone)}
+                              placeholder="Detecting..."
+                              onPress={() => {}}
+                            />
+                          </View>
+                        ) : null}
+
+                        {/* Session times list with per-session edit */}
+                        {form.specificDates.length > 0 ? (
+                          <SessionTimesList
+                            dates={form.specificDates}
+                            globalTime={form.time}
+                            globalDuration={form.duration}
+                            overrides={form.sessionOverrides}
+                            onEdit={(date) => {
+                              Keyboard.dismiss();
+                              setEditSessionDate(date);
+                              setSheet("editSession");
+                            }}
+                          />
+                        ) : null}
+                      </>
+                    )}
                   </>
                 )}
 
@@ -2058,16 +2191,60 @@ export default function MasterClassEditorScreen() {
         }}
         onClose={() => setSheet(null)}
       />
-      <EditorTimeSheet
+      <WheelTimePickerSheet
         visible={sheet === "time"}
         value={form.time}
-        date={form.date}
-        timeZone={serverClass?.timezone}
         onConfirm={(time) => {
           setField("time", time, ["date", "time"]);
           setSheet(null);
         }}
         onClose={() => setSheet(null)}
+      />
+      <EditSessionSheet
+        visible={sheet === "editSession" && !!editSessionDate}
+        date={editSessionDate ?? ""}
+        time={form.sessionOverrides[editSessionDate ?? ""]?.time ?? form.time}
+        duration={form.sessionOverrides[editSessionDate ?? ""]?.duration ?? form.duration}
+        timeZone={serverClass?.timezone}
+        onSave={(time, duration) => {
+          if (editSessionDate) {
+            const isDefault =
+              time === form.time && duration === form.duration;
+            setForm((prev) => {
+              const overrides = { ...prev.sessionOverrides };
+              if (isDefault) {
+                delete overrides[editSessionDate];
+              } else {
+                overrides[editSessionDate] = { time, duration };
+              }
+              return { ...prev, sessionOverrides: overrides };
+            });
+          }
+          setSheet(null);
+          setEditSessionDate(null);
+        }}
+        onRemove={() => {
+          if (editSessionDate) {
+            setForm((prev) => {
+              const next = prev.specificDates.filter((d) => d !== editSessionDate);
+              const overrides = { ...prev.sessionOverrides };
+              delete overrides[editSessionDate];
+              return {
+                ...prev,
+                specificDates: next,
+                date: next[0] ?? null,
+                endDate: next[next.length - 1] ?? null,
+                sessionOverrides: overrides,
+              };
+            });
+          }
+          setSheet(null);
+          setEditSessionDate(null);
+        }}
+        onClose={() => {
+          setSheet(null);
+          setEditSessionDate(null);
+        }}
       />
       <EditorAddressSheet
         visible={sheet === "address"}
@@ -2194,6 +2371,18 @@ const createStyles = (theme: Theme) =>
     },
     rowError: {
       marginTop: moderateHeightScale(7),
+    },
+    toggleRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingVertical: moderateHeightScale(4),
+    },
+    toggleLabel: {
+      flex: 1,
+      fontSize: fontSize.size15,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
     },
     radioList: {
       gap: moderateHeightScale(8),

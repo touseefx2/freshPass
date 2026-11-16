@@ -1,7 +1,7 @@
 // Step-specific UI for the 3-step Create / Edit Class editor redesign.
 // Step indicator, weekday chips, session summary, review card, deal card.
 
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import {
   ScrollView,
   StyleProp,
@@ -22,7 +22,11 @@ import {
   moderateHeightScale,
   moderateWidthScale,
 } from "@/src/theme/dimensions";
-import { formatClassPrice } from "@/src/utils/masterClassHelpers";
+import {
+  formatClassPrice,
+  formatClassTime,
+} from "@/src/utils/masterClassHelpers";
+import { salonNow } from "@/src/utils/salonTimezone";
 
 dayjs.extend(isoWeek);
 
@@ -564,5 +568,451 @@ const dealStyles = (theme: Theme) =>
       lineHeight: fontSize.size13 * 1.4,
       fontFamily: fonts.fontRegular,
       color: theme.textMuted,
+    },
+  });
+
+// ── Multi-Date Calendar ──────────────────────────────────────────────
+
+const DATE_KEY = "YYYY-MM-DD";
+const WEEKDAY_LABELS_MON = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+export function MultiDateCalendar({
+  selected,
+  onChange,
+  minDate,
+  maxDate,
+  timeZone,
+  style,
+}: {
+  selected: string[];
+  onChange: (dates: string[]) => void;
+  minDate?: string;
+  maxDate?: string;
+  timeZone?: string | null;
+  style?: StyleProp<ViewStyle>;
+}) {
+  const { colors } = useTheme();
+  const theme = colors as Theme;
+  const s = useMemo(() => calendarStyles(theme), [colors]);
+
+  const today = useMemo(() => {
+    const n = salonNow(null, timeZone);
+    return n.day;
+  }, [timeZone]);
+
+  const min = useMemo(
+    () => (minDate && dayjs(minDate).isValid() ? dayjs(minDate) : null),
+    [minDate],
+  );
+  const max = useMemo(
+    () => (maxDate && dayjs(maxDate).isValid() ? dayjs(maxDate) : null),
+    [maxDate],
+  );
+
+  const initialMonth = () => {
+    if (selected.length) return dayjs(selected[0]).startOf("month");
+    if (min) return min.startOf("month");
+    return dayjs(today).startOf("month");
+  };
+  const [month, setMonth] = useState(() => initialMonth());
+
+  const selectedSet = useMemo(() => new Set(selected), [selected]);
+
+  const days = useMemo(() => {
+    const first = month.startOf("month");
+    // Monday-first: isoWeekday() 1=Mon … 7=Sun
+    const lead = first.isoWeekday() - 1;
+    const count = month.daysInMonth();
+    const cells: (dayjs.Dayjs | null)[] = [];
+    for (let i = 0; i < lead; i += 1) cells.push(null);
+    for (let d = 1; d <= count; d += 1) cells.push(first.date(d));
+    while (cells.length % 7 !== 0) cells.push(null);
+    return cells;
+  }, [month]);
+
+  const isDisabled = (day: dayjs.Dayjs) => {
+    if (day.format(DATE_KEY) < today) return true;
+    if (min && day.isBefore(min, "day")) return true;
+    if (max && day.isAfter(max, "day")) return true;
+    return false;
+  };
+
+  const toggle = (day: dayjs.Dayjs) => {
+    const key = day.format(DATE_KEY);
+    if (selectedSet.has(key)) {
+      onChange(selected.filter((d) => d !== key));
+    } else {
+      onChange([...selected, key].sort());
+    }
+  };
+
+  const canPrev = !min || !month.subtract(1, "month").endOf("month").isBefore(min, "day");
+  const canNext = !max || !month.add(1, "month").startOf("month").isAfter(max, "day");
+
+  return (
+    <View style={[s.wrapper, style]}>
+      <View style={s.monthRow}>
+        <TouchableOpacity
+          style={[s.arrow, !canPrev && s.arrowOff]}
+          onPress={() => canPrev && setMonth((m) => m.subtract(1, "month"))}
+          disabled={!canPrev}
+          activeOpacity={0.7}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel="Previous month"
+        >
+          <Ionicons name="chevron-back" size={iconScale(20)} color={theme.darkGreen} />
+        </TouchableOpacity>
+        <Text style={s.monthText}>{month.format("MMMM YYYY")}</Text>
+        <TouchableOpacity
+          style={[s.arrow, !canNext && s.arrowOff]}
+          onPress={() => canNext && setMonth((m) => m.add(1, "month"))}
+          disabled={!canNext}
+          activeOpacity={0.7}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel="Next month"
+        >
+          <Ionicons name="chevron-forward" size={iconScale(20)} color={theme.darkGreen} />
+        </TouchableOpacity>
+      </View>
+
+      <View style={s.grid}>
+        {WEEKDAY_LABELS_MON.map((name) => (
+          <Text key={name} style={s.weekday}>
+            {name}
+          </Text>
+        ))}
+        {days.map((day, i) =>
+          day ? (
+            <TouchableOpacity
+              key={day.format(DATE_KEY)}
+              style={s.cell}
+              onPress={() => toggle(day)}
+              disabled={isDisabled(day)}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityState={{
+                selected: selectedSet.has(day.format(DATE_KEY)),
+                disabled: isDisabled(day),
+              }}
+              accessibilityLabel={day.format("dddd, MMMM D, YYYY")}
+            >
+              <View
+                style={[
+                  s.dayInner,
+                  selectedSet.has(day.format(DATE_KEY)) && s.daySelected,
+                  day.format(DATE_KEY) === today &&
+                    !selectedSet.has(day.format(DATE_KEY)) &&
+                    s.dayToday,
+                ]}
+              >
+                <Text
+                  style={[
+                    s.dayText,
+                    isDisabled(day) && s.dayDisabled,
+                    selectedSet.has(day.format(DATE_KEY)) && s.dayTextSelected,
+                  ]}
+                >
+                  {day.date()}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          ) : (
+            <View key={`e${i}`} style={s.cell} />
+          ),
+        )}
+      </View>
+    </View>
+  );
+}
+
+const calendarStyles = (theme: Theme) =>
+  StyleSheet.create({
+    wrapper: {
+      borderRadius: moderateWidthScale(14),
+      borderWidth: 1,
+      borderColor: theme.borderNormal,
+      backgroundColor: theme.white,
+      padding: moderateWidthScale(14),
+    },
+    monthRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: moderateHeightScale(8),
+    },
+    arrow: {
+      width: moderateWidthScale(40),
+      height: moderateWidthScale(40),
+      borderRadius: moderateWidthScale(20),
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: theme.lightGreen1,
+    },
+    arrowOff: { opacity: 0.35 },
+    monthText: {
+      fontFamily: fonts.fontBold,
+      fontSize: fontSize.size16,
+      color: theme.darkGreen,
+    },
+    grid: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+    },
+    weekday: {
+      width: `${100 / 7}%` as any,
+      textAlign: "center",
+      fontFamily: fonts.fontMedium,
+      fontSize: fontSize.size12,
+      color: theme.lightGreen,
+      paddingVertical: moderateHeightScale(6),
+    },
+    cell: {
+      width: `${100 / 7}%` as any,
+      height: moderateWidthScale(44),
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    dayInner: {
+      width: moderateWidthScale(38),
+      height: moderateWidthScale(38),
+      borderRadius: moderateWidthScale(19),
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    daySelected: {
+      backgroundColor: theme.darkGreen,
+    },
+    dayToday: {
+      borderWidth: 1.5,
+      borderColor: theme.darkGreen,
+    },
+    dayText: {
+      fontFamily: fonts.fontMedium,
+      fontSize: fontSize.size14,
+      color: theme.darkGreen,
+    },
+    dayTextSelected: {
+      color: theme.white,
+      fontFamily: fonts.fontBold,
+    },
+    dayDisabled: {
+      color: theme.lightGreen2,
+    },
+  });
+
+// ── Selected Date Chips ──────────────────────────────────────────────
+
+export function SelectedDateChips({
+  dates,
+  onRemove,
+  style,
+}: {
+  dates: string[];
+  onRemove: (date: string) => void;
+  style?: StyleProp<ViewStyle>;
+}) {
+  const { colors } = useTheme();
+  const theme = colors as Theme;
+  const s = useMemo(() => chipStyles(theme), [colors]);
+
+  if (!dates.length) return null;
+
+  return (
+    <View style={[s.wrapper, style]}>
+      <Text style={s.countText}>
+        {dates.length} date{dates.length !== 1 ? "s" : ""} selected
+      </Text>
+      <View style={s.chipsWrap}>
+        {dates.map((date) => (
+          <TouchableOpacity
+            key={date}
+            style={s.chip}
+            activeOpacity={0.7}
+            onPress={() => onRemove(date)}
+            accessibilityRole="button"
+            accessibilityLabel={`Remove ${dayjs(date).format("MMM D")}`}
+          >
+            <Text style={s.chipText}>{dayjs(date).format("MMM D")}</Text>
+            <Ionicons
+              name="close-circle"
+              size={iconScale(16)}
+              color={theme.lightGreen}
+              style={s.chipX}
+            />
+          </TouchableOpacity>
+        ))}
+      </View>
+    </View>
+  );
+}
+
+const chipStyles = (theme: Theme) =>
+  StyleSheet.create({
+    wrapper: {
+      gap: moderateHeightScale(8),
+    },
+    countText: {
+      fontFamily: fonts.fontBold,
+      fontSize: fontSize.size14,
+      color: theme.successGreen,
+    },
+    chipsWrap: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: moderateWidthScale(8),
+    },
+    chip: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingHorizontal: moderateWidthScale(10),
+      paddingVertical: moderateHeightScale(6),
+      borderRadius: moderateWidthScale(20),
+      borderWidth: 1,
+      borderColor: theme.borderNormal,
+      backgroundColor: theme.white,
+    },
+    chipText: {
+      fontFamily: fonts.fontMedium,
+      fontSize: fontSize.size13,
+      color: theme.darkGreen,
+    },
+    chipX: {
+      marginLeft: moderateWidthScale(4),
+    },
+  });
+
+// ── Session Times List ───────────────────────────────────────────────
+
+export function SessionTimesList({
+  dates,
+  globalTime,
+  globalDuration,
+  overrides,
+  onEdit,
+  onAddRemoveDates,
+  style,
+}: {
+  dates: string[];
+  globalTime: string | null;
+  globalDuration: number | null;
+  overrides: Record<string, { time: string | null; duration: number | null }>;
+  onEdit: (date: string) => void;
+  onAddRemoveDates?: () => void;
+  style?: StyleProp<ViewStyle>;
+}) {
+  const { colors } = useTheme();
+  const theme = colors as Theme;
+  const s = useMemo(() => sessionListStyles(theme), [colors]);
+
+  const timeRange = (time: string | null, duration: number | null): string => {
+    if (!time) return "";
+    const start = formatClassTime(time);
+    const end = endTimeText(time, duration);
+    return end ? `${start}–${end}` : start;
+  };
+
+  return (
+    <View style={[s.wrapper, style]}>
+      <Text style={s.heading}>Your sessions</Text>
+      <View style={s.list}>
+        {dates.map((date, idx) => {
+          const over = overrides[date];
+          const time = over?.time ?? globalTime;
+          const duration = over?.duration ?? globalDuration;
+          const isLast = idx === dates.length - 1;
+          return (
+            <TouchableOpacity
+              key={date}
+              style={[s.row, !isLast && s.rowBorder]}
+              activeOpacity={0.7}
+              onPress={() => onEdit(date)}
+              accessibilityRole="button"
+              accessibilityLabel={`Edit session ${dayjs(date).format("ddd, MMM D")}`}
+            >
+              <Ionicons
+                name="calendar-outline"
+                size={iconScale(20)}
+                color={theme.darkGreen}
+              />
+              <Text style={s.dateText}>{dayjs(date).format("ddd, MMM D")}</Text>
+              <Text style={s.timeText}>{timeRange(time, duration)}</Text>
+              <Ionicons
+                name="pencil-outline"
+                size={iconScale(18)}
+                color={theme.lightGreen}
+                style={s.editIcon}
+              />
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+      {onAddRemoveDates ? (
+        <TouchableOpacity
+          activeOpacity={0.7}
+          onPress={onAddRemoveDates}
+          style={s.addRemove}
+          accessibilityRole="link"
+          accessibilityLabel="Add or remove dates"
+        >
+          <Text style={s.addRemoveText}>+ Add or remove dates</Text>
+        </TouchableOpacity>
+      ) : null}
+    </View>
+  );
+}
+
+const sessionListStyles = (theme: Theme) =>
+  StyleSheet.create({
+    wrapper: {
+      gap: moderateHeightScale(10),
+    },
+    heading: {
+      fontFamily: fonts.fontBold,
+      fontSize: fontSize.size17,
+      color: theme.darkGreen,
+    },
+    list: {
+      borderRadius: moderateWidthScale(14),
+      borderWidth: 1,
+      borderColor: theme.borderLight,
+      backgroundColor: theme.white,
+      overflow: "hidden",
+    },
+    row: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingHorizontal: moderateWidthScale(14),
+      paddingVertical: moderateHeightScale(12),
+    },
+    rowBorder: {
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: theme.borderNormal,
+    },
+    dateText: {
+      flex: 1,
+      fontFamily: fonts.fontMedium,
+      fontSize: fontSize.size14,
+      color: theme.darkGreen,
+      marginLeft: moderateWidthScale(10),
+    },
+    timeText: {
+      fontFamily: fonts.fontRegular,
+      fontSize: fontSize.size14,
+      color: theme.darkGreen,
+    },
+    editIcon: {
+      marginLeft: moderateWidthScale(8),
+    },
+    addRemove: {
+      alignSelf: "center",
+      paddingTop: moderateHeightScale(2),
+    },
+    addRemoveText: {
+      fontFamily: fonts.fontMedium,
+      fontSize: fontSize.size14,
+      color: theme.darkGreenLight,
+      textDecorationLine: "underline",
     },
   });
