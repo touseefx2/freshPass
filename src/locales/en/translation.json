@@ -4788,6 +4788,7 @@
   "walletAddCardSubtitle": "Used for your FreshPass subscription and marketplace transactions.",
   "walletSavePaymentMethod": "Save Payment Method",
   "walletCardholderName": "Cardholder Name",
+  "cardDetails": "Card Details",
   "walletDefault": "Default",
   "walletMakeDefault": "Make Default",
   "walletDeleteCard": "Remove Card",

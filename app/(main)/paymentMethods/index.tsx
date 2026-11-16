@@ -10,7 +10,6 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -1335,7 +1334,6 @@ export default function PaymentMethodsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [showAddCard, setShowAddCard] = useState(false);
   const [cardComplete, setCardComplete] = useState(false);
-  const [cardholderName, setCardholderName] = useState("");
   const [saving, setSaving] = useState(false);
   const [settingDefault, setSettingDefault] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
@@ -1397,18 +1395,12 @@ export default function PaymentMethodsScreen() {
 
       const { error } = await confirmSetupIntent(clientSecret, {
         paymentMethodType: "Card",
-        paymentMethodData: {
-          billingDetails: {
-            name: cardholderName.trim() || undefined,
-          },
-        },
       });
       if (error) throw new Error(error.message || t("walletFailedToAdd"));
 
       showBanner(t("success"), t("walletAddSuccess"), "success", 2500);
       setShowAddCard(false);
       setCardComplete(false);
-      setCardholderName("");
       void fetchCards(true);
     } catch (err: any) {
       const msg = getServerMessage(err, t("walletFailedToAdd"));
@@ -1617,44 +1609,23 @@ export default function PaymentMethodsScreen() {
               </View>
             </View>
 
-            {/* Card fields — CardForm separate rows, Country/ZIP clipped */}
-            <View style={styles.cardFormClip}>
-              <CardForm
-                style={styles.cardForm}
-                disabled={saving}
-                cardStyle={CARD_FORM_STYLE}
-                placeholders={{
-                  number: t("cardNumber"),
-                  expiration: t("expiryPlaceholder"),
-                  cvc: t("cvc"),
-                }}
-                onFormComplete={(details) => {
-                  const filled =
-                    !!details?.last4 &&
-                    (details?.expiryMonth ?? 0) > 0 &&
-                    (details?.expiryYear ?? 0) > 0;
-                  setCardComplete(details?.complete || filled);
-                  const brand = details?.brand;
-                  typedBrandRef.current =
-                    brand && brand !== "Unknown" ? brand : null;
-                }}
-              />
-            </View>
-
-            {/* Cardholder Name */}
-            <View style={styles.cardholderRow}>
-              <Feather name="user" size={iconScale(16)} color={theme.textMuted} style={styles.cardholderIcon} />
-              <TextInput
-                style={styles.cardholderInput}
-                placeholder={t("walletCardholderName")}
-                placeholderTextColor="#7E8674"
-                value={cardholderName}
-                onChangeText={setCardholderName}
-                autoCapitalize="words"
-                autoCorrect={false}
-                editable={!saving}
-              />
-            </View>
+            {/* Card input — CardForm (separate rows with Country/ZIP) */}
+            <CardForm
+              style={styles.cardFormNative}
+              disabled={saving}
+              cardStyle={CARD_FORM_STYLE}
+              placeholders={{
+                number: t("cardNumber"),
+                expiration: t("expiryPlaceholder"),
+                cvc: t("cvc"),
+              }}
+              onFormComplete={(details) => {
+                setCardComplete(!!details.complete);
+                const brand = details?.brand;
+                typedBrandRef.current =
+                  brand && brand !== "Unknown" ? brand : null;
+              }}
+            />
 
             <View style={styles.addCardButtons}>
               <Button
@@ -1693,36 +1664,35 @@ export default function PaymentMethodsScreen() {
               <Text style={styles.stripeWordmark}>stripe</Text>
             </View>
 
-            {/* We Accept logos */}
+            {/* We Accept */}
             <View style={styles.weAcceptSection}>
               <Text style={styles.weAcceptTitle}>We Accept</Text>
               <View style={styles.weAcceptLogos}>
-                {/* Visa */}
                 <View style={[styles.brandBadge, { backgroundColor: "#1A1F71" }]}>
-                  <Text style={styles.brandBadgeVisaText}>VISA</Text>
+                  <Text style={styles.visaBadgeText}>VISA</Text>
                 </View>
-                {/* Mastercard */}
-                <View style={[styles.brandBadge, { backgroundColor: "#EB001B" }]}>
+                <View style={[styles.brandBadge, styles.brandBadgeBorder]}>
                   <View style={styles.mcBadgeLogo}>
                     <View style={styles.mcBadgeRed} />
                     <View style={styles.mcBadgeYellow} />
                   </View>
                 </View>
-                {/* Amex */}
                 <View style={[styles.brandBadge, { backgroundColor: "#006FCF" }]}>
-                  <Text style={styles.brandBadgeSmallText}>AMEX</Text>
+                  <Text style={styles.amexBadgeText}>AMEX</Text>
                 </View>
-                {/* Discover */}
-                <View style={[styles.brandBadge, { backgroundColor: "#FF6000" }]}>
-                  <Text style={styles.brandBadgeSmallText}>DISC</Text>
+                <View style={[styles.brandBadge, styles.brandBadgeBorder]}>
+                  <Text style={styles.discoverBadgeText}>DISCOVER</Text>
                 </View>
-                {/* Apple Pay */}
-                <View style={[styles.brandBadge, { backgroundColor: "#000" }]}>
-                  <Text style={styles.brandBadgeAppleText}>{""} Pay</Text>
+                <View style={[styles.brandBadge, { backgroundColor: "#000000" }]}>
+                  <Text style={styles.applePayBadgeText}>
+                    {Platform.OS === "ios" ? "\uF8FF Pay" : "Pay"}
+                  </Text>
                 </View>
-                {/* Google Pay */}
-                <View style={[styles.brandBadge, { backgroundColor: "#fff", borderWidth: 1, borderColor: "#E0E0E0" }]}>
-                  <Text style={styles.brandBadgeGPayText}>G Pay</Text>
+                <View style={[styles.brandBadge, styles.brandBadgeBorder]}>
+                  <View style={styles.gPayRow}>
+                    <Text style={styles.gPayG}>G</Text>
+                    <Text style={styles.gPayPay}> Pay</Text>
+                  </View>
                 </View>
               </View>
             </View>
@@ -1942,39 +1912,13 @@ const createStyles = (theme: Theme) =>
       borderWidth: 2,
       borderColor: theme.white,
     },
-    cardFormClip: {
-      marginTop: moderateHeightScale(18),
-      height: Platform.OS === "ios" ? 130 : 140,
-      overflow: "hidden",
-      borderRadius: moderateWidthScale(12),
-    },
-    cardForm: {
+    cardFormNative: {
       width: "100%",
-      height: Platform.OS === "ios" ? 260 : 280,
-    },
-    cardholderRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      marginTop: moderateHeightScale(12),
-      borderRadius: moderateWidthScale(10),
-      borderWidth: 1,
-      borderColor: "#D9D7D3",
-      backgroundColor: "#FFFFFF",
-      paddingHorizontal: moderateWidthScale(14),
-      minHeight: moderateHeightScale(52),
-    },
-    cardholderIcon: {
-      marginRight: moderateWidthScale(10),
-    },
-    cardholderInput: {
-      flex: 1,
-      fontSize: fontSize.size16,
-      fontFamily: fonts.fontRegular,
-      color: "#283618",
-      paddingVertical: moderateHeightScale(14),
+      height: Platform.OS === "ios" ? 190 : 220,
+      marginTop: moderateHeightScale(18),
     },
     addCardButtons: {
-      marginTop: moderateHeightScale(4),
+      marginTop: moderateHeightScale(16),
       gap: moderateHeightScale(12),
     },
     addCardButton: {},
@@ -2014,9 +1958,10 @@ const createStyles = (theme: Theme) =>
     weAcceptSection: {
       alignItems: "center",
       marginTop: moderateHeightScale(18),
-      paddingTop: moderateHeightScale(16),
-      borderTopWidth: 1,
-      borderTopColor: theme.borderLight,
+      paddingTop: moderateHeightScale(14),
+      paddingBottom: moderateHeightScale(4),
+      borderRadius: moderateWidthScale(12),
+      backgroundColor: "#F5F5F3",
     },
     weAcceptTitle: {
       fontSize: fontSize.size13,
@@ -2026,39 +1971,70 @@ const createStyles = (theme: Theme) =>
     },
     weAcceptLogos: {
       flexDirection: "row",
+      flexWrap: "wrap",
       alignItems: "center",
       justifyContent: "center",
       gap: moderateWidthScale(8),
-      flexWrap: "wrap",
+      paddingHorizontal: moderateWidthScale(12),
+      paddingBottom: moderateHeightScale(12),
     },
     brandBadge: {
-      width: moderateWidthScale(48),
-      height: moderateHeightScale(30),
-      borderRadius: moderateWidthScale(6),
+      width: "29%",
+      height: moderateHeightScale(40),
+      borderRadius: moderateWidthScale(8),
       alignItems: "center",
       justifyContent: "center",
+      backgroundColor: "#FFFFFF",
+      ...Platform.select({
+        ios: {
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 1 },
+          shadowOpacity: 0.08,
+          shadowRadius: 3,
+        },
+        android: { elevation: 2 },
+        default: {},
+      }),
     },
-    brandBadgeVisaText: {
-      fontSize: fontSize.size11,
+    brandBadgeBorder: {
+      borderWidth: 0.5,
+      borderColor: "#E0E0E0",
+    },
+    visaBadgeText: {
+      fontSize: fontSize.size16,
       fontFamily: fonts.fontExtraBold,
       color: "#FFFFFF",
       fontStyle: "italic",
-      letterSpacing: 1,
+      letterSpacing: 2,
     },
-    brandBadgeSmallText: {
-      fontSize: fontSize.size9,
+    amexBadgeText: {
+      fontSize: fontSize.size12,
       fontFamily: fonts.fontExtraBold,
       color: "#FFFFFF",
       letterSpacing: 0.5,
     },
-    brandBadgeAppleText: {
-      fontSize: fontSize.size10,
+    discoverBadgeText: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontExtraBold,
+      color: "#FF6000",
+    },
+    applePayBadgeText: {
+      fontSize: fontSize.size14,
       fontFamily: fonts.fontBold,
       color: "#FFFFFF",
     },
-    brandBadgeGPayText: {
-      fontSize: fontSize.size10,
+    gPayRow: {
+      flexDirection: "row",
+      alignItems: "center",
+    },
+    gPayG: {
+      fontSize: fontSize.size16,
       fontFamily: fonts.fontBold,
+      color: "#4285F4",
+    },
+    gPayPay: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontMedium,
       color: "#3C4043",
     },
     mcBadgeLogo: {
@@ -2066,17 +2042,17 @@ const createStyles = (theme: Theme) =>
       alignItems: "center",
     },
     mcBadgeRed: {
-      width: moderateWidthScale(14),
-      height: moderateWidthScale(14),
-      borderRadius: moderateWidthScale(7),
+      width: moderateWidthScale(22),
+      height: moderateWidthScale(22),
+      borderRadius: moderateWidthScale(11),
       backgroundColor: "#EB001B",
     },
     mcBadgeYellow: {
-      width: moderateWidthScale(14),
-      height: moderateWidthScale(14),
-      borderRadius: moderateWidthScale(7),
+      width: moderateWidthScale(22),
+      height: moderateWidthScale(22),
+      borderRadius: moderateWidthScale(11),
       backgroundColor: "#F79E1B",
-      marginLeft: -moderateWidthScale(5),
+      marginLeft: -moderateWidthScale(8),
     },
 
     /* Delete modal */
