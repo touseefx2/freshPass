@@ -10,13 +10,14 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
-import { CardField, useStripe } from "@stripe/stripe-react-native";
+import { CardForm, useStripe } from "@stripe/stripe-react-native";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
@@ -84,7 +85,7 @@ type DeleteResponse = {
   } | null;
 };
 
-const CARD_FIELD_STYLE = {
+const CARD_FORM_STYLE = {
   backgroundColor: "#FFFFFF",
   textColor: "#283618",
   placeholderColor: "#7E8674",
@@ -1334,6 +1335,7 @@ export default function PaymentMethodsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [showAddCard, setShowAddCard] = useState(false);
   const [cardComplete, setCardComplete] = useState(false);
+  const [cardholderName, setCardholderName] = useState("");
   const [saving, setSaving] = useState(false);
   const [settingDefault, setSettingDefault] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
@@ -1370,6 +1372,10 @@ export default function PaymentMethodsScreen() {
     void fetchCards();
   }, [fetchCards]);
 
+  useEffect(() => {
+    if (!loading && cards.length === 0) setShowAddCard(true);
+  }, [loading, cards.length]);
+
   const onRefresh = useCallback(() => {
     setRefreshing(true);
     void fetchCards(true);
@@ -1391,12 +1397,18 @@ export default function PaymentMethodsScreen() {
 
       const { error } = await confirmSetupIntent(clientSecret, {
         paymentMethodType: "Card",
+        paymentMethodData: {
+          billingDetails: {
+            name: cardholderName.trim() || undefined,
+          },
+        },
       });
       if (error) throw new Error(error.message || t("walletFailedToAdd"));
 
       showBanner(t("success"), t("walletAddSuccess"), "success", 2500);
       setShowAddCard(false);
       setCardComplete(false);
+      setCardholderName("");
       void fetchCards(true);
     } catch (err: any) {
       const msg = getServerMessage(err, t("walletFailedToAdd"));
@@ -1545,10 +1557,7 @@ export default function PaymentMethodsScreen() {
           </View>
         )}
 
-        {/* Empty state */}
-        {!loading && cards.length === 0 && !showAddCard && (
-          <EmptyState onAdd={() => setShowAddCard(true)} theme={theme} />
-        )}
+        {/* Empty state removed — add card form shows automatically via useEffect */}
 
         {/* Card grid */}
         {sortedCards.length > 0 && (
@@ -1579,32 +1588,77 @@ export default function PaymentMethodsScreen() {
         {/* Add card form */}
         {showAddCard && (
           <View style={styles.addCardSection}>
-            <Text style={styles.addCardTitle}>{t("walletAddCardTitle")}</Text>
-            <Text style={styles.addCardSubtitle}>
-              {t("walletAddCardSubtitle")}
-            </Text>
+            {/* Header with card illustration */}
+            <View style={styles.addCardHeader}>
+              <View style={styles.addCardHeaderText}>
+                <Text style={styles.addCardTitle}>
+                  {cards.length === 0 ? t("walletAddPaymentMethod") : t("walletAddCardTitle")}
+                </Text>
+                <Text style={styles.addCardSubtitle}>
+                  {t("walletAddCardSubtitle")}
+                </Text>
+              </View>
+              <View style={styles.addCardIllustration}>
+                <LinearGradient
+                  colors={["#B8B07D", "#D4C98A"]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.illustrationCard}
+                >
+                  <View style={styles.illustrationChip}>
+                    <View style={styles.illustrationChipLineH} />
+                    <View style={styles.illustrationChipLineV} />
+                  </View>
+                  <View style={styles.illustrationStripe} />
+                </LinearGradient>
+                <View style={styles.illustrationShield}>
+                  <Feather name="check" size={iconScale(12)} color="#fff" />
+                </View>
+              </View>
+            </View>
 
-            <CardField
-              style={styles.cardField}
-              disabled={saving}
-              postalCodeEnabled={false}
-              placeholders={{
-                number: t("cardNumber"),
-                expiration: t("expiryPlaceholder"),
-                cvc: t("cvc"),
-              }}
-              onCardChange={(details) => {
-                setCardComplete(!!details?.complete);
-                const brand = details?.brand;
-                typedBrandRef.current =
-                  brand && brand !== "Unknown" ? brand : null;
-              }}
-              cardStyle={CARD_FIELD_STYLE}
-            />
+            {/* Card fields — CardForm separate rows, Country/ZIP clipped */}
+            <View style={styles.cardFormClip}>
+              <CardForm
+                style={styles.cardForm}
+                disabled={saving}
+                cardStyle={CARD_FORM_STYLE}
+                placeholders={{
+                  number: t("cardNumber"),
+                  expiration: t("expiryPlaceholder"),
+                  cvc: t("cvc"),
+                }}
+                onFormComplete={(details) => {
+                  const filled =
+                    !!details?.last4 &&
+                    (details?.expiryMonth ?? 0) > 0 &&
+                    (details?.expiryYear ?? 0) > 0;
+                  setCardComplete(details?.complete || filled);
+                  const brand = details?.brand;
+                  typedBrandRef.current =
+                    brand && brand !== "Unknown" ? brand : null;
+                }}
+              />
+            </View>
+
+            {/* Cardholder Name */}
+            <View style={styles.cardholderRow}>
+              <Feather name="user" size={iconScale(16)} color={theme.textMuted} style={styles.cardholderIcon} />
+              <TextInput
+                style={styles.cardholderInput}
+                placeholder={t("walletCardholderName")}
+                placeholderTextColor="#7E8674"
+                value={cardholderName}
+                onChangeText={setCardholderName}
+                autoCapitalize="words"
+                autoCorrect={false}
+                editable={!saving}
+              />
+            </View>
 
             <View style={styles.addCardButtons}>
               <Button
-                title={t("saveCard")}
+                title={t("walletSavePaymentMethod")}
                 onPress={() => void handleAddCard()}
                 disabled={!cardComplete}
                 loading={saving}
@@ -1615,6 +1669,7 @@ export default function PaymentMethodsScreen() {
                 onPress={() => {
                   setShowAddCard(false);
                   setCardComplete(false);
+                  setCardholderName("");
                 }}
                 disabled={saving}
                 activeOpacity={0.7}
@@ -1624,15 +1679,52 @@ export default function PaymentMethodsScreen() {
               </TouchableOpacity>
             </View>
 
-            <View style={styles.secureRow}>
+            {/* Stripe branding */}
+            <View style={styles.stripeBrandRow}>
               <Feather
                 name="lock"
-                size={iconScale(15)}
+                size={iconScale(14)}
                 color={theme.textMuted}
               />
-              <Text style={styles.secureText}>
+              <Text style={styles.stripeBrandText}>
                 {t("securelyProcessedByStripe")}
               </Text>
+              <View style={styles.stripeDivider} />
+              <Text style={styles.stripeWordmark}>stripe</Text>
+            </View>
+
+            {/* We Accept logos */}
+            <View style={styles.weAcceptSection}>
+              <Text style={styles.weAcceptTitle}>We Accept</Text>
+              <View style={styles.weAcceptLogos}>
+                {/* Visa */}
+                <View style={[styles.brandBadge, { backgroundColor: "#1A1F71" }]}>
+                  <Text style={styles.brandBadgeVisaText}>VISA</Text>
+                </View>
+                {/* Mastercard */}
+                <View style={[styles.brandBadge, { backgroundColor: "#EB001B" }]}>
+                  <View style={styles.mcBadgeLogo}>
+                    <View style={styles.mcBadgeRed} />
+                    <View style={styles.mcBadgeYellow} />
+                  </View>
+                </View>
+                {/* Amex */}
+                <View style={[styles.brandBadge, { backgroundColor: "#006FCF" }]}>
+                  <Text style={styles.brandBadgeSmallText}>AMEX</Text>
+                </View>
+                {/* Discover */}
+                <View style={[styles.brandBadge, { backgroundColor: "#FF6000" }]}>
+                  <Text style={styles.brandBadgeSmallText}>DISC</Text>
+                </View>
+                {/* Apple Pay */}
+                <View style={[styles.brandBadge, { backgroundColor: "#000" }]}>
+                  <Text style={styles.brandBadgeAppleText}>{""} Pay</Text>
+                </View>
+                {/* Google Pay */}
+                <View style={[styles.brandBadge, { backgroundColor: "#fff", borderWidth: 1, borderColor: "#E0E0E0" }]}>
+                  <Text style={styles.brandBadgeGPayText}>G Pay</Text>
+                </View>
+              </View>
             </View>
           </View>
         )}
@@ -1774,10 +1866,20 @@ const createStyles = (theme: Theme) =>
         default: {},
       }),
     },
+    addCardHeader: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "flex-start",
+    },
+    addCardHeaderText: {
+      flex: 1,
+      marginRight: moderateWidthScale(12),
+    },
     addCardTitle: {
-      fontSize: fontSize.size20,
+      fontSize: fontSize.size22,
       fontFamily: fonts.fontExtraBold,
       color: theme.darkGreen,
+      lineHeight: fontSize.size22 * 1.25,
     },
     addCardSubtitle: {
       fontSize: fontSize.size13,
@@ -1786,13 +1888,93 @@ const createStyles = (theme: Theme) =>
       marginTop: moderateHeightScale(6),
       lineHeight: fontSize.size18,
     },
-    cardField: {
+    addCardIllustration: {
+      width: moderateWidthScale(68),
+      height: moderateWidthScale(52),
+    },
+    illustrationCard: {
+      width: moderateWidthScale(60),
+      height: moderateWidthScale(42),
+      borderRadius: moderateWidthScale(6),
+      padding: moderateWidthScale(8),
+      justifyContent: "space-between",
+      overflow: "hidden",
+    },
+    illustrationChip: {
+      width: moderateWidthScale(18),
+      height: moderateWidthScale(13),
+      borderRadius: moderateWidthScale(2),
+      backgroundColor: "rgba(255,215,0,0.5)",
+      borderWidth: 0.5,
+      borderColor: "rgba(255,215,0,0.6)",
+      justifyContent: "center",
+      alignItems: "center",
+      overflow: "hidden",
+    },
+    illustrationChipLineH: {
+      position: "absolute",
       width: "100%",
-      height: Platform.OS === "ios" ? 54 : 58,
-      marginTop: moderateHeightScale(20),
+      height: 0.5,
+      backgroundColor: "rgba(255,215,0,0.5)",
+    },
+    illustrationChipLineV: {
+      position: "absolute",
+      width: 0.5,
+      height: "100%",
+      backgroundColor: "rgba(255,215,0,0.5)",
+    },
+    illustrationStripe: {
+      width: "60%",
+      height: moderateHeightScale(4),
+      borderRadius: 2,
+      backgroundColor: "rgba(255,255,255,0.4)",
+    },
+    illustrationShield: {
+      position: "absolute",
+      bottom: 0,
+      right: 0,
+      width: moderateWidthScale(24),
+      height: moderateWidthScale(24),
+      borderRadius: moderateWidthScale(12),
+      backgroundColor: "#4CAF50",
+      alignItems: "center",
+      justifyContent: "center",
+      borderWidth: 2,
+      borderColor: theme.white,
+    },
+    cardFormClip: {
+      marginTop: moderateHeightScale(18),
+      height: Platform.OS === "ios" ? 130 : 140,
+      overflow: "hidden",
+      borderRadius: moderateWidthScale(12),
+    },
+    cardForm: {
+      width: "100%",
+      height: Platform.OS === "ios" ? 260 : 280,
+    },
+    cardholderRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      marginTop: moderateHeightScale(12),
+      borderRadius: moderateWidthScale(10),
+      borderWidth: 1,
+      borderColor: "#D9D7D3",
+      backgroundColor: "#FFFFFF",
+      paddingHorizontal: moderateWidthScale(14),
+      minHeight: moderateHeightScale(52),
+    },
+    cardholderIcon: {
+      marginRight: moderateWidthScale(10),
+    },
+    cardholderInput: {
+      flex: 1,
+      fontSize: fontSize.size16,
+      fontFamily: fonts.fontRegular,
+      color: "#283618",
+      paddingVertical: moderateHeightScale(14),
     },
     addCardButtons: {
-      marginTop: moderateHeightScale(16),
+      marginTop: moderateHeightScale(4),
       gap: moderateHeightScale(12),
     },
     addCardButton: {},
@@ -1805,17 +1987,96 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontMedium,
       color: theme.textMuted,
     },
-    secureRow: {
+    stripeBrandRow: {
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "center",
       gap: moderateWidthScale(6),
-      marginTop: moderateHeightScale(14),
+      marginTop: moderateHeightScale(16),
     },
-    secureText: {
+    stripeBrandText: {
       fontSize: fontSize.size13,
       fontFamily: fonts.fontRegular,
       color: theme.textMuted,
+    },
+    stripeDivider: {
+      width: 1,
+      height: moderateHeightScale(16),
+      backgroundColor: theme.textMuted,
+      opacity: 0.3,
+    },
+    stripeWordmark: {
+      fontSize: fontSize.size18,
+      fontFamily: fonts.fontBold,
+      color: "#635BFF",
+      letterSpacing: 0.5,
+    },
+    weAcceptSection: {
+      alignItems: "center",
+      marginTop: moderateHeightScale(18),
+      paddingTop: moderateHeightScale(16),
+      borderTopWidth: 1,
+      borderTopColor: theme.borderLight,
+    },
+    weAcceptTitle: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+      marginBottom: moderateHeightScale(10),
+    },
+    weAcceptLogos: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: moderateWidthScale(8),
+      flexWrap: "wrap",
+    },
+    brandBadge: {
+      width: moderateWidthScale(48),
+      height: moderateHeightScale(30),
+      borderRadius: moderateWidthScale(6),
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    brandBadgeVisaText: {
+      fontSize: fontSize.size11,
+      fontFamily: fonts.fontExtraBold,
+      color: "#FFFFFF",
+      fontStyle: "italic",
+      letterSpacing: 1,
+    },
+    brandBadgeSmallText: {
+      fontSize: fontSize.size9,
+      fontFamily: fonts.fontExtraBold,
+      color: "#FFFFFF",
+      letterSpacing: 0.5,
+    },
+    brandBadgeAppleText: {
+      fontSize: fontSize.size10,
+      fontFamily: fonts.fontBold,
+      color: "#FFFFFF",
+    },
+    brandBadgeGPayText: {
+      fontSize: fontSize.size10,
+      fontFamily: fonts.fontBold,
+      color: "#3C4043",
+    },
+    mcBadgeLogo: {
+      flexDirection: "row",
+      alignItems: "center",
+    },
+    mcBadgeRed: {
+      width: moderateWidthScale(14),
+      height: moderateWidthScale(14),
+      borderRadius: moderateWidthScale(7),
+      backgroundColor: "#EB001B",
+    },
+    mcBadgeYellow: {
+      width: moderateWidthScale(14),
+      height: moderateWidthScale(14),
+      borderRadius: moderateWidthScale(7),
+      backgroundColor: "#F79E1B",
+      marginLeft: -moderateWidthScale(5),
     },
 
     /* Delete modal */
