@@ -153,19 +153,16 @@ export default function ModalizeBottomSheet({
 
   useEffect(() => {
     if (visible) {
-      // Only delay if a keyboard is actually up (on Android the sheet would
-      // otherwise sit partly behind it).  When no keyboard is showing the
-      // 100 ms wait was pure dead time the user felt on every tap.
       const isKeyboardUp = Keyboard.isVisible?.() ?? false;
-      if (isKeyboardUp) {
-        Keyboard.dismiss();
-        const timer = setTimeout(() => {
-          modalizeRef.current?.open();
-        }, 100);
-        return () => clearTimeout(timer);
-      }
-      modalizeRef.current?.open();
-      return;
+      const delay = isKeyboardUp ? 100 : 0;
+      if (isKeyboardUp) Keyboard.dismiss();
+      // On first mount the Portal hasn't rendered the Modalize yet, so
+      // modalizeRef.current is null.  A 0 ms timeout defers to the next
+      // frame when the ref is attached; with a keyboard the 100 ms covers it.
+      const timer = setTimeout(() => {
+        modalizeRef.current?.open();
+      }, delay);
+      return () => clearTimeout(timer);
     }
     // Not rendered yet (first mount: the portal renders it after this effect)
     // — nothing to close, and no onClosed would clear the flag

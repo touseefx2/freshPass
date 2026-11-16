@@ -4498,7 +4498,7 @@
   "mcFieldFormat": "Format",
   "mcFieldLocation": "Location",
   "mcLocationBusiness": "Business address",
-  "mcLocationCustom": "Custom address",
+  "mcLocationCustom": "Enter address",
   "mcFieldAddress": "Address",
   "mcFieldAddressPlaceholder": "Search for an address",
   "mcFieldMeetingUrl": "Meeting link",
