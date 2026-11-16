@@ -33,6 +33,7 @@ import {
 } from "@/src/services/mediaLibraryService";
 import { uploadMaxSeconds } from "@/src/utils/reelLimits";
 import { isUploadCancelled } from "@/src/utils/uploadCancel";
+import { handleMediaLibraryPermission } from "@/src/services/mediaPermissionService";
 import Logger from "@/src/services/logger";
 import { ClassMediaThumb } from "@/src/components/masterClasses/parts";
 import { EditorFieldError } from "@/src/components/masterClasses/editorFields";
@@ -98,6 +99,8 @@ export function useClassMediaUpload(
   const pick = useCallback(async (onImagePicked?: (uri: string) => void) => {
     if (controllerRef.current) return;
     setError(null);
+    const hasPermission = await handleMediaLibraryPermission();
+    if (!hasPermission) return;
     let asset: ImagePicker.ImagePickerAsset | undefined;
     try {
       const result = await ImagePicker.launchImageLibraryAsync({

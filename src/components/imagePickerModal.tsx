@@ -301,23 +301,24 @@ export default function ImagePickerModal({
       ) : null}
     </ModalizeBottomSheet>
 
-    {/* Single-photo editor */}
-    <PhotoEditorModal
-      visible={editorVisible}
-      imageUri={editorUri}
-      onDone={handleEditorDone}
-      onCancel={handleEditorCancel}
-      cropShape={cropShape}
-    />
-
-    {/* Multi-photo editor queue */}
-    <PhotoEditorModal
-      visible={photoQueue.isEditing}
-      imageUri={photoQueue.currentUri}
-      onDone={photoQueue.handleDone}
-      onCancel={photoQueue.handleCancel}
-      cropShape={cropShape}
-    />
+    {enableEditor ? (
+      <>
+        <PhotoEditorModal
+          visible={editorVisible}
+          imageUri={editorUri}
+          onDone={handleEditorDone}
+          onCancel={handleEditorCancel}
+          cropShape={cropShape}
+        />
+        <PhotoEditorModal
+          visible={photoQueue.isEditing}
+          imageUri={photoQueue.currentUri}
+          onDone={photoQueue.handleDone}
+          onCancel={photoQueue.handleCancel}
+          cropShape={cropShape}
+        />
+      </>
+    ) : null}
     </>
   );
 }

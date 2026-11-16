@@ -1,6 +1,6 @@
 import * as ImagePicker from "expo-image-picker";
 import Constants from "expo-constants";
-import { Platform, Alert, Linking } from "react-native";
+import { AppState, Platform, Alert, Linking } from "react-native";
 import Logger from "./logger";
 
 export interface MediaPermissionResult {
@@ -10,6 +10,20 @@ export interface MediaPermissionResult {
 }
 
 type MediaPermissionKind = "library" | "camera";
+
+// In-memory cache: once granted, skip the native bridge call on subsequent taps.
+// Cleared when the app returns from background (user may have toggled permission
+// in Settings while away).
+const grantedCache: Record<MediaPermissionKind, boolean> = {
+  library: false,
+  camera: false,
+};
+AppState.addEventListener("change", (state) => {
+  if (state === "active") {
+    grantedCache.library = false;
+    grantedCache.camera = false;
+  }
+});
 
 const GALLERY_DENIED_MESSAGE =
   "Photo library permission is required to select photos.";
@@ -176,11 +190,14 @@ export const openMediaSettings = async (
 const handleMediaPermission = async (
   kind: MediaPermissionKind,
 ): Promise<boolean> => {
+  if (grantedCache[kind]) return true;
+
   const messages = getMessages(kind);
 
   const existing = await getExistingPermission(kind);
 
   if (existing.status === ImagePicker.PermissionStatus.GRANTED) {
+    grantedCache[kind] = true;
     return true;
   }
 
@@ -205,6 +222,7 @@ const handleMediaPermission = async (
   const result = await requestMediaPermission(kind);
 
   if (result.granted) {
+    grantedCache[kind] = true;
     return true;
   }
 
