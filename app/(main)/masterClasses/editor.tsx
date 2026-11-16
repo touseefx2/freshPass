@@ -98,6 +98,7 @@ import {
   EditorDateSheet,
   EditorOptionSheet,
   WheelTimePickerSheet,
+  EditSessionSheet,
   type EditorSheetOption,
 } from "@/src/components/masterClasses/editorSheets";
 import {
@@ -540,7 +541,7 @@ function validate(
 const hasErrors = (e: Errors) => Object.keys(e).length > 0;
 
 type Busy = null | "publish" | "draft" | "autosave" | "reschedule";
-type SheetName = null | "duration" | "date" | "time" | "endDate" | "address";
+type SheetName = null | "duration" | "date" | "time" | "endDate" | "address" | "editSession" | "editSessionTime" | "editSessionDuration";
 
 export default function MasterClassEditorScreen() {
   const { t } = useTranslation();
@@ -581,6 +582,8 @@ export default function MasterClassEditorScreen() {
   const busyRef = useRef<Busy>(null);
   busyRef.current = busy;
   const [sheet, setSheet] = useState<SheetName>(null);
+  const [editSessionDate, setEditSessionDate] = useState<string | null>(null);
+  const editSessionSnapshot = useRef<{ time: string | null; duration: number | null } | null>(null);
   const sheetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(
     () => () => {
@@ -1134,10 +1137,25 @@ export default function MasterClassEditorScreen() {
 
   const sessionTimeRange = useMemo(() => {
     if (!form.time) return "";
+    if (form.scheduleType === "specific_dates" && form.specificDates.length > 0) {
+      const timeRanges = new Set<string>();
+      const globalRange = `${formatClassTime(form.time)}–${endTimeText(form.time, form.duration)}`;
+      timeRanges.add(globalRange);
+      for (const date of form.specificDates) {
+        const ov = form.sessionOverrides[date];
+        if (!ov) continue;
+        const ovTime = ov.time ?? form.time;
+        const ovDur = ov.duration ?? form.duration;
+        timeRanges.add(`${formatClassTime(ovTime)}–${endTimeText(ovTime, ovDur)}`);
+      }
+      if (timeRanges.size > 1) {
+        return `${globalRange} (varies)`;
+      }
+    }
     const start = formatClassTime(form.time);
     const end = endTimeText(form.time, form.duration);
     return end ? `${start} – ${end}` : start;
-  }, [form.time, form.duration]);
+  }, [form.time, form.duration, form.sessionOverrides, form.scheduleType, form.specificDates]);
 
   const reviewMeta = useMemo(() => {
     const meta: { icon: string; text: string }[] = [];
@@ -1581,6 +1599,44 @@ export default function MasterClassEditorScreen() {
                   </>
                 ) : (
                   <>
+                    {/* Course start + Course end — only for weekly (specific_dates derives from calendar) */}
+                    {form.scheduleType !== "specific_dates" ? (
+                      <View onLayout={recordY(["date", "endDate"])}>
+                        <EditorRow
+                          labels={[
+                            { label: t("mcFieldStartDate"), required: true },
+                            { label: t("mcFieldEndDate"), required: true },
+                          ]}
+                        >
+                          <EditorPickerBox
+                            icon="calendar-outline"
+                            value={form.date ? formatClassDate(form.date) : null}
+                            placeholder={t("mcSelectDate")}
+                            onPress={() => {
+                              Keyboard.dismiss();
+                              setSheet("date");
+                            }}
+                            invalid={!!errors.date}
+                          />
+                          <EditorPickerBox
+                            icon="calendar-outline"
+                            value={form.endDate ? formatClassDate(form.endDate) : null}
+                            placeholder={t("mcSelectEndDate")}
+                            onPress={() => {
+                              Keyboard.dismiss();
+                              setSheet("endDate");
+                            }}
+                            invalid={!!errors.endDate}
+                          />
+                        </EditorRow>
+                        {(errors.date || errors.endDate) ? (
+                          <View style={styles.rowError}>
+                            <EditorFieldError message={errors.date || errors.endDate} />
+                          </View>
+                        ) : null}
+                      </View>
+                    ) : null}
+
                     {/* Schedule type toggle */}
                     <View style={styles.section}>
                       <EditorLabel label="Schedule" required />
@@ -1603,44 +1659,6 @@ export default function MasterClassEditorScreen() {
 
                     {form.scheduleType === "weekly" ? (
                       <>
-                        {/* Weekly: Course start + Course end */}
-                        <View onLayout={recordY(["date", "endDate"])}>
-                          <EditorRow
-                            labels={[
-                              { label: t("mcFieldStartDate"), required: true },
-                              { label: t("mcFieldEndDate"), required: true },
-                            ]}
-                          >
-                            <EditorPickerBox
-                              icon="calendar-outline"
-                              value={form.date ? formatClassDate(form.date) : null}
-                              placeholder={t("mcSelectDate")}
-                              onPress={() => {
-                                Keyboard.dismiss();
-                                setSheet("date");
-                              }}
-                              invalid={!!errors.date}
-                              trailingIcon={null}
-                            />
-                            <EditorPickerBox
-                              icon="calendar-outline"
-                              value={form.endDate ? formatClassDate(form.endDate) : null}
-                              placeholder={t("mcSelectEndDate")}
-                              onPress={() => {
-                                Keyboard.dismiss();
-                                setSheet("endDate");
-                              }}
-                              invalid={!!errors.endDate}
-                              trailingIcon={null}
-                            />
-                          </EditorRow>
-                          {(errors.date || errors.endDate) ? (
-                            <View style={styles.rowError}>
-                              <EditorFieldError message={errors.date || errors.endDate} />
-                            </View>
-                          ) : null}
-                        </View>
-
                         {/* Meeting days */}
                         <View style={styles.section} onLayout={recordY(["meetingDays"])}>
                           <EditorLabel label="Meeting days" required />
@@ -1659,7 +1677,7 @@ export default function MasterClassEditorScreen() {
                           <EditorRow
                             labels={[
                               { label: t("mcFieldStartTime"), required: true },
-                              { label: t("mcFieldClassDuration"), required: true },
+                              { label: t("mcSessionDuration"), required: true },
                             ]}
                           >
                             <EditorPickerBox
@@ -1714,7 +1732,8 @@ export default function MasterClassEditorScreen() {
                       <>
                         {/* Specific dates: multi-select calendar */}
                         <View style={styles.section} onLayout={recordY(["specificDates"])}>
-                          <EditorLabel label="Select dates" required />
+                          <EditorLabel label={t("mcSelectSessionDates")} required />
+                          <Text style={styles.fieldHint}>{t("mcTapDates")}</Text>
                           <MultiDateCalendar
                             selected={form.specificDates}
                             onChange={(dates) => {
@@ -1749,12 +1768,31 @@ export default function MasterClassEditorScreen() {
                           <EditorFieldError message={errors.specificDates} />
                         </View>
 
-                        {/* Default time + duration for all sessions */}
+                        {/* Same time for all sessions toggle */}
+                        {form.specificDates.length > 0 ? (
+                          <View style={styles.toggleRow}>
+                            <Text style={styles.toggleLabel}>{t("mcSameTimeForAll")}</Text>
+                            <Switch
+                              value={form.sameTimeForAll}
+                              onValueChange={(val) =>
+                                setForm((prev) => ({
+                                  ...prev,
+                                  sameTimeForAll: val,
+                                  sessionOverrides: val ? {} : prev.sessionOverrides,
+                                }))
+                              }
+                              trackColor={{ false: theme.borderNormal, true: theme.darkGreen }}
+                              thumbColor={theme.white}
+                            />
+                          </View>
+                        ) : null}
+
+                        {/* Start time + Session duration */}
                         <View onLayout={recordY(["time", "duration"])}>
                           <EditorRow
                             labels={[
                               { label: t("mcFieldStartTime"), required: true },
-                              { label: t("mcFieldClassDuration"), required: true },
+                              { label: t("mcSessionDuration"), required: true },
                             ]}
                           >
                             <EditorPickerBox
@@ -1805,6 +1843,27 @@ export default function MasterClassEditorScreen() {
                             globalTime={form.time}
                             globalDuration={form.duration}
                             overrides={form.sessionOverrides}
+                            onEdit={(date) => {
+                              Keyboard.dismiss();
+                              const existing = form.sessionOverrides[date];
+                              editSessionSnapshot.current = existing
+                                ? { time: existing.time, duration: existing.duration }
+                                : null;
+                              setEditSessionDate(date);
+                              setSheet("editSession");
+                            }}
+                            onAddRemoveDates={() => {
+                              scrollToFirst({ specificDates: "scroll" });
+                            }}
+                          />
+                        ) : null}
+
+                        {/* Session summary for specific dates */}
+                        {form.specificDates.length > 0 ? (
+                          <SessionSummaryCard
+                            sessions={form.specificDates.length}
+                            daysText={`${formatClassDate(form.specificDates[0])}–${formatClassDate(form.specificDates[form.specificDates.length - 1])}`}
+                            timeText={sessionTimeRange}
                           />
                         ) : null}
                       </>
@@ -2197,6 +2256,106 @@ export default function MasterClassEditorScreen() {
         }}
         onClose={() => setSheet(null)}
       />
+      <EditSessionSheet
+        visible={sheet === "editSession" && !!editSessionDate}
+        date={editSessionDate ?? ""}
+        time={form.sessionOverrides[editSessionDate ?? ""]?.time ?? form.time}
+        duration={form.sessionOverrides[editSessionDate ?? ""]?.duration ?? form.duration}
+        timeZone={serverClass?.timezone}
+        onPickTime={() => setSheet("editSessionTime")}
+        onPickDuration={() => setSheet("editSessionDuration")}
+        onSave={(time, duration) => {
+          if (editSessionDate) {
+            const isDefault =
+              time === form.time && duration === form.duration;
+            setForm((prev) => {
+              const overrides = { ...prev.sessionOverrides };
+              if (isDefault) {
+                delete overrides[editSessionDate];
+              } else {
+                overrides[editSessionDate] = { time, duration };
+              }
+              return { ...prev, sessionOverrides: overrides };
+            });
+          }
+          editSessionSnapshot.current = null;
+          setSheet(null);
+          setEditSessionDate(null);
+        }}
+        onRemove={() => {
+          if (editSessionDate) {
+            setForm((prev) => {
+              const next = prev.specificDates.filter((d) => d !== editSessionDate);
+              const overrides = { ...prev.sessionOverrides };
+              delete overrides[editSessionDate];
+              return {
+                ...prev,
+                specificDates: next,
+                date: next[0] ?? null,
+                endDate: next[next.length - 1] ?? null,
+                sessionOverrides: overrides,
+              };
+            });
+          }
+          editSessionSnapshot.current = null;
+          setSheet(null);
+          setEditSessionDate(null);
+        }}
+        onClose={() => {
+          if (editSessionDate) {
+            setForm((prev) => {
+              const overrides = { ...prev.sessionOverrides };
+              if (editSessionSnapshot.current) {
+                overrides[editSessionDate] = editSessionSnapshot.current;
+              } else {
+                delete overrides[editSessionDate];
+              }
+              return { ...prev, sessionOverrides: overrides };
+            });
+          }
+          editSessionSnapshot.current = null;
+          setSheet(null);
+          setEditSessionDate(null);
+        }}
+      />
+      <WheelTimePickerSheet
+        visible={sheet === "editSessionTime"}
+        value={form.sessionOverrides[editSessionDate ?? ""]?.time ?? form.time}
+        onConfirm={(time) => {
+          if (editSessionDate) {
+            setForm((prev) => {
+              const overrides = { ...prev.sessionOverrides };
+              overrides[editSessionDate] = {
+                time,
+                duration: overrides[editSessionDate]?.duration ?? prev.duration,
+              };
+              return { ...prev, sessionOverrides: overrides };
+            });
+          }
+          setSheet("editSession");
+        }}
+        onClose={() => setSheet("editSession")}
+      />
+      <EditorOptionSheet
+        visible={sheet === "editSessionDuration"}
+        title={t("mcSessionDuration")}
+        options={DURATION_OPTIONS.map((m) => ({ value: m, label: formatDuration(m) }))}
+        selected={form.sessionOverrides[editSessionDate ?? ""]?.duration ?? form.duration}
+        onSelect={(v) => {
+          if (editSessionDate) {
+            setForm((prev) => {
+              const overrides = { ...prev.sessionOverrides };
+              overrides[editSessionDate] = {
+                time: overrides[editSessionDate]?.time ?? prev.time,
+                duration: v as number,
+              };
+              return { ...prev, sessionOverrides: overrides };
+            });
+          }
+          setSheet("editSession");
+        }}
+        onClose={() => setSheet("editSession")}
+      />
       <EditorAddressSheet
         visible={sheet === "address"}
         initialQuery={form.address}
@@ -2320,6 +2479,12 @@ const createStyles = (theme: Theme) =>
     section: {
       gap: moderateHeightScale(8),
     },
+    fieldHint: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+      marginTop: moderateHeightScale(-4),
+    },
     rowError: {
       marginTop: moderateHeightScale(7),
     },
@@ -2327,7 +2492,12 @@ const createStyles = (theme: Theme) =>
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
-      paddingVertical: moderateHeightScale(4),
+      paddingHorizontal: moderateWidthScale(14),
+      paddingVertical: moderateHeightScale(12),
+      borderRadius: moderateWidthScale(12),
+      borderWidth: 1,
+      borderColor: theme.borderNormal,
+      backgroundColor: theme.white,
     },
     toggleLabel: {
       flex: 1,

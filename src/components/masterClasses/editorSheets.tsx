@@ -687,6 +687,8 @@ export function EditSessionSheet({
   onSave,
   onRemove,
   onClose,
+  onPickTime,
+  onPickDuration,
 }: {
   visible: boolean;
   date: string;
@@ -696,26 +698,15 @@ export function EditSessionSheet({
   onSave: (time: string | null, duration: number | null) => void;
   onRemove: () => void;
   onClose: () => void;
+  onPickTime: () => void;
+  onPickDuration: () => void;
 }) {
   const { colors } = useTheme();
   const theme = colors as Theme;
   const es = useMemo(() => createEditSessionStyles(theme), [colors]);
 
-  const [localTime, setLocalTime] = useState<string | null>(time);
-  const [localDuration, setLocalDuration] = useState<number | null>(duration);
-  const [showTimePicker, setShowTimePicker] = useState(false);
-  const [showDurationPicker, setShowDurationPicker] = useState(false);
-
-  useEffect(() => {
-    if (visible) {
-      setLocalTime(time);
-      setLocalDuration(duration);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visible]);
-
   const dateLabel = date ? dayjs(date).format("ddd, MMM D, YYYY") : "";
-  const endLabel = endTimeText(localTime, localDuration);
+  const endLabel = endTimeText(time, duration);
   const tzLabel = getTimezoneLabel(timeZone);
   const helperText =
     endLabel && tzLabel
@@ -724,144 +715,112 @@ export function EditSessionSheet({
         ? `Ends at ${endLabel}`
         : tzLabel || "";
 
-  const durationOptions = useMemo(() => {
-    const list = [...DURATION_OPTIONS];
-    if (localDuration && !list.includes(localDuration)) {
-      list.push(localDuration);
-      list.sort((a, b) => a - b);
-    }
-    return list.map((m) => ({ value: m, label: formatDuration(m) }));
-  }, [localDuration]);
-
   return (
-    <>
-      <EditorSheet
-        visible={visible}
-        title="Edit session"
-        onClose={onClose}
-        scroll
-        footer={
-          <View style={es.footer}>
-            <SheetPrimaryButton
-              label="Save Changes"
-              onPress={() => onSave(localTime, localDuration)}
+    <EditorSheet
+      visible={visible}
+      title="Edit session"
+      onClose={onClose}
+      scroll
+      footer={
+        <View style={es.footer}>
+          <SheetPrimaryButton
+            label="Save Changes"
+            onPress={() => onSave(time, duration)}
+          />
+          <TouchableOpacity
+            onPress={onRemove}
+            style={es.removeBtn}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel="Remove session"
+          >
+            <Text style={es.removeText}>Remove session</Text>
+          </TouchableOpacity>
+        </View>
+      }
+    >
+      <View style={es.body}>
+        <View style={es.field}>
+          <Text style={es.label}>
+            Date<Text style={es.required}> *</Text>
+          </Text>
+          <View style={es.readOnlyBox}>
+            <Ionicons
+              name="calendar-outline"
+              size={iconScale(18)}
+              color={theme.darkGreen}
             />
+            <Text style={es.readOnlyText}>{dateLabel}</Text>
+          </View>
+        </View>
+
+        <View style={es.row}>
+          <View style={es.rowCol}>
+            <Text style={es.label}>
+              Start time<Text style={es.required}> *</Text>
+            </Text>
             <TouchableOpacity
-              onPress={onRemove}
-              style={es.removeBtn}
-              activeOpacity={0.7}
+              style={es.pickerBox}
+              activeOpacity={0.75}
+              onPress={onPickTime}
               accessibilityRole="button"
-              accessibilityLabel="Remove session"
+              accessibilityLabel="Start time"
             >
-              <Text style={es.removeText}>Remove session</Text>
+              <Ionicons
+                name="time-outline"
+                size={iconScale(18)}
+                color={time ? theme.darkGreen : theme.lightGreen}
+              />
+              <Text
+                style={[es.pickerText, !time && es.placeholder]}
+                numberOfLines={1}
+              >
+                {time ? formatClassTime(time) : "Select"}
+              </Text>
             </TouchableOpacity>
           </View>
-        }
-      >
-        <View style={es.body}>
-          <View style={es.field}>
+          <View style={es.rowCol}>
             <Text style={es.label}>
-              Date<Text style={es.required}> *</Text>
+              Session duration<Text style={es.required}> *</Text>
             </Text>
-            <View style={es.readOnlyBox}>
+            <TouchableOpacity
+              style={es.pickerBox}
+              activeOpacity={0.75}
+              onPress={onPickDuration}
+              accessibilityRole="button"
+              accessibilityLabel="Session duration"
+            >
+              <Text
+                style={[es.pickerText, !duration && es.placeholder]}
+                numberOfLines={1}
+              >
+                {duration ? formatDuration(duration) : "Select"}
+              </Text>
               <Ionicons
-                name="calendar-outline"
+                name="chevron-down"
                 size={iconScale(18)}
                 color={theme.darkGreen}
               />
-              <Text style={es.readOnlyText}>{dateLabel}</Text>
-            </View>
-          </View>
-
-          <View style={es.row}>
-            <View style={es.rowCol}>
-              <Text style={es.label}>
-                Start time<Text style={es.required}> *</Text>
-              </Text>
-              <TouchableOpacity
-                style={es.pickerBox}
-                activeOpacity={0.75}
-                onPress={() => setShowTimePicker(true)}
-                accessibilityRole="button"
-                accessibilityLabel="Start time"
-              >
-                <Ionicons
-                  name="time-outline"
-                  size={iconScale(18)}
-                  color={localTime ? theme.darkGreen : theme.lightGreen}
-                />
-                <Text
-                  style={[es.pickerText, !localTime && es.placeholder]}
-                  numberOfLines={1}
-                >
-                  {localTime ? formatClassTime(localTime) : "Select"}
-                </Text>
-              </TouchableOpacity>
-            </View>
-            <View style={es.rowCol}>
-              <Text style={es.label}>
-                Session duration<Text style={es.required}> *</Text>
-              </Text>
-              <TouchableOpacity
-                style={es.pickerBox}
-                activeOpacity={0.75}
-                onPress={() => setShowDurationPicker(true)}
-                accessibilityRole="button"
-                accessibilityLabel="Session duration"
-              >
-                <Text
-                  style={[es.pickerText, !localDuration && es.placeholder]}
-                  numberOfLines={1}
-                >
-                  {localDuration ? formatDuration(localDuration) : "Select"}
-                </Text>
-                <Ionicons
-                  name="chevron-down"
-                  size={iconScale(18)}
-                  color={theme.darkGreen}
-                />
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {helperText ? (
-            <Text style={es.helperText}>{helperText}</Text>
-          ) : null}
-
-          <View style={es.notice}>
-            <Ionicons
-              name="information-circle-outline"
-              size={iconScale(18)}
-              color={theme.goldTextDark}
-            />
-            <Text style={es.noticeText}>
-              Changes apply only to this session.
-            </Text>
+            </TouchableOpacity>
           </View>
         </View>
-      </EditorSheet>
 
-      <WheelTimePickerSheet
-        visible={showTimePicker}
-        value={localTime}
-        onConfirm={(t) => {
-          setLocalTime(t);
-          setShowTimePicker(false);
-        }}
-        onClose={() => setShowTimePicker(false)}
-      />
-      <EditorOptionSheet
-        visible={showDurationPicker}
-        title="Session Duration"
-        options={durationOptions}
-        selected={localDuration}
-        onSelect={(v) => {
-          setLocalDuration(v);
-          setShowDurationPicker(false);
-        }}
-        onClose={() => setShowDurationPicker(false)}
-      />
-    </>
+        {helperText ? (
+          <Text style={es.helperText}>{helperText}</Text>
+        ) : null}
+
+        <View style={es.notice}>
+          <Ionicons
+            name="information-circle-outline"
+            size={iconScale(18)}
+            color={theme.goldTextDark}
+          />
+          <Text style={es.noticeText}>
+            Changes apply only to this session.
+          </Text>
+        </View>
+      </View>
+    </EditorSheet>
   );
 }
 

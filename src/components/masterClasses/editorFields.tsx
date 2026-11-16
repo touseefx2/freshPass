@@ -634,8 +634,10 @@ const createStyles = (theme: Theme) =>
     segment: {
       flexDirection: "row",
       padding: moderateWidthScale(4),
-      borderRadius: moderateWidthScale(12),
-      backgroundColor: theme.lightGreen07,
+      borderRadius: moderateWidthScale(28),
+      borderWidth: 1,
+      borderColor: theme.borderLight,
+      backgroundColor: theme.white,
       gap: moderateWidthScale(4),
     },
     segmentItem: {
@@ -645,7 +647,7 @@ const createStyles = (theme: Theme) =>
       justifyContent: "center",
       gap: moderateWidthScale(6),
       minHeight: heightScale(44),
-      borderRadius: moderateWidthScale(9),
+      borderRadius: moderateWidthScale(24),
     },
     segmentItemOn: {
       backgroundColor: theme.darkGreen,

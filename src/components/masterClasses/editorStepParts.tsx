@@ -11,7 +11,7 @@ import {
   View,
   ViewStyle,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import dayjs from "dayjs";
 import isoWeek from "dayjs/plugin/isoWeek";
 import { useTheme } from "@/src/hooks/hooks";
@@ -740,15 +740,15 @@ const calendarStyles = (theme: Theme) =>
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
-      marginBottom: moderateHeightScale(8),
+      marginBottom: moderateHeightScale(10),
+      paddingHorizontal: moderateWidthScale(4),
     },
     arrow: {
-      width: moderateWidthScale(40),
-      height: moderateWidthScale(40),
-      borderRadius: moderateWidthScale(20),
+      width: moderateWidthScale(36),
+      height: moderateWidthScale(36),
+      borderRadius: moderateWidthScale(18),
       alignItems: "center",
       justifyContent: "center",
-      backgroundColor: theme.lightGreen1,
     },
     arrowOff: { opacity: 0.35 },
     monthText: {
@@ -917,11 +917,10 @@ export function SessionTimesList({
     <View style={[s.wrapper, style]}>
       <Text style={s.heading}>Your sessions</Text>
       <View style={s.list}>
-        {dates.map((date, idx) => {
+        {dates.map((date) => {
           const over = overrides[date];
           const time = over?.time ?? globalTime;
           const duration = over?.duration ?? globalDuration;
-          const isLast = idx === dates.length - 1;
           const Row = onEdit ? TouchableOpacity : View;
           const rowProps = onEdit
             ? {
@@ -934,21 +933,21 @@ export function SessionTimesList({
           return (
             <Row
               key={date}
-              style={[s.row, !isLast && s.rowBorder]}
+              style={s.row}
               {...rowProps}
             >
               <Ionicons
                 name="calendar-outline"
-                size={iconScale(20)}
+                size={iconScale(18)}
                 color={theme.darkGreen}
               />
               <Text style={s.dateText}>{dayjs(date).format("ddd, MMM D")}</Text>
               <Text style={s.timeText}>{timeRange(time, duration)}</Text>
               {onEdit ? (
-                <Ionicons
-                  name="pencil-outline"
-                  size={iconScale(18)}
-                  color={theme.lightGreen}
+                <MaterialCommunityIcons
+                  name="pencil"
+                  size={iconScale(20)}
+                  color={theme.darkGreen}
                   style={s.editIcon}
                 />
               ) : null}
@@ -982,21 +981,17 @@ const sessionListStyles = (theme: Theme) =>
       color: theme.darkGreen,
     },
     list: {
-      borderRadius: moderateWidthScale(14),
-      borderWidth: 1,
-      borderColor: theme.borderLight,
-      backgroundColor: theme.white,
-      overflow: "hidden",
+      gap: moderateHeightScale(8),
     },
     row: {
       flexDirection: "row",
       alignItems: "center",
       paddingHorizontal: moderateWidthScale(14),
-      paddingVertical: moderateHeightScale(12),
-    },
-    rowBorder: {
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: theme.borderNormal,
+      paddingVertical: moderateHeightScale(13),
+      borderRadius: moderateWidthScale(28),
+      backgroundColor: theme.white,
+      borderWidth: 1,
+      borderColor: theme.borderLight,
     },
     dateText: {
       flex: 1,
