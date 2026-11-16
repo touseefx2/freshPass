@@ -898,7 +898,7 @@ export function SessionTimesList({
   globalTime: string | null;
   globalDuration: number | null;
   overrides: Record<string, { time: string | null; duration: number | null }>;
-  onEdit: (date: string) => void;
+  onEdit?: (date: string) => void;
   onAddRemoveDates?: () => void;
   style?: StyleProp<ViewStyle>;
 }) {
@@ -922,14 +922,20 @@ export function SessionTimesList({
           const time = over?.time ?? globalTime;
           const duration = over?.duration ?? globalDuration;
           const isLast = idx === dates.length - 1;
+          const Row = onEdit ? TouchableOpacity : View;
+          const rowProps = onEdit
+            ? {
+                activeOpacity: 0.7,
+                onPress: () => onEdit(date),
+                accessibilityRole: "button" as const,
+                accessibilityLabel: `Edit session ${dayjs(date).format("ddd, MMM D")}`,
+              }
+            : {};
           return (
-            <TouchableOpacity
+            <Row
               key={date}
               style={[s.row, !isLast && s.rowBorder]}
-              activeOpacity={0.7}
-              onPress={() => onEdit(date)}
-              accessibilityRole="button"
-              accessibilityLabel={`Edit session ${dayjs(date).format("ddd, MMM D")}`}
+              {...rowProps}
             >
               <Ionicons
                 name="calendar-outline"
@@ -938,13 +944,15 @@ export function SessionTimesList({
               />
               <Text style={s.dateText}>{dayjs(date).format("ddd, MMM D")}</Text>
               <Text style={s.timeText}>{timeRange(time, duration)}</Text>
-              <Ionicons
-                name="pencil-outline"
-                size={iconScale(18)}
-                color={theme.lightGreen}
-                style={s.editIcon}
-              />
-            </TouchableOpacity>
+              {onEdit ? (
+                <Ionicons
+                  name="pencil-outline"
+                  size={iconScale(18)}
+                  color={theme.lightGreen}
+                  style={s.editIcon}
+                />
+              ) : null}
+            </Row>
           );
         })}
       </View>

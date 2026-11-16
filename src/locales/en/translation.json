@@ -4515,6 +4515,7 @@
   "mcErrorDateRequired": "Choose a date.",
   "mcErrorTimeRequired": "Choose a time.",
   "mcErrorFutureDateTime": "Choose a date and time in the future.",
+  "mcPastTimeMessage": "This time has already passed today. Please pick a later time.",
   "mcErrorEndDateRequired": "Choose an end date.",
   "mcErrorEndDateBeforeStart": "End date cannot be before the start date.",
   "mcErrorDurationRequired": "Choose a duration.",

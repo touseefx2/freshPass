@@ -97,7 +97,6 @@ import {
 import {
   EditorDateSheet,
   EditorOptionSheet,
-  EditSessionSheet,
   WheelTimePickerSheet,
   type EditorSheetOption,
 } from "@/src/components/masterClasses/editorSheets";
@@ -541,7 +540,7 @@ function validate(
 const hasErrors = (e: Errors) => Object.keys(e).length > 0;
 
 type Busy = null | "publish" | "draft" | "autosave" | "reschedule";
-type SheetName = null | "duration" | "date" | "time" | "endDate" | "address" | "editSession";
+type SheetName = null | "duration" | "date" | "time" | "endDate" | "address";
 
 export default function MasterClassEditorScreen() {
   const { t } = useTranslation();
@@ -582,7 +581,6 @@ export default function MasterClassEditorScreen() {
   const busyRef = useRef<Busy>(null);
   busyRef.current = busy;
   const [sheet, setSheet] = useState<SheetName>(null);
-  const [editSessionDate, setEditSessionDate] = useState<string | null>(null);
   const sheetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(
     () => () => {
@@ -1807,11 +1805,6 @@ export default function MasterClassEditorScreen() {
                             globalTime={form.time}
                             globalDuration={form.duration}
                             overrides={form.sessionOverrides}
-                            onEdit={(date) => {
-                              Keyboard.dismiss();
-                              setEditSessionDate(date);
-                              setSheet("editSession");
-                            }}
                           />
                         ) : null}
                       </>
@@ -2195,56 +2188,14 @@ export default function MasterClassEditorScreen() {
         visible={sheet === "time"}
         value={form.time}
         onConfirm={(time) => {
+          if (form.date && !isClassDateTimeInFuture(form.date, time, serverClass?.timezone)) {
+            Alert.alert(t("mcErrorFutureDateTime"), t("mcPastTimeMessage"));
+            return;
+          }
           setField("time", time, ["date", "time"]);
           setSheet(null);
         }}
         onClose={() => setSheet(null)}
-      />
-      <EditSessionSheet
-        visible={sheet === "editSession" && !!editSessionDate}
-        date={editSessionDate ?? ""}
-        time={form.sessionOverrides[editSessionDate ?? ""]?.time ?? form.time}
-        duration={form.sessionOverrides[editSessionDate ?? ""]?.duration ?? form.duration}
-        timeZone={serverClass?.timezone}
-        onSave={(time, duration) => {
-          if (editSessionDate) {
-            const isDefault =
-              time === form.time && duration === form.duration;
-            setForm((prev) => {
-              const overrides = { ...prev.sessionOverrides };
-              if (isDefault) {
-                delete overrides[editSessionDate];
-              } else {
-                overrides[editSessionDate] = { time, duration };
-              }
-              return { ...prev, sessionOverrides: overrides };
-            });
-          }
-          setSheet(null);
-          setEditSessionDate(null);
-        }}
-        onRemove={() => {
-          if (editSessionDate) {
-            setForm((prev) => {
-              const next = prev.specificDates.filter((d) => d !== editSessionDate);
-              const overrides = { ...prev.sessionOverrides };
-              delete overrides[editSessionDate];
-              return {
-                ...prev,
-                specificDates: next,
-                date: next[0] ?? null,
-                endDate: next[next.length - 1] ?? null,
-                sessionOverrides: overrides,
-              };
-            });
-          }
-          setSheet(null);
-          setEditSessionDate(null);
-        }}
-        onClose={() => {
-          setSheet(null);
-          setEditSessionDate(null);
-        }}
       />
       <EditorAddressSheet
         visible={sheet === "address"}
