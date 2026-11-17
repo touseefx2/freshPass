@@ -16,8 +16,27 @@ export default function BusinessProfileMenuScreen() {
   // Solo profile already shows these as My Schedule / My Portfolio
   const isSoloLayout = usesSoloProfileLayout(businessStatus);
 
+  const businessId = user.business_id ?? user.businessStatus?.business_id;
+
   const items = useMemo((): BusinessSettingsHubItem[] => {
     const allItems: BusinessSettingsHubItem[] = [
+      ...(businessId
+        ? [
+            {
+              key: "viewBusinessProfile",
+              title: t("viewBusinessProfile"),
+              iconName: "visibility",
+              onPress: () =>
+                router.push({
+                  pathname: "/(main)/businessDetail",
+                  params: {
+                    business_id: businessId.toString(),
+                    viewMode: "true",
+                  },
+                } as any),
+            },
+          ]
+        : []),
       {
         key: "businessInformation",
         title: t("businessInformation"),
@@ -69,7 +88,7 @@ export default function BusinessProfileMenuScreen() {
     });
 
     return baseItems;
-  }, [t, router, isSoloLayout]);
+  }, [t, router, isSoloLayout, businessId]);
 
   return (
     <BusinessSettingsHub

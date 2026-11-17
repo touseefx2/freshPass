@@ -47,7 +47,7 @@ type SettingKey =
   | "allAppointments"
   | "masterClasses"
   | "myDeals"
-  | "viewBusinessProfile";
+;
 
 type SettingItem = {
   key: SettingKey;
@@ -384,14 +384,6 @@ export default function BusinessProfileSettingsScreen() {
         pathname: "/(main)/aiTools/toolList",
         params: { mode: "aiTools" },
       });
-    } else if (key === "viewBusinessProfile") {
-      const bid = businessId ?? businessStatus?.business_id;
-      if (bid) {
-        router.push({
-          pathname: "/(main)/businessDetail",
-          params: { business_id: bid.toString(), viewMode: "true" },
-        } as any);
-      }
     } else {
       Logger.log("Business profile setting pressed:", key);
     }
@@ -436,7 +428,6 @@ export default function BusinessProfileSettingsScreen() {
       : []),
     { key: "mediaLibrary", title: t("mediaLibrary") },
     { key: "aiTools", title: t("aiTools") },
-    { key: "viewBusinessProfile", title: t("viewBusinessProfile") },
   ];
 
   const getIconMeta = (
@@ -472,8 +463,6 @@ export default function BusinessProfileSettingsScreen() {
         return { name: "video-library", family: "material", variant: "cream" };
       case "aiTools":
         return { name: "smart-toy", family: "material", variant: "dark" };
-      case "viewBusinessProfile":
-        return { name: "visibility", family: "material", variant: "cream" };
       default:
         return { name: "settings", family: "material", variant: "cream" };
     }

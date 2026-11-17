@@ -278,21 +278,6 @@ export default function BusinessManagementGrid({
           params: { mode: "aiTools" },
         } as any),
     },
-    ...(businessId
-      ? [
-          {
-            key: "publicProfile" as const,
-            onPress: () =>
-              router.push({
-                pathname: "/(main)/businessDetail",
-                params: {
-                  business_id: businessId.toString(),
-                  viewMode: "true",
-                },
-              } as any),
-          },
-        ]
-      : []),
   ];
 
   return (

@@ -299,7 +299,6 @@ export default function SoloProfileView({
     },
     soloTile("mediaLibrary"),
     soloTile("aiTools"),
-    soloTile("publicProfile"),
   ];
 
   const settingsRows: SoloRow[] = [
