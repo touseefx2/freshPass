@@ -49,6 +49,7 @@ export type SoloRowKey =
   | "myDeals"
   | "masterClasses"
   | "socialMedia"
+  | "marketing"
   | "team"
   | "affiliation"
   | "publicProfile"
@@ -283,16 +284,13 @@ export default function SoloProfileView({
       // Opened here so the parent's row handler stays untouched
       onPress: () => router.push("/(main)/masterClasses" as any),
     },
-    soloTile("socialMedia"),
+    {
+      key: "marketing",
+      onPress: () => router.push("/(main)/marketing" as any),
+    },
     soloTile("products"),
     soloTile("orders"),
     soloTile("hiring"),
-    soloTile("myDeals"),
-    {
-      key: "offers",
-      // Profile Promotions (owner / Solo only); opened here like Master Classes
-      onPress: () => router.push("/(main)/promotions" as any),
-    },
     {
       // Solo side of affiliation: link yourself to the shop you work at
       ...soloTile("affiliation"),

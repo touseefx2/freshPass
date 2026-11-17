@@ -12,7 +12,6 @@ import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { useBusinessOrdersCount } from "@/src/hooks/useBusinessOrdersCount";
-import { useDealsPlanGate } from "@/src/hooks/useDealsPlanGate";
 import { useHiringPlanGate } from "@/src/hooks/useHiringPlanGate";
 import { markGoldTapped } from "@/src/state/slices/generalSlice";
 import { canShowStaffManagement } from "@/src/state/slices/userSlice";
@@ -37,6 +36,7 @@ const TILE_META = {
   team: { titleKey: "manageTeamTitle", icon: "account-group", family: "community", variant: "dark" },
   appointments: { titleKey: "appointments", icon: "event-note", family: "material", variant: "cream" },
   masterClasses: { titleKey: "mcTeachAndEarn", icon: "school-outline", family: "community", variant: "dark" },
+  marketing: { titleKey: "bmMarketing", icon: "campaign", family: "material", variant: "accent" },
   socialMedia: { titleKey: "bmSocialMedia", icon: "share-variant", family: "community", variant: "dark" },
   products: { titleKey: "productsInventoryShort", icon: "inventory-2", family: "material", variant: "dark" },
   orders: { titleKey: "ordersTitle", icon: "receipt-long", family: "material", variant: "dark" },
@@ -225,7 +225,6 @@ export default function BusinessManagementGrid({
   const businessStatus = useAppSelector((s) => s.user.businessStatus);
   const userBusinessId = useAppSelector((s) => s.user.business_id);
   const { ensureCanHire, planModals } = useHiringPlanGate();
-  const { ensureCanPostDeals, planModal } = useDealsPlanGate();
 
   const open = (screen: string) =>
     router.push(`${SETTINGS_ROUTE}/${screen}` as any);
@@ -246,7 +245,10 @@ export default function BusinessManagementGrid({
       key: "masterClasses",
       onPress: () => router.push("/(main)/masterClasses" as any),
     },
-    { key: "socialMedia", onPress: () => open("socialMedia") },
+    {
+      key: "marketing",
+      onPress: () => router.push("/(main)/marketing" as any),
+    },
     { key: "products", onPress: () => open("products") },
     { key: "orders", onPress: () => open("orders") },
     {
@@ -254,18 +256,6 @@ export default function BusinessManagementGrid({
       onPress: () => {
         if (ensureCanHire()) open("jobPosts");
       },
-    },
-    {
-      key: "myDeals",
-      onPress: () => {
-        if (ensureCanPostDeals()) router.push("/(main)/myDeals" as any);
-      },
-    },
-    // Profile Promotions: owner / Solo only (staff get 403); the list
-    // itself asks for a plan before creating
-    {
-      key: "offers",
-      onPress: () => router.push("/(main)/promotions" as any),
     },
     ...(businessStatus?.subscription_status === "active" &&
     businessStatus?.subscription_is_single === false
@@ -309,7 +299,6 @@ export default function BusinessManagementGrid({
     <>
       <ManagementTileGrid tiles={tiles} horizontalPadding={horizontalPadding} />
       {planModals}
-      {planModal}
     </>
   );
 }
