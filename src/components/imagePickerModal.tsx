@@ -176,7 +176,7 @@ export default function ImagePickerModal({
           }
         } else if (uris[0]) {
           if (enableEditor) {
-            const firstAsset = result.assets[0];
+            const firstAsset = result.assets.find((a) => a.uri)!;
             openEditor(firstAsset.uri, firstAsset.width, firstAsset.height);
           } else {
             onImageSelected(uris[0]);
