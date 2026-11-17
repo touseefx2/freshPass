@@ -143,6 +143,7 @@ function mapOwnerReelToFeedReel(
     caption: owner.caption,
     look_tag: owner.look_tag,
     promotion_text: owner.promotion_text,
+    promotion: owner.promotion ?? null,
     product_tag: owner.product_tag,
     product_id: owner.product_id ?? owner.product?.id ?? null,
     product: owner.product ?? null,
@@ -1852,7 +1853,37 @@ function ReelFeedItemBase({
               </View>
             )}
 
-            {!!reel.promotion_text?.trim() && (
+            {reel.promotion ? (
+              <TouchableOpacity
+                activeOpacity={0.8}
+                style={styles.promoPill}
+                onPress={() =>
+                  router.push({
+                    pathname: "/(main)/offerDetail",
+                    params: {
+                      id: String(reel.promotion!.id),
+                      source: "reel",
+                    },
+                  } as any)
+                }
+                accessibilityRole="button"
+                accessibilityLabel={reel.promotion.chip_label ?? reel.promotion.title}
+              >
+                <MaterialIcons
+                  name="local-offer"
+                  size={moderateWidthScale(13)}
+                  color={theme.black}
+                />
+                <Text style={styles.promoText} numberOfLines={1}>
+                  {reel.promotion.chip_label ?? reel.promotion.savings_label ?? reel.promotion.title}
+                </Text>
+                <MaterialIcons
+                  name="chevron-right"
+                  size={moderateWidthScale(14)}
+                  color={theme.black}
+                />
+              </TouchableOpacity>
+            ) : !!reel.promotion_text?.trim() ? (
               <View style={styles.promoPill}>
                 <MaterialIcons
                   name="local-offer"
@@ -1863,7 +1894,7 @@ function ReelFeedItemBase({
                   {reel.promotion_text.trim()}
                 </Text>
               </View>
-            )}
+            ) : null}
 
             {!!reel.caption && (
               <TextWithEmoji style={styles.caption} numberOfLines={3}>

@@ -59,6 +59,17 @@ export type ReelVideo = {
   height?: number | null;
 };
 
+/** Linked promotion on a reel (returned by backend when active/open) */
+export type ReelPromotion = {
+  id: number;
+  title: string;
+  savings_label?: string | null;
+  chip_label?: string | null;
+  audience_label?: string | null;
+  booking_ends_at?: string | null;
+  business?: { id: number; title: string } | null;
+};
+
 /** Owner reel object (create/list/get mine) */
 export type OwnerReel = {
   id: number;
@@ -67,6 +78,7 @@ export type OwnerReel = {
   caption: string;
   look_tag: string | null;
   promotion_text: string | null;
+  promotion?: ReelPromotion | null;
   product_tag: string | null;
   product_id?: number | null;
   product?: ShopProduct | null;
@@ -92,6 +104,7 @@ export type FeedReel = {
   caption: string;
   look_tag: string | null;
   promotion_text: string | null;
+  promotion?: ReelPromotion | null;
   product_tag: string | null;
   product_id?: number | null;
   product?: ShopProduct | null;

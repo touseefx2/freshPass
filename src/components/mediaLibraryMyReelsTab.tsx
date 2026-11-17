@@ -305,6 +305,17 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontRegular,
       color: theme.lightGreen,
     },
+    promoIndicator: {
+      flexDirection: "row" as const,
+      alignItems: "center" as const,
+      gap: moderateWidthScale(4),
+      marginTop: moderateHeightScale(4),
+    },
+    promoIndicatorText: {
+      fontSize: fontSize.size11,
+      fontFamily: fonts.fontMedium,
+      color: theme.selectCard,
+    },
     iconActions: {
       flexDirection: "row",
       alignItems: "center",
@@ -913,6 +924,18 @@ export default function MediaLibraryMyReelsTab({
                   {item.generation_error}
                 </Text>
               ) : null}
+              {!!item.promotion && (
+                <View style={styles.promoIndicator}>
+                  <MaterialIcons
+                    name="local-offer"
+                    size={moderateWidthScale(11)}
+                    color={theme.selectCard}
+                  />
+                  <Text style={styles.promoIndicatorText} numberOfLines={1}>
+                    {item.promotion.chip_label ?? item.promotion.title}
+                  </Text>
+                </View>
+              )}
             </View>
 
             <View style={styles.iconActions}>
