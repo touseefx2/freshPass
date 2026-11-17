@@ -114,13 +114,15 @@ export default function ImagePickerModal({
 
   // Photo editor state for single-image editing
   const [editorUri, setEditorUri] = useState("");
+  const [editorDims, setEditorDims] = useState<{ width?: number; height?: number }>({});
   const [editorVisible, setEditorVisible] = useState(false);
 
   // Multi-image editor queue
   const photoQueue = usePhotoEditorQueue();
 
-  const openEditor = useCallback((uri: string) => {
+  const openEditor = useCallback((uri: string, width?: number, height?: number) => {
     setEditorUri(uri);
+    setEditorDims(width && height ? { width, height } : {});
     setEditorVisible(true);
   }, []);
 
@@ -128,6 +130,7 @@ export default function ImagePickerModal({
     (croppedUri: string) => {
       setEditorVisible(false);
       setEditorUri("");
+      setEditorDims({});
       onImageSelected(croppedUri);
     },
     [onImageSelected],
@@ -136,6 +139,7 @@ export default function ImagePickerModal({
   const handleEditorCancel = useCallback(() => {
     setEditorVisible(false);
     setEditorUri("");
+    setEditorDims({});
   }, []);
 
   const handleSelectFromGallery = useCallback(async () => {
@@ -162,14 +166,18 @@ export default function ImagePickerModal({
         const uris = result.assets.map((a) => a.uri).filter(Boolean);
         if (allowsMultipleSelection && uris.length > 0 && onImagesSelected) {
           if (enableEditor) {
-            const edited = await photoQueue.startEditing(uris);
+            const items = result.assets
+              .filter((a) => a.uri)
+              .map((a) => ({ uri: a.uri, width: a.width, height: a.height }));
+            const edited = await photoQueue.startEditing(items);
             onImagesSelected(edited);
           } else {
             onImagesSelected(uris);
           }
         } else if (uris[0]) {
           if (enableEditor) {
-            openEditor(uris[0]);
+            const firstAsset = result.assets[0];
+            openEditor(firstAsset.uri, firstAsset.width, firstAsset.height);
           } else {
             onImageSelected(uris[0]);
           }
@@ -214,11 +222,11 @@ export default function ImagePickerModal({
       });
 
       if (!result.canceled && result.assets && result.assets[0]) {
-        const uri = result.assets[0].uri;
+        const asset = result.assets[0];
         if (enableEditor) {
-          openEditor(uri);
+          openEditor(asset.uri, asset.width, asset.height);
         } else {
-          onImageSelected(uri);
+          onImageSelected(asset.uri);
         }
       }
     } catch (error) {
@@ -306,6 +314,8 @@ export default function ImagePickerModal({
         <PhotoEditorModal
           visible={editorVisible}
           imageUri={editorUri}
+          imageWidth={editorDims.width}
+          imageHeight={editorDims.height}
           onDone={handleEditorDone}
           onCancel={handleEditorCancel}
           cropShape={cropShape}
@@ -313,6 +323,8 @@ export default function ImagePickerModal({
         <PhotoEditorModal
           visible={photoQueue.isEditing}
           imageUri={photoQueue.currentUri}
+          imageWidth={photoQueue.currentWidth}
+          imageHeight={photoQueue.currentHeight}
           onDone={photoQueue.handleDone}
           onCancel={photoQueue.handleCancel}
           cropShape={cropShape}

@@ -48,6 +48,9 @@ interface PhotoEditorModalProps {
   cropSizeFraction?: number;
   /** Width ÷ height of the crop rectangle. Default 1 (square). Ignored for circle. */
   cropAspectRatio?: number;
+  /** Pre-known dimensions from the picker result — avoids RNImage.getSize EXIF rotation issues on Android */
+  imageWidth?: number;
+  imageHeight?: number;
 }
 
 function getImageSize(uri: string): Promise<{ width: number; height: number }> {
@@ -150,6 +153,8 @@ export default function PhotoEditorModal({
   cropShape = "square",
   cropSizeFraction = 0.85,
   cropAspectRatio = 1,
+  imageWidth,
+  imageHeight,
 }: PhotoEditorModalProps) {
   const { colors } = useTheme();
   const { t } = useTranslation();
@@ -211,6 +216,11 @@ export default function PhotoEditorModal({
 
   const handleImageLoad = useCallback(async () => {
     if (!imageUri) return;
+    if (imageWidth && imageHeight) {
+      setImageSize({ width: imageWidth, height: imageHeight });
+      resetGestures();
+      return;
+    }
     try {
       const size = await getImageSize(imageUri);
       setImageSize(size);
@@ -219,7 +229,7 @@ export default function PhotoEditorModal({
       setImageSize({ width: SCREEN_WIDTH, height: SCREEN_HEIGHT });
     }
     resetGestures();
-  }, [imageUri, resetGestures]);
+  }, [imageUri, imageWidth, imageHeight, resetGestures]);
 
   useEffect(() => {
     if (visible && imageUri) {
@@ -519,16 +529,16 @@ function CropOverlay({
  * After selecting multiple photos, each is edited one-by-one.
  */
 export function usePhotoEditorQueue() {
-  const [queue, setQueue] = useState<string[]>([]);
+  const [queue, setQueue] = useState<{ uri: string; width?: number; height?: number }[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [editedPhotos, setEditedPhotos] = useState<string[]>([]);
   const resolveRef = useRef<((uris: string[]) => void) | null>(null);
 
   const startEditing = useCallback(
-    (uris: string[]): Promise<string[]> => {
+    (items: { uri: string; width?: number; height?: number }[]): Promise<string[]> => {
       return new Promise((resolve) => {
         resolveRef.current = resolve;
-        setQueue(uris);
+        setQueue(items);
         setCurrentIndex(0);
         setEditedPhotos([]);
       });
@@ -555,9 +565,9 @@ export function usePhotoEditorQueue() {
   );
 
   const handleSkip = useCallback(() => {
-    const original = queue[currentIndex];
-    if (original) {
-      handleDone(original);
+    const item = queue[currentIndex];
+    if (item) {
+      handleDone(item.uri);
     }
   }, [queue, currentIndex, handleDone]);
 
@@ -569,9 +579,12 @@ export function usePhotoEditorQueue() {
     setEditedPhotos([]);
   }, [editedPhotos]);
 
+  const current = queue[currentIndex];
   return {
     isEditing: queue.length > 0,
-    currentUri: queue[currentIndex] ?? "",
+    currentUri: current?.uri ?? "",
+    currentWidth: current?.width,
+    currentHeight: current?.height,
     currentIndex,
     total: queue.length,
     startEditing,

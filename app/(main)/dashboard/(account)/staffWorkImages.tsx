@@ -141,6 +141,7 @@ export default function StaffWorkImagesManageScreen() {
 
   // Photo editor state
   const [editorUri, setEditorUri] = useState("");
+  const [editorDims, setEditorDims] = useState<{ width?: number; height?: number }>({});
   const [editorVisible, setEditorVisible] = useState(false);
   const photoQueue = usePhotoEditorQueue();
 
@@ -248,9 +249,11 @@ export default function StaffWorkImagesManageScreen() {
       });
 
       if (!result.canceled && result.assets) {
-        const rawUris = result.assets.map((a) => a.uri).filter(Boolean);
-        if (rawUris.length > 0) {
-          const editedUris = await photoQueue.startEditing(rawUris);
+        const items = result.assets
+          .filter((a) => a.uri)
+          .map((a) => ({ uri: a.uri, width: a.width, height: a.height }));
+        if (items.length > 0) {
+          const editedUris = await photoQueue.startEditing(items);
           const added: WorkPhoto[] = editedUris.map((uri) => ({
             id: generateLocalId(),
             uri,
@@ -285,7 +288,9 @@ export default function StaffWorkImagesManageScreen() {
       });
 
       if (!result.canceled && result.assets && result.assets[0]) {
-        setEditorUri(result.assets[0].uri);
+        const asset = result.assets[0];
+        setEditorUri(asset.uri);
+        setEditorDims(asset.width && asset.height ? { width: asset.width, height: asset.height } : {});
         setEditorVisible(true);
       }
     } catch (error) {
@@ -575,9 +580,12 @@ export default function StaffWorkImagesManageScreen() {
       <PhotoEditorModal
         visible={editorVisible}
         imageUri={editorUri}
+        imageWidth={editorDims.width}
+        imageHeight={editorDims.height}
         onDone={(croppedUri) => {
           setEditorVisible(false);
           setEditorUri("");
+          setEditorDims({});
           setPhotos((prev) => [
             ...prev,
             { id: generateLocalId(), uri: croppedUri },
@@ -586,6 +594,7 @@ export default function StaffWorkImagesManageScreen() {
         onCancel={() => {
           setEditorVisible(false);
           setEditorUri("");
+          setEditorDims({});
         }}
         cropShape="square"
       />
@@ -594,6 +603,8 @@ export default function StaffWorkImagesManageScreen() {
       <PhotoEditorModal
         visible={photoQueue.isEditing}
         imageUri={photoQueue.currentUri}
+        imageWidth={photoQueue.currentWidth}
+        imageHeight={photoQueue.currentHeight}
         onDone={photoQueue.handleDone}
         onCancel={photoQueue.handleCancel}
         cropShape="square"

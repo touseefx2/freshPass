@@ -109,6 +109,7 @@ export default function ManagePortfolioPhotosScreen() {
 
   // Photo editor for camera shots (single)
   const [editorUri, setEditorUri] = useState("");
+  const [editorDims, setEditorDims] = useState<{ width?: number; height?: number }>({});
   const [editorVisible, setEditorVisible] = useState(false);
   // Multi-photo editor queue
   const photoQueue = usePhotoEditorQueue();
@@ -177,9 +178,11 @@ export default function ManagePortfolioPhotosScreen() {
       });
 
       if (!result.canceled && result.assets) {
-        const rawUris = result.assets.map((a) => a.uri).filter(Boolean);
-        if (rawUris.length > 0) {
-          const editedUris = await photoQueue.startEditing(rawUris);
+        const items = result.assets
+          .filter((a) => a.uri)
+          .map((a) => ({ uri: a.uri, width: a.width, height: a.height }));
+        if (items.length > 0) {
+          const editedUris = await photoQueue.startEditing(items);
           const added: PortfolioItem[] = editedUris.map((uri) => ({
             id: generateLocalId(),
             uri,
@@ -217,7 +220,9 @@ export default function ManagePortfolioPhotosScreen() {
       });
 
       if (!result.canceled && result.assets && result.assets[0]) {
-        setEditorUri(result.assets[0].uri);
+        const asset = result.assets[0];
+        setEditorUri(asset.uri);
+        setEditorDims(asset.width && asset.height ? { width: asset.width, height: asset.height } : {});
         setEditorVisible(true);
       }
     } catch (error) {
@@ -445,9 +450,12 @@ export default function ManagePortfolioPhotosScreen() {
       <PhotoEditorModal
         visible={editorVisible}
         imageUri={editorUri}
+        imageWidth={editorDims.width}
+        imageHeight={editorDims.height}
         onDone={(croppedUri) => {
           setEditorVisible(false);
           setEditorUri("");
+          setEditorDims({});
           setPhotos((prev) => [
             ...prev,
             { id: generateLocalId(), uri: croppedUri },
@@ -456,6 +464,7 @@ export default function ManagePortfolioPhotosScreen() {
         onCancel={() => {
           setEditorVisible(false);
           setEditorUri("");
+          setEditorDims({});
         }}
         cropShape="square"
       />
@@ -464,6 +473,8 @@ export default function ManagePortfolioPhotosScreen() {
       <PhotoEditorModal
         visible={photoQueue.isEditing}
         imageUri={photoQueue.currentUri}
+        imageWidth={photoQueue.currentWidth}
+        imageHeight={photoQueue.currentHeight}
         onDone={photoQueue.handleDone}
         onCancel={photoQueue.handleCancel}
         cropShape="square"
