@@ -1331,27 +1331,12 @@ export default function DashboardContent() {
 
       <HomeSlotOffersSection />
 
-      {userRole === "customer" && (
+      {userRole === "customer" && appointments.length > 0 && (
         <View style={styles.section}>
-          {appointments.length > 0 ? (
-            <ShowAppointments appointments={appointments} />
-          ) : (
-            <>
-              <Text style={styles.sectionTitle}>
-                {t("upcomingAppointment")}
-              </Text>
-              <View style={styles.emptyCard}>
-                <MaterialIcons
-                  name="event-available"
-                  size={moderateWidthScale(32)}
-                  color={theme.lightGreen}
-                />
-                <Text style={styles.emptyText}>
-                  {t("homeEmptyAppointments")}
-                </Text>
-              </View>
-            </>
-          )}
+          <Text style={styles.sectionTitle}>
+            {t("upcomingAppointment")}
+          </Text>
+          <ShowAppointments appointments={appointments} />
         </View>
       )}
 
