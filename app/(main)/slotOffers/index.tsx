@@ -31,6 +31,7 @@ import InviteProBanner, {
   withInviteBanners,
   type WithInviteBanners,
 } from "@/src/components/invitePro/InviteProBanner";
+import NoDealsNearbyCard from "@/src/components/invitePro/NoDealsNearbyCard";
 
 const PRICE_OPTIONS: { key: string; min?: number; max?: number; label: string }[] = [
   { key: "any", label: "" },
@@ -235,9 +236,7 @@ export default function SlotOffersListScreen() {
     if (loading) return null;
     if (error) return <RetryButton onPress={() => load(1, "initial")} />;
     // Nothing nearby: the Invite a Pro banner instead of the list
-    return (
-      <InviteProBanner variant="standalone" style={styles.emptyBanner} />
-    );
+    return <NoDealsNearbyCard style={styles.emptyBanner} />;
   };
 
   const renderHeader = () => (

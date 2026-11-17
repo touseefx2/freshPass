@@ -55,6 +55,7 @@ import HomeSlotOffersSection from "@/src/components/homeSlotOffersSection";
 import FreshyTryOnBanner from "@/src/components/FreshyTryOnBanner";
 import MarketplaceBanner from "@/src/components/marketplace/MarketplaceBanner";
 import InviteProBanner from "@/src/components/invitePro/InviteProBanner";
+import NoDealsNearbyCard from "@/src/components/invitePro/NoDealsNearbyCard";
 import { fetchFollowing } from "@/src/services/followService";
 import { listPublic as listDealClasses } from "@/src/services/masterClassService";
 import type { MasterClass } from "@/src/types/masterClass";
@@ -1223,7 +1224,7 @@ export default function DashboardContent() {
           verifiedSalonsDeals.length === 0 &&
           dealClasses.length === 0) ? (
           <>
-            <InviteProBanner variant="standalone" />
+            <NoDealsNearbyCard />
             {onlineDealClasses.length > 0 ? (
               <ShowBusiness
                 businessesLoading={false}

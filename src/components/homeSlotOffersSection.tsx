@@ -24,6 +24,7 @@ import SlotOfferCard from "@/src/components/slotOffer/SlotOfferCard";
 import InviteProBanner, {
   withInviteBanners,
 } from "@/src/components/invitePro/InviteProBanner";
+import NoDealsNearbyCard from "@/src/components/invitePro/NoDealsNearbyCard";
 import RetryButton from "@/src/components/retryButton";
 import { setGuestModeModalVisible } from "@/src/state/slices/generalSlice";
 
@@ -241,35 +242,7 @@ export default function HomeSlotOffersSection() {
           <RetryButton onPress={load} loading={loading} />
         </View>
       ) : showEmptyBanner ? (
-        <TouchableOpacity
-          activeOpacity={0.85}
-          onPress={handleInvite}
-          style={styles.emptyCard}
-          accessibilityRole="button"
-        >
-          <View style={styles.emptyTextCol}>
-            <Text style={styles.emptyTitle}>{t("sdEmptyDealsTitle")}</Text>
-            <Text style={styles.emptyBody}>{t("sdEmptyDealsBody")}</Text>
-            <Text style={styles.emptyInvite}>
-              {t("sdEmptyDealsInvite")}
-            </Text>
-            <View style={styles.emptyButton}>
-              <Text style={styles.emptyButtonText}>{t("ipBannerCta")}</Text>
-              <MaterialCommunityIcons
-                name="arrow-right"
-                size={moderateWidthScale(16)}
-                color={theme.darkGreen}
-              />
-            </View>
-          </View>
-          <View style={styles.emptyMedallion}>
-            <MaterialCommunityIcons
-              name="clock-outline"
-              size={moderateWidthScale(28)}
-              color={theme.orangeBrown}
-            />
-          </View>
-        </TouchableOpacity>
+        <NoDealsNearbyCard />
       ) : (
         <ScrollView
           horizontal

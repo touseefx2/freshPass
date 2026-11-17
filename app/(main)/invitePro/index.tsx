@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
@@ -34,7 +35,6 @@ type CommunityIconName = React.ComponentProps<
   typeof MaterialCommunityIcons
 >["name"];
 
-/** Guide section 3: earning. */
 const STEPS: { icon: CommunityIconName; titleKey: string; textKey: string }[] = [
   {
     icon: "share-variant",
@@ -53,11 +53,6 @@ const STEPS: { icon: CommunityIconName; titleKey: string; textKey: string }[] = 
   },
 ];
 
-/**
- * Invite a Pro (customer): share the personal link from own
- * /api/user/details (`invite_link`). A pro who signs up with it and pays the
- * first month earns the customer a $30 reward balance.
- */
 export default function InviteProScreen() {
   const { t } = useTranslation();
   const router = useRouter();
@@ -77,7 +72,6 @@ export default function InviteProScreen() {
   const [loadFailed, setLoadFailed] = useState(false);
   const loadingRef = useRef(false);
 
-  // Guests have no invite link: ask them to sign in and leave
   useEffect(() => {
     if (!isGuest) return;
     dispatch(setGuestModeModalVisible(true));
@@ -95,8 +89,6 @@ export default function InviteProScreen() {
     if (!result?.inviteLink) setLoadFailed(true);
   }, []);
 
-  // Refresh on every focus so the balance stays current. The spinner and
-  // error UI only show while a value is still missing.
   useFocusEffect(
     useCallback(() => {
       if (isGuest) return;
@@ -107,9 +99,7 @@ export default function InviteProScreen() {
   const handleShare = useCallback(async () => {
     if (!inviteLink) return;
     try {
-      // The link only in `message`: iOS would add `url` a second time
       await Share.share({
-        // Code as a backup if the app can't pick the invite up automatically
         message: inviteCode
           ? t("ipScreenShareMessageWithCode", { link: inviteLink, code: inviteCode })
           : t("ipScreenShareMessage", { link: inviteLink }),
@@ -145,13 +135,16 @@ export default function InviteProScreen() {
     );
   }
 
-  // Unknown balance (not loaded yet / fetch failed) is "—", never "$0.00"
   const balanceText =
     rewardBalance == null ? "—" : formatRewardMoney(rewardBalance);
   const balanceA11y =
     rewardBalance == null
       ? t("ipScreenBalanceUnknownA11y")
       : t("ipScreenBalanceA11y", { amount: balanceText });
+
+  const linkReady = !!inviteLink;
+  const showLoader = !linkReady && (loading || !loadFailed);
+  const showError = !linkReady && !loading && loadFailed;
 
   return (
     <View style={styles.container}>
@@ -164,108 +157,147 @@ export default function InviteProScreen() {
         ]}
         showsVerticalScrollIndicator={false}
       >
-        {/* Hero */}
-        <View style={styles.hero}>
-          <View style={styles.heroEyebrowRow}>
-            <MaterialCommunityIcons
-              name="account-plus-outline"
-              size={iconScale(15)}
-              color={theme.orangeBrown}
-            />
-            <Text style={styles.heroEyebrow}>{t("ipScreenEyebrow")}</Text>
+        {/* Green-to-cream gradient behind hero */}
+        <LinearGradient
+          colors={[
+            "rgba(40, 54, 24, 0.12)",
+            "rgba(40, 54, 24, 0.04)",
+            "transparent",
+          ]}
+          style={styles.heroBg}
+          pointerEvents="none"
+        />
+
+        {/* Hero text + paper plane */}
+        <View style={styles.heroRow}>
+          <View style={styles.heroTextCol}>
+            <Text style={styles.heroLine1}>{t("ipHeroLine1")}</Text>
+            <Text style={styles.heroLine2}>{t("ipHeroLine2")}</Text>
+            <Text style={styles.heroSub}>{t("ipHeroSub")}</Text>
           </View>
-          <Text style={styles.heroTitle} accessibilityRole="header">
-            {t("ipScreenHeroTitle")}
-          </Text>
-          <Text style={styles.heroText}>{t("ipScreenHeroText")}</Text>
+          <View style={styles.planeMedallion}>
+            <MaterialCommunityIcons
+              name="send"
+              size={iconScale(30)}
+              color={theme.orangeBrown}
+              style={styles.planeIcon}
+            />
+          </View>
         </View>
 
-        {/* Invite link + actions */}
-        <SectionLabel
-          label={t("ipScreenYourLink")}
-          style={styles.sectionLabel}
-        />
-        <FlowCard style={styles.card}>
-          {inviteLink ? (
-            <>
-              <View
-                style={styles.linkBox}
-                accessible
-                accessibilityLabel={t("ipScreenLinkA11y", {
-                  link: inviteLink,
-                })}
+        {/* Stacked message preview card */}
+        <View style={styles.cardStack}>
+          {/* Back cards peeking from behind — cream deck layers */}
+          <View style={[styles.deckCard, styles.deckCard3]} />
+          <View style={[styles.deckCard, styles.deckCard2]} />
+
+          {/* Main card — cream outer frame with white content inside */}
+          <View style={styles.cardFrame}>
+            <View style={styles.messageCard}>
+              <View style={styles.readyBadge}>
+                <Text style={styles.readyBadgeText}>
+                  {t("ipReadyToShare")}
+                </Text>
+              </View>
+              <Text style={styles.messageTitle}>{t("ipMessageTitle")}</Text>
+              <Text style={styles.messageBody}>{t("ipMessageBody")}</Text>
+              <View style={styles.messageDivider} />
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={handleCopy}
+                style={styles.linkRow}
+                accessibilityRole="button"
+                accessibilityLabel={t("ipScreenCopy")}
+                disabled={!linkReady}
               >
                 <MaterialCommunityIcons
                   name="link-variant"
                   size={iconScale(18)}
-                  color={theme.darkGreen}
+                  color={theme.orangeBrown}
                 />
-                <Text style={styles.linkText} selectable numberOfLines={2}>
-                  {inviteLink}
+                <Text style={styles.linkLabel} numberOfLines={1}>
+                  {t("ipSignupLink")}
                 </Text>
-              </View>
-              {inviteCode ? (
-                <Text style={styles.codeText}>
-                  {t("ipScreenCode", { code: inviteCode })}
-                </Text>
-              ) : null}
-              <Button
-                title={t("ipScreenShare")}
-                onPress={handleShare}
-                leftIcon={
-                  <MaterialCommunityIcons
-                    name="share-variant"
-                    size={iconScale(18)}
-                    color={theme.buttonText}
-                  />
-                }
-                containerStyle={styles.primaryButton}
-              />
-              <Button
-                title={t("ipScreenCopy")}
-                onPress={handleCopy}
-                backgroundColor={theme.white}
-                textColor={theme.darkGreen}
-                leftIcon={
-                  <MaterialCommunityIcons
-                    name="content-copy"
-                    size={iconScale(18)}
-                    color={theme.darkGreen}
-                  />
-                }
-                containerStyle={styles.secondaryButton}
-              />
-            </>
-          ) : loading || !loadFailed ? (
-            <View style={styles.stateBox}>
-              <ActivityIndicator size="small" color={theme.darkGreen} />
-              <Text style={styles.stateText}>{t("ipScreenLoadingLink")}</Text>
-            </View>
-          ) : (
-            <View style={styles.stateBox} accessibilityRole="alert">
-              <MaterialCommunityIcons
-                name="cloud-off-outline"
-                size={iconScale(26)}
-                color={theme.darkGreen}
-              />
-              <Text style={styles.stateText}>{t("ipScreenLoadError")}</Text>
-              <TouchableOpacity
-                activeOpacity={0.7}
-                onPress={() => void loadDetails()}
-                style={styles.retryButton}
-                accessibilityRole="button"
-                accessibilityLabel={t("retry")}
-              >
                 <MaterialCommunityIcons
-                  name="refresh"
+                  name="content-copy"
                   size={iconScale(18)}
-                  color={theme.white}
+                  color={theme.lightGreen}
                 />
-                <Text style={styles.retryText}>{t("retry")}</Text>
               </TouchableOpacity>
             </View>
-          )}
-        </FlowCard>
+          </View>
+        </View>
+
+        {/* Audience line */}
+        <View style={styles.audienceRow}>
+          <MaterialCommunityIcons
+            name="account-outline"
+            size={iconScale(18)}
+            color={theme.lightGreen}
+          />
+          <Text style={styles.audienceText}>{t("ipAudience")}</Text>
+        </View>
+
+        {/* Action buttons */}
+        {showLoader ? (
+          <View style={styles.stateBox}>
+            <ActivityIndicator size="small" color={theme.darkGreen} />
+            <Text style={styles.stateText}>{t("ipScreenLoadingLink")}</Text>
+          </View>
+        ) : showError ? (
+          <View style={styles.stateBox} accessibilityRole="alert">
+            <MaterialCommunityIcons
+              name="cloud-off-outline"
+              size={iconScale(26)}
+              color={theme.darkGreen}
+            />
+            <Text style={styles.stateText}>{t("ipScreenLoadError")}</Text>
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() => void loadDetails()}
+              style={styles.retryButton}
+              accessibilityRole="button"
+              accessibilityLabel={t("retry")}
+            >
+              <MaterialCommunityIcons
+                name="refresh"
+                size={iconScale(18)}
+                color={theme.white}
+              />
+              <Text style={styles.retryText}>{t("retry")}</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <>
+            <Button
+              title={t("ipScreenShare")}
+              onPress={handleShare}
+              leftIcon={
+                <MaterialCommunityIcons
+                  name="share-variant"
+                  size={iconScale(18)}
+                  color={theme.buttonText}
+                />
+              }
+              containerStyle={styles.primaryButton}
+            />
+            <Button
+              title={t("ipScreenCopy")}
+              onPress={handleCopy}
+              backgroundColor={theme.white}
+              textColor={theme.darkGreen}
+              leftIcon={
+                <MaterialCommunityIcons
+                  name="content-copy"
+                  size={iconScale(18)}
+                  color={theme.darkGreen}
+                />
+              }
+              containerStyle={styles.secondaryButton}
+            />
+            <Text style={styles.channelsHint}>{t("ipChannelsHint")}</Text>
+          </>
+        )}
 
         {/* How it works */}
         <SectionLabel
@@ -400,82 +432,181 @@ const createStyles = (theme: Theme) =>
     },
     content: {
       paddingHorizontal: moderateWidthScale(16),
-      paddingTop: moderateHeightScale(16),
+      paddingTop: moderateHeightScale(20),
     },
-    hero: {
-      backgroundColor: theme.darkGreen,
-      borderRadius: moderateWidthScale(20),
-      paddingHorizontal: moderateWidthScale(18),
-      paddingVertical: moderateHeightScale(18),
-      borderWidth: 1,
-      borderColor: theme.goldBorder,
+
+    heroBg: {
+      position: "absolute",
+      top: 0,
+      left: -moderateWidthScale(16),
+      right: -moderateWidthScale(16),
+      height: moderateHeightScale(160),
+      borderBottomLeftRadius: moderateWidthScale(24),
+      borderBottomRightRadius: moderateWidthScale(24),
     },
-    heroEyebrowRow: {
+
+    // Hero text + paper plane
+    heroRow: {
       flexDirection: "row",
       alignItems: "center",
-      gap: moderateWidthScale(6),
-      marginBottom: moderateHeightScale(8),
+      justifyContent: "space-between",
+      marginBottom: moderateHeightScale(24),
     },
-    heroEyebrow: {
-      fontSize: fontSize.size11,
-      fontFamily: fonts.fontBold,
+    heroTextCol: {
+      flex: 1,
+      marginRight: moderateWidthScale(12),
+    },
+    heroLine1: {
+      fontSize: fontSize.size26,
+      fontFamily: fonts.fontExtraBold,
+      color: theme.darkGreen,
+      lineHeight: fontSize.size26 * 1.2,
+    },
+    heroLine2: {
+      fontSize: fontSize.size26,
+      fontFamily: fonts.fontExtraBold,
       color: theme.orangeBrown,
-      letterSpacing: 1.2,
-      textTransform: "uppercase",
+      lineHeight: fontSize.size26 * 1.2,
     },
-    heroTitle: {
-      fontSize: fontSize.size22,
-      lineHeight: fontSize.size22 * 1.25,
-      fontFamily: fonts.fontBold,
-      color: theme.white,
-      marginBottom: moderateHeightScale(8),
-    },
-    heroText: {
-      fontSize: fontSize.size14,
-      lineHeight: fontSize.size14 * 1.45,
+    heroSub: {
+      fontSize: fontSize.size16,
       fontFamily: fonts.fontRegular,
-      color: theme.white85,
+      color: theme.lightGreen,
+      marginTop: moderateHeightScale(6),
     },
-    sectionLabel: {
-      marginTop: moderateHeightScale(22),
-      marginBottom: moderateHeightScale(10),
+    planeMedallion: {
+      width: moderateWidthScale(68),
+      height: moderateWidthScale(68),
+      borderRadius: moderateWidthScale(34),
+      backgroundColor: theme.noticeCream,
+      alignItems: "center",
+      justifyContent: "center",
     },
-    card: {
+    planeIcon: {
+      transform: [{ rotate: "-30deg" }],
+    },
+
+    // Stacked card — deck of cards effect
+    cardStack: {
+      marginBottom: moderateHeightScale(20),
+    },
+    deckCard: {
+      position: "absolute",
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: theme.noticeCream,
+      borderRadius: moderateWidthScale(16),
+      borderWidth: 1.2,
+      borderColor: theme.goldBorder,
+    },
+    deckCard3: {
+      transform: [
+        { rotate: "2.5deg" },
+        { translateX: 4 },
+        { translateY: 8 },
+      ],
+      opacity: 0.45,
+    },
+    deckCard2: {
+      transform: [
+        { rotate: "1.2deg" },
+        { translateX: 2 },
+        { translateY: 4 },
+      ],
+      opacity: 0.7,
+    },
+    cardFrame: {
+      backgroundColor: theme.noticeCream,
+      borderRadius: moderateWidthScale(16),
+      borderWidth: 1.2,
+      borderColor: theme.goldBorder,
+      padding: moderateWidthScale(6),
+    },
+    messageCard: {
+      backgroundColor: theme.white,
+      borderRadius: moderateWidthScale(12),
       padding: moderateWidthScale(16),
     },
-    linkBox: {
+    readyBadge: {
+      alignSelf: "flex-start",
+      backgroundColor: theme.noticeCream,
+      paddingHorizontal: moderateWidthScale(12),
+      paddingVertical: moderateHeightScale(5),
+      borderRadius: moderateWidthScale(6),
+      marginBottom: moderateHeightScale(12),
+    },
+    readyBadgeText: {
+      fontSize: fontSize.size11,
+      fontFamily: fonts.fontBold,
+      color: theme.orangeBrownText,
+      letterSpacing: 1,
+      textTransform: "uppercase",
+    },
+    messageTitle: {
+      fontSize: fontSize.size22,
+      fontFamily: fonts.fontExtraBold,
+      color: theme.darkGreen,
+      lineHeight: fontSize.size22 * 1.2,
+      marginBottom: moderateHeightScale(10),
+    },
+    messageBody: {
+      fontSize: fontSize.size15,
+      fontFamily: fonts.fontRegular,
+      color: theme.textMuted ?? theme.lightGreen,
+      lineHeight: fontSize.size15 * 1.5,
+    },
+    messageDivider: {
+      height: 1,
+      backgroundColor: theme.borderLight,
+      marginVertical: moderateHeightScale(14),
+    },
+    linkRow: {
       flexDirection: "row",
       alignItems: "center",
       gap: moderateWidthScale(10),
-      minHeight: moderateHeightScale(48),
-      paddingHorizontal: moderateWidthScale(12),
-      paddingVertical: moderateHeightScale(10),
-      borderRadius: moderateWidthScale(12),
-      backgroundColor: theme.noticeCream,
-      borderWidth: 1,
-      borderColor: theme.borderLight,
+      minHeight: 44,
     },
-    linkText: {
+    linkLabel: {
       flex: 1,
       fontSize: fontSize.size14,
       fontFamily: fonts.fontMedium,
-      color: theme.darkGreen,
-    },
-    codeText: {
-      marginTop: moderateHeightScale(8),
-      fontSize: fontSize.size13,
-      fontFamily: fonts.fontMedium,
       color: theme.lightGreen,
-      letterSpacing: 0.5,
     },
+
+    // Audience
+    audienceRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(8),
+      marginBottom: moderateHeightScale(20),
+      paddingHorizontal: moderateWidthScale(4),
+    },
+    audienceText: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+    },
+
+    // Buttons
     primaryButton: {
-      marginTop: moderateHeightScale(16),
+      marginBottom: moderateHeightScale(10),
     },
     secondaryButton: {
-      marginTop: moderateHeightScale(10),
+      marginBottom: moderateHeightScale(12),
       borderWidth: 1.2,
       borderColor: theme.darkGreen,
     },
+    channelsHint: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+      textAlign: "center",
+      marginBottom: moderateHeightScale(8),
+    },
+
+    // Loading / error
     stateBox: {
       alignItems: "center",
       justifyContent: "center",
@@ -502,6 +633,15 @@ const createStyles = (theme: Theme) =>
       fontSize: fontSize.size14,
       fontFamily: fonts.fontBold,
       color: theme.white,
+    },
+
+    // How it works
+    sectionLabel: {
+      marginTop: moderateHeightScale(22),
+      marginBottom: moderateHeightScale(10),
+    },
+    card: {
+      padding: moderateWidthScale(16),
     },
     stepRow: {
       flexDirection: "row",
@@ -534,6 +674,8 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontRegular,
       color: theme.textMuted,
     },
+
+    // Balance
     balanceCard: {
       borderColor: theme.goldBorder,
       paddingBottom: moderateHeightScale(6),
