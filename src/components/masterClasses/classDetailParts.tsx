@@ -54,10 +54,12 @@ type HeroProps = {
   masterClass: MasterClass;
   /** Video classes: opens the full-screen player. */
   onPlay?: () => void;
+  /** Image classes: opens full-screen image preview. */
+  onImagePress?: () => void;
 };
 
 /** 16:9 rounded media card; videos show a play button that opens the player. */
-export function ClassDetailHero({ masterClass, onPlay }: HeroProps) {
+export function ClassDetailHero({ masterClass, onPlay, onImagePress }: HeroProps) {
   const { t } = useTranslation();
   const { styles } = useStyles();
   const { width } = useWindowDimensions();
@@ -65,6 +67,7 @@ export function ClassDetailHero({ masterClass, onPlay }: HeroProps) {
   const heroHeight = Math.round((heroWidth * 9) / 16);
   const video = isVideoClass(masterClass);
   const canPlay = video && !!masterClass.media?.url && !!onPlay;
+  const canPreviewImage = !video && !!masterClass.media?.url && !!onImagePress;
 
   const thumb = (
     <ClassMediaThumb
@@ -76,28 +79,41 @@ export function ClassDetailHero({ masterClass, onPlay }: HeroProps) {
     />
   );
 
-  if (!canPlay) {
+  if (canPlay) {
     return (
-      <View
+      <TouchableOpacity
+        activeOpacity={0.85}
+        onPress={onPlay}
         style={styles.hero}
-        accessible
-        accessibilityRole="image"
+        accessibilityRole="button"
+        accessibilityLabel={t("mcPlayClassVideo")}
+      >
+        {thumb}
+      </TouchableOpacity>
+    );
+  }
+  if (canPreviewImage) {
+    return (
+      <TouchableOpacity
+        activeOpacity={0.85}
+        onPress={onImagePress}
+        style={styles.hero}
+        accessibilityRole="button"
         accessibilityLabel={masterClass.title}
       >
         {thumb}
-      </View>
+      </TouchableOpacity>
     );
   }
   return (
-    <TouchableOpacity
-      activeOpacity={0.85}
-      onPress={onPlay}
+    <View
       style={styles.hero}
-      accessibilityRole="button"
-      accessibilityLabel={t("mcPlayClassVideo")}
+      accessible
+      accessibilityRole="image"
+      accessibilityLabel={masterClass.title}
     >
       {thumb}
-    </TouchableOpacity>
+    </View>
   );
 }
 

@@ -15,7 +15,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useTheme } from "@/src/hooks/hooks";
+import { useAppDispatch, useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import {
@@ -25,6 +25,7 @@ import {
 } from "@/src/theme/dimensions";
 import StackHeader from "@/src/components/StackHeader";
 import LocalVideoPreviewModal from "@/src/components/localVideoPreviewModal";
+import { openFullImageModal } from "@/src/state/slices/generalSlice";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import {
   ClassMediaThumb,
@@ -104,6 +105,7 @@ export default function ProClassDetailScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { width: screenWidth } = useWindowDimensions();
+  const dispatch = useAppDispatch();
   const { showBanner } = useNotificationContext();
   // showBanner is a new function on every provider render; keep it out of deps
   const showBannerRef = useRef(showBanner);
@@ -613,6 +615,21 @@ export default function ProClassDetailScreen() {
             onPress={() => setVideoOpen(true)}
             accessibilityRole="button"
             accessibilityLabel={t("mcPlayVideo")}
+          >
+            <ClassMediaThumb
+              media={cls.media}
+              width={heroWidth}
+              height={heroHeight}
+              radius={moderateWidthScale(16)}
+              playSize={iconScale(26)}
+            />
+          </TouchableOpacity>
+        ) : cls.media?.url ? (
+          <TouchableOpacity
+            activeOpacity={0.85}
+            onPress={() => dispatch(openFullImageModal({ images: [cls.media!.url!] }))}
+            accessibilityRole="button"
+            accessibilityLabel={cls.title}
           >
             <ClassMediaThumb
               media={cls.media}

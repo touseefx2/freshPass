@@ -20,7 +20,10 @@ import { fontSize, fonts } from "@/src/theme/fonts";
 import { moderateHeightScale, moderateWidthScale } from "@/src/theme/dimensions";
 import StackHeader from "@/src/components/StackHeader";
 import LocalVideoPreviewModal from "@/src/components/localVideoPreviewModal";
-import { setGuestModeModalVisible } from "@/src/state/slices/generalSlice";
+import {
+  openFullImageModal,
+  setGuestModeModalVisible,
+} from "@/src/state/slices/generalSlice";
 import { getOwnBusinessIds } from "@/src/state/slices/userSlice";
 // Not a React hook despite the name: points the Stripe SDK at an account.
 import { useStripeAccount as setStripeAccount } from "@/src/services/stripeService";
@@ -454,7 +457,14 @@ export default function ClassDetailScreen() {
             />
           }
         >
-          <ClassDetailHero masterClass={cls} onPlay={() => setVideoOpen(true)} />
+          <ClassDetailHero
+            masterClass={cls}
+            onPlay={() => setVideoOpen(true)}
+            onImagePress={() => {
+              const url = cls.media?.url;
+              if (url) dispatch(openFullImageModal({ images: [url] }));
+            }}
+          />
 
           <View style={styles.headBlock}>
             <View style={styles.pillRow}>
