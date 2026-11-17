@@ -169,9 +169,7 @@ export default function HomeQuickCards() {
   // Same live count as the Business Management Orders tile
   const ordersCount = useBusinessOrdersCount(isOnboardedOwner);
   const handleOrdersPress = useCallback(() => {
-    router.push(
-      "/(main)/dashboard/(account)/(businessProfileSettings)/orders" as any,
-    );
+    router.push("/(main)/businessOrders" as any);
   }, [router]);
 
   if (!isOnboardedOwner) return null;
