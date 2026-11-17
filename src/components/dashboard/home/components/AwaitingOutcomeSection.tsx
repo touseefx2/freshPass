@@ -162,11 +162,14 @@ const createStyles = (theme: Theme) =>
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
+      flexWrap: "wrap",
+      rowGap: moderateHeightScale(6),
     },
     footerGroup: {
       flexDirection: "row",
       alignItems: "center",
       gap: moderateWidthScale(4),
+      flexShrink: 1,
     },
     statusLabel: {
       fontSize: fontSize.size11,
@@ -178,6 +181,7 @@ const createStyles = (theme: Theme) =>
       paddingHorizontal: moderateWidthScale(8),
       paddingVertical: moderateHeightScale(3),
       borderRadius: moderateWidthScale(4),
+      flexShrink: 1,
     },
     chipPaid: {
       backgroundColor: theme.apptMintBg,
