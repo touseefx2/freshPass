@@ -1913,7 +1913,7 @@ const createStyles = (theme: Theme) =>
     },
     cardFormNative: {
       width: "100%",
-      height: Platform.OS === "ios" ? 190 : 220,
+      height: Platform.OS === "ios" ? 190 : 280,
       marginTop: moderateHeightScale(18),
     },
     addCardButtons: {

@@ -210,7 +210,8 @@
         {
           "enableGooglePay": false
         }
-      ]
+      ],
+      "./plugins/withAndroidMaterialTheme.js"
     ],
     "experiments": {
       "typedRoutes": true,
