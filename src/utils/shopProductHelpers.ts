@@ -1,6 +1,7 @@
 import type { TFunction } from "i18next";
 import { formatShopPrice } from "@/src/constants/demoShopProduct";
 import type {
+  ProductReturnPolicy,
   ShopDeliveryOptions,
   ShopProduct,
   ShopProductImage,
@@ -34,6 +35,8 @@ export function createEmptyProductDraft(): ProductFormDraft {
     featuredRequested: false,
     images: [],
     removedImageIds: [],
+    // Returns off until the seller turns them on (return policy guide)
+    returnPolicy: { enabled: false, windowDays: null, text: null, shippingPaidBy: null },
   };
 }
 
@@ -165,6 +168,23 @@ function normalizeModeration(value: unknown): ShopProductModeration | null {
   };
 }
 
+/** `returnPolicy` object → typed policy; null when missing. */
+export function normalizeReturnPolicy(value: unknown): ProductReturnPolicy | null {
+  if (!value || typeof value !== "object") return null;
+  const raw = value as Raw;
+  const enabled = raw.enabled === true;
+  const days = toNullableNum(raw.windowDays);
+  return {
+    enabled,
+    windowDays: enabled && days != null && days > 0 ? days : null,
+    text: enabled ? toStr(raw.text) : null,
+    shippingPaidBy:
+      enabled && (raw.shippingPaidBy === "buyer" || raw.shippingPaidBy === "seller")
+        ? raw.shippingPaidBy
+        : null,
+  };
+}
+
 /** Product from any endpoint (owner, customer, catalog, reel feed) with every field filled. */
 export function normalizeShopProduct(raw: any): ShopProduct {
   const src = (raw && typeof raw === "object" ? raw : {}) as Raw;
@@ -227,6 +247,7 @@ export function normalizeShopProduct(raw: any): ShopProduct {
         ? src.featuredRequested
         : undefined,
     moderation: normalizeModeration(src.moderation),
+    returnPolicy: normalizeReturnPolicy(src.returnPolicy),
   };
 }
 
@@ -344,5 +365,7 @@ export function productToFormDraft(product: ShopProduct): ProductFormDraft {
     })),
     removedImageIds: [],
     variants: draftVariants,
+    // Missing on the payload: leave it out so a save never turns returns off
+    returnPolicy: product.returnPolicy ?? undefined,
   };
 }

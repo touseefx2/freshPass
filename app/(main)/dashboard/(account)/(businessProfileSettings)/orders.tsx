@@ -350,14 +350,17 @@ export default function BusinessOrdersScreen() {
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => {
             const next = splitNextStatuses(item.nextStatuses).forward[0];
-            // A customer request comes before shipping (ship is blocked meanwhile)
+            // A customer request comes before shipping (ship is blocked
+            // meanwhile); a returned item waits for Confirm receipt
             const nextLabel = isRefundAwaitingSeller(item)
               ? t("orderNextStep", { action: t("mpSelNextRespond") })
-              : next
-                ? t("orderNextStep", {
-                    action: t(getOrderActionLabelKey(next)),
-                  })
-                : null;
+              : item.canConfirmReceipt === true
+                ? t("orderNextStep", { action: t("mpSelConfirmReceipt") })
+                : next
+                  ? t("orderNextStep", {
+                      action: t(getOrderActionLabelKey(next)),
+                    })
+                  : null;
             const card = (
               <OrderSummaryCard
                 order={item}

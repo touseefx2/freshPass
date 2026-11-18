@@ -2,6 +2,7 @@ import { ApiService } from "./api";
 import { orderEndpoints } from "./endpoints";
 import type {
   BusinessShopOrder,
+  OrderReturnMethod,
   ShopOrder,
   ShopOrderFilter,
   ShopOrderListMeta,
@@ -183,6 +184,23 @@ export async function refundBusinessOrder(
   return order;
 }
 
+/**
+ * POST /api/orders/business/{order}/confirm-receipt — the returned item
+ * arrived; the order is refunded. Only when `canConfirmReceipt`.
+ */
+export async function confirmReturnReceipt(
+  id: string | number,
+): Promise<BusinessShopOrder> {
+  const response = await ApiService.post<ApiEnvelope<unknown>>(
+    orderEndpoints.businessConfirmReceipt(id),
+  );
+  const order = normalizeBusinessOrder(
+    unwrap(response, "Failed to confirm receipt"),
+  );
+  publishBusinessOrder(order);
+  return order;
+}
+
 /** PUT /api/orders/{order}/shipping-details — adds or replaces; the customer is notified. */
 export async function saveOrderShippingDetails(
   id: string | number,
@@ -230,28 +248,34 @@ export async function fetchCustomerOrder(
   return normalizeShopOrder(unwrap(response, "Failed to fetch order"));
 }
 
-type RefundPhoto = { uri: string; name: string; type: string };
+export type RefundPhoto = { uri: string; name: string; type: string };
 
-/** JSON body, or multipart when a photo is attached. */
+/**
+ * JSON body, or multipart when a photo is attached. `multipart` always sends
+ * form data (return / report / escalate endpoints are multipart/form-data).
+ */
 function buildRefundBody(
   fields: Record<string, string | undefined>,
   photo?: RefundPhoto | null,
+  multipart = false,
 ): { body: unknown; config?: { headers: Record<string, string> } } {
   const entries = Object.entries(fields).filter(
     (entry): entry is [string, string] => !!entry[1] && entry[1].trim() !== "",
   );
-  if (!photo) {
+  if (!photo && !multipart) {
     return {
       body: Object.fromEntries(entries.map(([k, v]) => [k, v.trim()])),
     };
   }
   const formData = new FormData();
   entries.forEach(([key, value]) => formData.append(key, value.trim()));
-  formData.append("photo", {
-    uri: photo.uri,
-    name: photo.name,
-    type: photo.type,
-  } as any);
+  if (photo) {
+    formData.append("photo", {
+      uri: photo.uri,
+      name: photo.name,
+      type: photo.type,
+    } as any);
+  }
   return {
     body: formData,
     config: { headers: { "Content-Type": "multipart/form-data" } },
@@ -259,16 +283,13 @@ function buildRefundBody(
 }
 
 /**
- * POST /api/orders/{order}/refund-request. The server decides cancellation vs
- * refund from the order state (`type` is only for the caller's own UI):
- * cancellation `reason` optional (changed_mind, other); refund `reason`
- * required (damaged, wrong_item, never_arrived, other). 422 `errors.order`
- * explains a refusal (already asked, past 7 days…).
+ * POST /api/orders/{order}/refund-request — Cancel Order (before shipment,
+ * reason changed_mind / other, optional). 422 `errors.order` explains a
+ * refusal.
  */
-export async function requestOrderRefund(
+export async function requestOrderCancellation(
   orderId: string | number,
   params: {
-    type: "cancellation" | "refund";
     reason?: string | null;
     note?: string | null;
     photo?: RefundPhoto | null;
@@ -286,12 +307,92 @@ export async function requestOrderRefund(
   return normalizeShopOrder(unwrap(response, "Failed to send the request"));
 }
 
+/**
+ * POST /api/orders/{order}/refund-request — Request Return (multipart).
+ * reason: changed_mind | wrong_size_color | not_as_described | other;
+ * return_method: shipping (server default) | in_person.
+ * → refundState "return_requested".
+ */
+export async function requestOrderReturn(
+  orderId: string | number,
+  params: {
+    reason?: string | null;
+    note?: string | null;
+    photo?: RefundPhoto | null;
+    returnMethod?: OrderReturnMethod | null;
+  },
+): Promise<ShopOrder> {
+  const { body, config } = buildRefundBody(
+    {
+      reason: params.reason ?? undefined,
+      note: params.note ?? undefined,
+      return_method: params.returnMethod ?? undefined,
+    },
+    params.photo,
+    true,
+  );
+  const response = await ApiService.post<ApiEnvelope<unknown>>(
+    orderEndpoints.refundRequest(orderId),
+    body,
+    config,
+  );
+  return normalizeShopOrder(unwrap(response, "Failed to send the request"));
+}
+
+/**
+ * POST /api/orders/{order}/report — Report a Problem (multipart).
+ * reason (required): damaged | wrong_item | never_arrived | other.
+ * return_method is not sent for never_arrived (nothing to send back).
+ * → refundState "problem_reported".
+ */
+export async function reportOrderProblem(
+  orderId: string | number,
+  params: {
+    reason: string;
+    note?: string | null;
+    photo?: RefundPhoto | null;
+    returnMethod?: OrderReturnMethod | null;
+  },
+): Promise<ShopOrder> {
+  const { body, config } = buildRefundBody(
+    {
+      reason: params.reason,
+      note: params.note ?? undefined,
+      return_method: params.returnMethod ?? undefined,
+    },
+    params.photo,
+    true,
+  );
+  const response = await ApiService.post<ApiEnvelope<unknown>>(
+    orderEndpoints.report(orderId),
+    body,
+    config,
+  );
+  return normalizeShopOrder(unwrap(response, "Failed to send the report"));
+}
+
+/** POST /api/orders/{order}/tracking — JSON → refundState "return_shipped". */
+export async function addReturnTracking(
+  orderId: string | number,
+  trackingNumber: string,
+): Promise<ShopOrder> {
+  const response = await ApiService.post<ApiEnvelope<unknown>>(
+    orderEndpoints.tracking(orderId),
+    { tracking_number: trackingNumber.trim() },
+  );
+  return normalizeShopOrder(unwrap(response, "Failed to save tracking number"));
+}
+
 /** POST /api/orders/{order}/refund-request/escalate — "Ask FreshPass to review" (once). */
 export async function escalateOrderRefund(
   orderId: string | number,
   params: { note: string; photo?: RefundPhoto | null },
 ): Promise<ShopOrder> {
-  const { body, config } = buildRefundBody({ note: params.note }, params.photo);
+  const { body, config } = buildRefundBody(
+    { note: params.note },
+    params.photo,
+    true,
+  );
   const response = await ApiService.post<ApiEnvelope<unknown>>(
     orderEndpoints.escalate(orderId),
     body,

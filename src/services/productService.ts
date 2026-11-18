@@ -148,6 +148,24 @@ function appendMarketplaceFields(
     formData.append("featured_requested", draft.featuredRequested ? "1" : "0");
   }
 
+  // Return policy: only when the editor set one (older callers leave it out).
+  // Off sends just return_policy_enabled=0; on needs window + payer.
+  const policy = draft.returnPolicy;
+  if (policy) {
+    formData.append("return_policy_enabled", policy.enabled ? "1" : "0");
+    if (policy.enabled) {
+      if (policy.windowDays != null) {
+        formData.append("return_window_days", String(policy.windowDays));
+      }
+      if (policy.shippingPaidBy) {
+        formData.append("return_shipping_paid_by", policy.shippingPaidBy);
+      }
+      const text = policy.text?.trim() ?? "";
+      if (text) formData.append("return_policy_text", text);
+      else if (isUpdate) formData.append("return_policy_text", "");
+    }
+  }
+
   // Gallery: new photos are added after the kept ones (4 in all)
   (draft.images ?? [])
     .filter((img) => img.isNew)

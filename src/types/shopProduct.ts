@@ -73,6 +73,23 @@ export interface ShopProductModeration {
   featuredBlocked: boolean;
 }
 
+/** Who pays to send a returned item back. */
+export type ReturnShippingPaidBy = "buyer" | "seller";
+
+/** Return window choices the backend accepts. */
+export type ReturnWindowDays = 7 | 14 | 20;
+
+/**
+ * Product return policy (`returnPolicy` on every product response). When
+ * `enabled` is false the other fields are null.
+ */
+export interface ProductReturnPolicy {
+  enabled: boolean;
+  windowDays: number | null;
+  text: string | null;
+  shippingPaidBy: ReturnShippingPaidBy | null;
+}
+
 export interface ShopProduct {
   id: string;
   /** Owning business — lets customer mode block buying your own product */
@@ -118,6 +135,8 @@ export interface ShopProduct {
   featuredRequested?: boolean;
   /** Owner only. */
   moderation?: ShopProductModeration | null;
+  /** Null when the payload has no `returnPolicy` (older responses). */
+  returnPolicy?: ProductReturnPolicy | null;
 }
 
 export type ShopStockFilter = "all" | "in_stock" | "low_stock";

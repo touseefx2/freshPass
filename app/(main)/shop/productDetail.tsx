@@ -34,6 +34,7 @@ import {
 } from "@/src/components/reelFlow/flowParts";
 import ProductRating from "@/src/components/marketplace/ProductRating";
 import VariantChips from "@/src/components/marketplace/detail/VariantChips";
+import { ReturnPolicyCard } from "@/src/components/returnPolicyParts";
 import { formatShopPrice } from "@/src/constants/demoShopProduct";
 import {
   setShippingMethod,
@@ -599,6 +600,13 @@ export default function ProductDetailScreen() {
           </FlowCard>
         ) : null}
 
+        {product.returnPolicy ? (
+          <>
+            <SectionLabel label={t("mpReturnPolicyTitle")} />
+            <ReturnPolicyCard policy={product.returnPolicy} withTitle={false} />
+          </>
+        ) : null}
+
         {unavailable ? (
           <InfoNote
             tone="warm"
@@ -672,7 +680,13 @@ export default function ProductDetailScreen() {
                 text={t("shopOnlyLeft", { count: stock })}
               />
             ) : null}
-            <InfoNote icon="assignment-return" text={t("mpRefundPolicyNote")} />
+            {/* With a return policy the card above covers returns — keep the cancel rule here */}
+            <InfoNote
+              icon={product.returnPolicy ? "event-busy" : "assignment-return"}
+              text={
+                product.returnPolicy ? t("mpCancelPolicyNote") : t("mpRefundPolicyNote")
+              }
+            />
           </>
         )}
       </ScrollView>

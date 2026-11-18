@@ -3,7 +3,10 @@ import type {
   OrderEarnings,
   OrderRefundActions,
   OrderRefundRequest,
+  OrderRefundRequestType,
   OrderRefundState,
+  OrderReturnMethod,
+  OrderReturnPolicy,
   ShopOrder,
   ShopOrderCustomer,
   ShopOrderFilter,
@@ -140,20 +143,45 @@ function normalizeRefund(value: unknown): ShopOrderRefund | null {
 
 export const REFUND_STATES: OrderRefundState[] = [
   "cancellation_requested",
-  "refund_requested",
-  "refund_on_the_way",
-  "refunded",
-  "refund_declined",
+  "return_requested",
+  "problem_reported",
+  "return_approved",
+  "return_shipped",
+  "awaiting_in_person_return",
+  "return_received",
+  "return_declined",
   "under_review",
-  "refunded_by_freshpass",
   "declined_reviewed",
+  "refund_pending",
+  "refunded",
+  "refunded_by_freshpass",
   "cancelled_not_refunded",
 ];
 
+/** Values older orders may still carry → the current names. */
+const LEGACY_REFUND_STATES: Record<string, OrderRefundState> = {
+  refund_requested: "problem_reported",
+  refund_on_the_way: "refund_pending",
+  refund_declined: "return_declined",
+};
+
 function toRefundState(value: unknown): OrderRefundState | null {
-  return REFUND_STATES.includes(value as OrderRefundState)
-    ? (value as OrderRefundState)
-    : null;
+  if (REFUND_STATES.includes(value as OrderRefundState)) {
+    return value as OrderRefundState;
+  }
+  return typeof value === "string" ? (LEGACY_REFUND_STATES[value] ?? null) : null;
+}
+
+function toRequestType(value: unknown): OrderRefundRequestType {
+  return value === "cancellation" || value === "report" ? value : "refund";
+}
+
+function toReturnMethod(value: unknown): OrderReturnMethod | null {
+  return value === "shipping" || value === "in_person" ? value : null;
+}
+
+function toPaidBy(value: unknown): "buyer" | "seller" | null {
+  return value === "buyer" || value === "seller" ? value : null;
 }
 
 function normalizeRefundRequest(value: unknown): OrderRefundRequest | null {
@@ -161,7 +189,7 @@ function normalizeRefundRequest(value: unknown): OrderRefundRequest | null {
   if (!raw) return null;
   return {
     id: toNumber(raw.id),
-    type: raw.type === "cancellation" ? "cancellation" : "refund",
+    type: toRequestType(raw.type),
     status: toText(raw.status) ?? "",
     reason: toText(raw.reason),
     reasonLabel: toText(raw.reasonLabel),
@@ -174,18 +202,43 @@ function normalizeRefundRequest(value: unknown): OrderRefundRequest | null {
     escalatedAt: toText(raw.escalatedAt),
     adminNote: toText(raw.adminNote),
     resolvedAt: toText(raw.resolvedAt),
+    trackingNumber: toText(raw.trackingNumber),
+    returnMethod: toReturnMethod(raw.returnMethod),
+    returnShippingPaidBy: toPaidBy(raw.returnShippingPaidBy),
+    sellerDeadlineAt: toText(raw.sellerDeadlineAt),
+    sellerReceivedAt: toText(raw.sellerReceivedAt),
+    carrierDeliveredAt: toText(raw.carrierDeliveredAt),
     createdAt: toId(raw.createdAt),
   };
 }
 
+/** New names first; `canRequestRefund` / `refundDeadline` are the old aliases. */
 function normalizeRefundActions(value: unknown): OrderRefundActions | null {
   const raw = asRecord(value);
   if (!raw) return null;
   return {
     canRequestCancellation: raw.canRequestCancellation === true,
-    canRequestRefund: raw.canRequestRefund === true,
-    refundDeadline: toText(raw.refundDeadline),
+    canRequestReturn:
+      typeof raw.canRequestReturn === "boolean"
+        ? raw.canRequestReturn
+        : raw.canRequestRefund === true,
+    canReportProblem: raw.canReportProblem === true,
+    returnDeadline: toText(raw.returnDeadline) ?? toText(raw.refundDeadline),
     canEscalate: raw.canEscalate === true,
+  };
+}
+
+function normalizeOrderReturnPolicy(value: unknown): OrderReturnPolicy | null {
+  const raw = asRecord(value);
+  if (!raw) return null;
+  const enabled = raw.enabled === true;
+  const days = toNullableNumber(raw.windowDays);
+  return {
+    enabled,
+    windowDays: enabled && days != null && days > 0 ? days : null,
+    text: enabled ? toText(raw.text) : null,
+    shippingPaidBy: enabled ? toPaidBy(raw.shippingPaidBy) : null,
+    deadlineAt: toText(raw.deadlineAt),
   };
 }
 
@@ -242,6 +295,7 @@ export function normalizeShopOrder(value: unknown): ShopOrder {
     refundState: toRefundState(raw.refundState),
     refundRequest: normalizeRefundRequest(raw.refundRequest),
     refundActions: normalizeRefundActions(raw.refundActions),
+    returnPolicy: normalizeOrderReturnPolicy(raw.returnPolicy),
   };
 }
 
@@ -261,6 +315,9 @@ export function normalizeBusinessOrder(value: unknown): BusinessShopOrder {
     earnings: normalizeEarnings(raw.earnings),
     canRefund: raw.canRefund === true,
     refundError: toText(raw.refundError),
+    canConfirmReceipt:
+      raw.canConfirmReceipt === true ||
+      asRecord(raw.refundActions)?.canConfirmReceipt === true,
   };
 }
 
@@ -692,25 +749,35 @@ export function formatOrderAddressLines(
 
 // ── Cancellations and refunds ───────────────────────────────────────
 
-/** Customer status text for `refundState` (guide §6 Step 5). */
+/** Customer status title for `refundState` (return policy guide table). */
 export function getRefundStateLabelKey(state: OrderRefundState): string {
   switch (state) {
     case "cancellation_requested":
       return "mpRefundStateCancellationRequested";
-    case "refund_requested":
-      return "mpRefundStateRefundRequested";
-    case "refund_on_the_way":
-      return "mpRefundStateOnTheWay";
-    case "refunded":
-      return "mpRefundStateRefunded";
-    case "refund_declined":
-      return "mpRefundStateDeclined";
+    case "return_requested":
+      return "mpRefundStateReturnRequested";
+    case "problem_reported":
+      return "mpRefundStateProblemReported";
+    case "return_approved":
+      return "mpRefundStateReturnApproved";
+    case "return_shipped":
+      return "mpRefundStateReturnShipped";
+    case "awaiting_in_person_return":
+      return "mpRefundStateAwaitingInPerson";
+    case "return_received":
+      return "mpRefundStateReturnReceived";
+    case "return_declined":
+      return "mpRefundStateReturnDeclined";
     case "under_review":
       return "mpRefundStateUnderReview";
-    case "refunded_by_freshpass":
-      return "mpRefundStateRefundedByFreshpass";
     case "declined_reviewed":
       return "mpRefundStateDeclinedReviewed";
+    case "refund_pending":
+      return "mpRefundStateRefundPending";
+    case "refunded":
+      return "mpRefundStateRefunded";
+    case "refunded_by_freshpass":
+      return "mpRefundStateRefundedByFreshpass";
     case "cancelled_not_refunded":
       return "mpRefundStateCancelledNotRefunded";
   }
@@ -725,15 +792,20 @@ export function isRefundStateFinal(state: OrderRefundState | null | undefined): 
   );
 }
 
-/** Someone (seller, FreshPass or Stripe) still has to act. */
+/** Someone (seller, customer, FreshPass or Stripe) still has to act. */
 export function isRefundStateWaiting(
   state: OrderRefundState | null | undefined,
 ): boolean {
   return (
     state === "cancellation_requested" ||
-    state === "refund_requested" ||
+    state === "return_requested" ||
+    state === "problem_reported" ||
+    state === "return_approved" ||
+    state === "return_shipped" ||
+    state === "awaiting_in_person_return" ||
+    state === "return_received" ||
     state === "under_review" ||
-    state === "refund_on_the_way"
+    state === "refund_pending"
   );
 }
 
@@ -749,32 +821,68 @@ export function isRefundStateNegative(
   state: OrderRefundState | null | undefined,
 ): boolean {
   return (
-    state === "refund_declined" ||
+    state === "return_declined" ||
     state === "declined_reviewed" ||
     state === "cancelled_not_refunded"
   );
 }
 
-/** `reason` values for Request cancellation (optional). */
+/** The seller still has to approve or decline (pending request). */
+export function isRefundStateAwaitingSeller(
+  state: OrderRefundState | null | undefined,
+): boolean {
+  return (
+    state === "cancellation_requested" ||
+    state === "return_requested" ||
+    state === "problem_reported"
+  );
+}
+
+/** `reason` values for Cancel Order (optional). */
 export const CANCELLATION_REASONS = ["changed_mind", "other"] as const;
-/** `reason` values for Request refund (required). */
-export const REFUND_REASONS = [
+/** `reason` values for Request Return (POST /refund-request, optional). */
+export const RETURN_REASONS = [
+  "changed_mind",
+  "wrong_size_color",
+  "not_as_described",
+  "other",
+] as const;
+/** `reason` values for Report a Problem (POST /report, required). */
+export const REPORT_REASONS = [
   "damaged",
   "wrong_item",
   "never_arrived",
   "other",
 ] as const;
+/** Return methods, in display order. */
+export const RETURN_METHODS: OrderReturnMethod[] = ["shipping", "in_person"];
 
 export type OrderCancellationReason = (typeof CANCELLATION_REASONS)[number];
-export type OrderRefundReason = (typeof REFUND_REASONS)[number];
+export type OrderReturnReason = (typeof RETURN_REASONS)[number];
+export type OrderReportReason = (typeof REPORT_REASONS)[number];
 
-/** i18n key for a cancellation / refund reason value. */
-export function getRefundReasonLabelKey(
-  reason: OrderCancellationReason | OrderRefundReason | string,
-): string {
+/** Max lengths (backend rules). */
+export const REFUND_NOTE_MAX = 1000;
+export const TRACKING_NUMBER_MAX = 100;
+export const SELLER_DECLINE_MAX = 500;
+
+/**
+ * A "never arrived" report has nothing to send back: no return-method picker,
+ * and the refund goes through as soon as the seller approves.
+ */
+export function reasonNeedsReturnMethod(reason: string | null | undefined): boolean {
+  return reason !== "never_arrived";
+}
+
+/** i18n key for any cancellation / return / report reason value. */
+export function getRefundReasonLabelKey(reason: string): string {
   switch (reason) {
     case "changed_mind":
       return "mpRefundReasonChangedMind";
+    case "wrong_size_color":
+      return "mpRefundReasonWrongSizeColor";
+    case "not_as_described":
+      return "mpRefundReasonNotAsDescribed";
     case "damaged":
       return "mpRefundReasonDamaged";
     case "wrong_item":
@@ -784,4 +892,58 @@ export function getRefundReasonLabelKey(
     default:
       return "mpRefundReasonOther";
   }
+}
+
+/** "Ship it back" / "Return in person". */
+export function getReturnMethodLabelKey(method: OrderReturnMethod): string {
+  return method === "in_person" ? "mpReturnMethodInPerson" : "mpReturnMethodShipping";
+}
+
+/** "Return" / "Problem report" / "Cancellation" (request type label). */
+export function getRefundRequestTypeLabelKey(type: OrderRefundRequestType): string {
+  switch (type) {
+    case "cancellation":
+      return "mpOrdRequestTypeCancellation";
+    case "report":
+      return "mpOrdRequestTypeReport";
+    default:
+      return "mpOrdRequestTypeReturn";
+  }
+}
+
+/**
+ * Customer "Add Tracking Number": approved, shipping back, no number yet
+ * (guide § Add Tracking Number — no flag, read from refundRequest).
+ */
+export function canAddReturnTracking(
+  order: Pick<ShopOrder, "refundRequest">,
+): boolean {
+  const request = order.refundRequest;
+  return (
+    !!request &&
+    request.status === "approved" &&
+    request.returnMethod === "shipping" &&
+    !request.trackingNumber
+  );
+}
+
+/** Policy line pieces: "14-day returns" + who pays return shipping. */
+export function getReturnPolicySummaryKeys(policy: {
+  enabled: boolean;
+  windowDays: number | null;
+  shippingPaidBy: "buyer" | "seller" | null;
+}): { windowKey: string; windowDays: number | null; shippingKey: string | null } {
+  if (!policy.enabled) {
+    return { windowKey: "mpReturnPolicyNoReturns", windowDays: null, shippingKey: null };
+  }
+  return {
+    windowKey: "mpReturnPolicyWindow",
+    windowDays: policy.windowDays,
+    shippingKey:
+      policy.shippingPaidBy === "seller"
+        ? "mpReturnPolicyFreeShipping"
+        : policy.shippingPaidBy === "buyer"
+          ? "mpReturnPolicyBuyerPays"
+          : null,
+  };
 }

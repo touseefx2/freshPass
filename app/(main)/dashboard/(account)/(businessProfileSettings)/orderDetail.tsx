@@ -41,6 +41,7 @@ import {
   StripeFeeNote,
   getOwnerRefundStageKeys,
   isCancellationRequestOpen,
+  isImmediateRefundRequest,
   isRefundAwaitingSeller,
 } from "@/src/components/ownerOrderRefundParts";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
@@ -48,6 +49,7 @@ import { useAppDispatch } from "@/src/hooks/hooks";
 import { openFullImageModal } from "@/src/state/slices/generalSlice";
 import { formatShopPrice } from "@/src/constants/demoShopProduct";
 import {
+  confirmReturnReceipt,
   fetchBusinessOrder,
   refundBusinessOrder,
   respondToRefundRequest,
@@ -59,6 +61,7 @@ import type {
   ShopOrderNextStatus,
 } from "@/src/types/shopOrder";
 import {
+  SELLER_DECLINE_MAX,
   SHIPPING_DETAILS_MAX_LENGTH,
   canSaveShippingDetails,
   getOrderActionLabelKey,
@@ -76,8 +79,10 @@ import {
  * "Mark as shipped" step with the shipping details box (sent in the same call),
  * or the shipping details step on its own (PUT, any time it's allowed).
  * Cancel opens a step to choose "Cancel and refund" / "Cancel without refund";
- * a customer's cancellation / refund request is answered from the overview
- * (Approve & refund) or the decline step (reason required).
+ * a customer's cancellation / return / problem report is answered from the
+ * overview (Approve) or the decline step (reason required). A cancellation or
+ * a "never arrived" report refunds on approve; a return / other report waits
+ * for the item: "Confirm receipt" shows only when `canConfirmReceipt`.
  */
 type OrderView = "overview" | "ship" | "details" | "cancel" | "decline";
 
@@ -87,10 +92,8 @@ type Busy =
   | "approve"
   | "decline"
   | "refund"
+  | "receipt"
   | null;
-
-/** Max length of the decline reason the customer sees. */
-const DECLINE_RESPONSE_MAX_LENGTH = 1000;
 
 const SUCCESS_KEYS: Record<ShopOrderNextStatus, string> = {
   shipped: "orderShippedSuccess",
@@ -316,9 +319,11 @@ function BusinessOrderDetail({ orderId }: { orderId: string }) {
       setView("overview");
       showBanner(
         t("orderUpdatedTitle"),
-        decision === "approve"
-          ? t("mpSelApproveSuccess")
-          : t("mpSelDeclineSuccess"),
+        decision === "decline"
+          ? t("mpSelDeclineSuccess")
+          : isImmediateRefundRequest(current.refundRequest)
+            ? t("mpSelApproveSuccess")
+            : t("mpSelApproveReturnSuccess"),
         "success",
       );
     } catch (err) {
@@ -358,23 +363,87 @@ function BusinessOrderDetail({ orderId }: { orderId: string }) {
     }
   };
 
+  /**
+   * Cancellation / "never arrived" → refunded now. Return / other report →
+   * the customer sends the item back; the refund follows confirm-receipt
+   * (or 7 days after the carrier delivers it).
+   */
   const confirmApprove = () => {
     const current = orderRef.current;
     if (!current || busyRef.current) return;
-    const amount = formatShopPrice(current.total);
+    const request = current.refundRequest;
+    const params = { id: current.id, amount: formatShopPrice(current.total) };
+    if (isImmediateRefundRequest(request)) {
+      Alert.alert(
+        t("mpSelConfirmApproveTitle"),
+        `${t(
+          request?.type === "cancellation"
+            ? "mpSelConfirmApproveCancelMessage"
+            : "mpSelConfirmApproveNeverArrivedMessage",
+          params,
+        )}\n\n${t("mpStripeFeeNotRefunded")}`,
+        [
+          { text: t("notNow"), style: "cancel" },
+          {
+            text: t("mpSelApproveAndRefund"),
+            onPress: () => void answerRequest("approve"),
+          },
+        ],
+      );
+      return;
+    }
     Alert.alert(
-      t("mpSelConfirmApproveTitle"),
-      `${t(
-        current.refundRequest?.type === "cancellation"
-          ? "mpSelConfirmApproveCancelMessage"
-          : "mpSelConfirmApproveRefundMessage",
-        { id: current.id, amount },
-      )}\n\n${t("mpStripeFeeNotRefunded")}`,
+      t("mpSelConfirmApproveReturnTitle"),
+      t(
+        request?.returnMethod === "in_person"
+          ? "mpSelConfirmApproveReturnInPersonMessage"
+          : "mpSelConfirmApproveReturnShipMessage",
+        params,
+      ),
       [
         { text: t("notNow"), style: "cancel" },
         {
-          text: t("mpSelApproveAndRefund"),
+          text: t("mpSelApproveReturn"),
           onPress: () => void answerRequest("approve"),
+        },
+      ],
+    );
+  };
+
+  /** The returned item arrived → the order is refunded. */
+  const runConfirmReceipt = async () => {
+    const current = orderRef.current;
+    if (!current || busyRef.current) return;
+    startBusy("receipt");
+    try {
+      const updated = await confirmReturnReceipt(current.id);
+      setOrder(updated);
+      showBanner(
+        t("orderUpdatedTitle"),
+        t("mpSelConfirmReceiptSuccess"),
+        "success",
+      );
+    } catch (err) {
+      onUpdateFailed(err);
+    } finally {
+      endBusy();
+    }
+  };
+
+  const confirmReceipt = () => {
+    const current = orderRef.current;
+    if (!current || busyRef.current) return;
+    Alert.alert(
+      t("mpSelConfirmReceiptTitle"),
+      `${t("mpSelConfirmReceiptMessage", {
+        id: current.id,
+        amount: formatShopPrice(current.total),
+      })}\n\n${t("mpStripeFeeNotRefunded")}`,
+      [
+        { text: t("notNow"), style: "cancel" },
+        {
+          text: t("mpSelConfirmReceipt"),
+          onPress: () => void runConfirmReceipt(),
         },
       ],
     );
@@ -528,6 +597,7 @@ function BusinessOrderDetail({ orderId }: { orderId: string }) {
   const renderActions = (current: BusinessShopOrder) => {
     // The customer asked: answer first (ship / ready stay blocked meanwhile)
     if (isRefundAwaitingSeller(current)) {
+      const immediate = isImmediateRefundRequest(current.refundRequest);
       return actionsFrame(
         <>
           <FlowButton
@@ -542,13 +612,44 @@ function BusinessOrderDetail({ orderId }: { orderId: string }) {
             }}
           />
           <FlowButton
-            label={t("mpSelApproveAndRefund")}
+            label={
+              immediate ? t("mpSelApproveAndRefund") : t("mpSelApproveReturn")
+            }
             icon="check"
             loading={busy === "approve"}
             disabled={busy !== null && busy !== "approve"}
             onPress={confirmApprove}
           />
-          <StripeFeeNote />
+          {immediate ? (
+            <StripeFeeNote />
+          ) : (
+            <StripeFeeNote
+              icon="assignment-return"
+              text={t("mpSelApproveReturnNote")}
+            />
+          )}
+        </>,
+      );
+    }
+    // Approved return came back (backend flag): confirm to refund
+    if (current.canConfirmReceipt === true) {
+      return actionsFrame(
+        <>
+          <FlowButton
+            label={t("mpSelConfirmReceipt")}
+            icon="inventory"
+            loading={busy === "receipt"}
+            disabled={busy !== null && busy !== "receipt"}
+            onPress={confirmReceipt}
+          />
+          <StripeFeeNote
+            icon="schedule"
+            text={
+              current.refundRequest?.returnMethod === "in_person"
+                ? t("mpSelConfirmReceiptInPersonNote")
+                : t("mpSelConfirmReceiptAutoNote")
+            }
+          />
         </>,
       );
     }
@@ -660,6 +761,7 @@ function BusinessOrderDetail({ orderId }: { orderId: string }) {
             <RefundRequestSection
               request={current.refundRequest}
               refundState={current.refundState}
+              needsReceipt={current.canConfirmReceipt === true}
               onOpenPhoto={openPhoto}
             />
           ) : null}
@@ -904,7 +1006,9 @@ function BusinessOrderDetail({ orderId }: { orderId: string }) {
             title={
               request?.type === "cancellation"
                 ? t("mpSelDeclineCancellationTitle")
-                : t("mpSelDeclineRefundTitle")
+                : request?.type === "report"
+                  ? t("mpSelDeclineReportTitle")
+                  : t("mpSelDeclineReturnTitle")
             }
             subtitle={t("mpSelDeclineSubtitle")}
           />
@@ -914,7 +1018,7 @@ function BusinessOrderDetail({ orderId }: { orderId: string }) {
             value={declineDraft}
             onChangeText={setDeclineDraft}
             multiline
-            maxCount={DECLINE_RESPONSE_MAX_LENGTH}
+            maxCount={SELLER_DECLINE_MAX}
             placeholder={t("mpSelDeclineReasonPlaceholder")}
             editable={busy === null}
             autoFocus

@@ -36,21 +36,29 @@ import {
   SectionLabel,
 } from "@/src/components/reelFlow/flowParts";
 import { FlowTextField } from "@/src/components/reelFlow/detailsFields";
-import { OrderItemThumb } from "@/src/components/shopOrderParts";
+import { formatDeadlineDate, OrderItemThumb } from "@/src/components/shopOrderParts";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import {
   escalateOrderRefund,
   fetchCustomerOrder,
-  requestOrderRefund,
+  reportOrderProblem,
+  requestOrderCancellation,
+  requestOrderReturn,
 } from "@/src/services/orderService";
 import { openFullImageModal } from "@/src/state/slices/generalSlice";
-import type { ShopOrder } from "@/src/types/shopOrder";
+import type { OrderReturnMethod, ShopOrder } from "@/src/types/shopOrder";
 import {
   CANCELLATION_REASONS,
-  REFUND_REASONS,
+  REFUND_NOTE_MAX,
+  REPORT_REASONS,
+  RETURN_METHODS,
+  RETURN_REASONS,
   getItemsSummary,
   getOrderErrorMessage,
   getRefundReasonLabelKey,
+  getRefundRequestTypeLabelKey,
+  getReturnMethodLabelKey,
+  reasonNeedsReturnMethod,
 } from "@/src/utils/shopOrderHelpers";
 import {
   prepareReviewPhoto,
@@ -58,21 +66,23 @@ import {
 } from "@/src/utils/reviewMedia";
 
 /**
- * Customer cancellation / refund request, one step at a time:
- * - refund: reason (required) → note + photo → review & send
- * - cancellation: reason (optional) → note + photo → review & send
- * - escalate ("Ask FreshPass to review"): message (required) + photo → review & send
+ * Customer requests on a marketplace order, one step at a time:
+ * - cancellation (before shipment): reason (optional) → note + photo → review
+ * - return: reason (optional) → note + photo → return method → review
+ * - report ("Report a problem"): reason (required) → note + photo →
+ *   return method (skipped for "never arrived": nothing to send back) → review
+ * - escalate ("Ask FreshPass to review"): message (required) + photo → review
  * Opened from the order screen only when the order's refundActions allow it.
  */
 
-type Mode = "cancellation" | "refund" | "escalate";
-type Step = "reason" | "details" | "escalate" | "review";
+type Mode = "cancellation" | "return" | "report" | "escalate";
+type Step = "reason" | "details" | "method" | "escalate" | "review";
 type IconName = keyof typeof MaterialIcons.glyphMap;
-
-const NOTE_MAX = 1000;
 
 const REASON_ICONS: Record<string, IconName> = {
   changed_mind: "undo",
+  wrong_size_color: "straighten",
+  not_as_described: "image-not-supported",
   damaged: "broken-image",
   wrong_item: "swap-horiz",
   never_arrived: "local-shipping",
@@ -81,24 +91,61 @@ const REASON_ICONS: Record<string, IconName> = {
 
 const REASON_SUB_KEYS: Record<string, string> = {
   changed_mind: "mpRefReasonChangedMindSub",
+  wrong_size_color: "mpRefReasonWrongSizeColorSub",
+  not_as_described: "mpRefReasonNotAsDescribedSub",
   damaged: "mpRefReasonDamagedSub",
   wrong_item: "mpRefReasonWrongItemSub",
   never_arrived: "mpRefReasonNeverArrivedSub",
   other: "mpRefReasonOtherSub",
 };
 
+const METHOD_ICONS: Record<OrderReturnMethod, IconName> = {
+  shipping: "local-shipping",
+  in_person: "storefront",
+};
+
+const METHOD_SUB_KEYS: Record<OrderReturnMethod, string> = {
+  shipping: "mpRefMethodShippingSub",
+  in_person: "mpRefMethodInPersonSub",
+};
+
 function toMode(value: unknown): Mode | null {
-  return value === "cancellation" || value === "refund" || value === "escalate"
+  return value === "cancellation" ||
+    value === "return" ||
+    value === "report" ||
+    value === "escalate"
     ? value
     : null;
 }
 
-function isAllowed(order: ShopOrder, mode: Mode): boolean {
+function isAllowed(order: ShopOrder, mode: Mode | null): boolean {
   const actions = order.refundActions;
-  if (!actions) return false;
-  if (mode === "cancellation") return actions.canRequestCancellation;
-  if (mode === "refund") return actions.canRequestRefund;
-  return actions.canEscalate;
+  if (!actions || !mode) return false;
+  switch (mode) {
+    case "cancellation":
+      return actions.canRequestCancellation;
+    case "return":
+      return actions.canRequestReturn;
+    case "report":
+      return actions.canReportProblem;
+    default:
+      return actions.canEscalate;
+  }
+}
+
+function getSteps(mode: Mode | null, reason: string | null): Step[] {
+  switch (mode) {
+    case "escalate":
+      return ["escalate", "review"];
+    case "return":
+      return ["reason", "details", "method", "review"];
+    case "report":
+      return reasonNeedsReturnMethod(reason)
+        ? ["reason", "details", "method", "review"]
+        : ["reason", "details", "review"];
+    default:
+      return ["reason", "details", "review"];
+  }
 }
 
 /** 422 `errors.order` first, then the first field error, then the message. */
@@ -335,7 +382,8 @@ const createStyles = (theme: Theme) =>
 export default function RefundRequestScreen() {
   const params = useLocalSearchParams<{ orderId?: string; mode?: string }>();
   const orderId = typeof params.orderId === "string" ? params.orderId : "";
-  const mode = toMode(params.mode) ?? "refund";
+  // Unknown mode → "not available" screen (never guessed)
+  const mode = toMode(params.mode);
 
   const { t } = useTranslation();
   const router = useRouter();
@@ -345,19 +393,21 @@ export default function RefundRequestScreen() {
   const styles = useMemo(() => createStyles(theme), [theme]);
   const { showBanner } = useNotificationContext();
 
-  const steps: Step[] = useMemo(
-    () =>
-      mode === "escalate" ? ["escalate", "review"] : ["reason", "details", "review"],
-    [mode],
-  );
-  const [stepIndex, setStepIndex] = useState(0);
+  const [reason, setReason] = useState<string | null>(null);
+  const [returnMethod, setReturnMethod] =
+    useState<OrderReturnMethod>("shipping");
+
+  // A "never arrived" report drops the return-method step
+  const steps = useMemo(() => getSteps(mode, reason), [mode, reason]);
+  const [rawStepIndex, setStepIndex] = useState(0);
+  const stepIndex = Math.min(rawStepIndex, steps.length - 1);
   const step = steps[stepIndex];
+  const hasMethodStep = steps.includes("method");
 
   const [order, setOrder] = useState<ShopOrder | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  const [reason, setReason] = useState<string | null>(null);
   const [note, setNote] = useState("");
   const [noteError, setNoteError] = useState<string | null>(null);
   const [photoUri, setPhotoUri] = useState<string | null>(null);
@@ -391,7 +441,7 @@ export default function RefundRequestScreen() {
   const goBack = useCallback(() => {
     if (submittingRef.current) return;
     Keyboard.dismiss();
-    if (stepIndex > 0) setStepIndex((i) => i - 1);
+    if (stepIndex > 0) setStepIndex(stepIndex - 1);
     else router.back();
   }, [router, stepIndex]);
 
@@ -417,21 +467,25 @@ export default function RefundRequestScreen() {
 
   const next = () => {
     Keyboard.dismiss();
-    if (step === "reason" && mode === "refund" && !reason) return;
+    if (step === "reason" && mode === "report" && !reason) return;
     if (step === "escalate" && !note.trim()) {
       setNoteError(t("mpRefEscalateNoteRequired"));
       noteRef.current?.focus();
       return;
     }
-    setStepIndex((i) => Math.min(i + 1, steps.length - 1));
+    setStepIndex(Math.min(stepIndex + 1, steps.length - 1));
   };
 
   const submit = async () => {
     Keyboard.dismiss();
-    if (submittingRef.current || !orderId) return;
+    if (submittingRef.current || !orderId || !mode) return;
     if (mode === "escalate" && !note.trim()) {
       setNoteError(t("mpRefEscalateNoteRequired"));
       goToStep("escalate");
+      return;
+    }
+    if (mode === "report" && !reason) {
+      goToStep("reason");
       return;
     }
     submittingRef.current = true;
@@ -454,22 +508,38 @@ export default function RefundRequestScreen() {
       const trimmed = note.trim();
       if (mode === "escalate") {
         await escalateOrderRefund(orderId, { note: trimmed, photo });
+      } else if (mode === "return") {
+        await requestOrderReturn(orderId, {
+          reason,
+          note: trimmed || null,
+          photo,
+          returnMethod,
+        });
+      } else if (mode === "report") {
+        await reportOrderProblem(orderId, {
+          reason: reason as string,
+          note: trimmed || null,
+          photo,
+          // Nothing to send back when the item never arrived
+          returnMethod: reasonNeedsReturnMethod(reason) ? returnMethod : null,
+        });
       } else {
-        await requestOrderRefund(orderId, {
-          type: mode,
+        await requestOrderCancellation(orderId, {
           reason,
           note: trimmed || null,
           photo,
         });
       }
       showBanner(
-        t("mpRefSentTitle"),
+        t(mode === "report" ? "mpRefSentReportTitle" : "mpRefSentTitle"),
         t(
           mode === "escalate"
             ? "mpRefSentEscalate"
             : mode === "cancellation"
               ? "mpRefSentCancellation"
-              : "mpRefSentRefund",
+              : mode === "report"
+                ? "mpRefSentReport"
+                : "mpRefSentReturn",
         ),
         "success",
       );
@@ -490,6 +560,9 @@ export default function RefundRequestScreen() {
       if (field === "reason") {
         goToStep("reason");
       }
+      if (field === "return_method" && hasMethodStep) {
+        goToStep("method");
+      }
       showBanner(t("mpRefSendFailed"), message, "error");
       // Already asked / past 7 days / refunded: the order screen shows why
       if (field === "order") router.back();
@@ -503,8 +576,12 @@ export default function RefundRequestScreen() {
     mode === "escalate"
       ? t("mpOrdAskReview")
       : mode === "cancellation"
-        ? t("mpOrdRequestCancellation")
-        : t("mpOrdRequestRefund");
+        ? t("mpRefTitleCancellation")
+        : mode === "report"
+          ? t("mpRefTitleReport")
+          : mode === "return"
+            ? t("mpRefTitleReturn")
+            : t("mpRefRequestType");
 
   const allowed = !!order && isAllowed(order, mode);
   const header = (
@@ -563,7 +640,24 @@ export default function RefundRequestScreen() {
   }
 
   const reasons: readonly string[] =
-    mode === "cancellation" ? CANCELLATION_REASONS : REFUND_REASONS;
+    mode === "return"
+      ? RETURN_REASONS
+      : mode === "report"
+        ? REPORT_REASONS
+        : CANCELLATION_REASONS;
+  const reasonRequired = mode === "report";
+
+  // Who pays return shipping: always the seller on a problem report
+  const policy = order.returnPolicy ?? null;
+  const shippingNoteKey =
+    mode === "report" || policy?.shippingPaidBy === "seller"
+      ? "mpRefSellerPaysShipping"
+      : policy?.shippingPaidBy === "buyer"
+        ? "mpRefBuyerPaysShipping"
+        : null;
+  const returnDeadline = formatDeadlineDate(
+    order.refundActions?.returnDeadline ?? policy?.deadlineAt,
+  );
 
   // ── Photo (details + escalate steps)
   const renderPhoto = () => (
@@ -675,7 +769,7 @@ export default function RefundRequestScreen() {
             setNote(text);
             if (noteError) setNoteError(null);
           }}
-          maxCount={NOTE_MAX}
+          maxCount={REFUND_NOTE_MAX}
           multiline
           textAlignVertical="top"
           autoCapitalize="sentences"
@@ -708,12 +802,14 @@ export default function RefundRequestScreen() {
       >
         <FlowTitle
           title={
-            mode === "refund"
+            mode === "report"
               ? t("mpRefReasonTitleRefund")
-              : t("mpRefReasonTitleCancellation")
+              : mode === "return"
+                ? t("mpRefReasonTitleReturn")
+                : t("mpRefReasonTitleCancellation")
           }
           subtitle={
-            mode === "refund"
+            reasonRequired
               ? t("mpRefReasonSubRefund")
               : t("mpRefReasonSubCancellation")
           }
@@ -728,10 +824,10 @@ export default function RefundRequestScreen() {
                 key={key}
                 activeOpacity={0.85}
                 style={[styles.option, selected && styles.optionSelected]}
-                // Cancellation reason is optional: tap again to clear it
+                // Optional reason (cancel / return): tap again to clear it
                 onPress={() =>
                   setReason((prev) =>
-                    prev === key && mode === "cancellation" ? null : key,
+                    prev === key && !reasonRequired ? null : key,
                   )
                 }
                 accessibilityRole="radio"
@@ -769,12 +865,12 @@ export default function RefundRequestScreen() {
       </ScrollView>
       <FlowFooter
         primary={{
-          label: mode === "cancellation" && !reason ? t("skip") : t("continue"),
+          label: !reasonRequired && !reason ? t("skip") : t("continue"),
           onPress: next,
-          disabled: mode === "refund" && !reason,
+          disabled: reasonRequired && !reason,
           trailingIcon: "arrow-forward",
         }}
-        hint={mode === "refund" && !reason ? t("mpRefReasonRequired") : null}
+        hint={reasonRequired && !reason ? t("mpRefReasonRequired") : null}
       />
     </>
   );
@@ -791,6 +887,74 @@ export default function RefundRequestScreen() {
           {renderPhoto()}
         </>,
       )}
+      <FlowFooter
+        primary={{
+          label: t("continue"),
+          onPress: next,
+          trailingIcon: "arrow-forward",
+        }}
+      />
+    </>
+  );
+
+  const renderMethodStep = () => (
+    <>
+      <ScrollView
+        style={styles.flex}
+        contentContainerStyle={styles.contentContainer}
+        showsVerticalScrollIndicator={false}
+      >
+        <FlowTitle
+          title={t("mpRefMethodTitle")}
+          subtitle={t("mpRefMethodSub")}
+        />
+        <View accessibilityRole="radiogroup" style={{ gap: moderateHeightScale(12) }}>
+          {RETURN_METHODS.map((key) => {
+            const selected = returnMethod === key;
+            const label = t(getReturnMethodLabelKey(key));
+            const sub = t(METHOD_SUB_KEYS[key]);
+            return (
+              <TouchableOpacity
+                key={key}
+                activeOpacity={0.85}
+                style={[styles.option, selected && styles.optionSelected]}
+                onPress={() => setReturnMethod(key)}
+                accessibilityRole="radio"
+                accessibilityState={{ selected, checked: selected }}
+                accessibilityLabel={`${label}, ${sub}`}
+              >
+                <View
+                  style={[styles.optionIcon, selected && styles.optionIconSelected]}
+                >
+                  <MaterialIcons
+                    name={METHOD_ICONS[key]}
+                    size={moderateWidthScale(24)}
+                    color={selected ? theme.white : theme.selectCard}
+                  />
+                </View>
+                <View style={styles.optionText}>
+                  <Text style={styles.optionTitle}>{label}</Text>
+                  <Text style={styles.optionSub} numberOfLines={2}>
+                    {sub}
+                  </Text>
+                </View>
+                <View style={[styles.radio, selected && styles.radioSelected]}>
+                  {selected ? (
+                    <MaterialIcons
+                      name="check"
+                      size={moderateWidthScale(16)}
+                      color={theme.white}
+                    />
+                  ) : null}
+                </View>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+        {shippingNoteKey ? (
+          <InfoNote icon="local-shipping" text={t(shippingNoteKey)} />
+        ) : null}
+      </ScrollView>
       <FlowFooter
         primary={{
           label: t("continue"),
@@ -859,9 +1023,21 @@ export default function RefundRequestScreen() {
     const typeLabel =
       mode === "escalate"
         ? t("mpOrdAskReview")
+        : t(
+            getRefundRequestTypeLabelKey(
+              mode === "return" ? "refund" : mode === "report" ? "report" : "cancellation",
+            ),
+          );
+    const infoKey =
+      mode === "escalate"
+        ? "mpRefReviewInfoEscalate"
         : mode === "cancellation"
-          ? t("mpOrdRequestTypeCancellation")
-          : t("mpOrdRequestTypeRefund");
+          ? "mpRefReviewInfoCancellation"
+          : mode === "report"
+            ? hasMethodStep
+              ? "mpRefReviewInfoReport"
+              : "mpRefReviewInfoNeverArrived"
+            : "mpRefReviewInfoReturn";
     return (
       <>
         <ScrollView
@@ -963,17 +1139,36 @@ export default function RefundRequestScreen() {
               </View>
               {editButton(detailsStep, t("rvPhoto"))}
             </View>
+
+            {hasMethodStep ? (
+              <>
+                <View style={styles.divider} />
+                <View style={styles.reviewRow}>
+                  <View style={styles.reviewRowText}>
+                    <Text style={styles.reviewLabel}>
+                      {t("mpRefReturnMethodLabel")}
+                    </Text>
+                    <Text style={styles.reviewValue}>
+                      {t(getReturnMethodLabelKey(returnMethod))}
+                    </Text>
+                    {shippingNoteKey && returnMethod === "shipping" ? (
+                      <Text style={styles.orderSub}>{t(shippingNoteKey)}</Text>
+                    ) : null}
+                  </View>
+                  {editButton("method", t("mpRefReturnMethodLabel"))}
+                </View>
+              </>
+            ) : null}
           </FlowCard>
 
-          <InfoNote
-            text={t(
-              mode === "escalate"
-                ? "mpRefReviewInfoEscalate"
-                : mode === "cancellation"
-                  ? "mpRefReviewInfoCancellation"
-                  : "mpRefReviewInfoRefund",
-            )}
-          />
+          {mode === "return" && returnDeadline ? (
+            <InfoNote
+              tone="warm"
+              icon="event"
+              text={t("mpRefReturnBy", { date: returnDeadline })}
+            />
+          ) : null}
+          <InfoNote text={t(infoKey)} />
         </ScrollView>
         <FlowFooter
           primary={{
@@ -996,9 +1191,11 @@ export default function RefundRequestScreen() {
         ? renderReasonStep()
         : step === "details"
           ? renderDetailsStep()
-          : step === "escalate"
-            ? renderEscalateStep()
-            : renderReviewStep()}
+          : step === "method"
+            ? renderMethodStep()
+            : step === "escalate"
+              ? renderEscalateStep()
+              : renderReviewStep()}
       <ImagePickerModal
         visible={pickerOpen}
         onClose={() => setPickerOpen(false)}

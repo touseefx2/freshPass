@@ -35,6 +35,10 @@ export default function ExpoNotificationHandler() {
   const dispatch = useAppDispatch();
   const accessToken = useAppSelector((state) => state.user.accessToken);
   const isGuest = useAppSelector((state) => state.user.isGuest);
+  const userRole = useAppSelector((state) => state.user.userRole);
+  // Read inside the listener without re-subscribing on every mode switch
+  const isBusinessModeRef = useRef(false);
+  isBusinessModeRef.current = userRole === "business";
   const { showBanner } = useNotificationContext();
   const { t } = useTranslation();
   const responseListenerRef = useRef<Notifications.EventSubscription | null>(
@@ -121,8 +125,14 @@ export default function ExpoNotificationHandler() {
         ) {
           notifyAppointmentsChanged();
         }
-        // New paid order / refund → home + Business Management Orders badge
-        if (pushType === "business_order") notifyBusinessOrdersChanged();
+        // New paid order / refund → home + Business Management Orders badge.
+        // Return policy seller pushes come as type "order" (business mode).
+        if (
+          pushType === "business_order" ||
+          (pushType === "order" && isBusinessModeRef.current)
+        ) {
+          notifyBusinessOrdersChanged();
+        }
       },
     );
 

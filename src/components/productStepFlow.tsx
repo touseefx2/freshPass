@@ -40,10 +40,13 @@ import {
   ModerationBanner,
   SwitchCard,
 } from "@/src/components/productEditor/marketplaceParts";
+import { ChoiceTiles } from "@/src/components/productEditor/returnPolicyFields";
 import {
   cleanInt,
   cleanMoney,
+  cleanReturnPolicy,
   EDITOR_TOTAL_STEPS,
+  EMPTY_RETURN_POLICY,
   emptyVariantForm,
   formToVariant,
   getCategoryIcon,
@@ -51,11 +54,14 @@ import {
   mapServerErrorKey,
   MAX_PRODUCT_PHOTOS,
   moneyText,
+  RETURN_POLICY_TEXT_MAX,
+  RETURN_WINDOW_CHOICES,
   STEP_DETAILS,
   STEP_MARKETPLACE,
   STEP_OPTIONS,
   STEP_PHOTOS,
   STEP_PRICE,
+  STEP_RETURNS,
   STEP_REVIEW,
   toMoney,
   toMoneyOrNull,
@@ -87,13 +93,15 @@ import { describeDelivery } from "@/src/utils/shopProductHelpers";
 import { formatShopPrice } from "@/src/constants/demoShopProduct";
 import {
   SHOP_PRODUCT_CATEGORIES,
+  type ProductReturnPolicy,
+  type ReturnShippingPaidBy,
   type ShopProductModeration,
 } from "@/src/types/shopProduct";
 
 /**
  * Add / edit a shop product step by step, in the same look as the reel
  * flows: Photos & name → Category & details → Price & stock → Options →
- * Marketplace → Review. Edit mode opens on Review; "Edit" on a section
+ * Marketplace → Return policy → Review. Edit mode opens on Review; "Edit" on a section
  * jumps there and "Done" comes back.
  */
 
@@ -446,7 +454,10 @@ export default function ProductStepFlow({
     benefits: initial.benefits ?? [],
     showInMarketplace: initial.showInMarketplace === true,
     featuredRequested: initial.featuredRequested === true,
+    // Older payloads have no returnPolicy: returns off
+    returnPolicy: initial.returnPolicy ?? EMPTY_RETURN_POLICY,
   }));
+  const [returnPolicyTouched, setReturnPolicyTouched] = useState(false);
   // Number fields stay as text while typing ("12." must survive).
   const [priceText, setPriceText] = useState(moneyText(initial.sellingPrice));
   const [saleText, setSaleText] = useState(moneyText(initial.salePrice));
@@ -570,9 +581,17 @@ export default function ProductStepFlow({
         ? undefined
         : draft.showInMarketplace === true && draft.featuredRequested === true,
       variants: hasVariants ? variantDrafts : hadVariants ? [] : undefined,
+      // Returns off drops the window / payer / text (kept in the form for a re-toggle).
+      // A product loaded without returnPolicy sends nothing unless the step was used.
+      returnPolicy:
+        initial.returnPolicy != null || returnPolicyTouched
+          ? cleanReturnPolicy(draft.returnPolicy)
+          : undefined,
     }),
     [
       draft,
+      initial.returnPolicy,
+      returnPolicyTouched,
       images,
       price,
       sale,
@@ -608,6 +627,15 @@ export default function ProductStepFlow({
     value: ProductFormDraft[K],
   ) => {
     setDraft((prev) => ({ ...prev, [key]: value }));
+    setSubmitError(null);
+  };
+
+  const updateReturnPolicy = (patch: Partial<ProductReturnPolicy>) => {
+    setReturnPolicyTouched(true);
+    setDraft((prev) => ({
+      ...prev,
+      returnPolicy: { ...(prev.returnPolicy ?? EMPTY_RETURN_POLICY), ...patch },
+    }));
     setSubmitError(null);
   };
 
@@ -669,6 +697,14 @@ export default function ProductStepFlow({
       }
     }
     if (s === STEP_OPTIONS || all) ve = validateVariants();
+    if ((s === STEP_RETURNS || all) && draft.returnPolicy?.enabled) {
+      if (draft.returnPolicy.windowDays == null) {
+        e.returnWindow = t("mpPfReturnWindowRequired");
+      }
+      if (draft.returnPolicy.shippingPaidBy == null) {
+        e.returnPayer = t("mpPfReturnPayerRequired");
+      }
+    }
     return { e, ve };
   };
 
@@ -677,6 +713,9 @@ export default function ProductStepFlow({
     if (e.description || e.category || e.benefits) return STEP_DETAILS;
     if (e.price || e.sale || e.inventory || e.threshold || e.cost) return STEP_PRICE;
     if (Object.keys(ve).length) return STEP_OPTIONS;
+    if (e.returnPolicy || e.returnWindow || e.returnPayer || e.returnText) {
+      return STEP_RETURNS;
+    }
     return STEP_MARKETPLACE;
   };
 
@@ -716,7 +755,7 @@ export default function ProductStepFlow({
     if (submitting) return true;
     if (step === STEP_REVIEW) {
       if (isEdit) return false;
-      goTo(STEP_MARKETPLACE, -1);
+      goTo(STEP_RETURNS, -1);
       return true;
     }
     if (fromReview) {
@@ -1509,6 +1548,101 @@ export default function ProductStepFlow({
     );
   };
 
+  const renderReturnPolicy = () => {
+    const policy = draft.returnPolicy ?? EMPTY_RETURN_POLICY;
+    const on = policy.enabled;
+    return (
+      <>
+        <FlowTitle
+          title={t("mpPfReturnTitle")}
+          subtitle={t("mpPfReturnSubtitle")}
+        />
+        <SwitchCard
+          icon="assignment-return"
+          title={t("mpPfReturnEnable")}
+          subtitle={on ? t("mpPfReturnEnableHintOn") : t("mpPfReturnEnableHintOff")}
+          value={on}
+          onValueChange={(v) => {
+            void Haptics.selectionAsync();
+            updateReturnPolicy({ enabled: v });
+            clearError("returnPolicy", "returnWindow", "returnPayer", "returnText");
+          }}
+          disabled={submitting}
+        />
+        {errors.returnPolicy ? (
+          <Text style={styles.fieldError}>{errors.returnPolicy}</Text>
+        ) : null}
+        {on ? (
+          <>
+            <View style={styles.section}>
+              <SectionLabel label={t("mpPfReturnWindow")} required />
+              <ChoiceTiles
+                accessibilityLabel={t("mpPfReturnWindow")}
+                options={RETURN_WINDOW_CHOICES.map((days) => ({
+                  value: days as number,
+                  label: t("bcbDays", { count: days }),
+                }))}
+                value={policy.windowDays}
+                onChange={(days) => {
+                  updateReturnPolicy({ windowDays: days });
+                  clearError("returnWindow");
+                }}
+                error={errors.returnWindow}
+                disabled={submitting}
+              />
+              <Text style={styles.hint}>{t("mpPfReturnWindowHint")}</Text>
+            </View>
+            <View style={styles.section}>
+              <SectionLabel label={t("mpPfReturnPayer")} required />
+              <ChoiceTiles<ReturnShippingPaidBy>
+                accessibilityLabel={t("mpPfReturnPayer")}
+                options={[
+                  {
+                    value: "buyer",
+                    label: t("mpPfReturnPayerBuyer"),
+                    hint: t("mpPfReturnPayerBuyerHint"),
+                    icon: "person",
+                  },
+                  {
+                    value: "seller",
+                    label: t("mpPfReturnPayerSeller"),
+                    hint: t("mpPfReturnPayerSellerHint"),
+                    icon: "storefront",
+                  },
+                ]}
+                value={policy.shippingPaidBy}
+                onChange={(payer) => {
+                  updateReturnPolicy({ shippingPaidBy: payer });
+                  clearError("returnPayer");
+                }}
+                error={errors.returnPayer}
+                disabled={submitting}
+              />
+            </View>
+            <TapField
+              label={t("mpPfReturnDetails")}
+              value={policy.text ?? ""}
+              onChangeText={(v) => {
+                updateReturnPolicy({ text: v });
+                clearError("returnText");
+              }}
+              placeholder={t("mpPfReturnDetailsPlaceholder")}
+              multiline
+              maxCount={RETURN_POLICY_TEXT_MAX}
+              helper={t("optional")}
+              error={errors.returnText}
+              scrollEnabled={false}
+              editable={!submitting}
+            />
+            <InfoNote icon="report-problem" text={t("mpPfReturnReportShippingNote")} />
+          </>
+        ) : (
+          <InfoNote icon="report-problem" tone="warm" text={t("mpPfReturnOffNote")} />
+        )}
+      </>
+    );
+  };
+
   const reviewRow = (
     label: string,
     content: React.ReactNode,
@@ -1553,6 +1687,7 @@ export default function ProductStepFlow({
     const featuredOn =
       inMarketplace && !featuredBlocked && draft.featuredRequested === true;
     const cleanBenefits = benefits.map((b) => b.trim()).filter(Boolean);
+    const returnPolicy = finalDraft.returnPolicy ?? EMPTY_RETURN_POLICY;
     return (
       <>
         <FlowTitle
@@ -1719,6 +1854,54 @@ export default function ProductStepFlow({
             </View>,
             STEP_MARKETPLACE,
           )}
+          {reviewRow(
+            t("mpReturnPolicyTitle"),
+            returnPolicy.enabled ? (
+              <View style={{ gap: moderateHeightScale(2) }}>
+                <View style={styles.statusRow}>
+                  <MaterialIcons
+                    name="assignment-return"
+                    size={moderateWidthScale(18)}
+                    color={theme.successGreen}
+                  />
+                  <Text style={[styles.reviewValue, styles.half]}>
+                    {[
+                      returnPolicy.windowDays != null
+                        ? t("mpReturnPolicyWindow", { count: returnPolicy.windowDays })
+                        : null,
+                      returnPolicy.shippingPaidBy === "seller"
+                        ? t("mpReturnPolicyFreeShipping")
+                        : returnPolicy.shippingPaidBy === "buyer"
+                          ? t("mpReturnPolicyBuyerPays")
+                          : null,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </Text>
+                </View>
+                {returnPolicy.text ? (
+                  <Text
+                    style={[styles.reviewValue, styles.reviewValueMuted]}
+                    numberOfLines={3}
+                  >
+                    {returnPolicy.text}
+                  </Text>
+                ) : null}
+              </View>
+            ) : (
+              <View style={styles.statusRow}>
+                <MaterialIcons
+                  name="block"
+                  size={moderateWidthScale(18)}
+                  color={theme.lightGreen}
+                />
+                <Text style={[styles.reviewValue, styles.half]}>
+                  {t("mpReturnPolicyNoReturns")}
+                </Text>
+              </View>
+            ),
+            STEP_RETURNS,
+          )}
         </FlowCard>
 
         <View style={styles.section}>
@@ -1770,7 +1953,8 @@ export default function ProductStepFlow({
     [STEP_DETAILS]: t("productFlowNextPrice"),
     [STEP_PRICE]: t("mpPfNextOptions"),
     [STEP_OPTIONS]: t("mpPfNextMarketplace"),
-    [STEP_MARKETPLACE]: t("productFlowNextReview"),
+    [STEP_MARKETPLACE]: t("mpPfNextReturnPolicy"),
+    [STEP_RETURNS]: t("productFlowNextReview"),
   };
   const nextLabel =
     fromReview && step !== STEP_REVIEW
@@ -1842,7 +2026,9 @@ export default function ProductStepFlow({
                   ? renderOptions()
                   : step === STEP_MARKETPLACE
                     ? renderMarketplace()
-                    : renderReview()}
+                    : step === STEP_RETURNS
+                      ? renderReturnPolicy()
+                      : renderReview()}
           {submitError ? (
             <InfoNote tone="error" icon="error-outline" text={submitError} />
           ) : null}

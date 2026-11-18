@@ -1232,9 +1232,13 @@ export const orderEndpoints = {
   updateStatus: (id: string | number) => `/api/orders/${id}/status`,
   shippingDetails: (id: string | number) =>
     `/api/orders/${id}/shipping-details`,
-  /** Customer: request cancellation (before ship / pickup) or refund (7 days after). */
+  /** Customer: Cancel Order (before shipment) or Request Return (within the return window). */
   refundRequest: (id: string | number) => `/api/orders/${id}/refund-request`,
-  /** Customer: ask FreshPass to review a declined request (once). */
+  /** Customer: Report a Problem (damaged, wrong item, never arrived) on a delivered order. */
+  report: (id: string | number) => `/api/orders/${id}/report`,
+  /** Customer: tracking number for an approved return sent by shipping. */
+  tracking: (id: string | number) => `/api/orders/${id}/tracking`,
+  /** Customer: ask FreshPass to review (declined, or seller missed 3 business days). */
   escalate: (id: string | number) =>
     `/api/orders/${id}/refund-request/escalate`,
   /** Seller: approve / decline the customer's request. */
@@ -1243,6 +1247,9 @@ export const orderEndpoints = {
   /** Seller: refund an order cancelled without a refund (`canRefund`). */
   businessRefund: (id: string | number) =>
     `/api/orders/business/${id}/refund`,
+  /** Seller: the returned item arrived → refund (`canConfirmReceipt`). */
+  businessConfirmReceipt: (id: string | number) =>
+    `/api/orders/business/${id}/confirm-receipt`,
 };
 
 const marketplacePageQuery = (params?: {

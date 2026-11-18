@@ -70,22 +70,45 @@ export interface ShopOrderCustomer {
   phone: string | null;
 }
 
-/** Customer-facing refund / cancellation state (null = nothing asked). */
+/**
+ * Where the money stands on a cancellation / return / problem report
+ * (null = nothing asked). Return policy guide § refundState.
+ */
 export type OrderRefundState =
   | "cancellation_requested"
-  | "refund_requested"
-  | "refund_on_the_way"
-  | "refunded"
-  | "refund_declined"
+  | "return_requested"
+  | "problem_reported"
+  | "return_approved"
+  | "return_shipped"
+  | "awaiting_in_person_return"
+  | "return_received"
+  | "return_declined"
   | "under_review"
-  | "refunded_by_freshpass"
   | "declined_reviewed"
+  | "refund_pending"
+  | "refunded"
+  | "refunded_by_freshpass"
   | "cancelled_not_refunded";
 
-/** The customer's cancellation / refund request on an order. */
+/** cancellation = before shipment, refund = return request, report = problem report. */
+export type OrderRefundRequestType = "cancellation" | "refund" | "report";
+
+export type OrderRefundRequestStatus =
+  | "pending"
+  | "approved"
+  | "declined"
+  | "escalated"
+  | "admin_refunded"
+  | "decline_upheld";
+
+/** How the customer sends a returned item back. */
+export type OrderReturnMethod = "shipping" | "in_person";
+
+/** The customer's cancellation / return / problem report on an order. */
 export interface OrderRefundRequest {
   id: number;
-  type: "cancellation" | "refund";
+  type: OrderRefundRequestType;
+  /** One of OrderRefundRequestStatus (kept as text for unknown values). */
   status: string;
   reason: string | null;
   reasonLabel: string | null;
@@ -98,16 +121,43 @@ export interface OrderRefundRequest {
   escalatedAt: string | null;
   adminNote: string | null;
   resolvedAt: string | null;
+  /** Set once the customer adds the return's tracking number. */
+  trackingNumber: string | null;
+  returnMethod: OrderReturnMethod | null;
+  returnShippingPaidBy: "buyer" | "seller" | null;
+  /** The seller must answer by this time (3 business days). */
+  sellerDeadlineAt: string | null;
+  /** The seller confirmed the returned item arrived. */
+  sellerReceivedAt: string | null;
+  /** The carrier marked the return as delivered. */
+  carrierDeliveredAt: string | null;
   createdAt: string;
 }
 
 /** Customer buttons: show each only when its flag is true. */
 export interface OrderRefundActions {
+  /** "Cancel Order" (before shipment). */
   canRequestCancellation: boolean;
-  canRequestRefund: boolean;
-  /** End of the 7-day refund window (ISO). */
-  refundDeadline: string | null;
+  /** "Request Return". */
+  canRequestReturn: boolean;
+  /** "Report a Problem". */
+  canReportProblem: boolean;
+  /** Last moment to request a return (ISO). */
+  returnDeadline: string | null;
+  /** "Ask FreshPass to Review". */
   canEscalate: boolean;
+}
+
+/**
+ * The product's return policy frozen onto the order at checkout. `deadlineAt`
+ * is null until the order is shipped / completed.
+ */
+export interface OrderReturnPolicy {
+  enabled: boolean;
+  windowDays: number | null;
+  text: string | null;
+  shippingPaidBy: "buyer" | "seller" | null;
+  deadlineAt: string | null;
 }
 
 /** Seller earnings. `stripeFee` / `net` are null until Stripe reports its fee ("Pending"). */
@@ -147,6 +197,8 @@ export interface ShopOrder {
   refundRequest?: OrderRefundRequest | null;
   /** Customer responses only. */
   refundActions?: OrderRefundActions | null;
+  /** Return policy at checkout time (null on older payloads). */
+  returnPolicy?: OrderReturnPolicy | null;
 }
 
 /** Owner shape: business order list / detail, and the PATCH status / PUT shipping-details responses. */
@@ -161,6 +213,8 @@ export interface BusinessShopOrder extends ShopOrder {
   canRefund?: boolean;
   /** Stripe refused the refund (e.g. low balance); retried automatically. */
   refundError?: string | null;
+  /** Approved return came back (tracking added or in person) → "Confirm receipt". */
+  canConfirmReceipt?: boolean;
 }
 
 /** GET /api/orders/business/stats */

@@ -62,6 +62,22 @@ export function formatOrderDate(iso: string | null | undefined): string {
   return date.isValid() ? date.format("MMM D, YYYY") : "";
 }
 
+/**
+ * Return deadlines come as the last day at 23:59:59 UTC. Read the calendar day
+ * written in the value, so the date doesn't move a day in other time zones.
+ */
+export function getDeadlineDay(iso: string | null | undefined): dayjs.Dayjs | null {
+  if (!iso) return null;
+  const match = /^(\d{4}-\d{2}-\d{2})/.exec(iso);
+  const day = dayjs(match ? match[1] : iso).startOf("day");
+  return day.isValid() ? day : null;
+}
+
+/** "Dec 2, 2026" for a return deadline (see getDeadlineDay). */
+export function formatDeadlineDate(iso: string | null | undefined): string {
+  return getDeadlineDay(iso)?.format("MMM D, YYYY") ?? "";
+}
+
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
     // ── Status badge
@@ -557,7 +573,11 @@ export function OrderStatusBadge({
   );
 }
 
-/** Short label + icon for a cancellation / refund state (list rows, cards). */
+/**
+ * Short label + icon for a cancellation / return / report state (list rows,
+ * cards). Tone: waiting = someone still has to act, done = money back,
+ * stopped = declined / not refunded.
+ */
 export function getRefundBadgeInfo(state: OrderRefundState): {
   labelKey: string;
   icon: IconName;
@@ -570,17 +590,51 @@ export function getRefundBadgeInfo(state: OrderRefundState): {
         icon: "hourglass-empty",
         tone: "waiting",
       };
-    case "refund_requested":
+    case "return_requested":
       return {
-        labelKey: "mpRefBadgeRefundRequested",
+        labelKey: "mpRefundStateReturnRequested",
         icon: "hourglass-empty",
         tone: "waiting",
       };
-    case "refund_on_the_way":
-      return { labelKey: "mpRefundStateOnTheWay", icon: "sync", tone: "waiting" };
+    case "problem_reported":
+      return {
+        labelKey: "mpRefundStateProblemReported",
+        icon: "report-problem",
+        tone: "waiting",
+      };
+    case "return_approved":
+      return {
+        labelKey: "mpRefBadgeReturnApproved",
+        icon: "assignment-return",
+        tone: "waiting",
+      };
+    case "return_shipped":
+      return {
+        labelKey: "mpRefBadgeReturnShipped",
+        icon: "local-shipping",
+        tone: "waiting",
+      };
+    case "awaiting_in_person_return":
+      return {
+        labelKey: "mpReturnMethodInPerson",
+        icon: "storefront",
+        tone: "waiting",
+      };
+    case "return_received":
+      return {
+        labelKey: "mpRefBadgeReturnReceived",
+        icon: "move-to-inbox",
+        tone: "waiting",
+      };
+    case "refund_pending":
+      return {
+        labelKey: "mpRefundStateRefundPending",
+        icon: "sync",
+        tone: "waiting",
+      };
     case "under_review":
       return {
-        labelKey: "mpRefundStateUnderReview",
+        labelKey: "mpRefBadgeUnderReview",
         icon: "support-agent",
         tone: "waiting",
       };
@@ -596,8 +650,12 @@ export function getRefundBadgeInfo(state: OrderRefundState): {
         icon: "check-circle",
         tone: "done",
       };
-    case "refund_declined":
-      return { labelKey: "mpRefundStateDeclined", icon: "block", tone: "stopped" };
+    case "return_declined":
+      return {
+        labelKey: "mpRefundStateReturnDeclined",
+        icon: "block",
+        tone: "stopped",
+      };
     case "declined_reviewed":
       return {
         labelKey: "mpRefBadgeDeclinedReviewed",

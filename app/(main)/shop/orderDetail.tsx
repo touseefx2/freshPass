@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   ActivityIndicator,
   RefreshControl,
-  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -12,6 +11,8 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
+import dayjs from "dayjs";
 import { useAppDispatch, useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
@@ -23,7 +24,10 @@ import {
 } from "@/src/theme/dimensions";
 import AppImage from "@/src/components/AppImage";
 import FlowHeader from "@/src/components/reelFlow/flowHeader";
-import { InfoNote, OptionRow } from "@/src/components/reelFlow/flowParts";
+import FlowButton from "@/src/components/reelFlow/flowButton";
+import { OptionRow } from "@/src/components/reelFlow/flowParts";
+import { FlowTextField } from "@/src/components/reelFlow/detailsFields";
+import { ReturnPolicyCard } from "@/src/components/returnPolicyParts";
 import EmptyState from "@/src/components/emptyState";
 import {
   OrderDeliveryRows,
@@ -32,12 +36,16 @@ import {
   OrderSection,
   OrderStageCard,
   ShippingDetailsText,
-  formatOrderDate,
+  formatDeadlineDate,
+  getDeadlineDay,
   formatOrderDateTime,
   getRefundBadgeInfo,
 } from "@/src/components/shopOrderParts";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
-import { fetchCustomerOrder } from "@/src/services/orderService";
+import {
+  addReturnTracking,
+  fetchCustomerOrder,
+} from "@/src/services/orderService";
 import { fetchProduct } from "@/src/services/productService";
 import { openFullImageModal } from "@/src/state/slices/generalSlice";
 import type {
@@ -47,19 +55,27 @@ import type {
 } from "@/src/types/shopOrder";
 import { resolveApiImageUrl } from "@/src/utils/media";
 import {
+  TRACKING_NUMBER_MAX,
+  canAddReturnTracking,
   getCustomerStageKeys,
   getOrderErrorMessage,
   getRefundReasonLabelKey,
+  getRefundRequestTypeLabelKey,
   getRefundStateLabelKey,
+  getReturnMethodLabelKey,
   isPickupOrder,
+  isRefundStateAwaitingSeller,
   isRefundStateRefunded,
+  reasonNeedsReturnMethod,
 } from "@/src/utils/shopOrderHelpers";
 
 /**
  * Customer's order: where it is now, the shipping details from the salon
  * (tracking number etc.), what was bought, and the history timeline.
- * Also the cancellation / refund status, the request buttons the server
- * allows (refundActions) and "Write a review" once the order is fulfilled.
+ * Also the cancellation / return / problem report status, "Add tracking
+ * number" for an approved return sent by mail, the request buttons the
+ * server allows (refundActions), the return policy frozen at checkout and
+ * "Write a review" once the order is fulfilled.
  * Order notifications open this screen (GET /api/orders/{order}).
  */
 const PENDING_RETRIES = 3;
@@ -189,6 +205,44 @@ const createStyles = (theme: Theme) =>
       width: "100%",
       height: "100%",
     },
+    detailRows: {
+      marginTop: moderateHeightScale(12),
+      gap: moderateHeightScale(8),
+    },
+    detailRow: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      justifyContent: "space-between",
+      gap: moderateWidthScale(12),
+    },
+    detailLabel: {
+      flexShrink: 0,
+      maxWidth: "50%",
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+      lineHeight: fontSize.size20,
+    },
+    detailValue: {
+      flex: 1,
+      minWidth: 0,
+      fontSize: fontSize.size15,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
+      lineHeight: fontSize.size20,
+      textAlign: "right",
+    },
+    // ── Add tracking number
+    trackingText: {
+      fontSize: fontSize.size15,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+      lineHeight: fontSize.size21,
+      marginBottom: moderateHeightScale(14),
+    },
+    trackingButton: {
+      marginTop: moderateHeightScale(14),
+    },
     // ── Help actions
     section: {
       gap: moderateHeightScale(10),
@@ -221,19 +275,32 @@ const createStyles = (theme: Theme) =>
 type Styles = ReturnType<typeof createStyles>;
 
 /** One line under the status title, by state. */
-function getRefundStateTextKey(state: OrderRefundState): string | null {
+function getRefundStateTextKey(
+  state: OrderRefundState,
+  canEscalate: boolean,
+): string | null {
   switch (state) {
     case "cancellation_requested":
-    case "refund_requested":
-      return "mpOrdRefundWaitingText";
-    case "refund_on_the_way":
-      return "mpOrdRefundOnTheWayText";
+    case "return_requested":
+    case "problem_reported":
+      // Still pending but escalation is open: the seller missed the deadline
+      return canEscalate ? "mpOrdSellerLateText" : "mpOrdRefundWaitingText";
+    case "return_approved":
+      return "mpOrdReturnApprovedText";
+    case "return_shipped":
+      return "mpOrdReturnShippedText";
+    case "awaiting_in_person_return":
+      return "mpOrdReturnInPersonText";
+    case "return_received":
+      return "mpOrdReturnReceivedText";
+    case "refund_pending":
+      return "mpOrdRefundPendingText";
     case "refunded":
       return null; // the title already says it
     case "refunded_by_freshpass":
       return "mpOrdRefundedText";
-    case "refund_declined":
-      return "mpOrdRefundDeclinedText";
+    case "return_declined":
+      return canEscalate ? "mpOrdRefundDeclinedText" : null;
     case "under_review":
       return "mpOrdUnderReviewText";
     case "declined_reviewed":
@@ -241,6 +308,19 @@ function getRefundStateTextKey(state: OrderRefundState): string | null {
     case "cancelled_not_refunded":
       return "mpOrdCancelledNotRefundedText";
   }
+}
+
+/** "Until Dec 2, 2026 · 5 days left" for the Request return row. */
+function getReturnDeadlineText(
+  iso: string | null | undefined,
+  t: (key: string, options?: Record<string, unknown>) => string,
+): string | null {
+  const day = getDeadlineDay(iso);
+  if (!day) return null;
+  const date = formatDeadlineDate(iso);
+  const days = day.diff(dayjs().startOf("day"), "day");
+  if (days <= 0) return t("mpOrdReturnUntilLastDay", { date });
+  return t("mpOrdReturnUntil", { date, count: days });
 }
 
 function PhotoThumb({
@@ -286,8 +366,9 @@ function RefundStatusCard({
   const request = order.refundRequest ?? null;
   if (!state && !request) return null;
 
+  const canEscalate = !!order.refundActions?.canEscalate;
   const info = state ? getRefundBadgeInfo(state) : null;
-  const textKey = state ? getRefundStateTextKey(state) : null;
+  const textKey = state ? getRefundStateTextKey(state, canEscalate) : null;
   const iconColor =
     info?.tone === "done"
       ? theme.darkGreen
@@ -298,18 +379,69 @@ function RefundStatusCard({
     ? (request.reasonLabel ??
       (request.reason ? t(getRefundReasonLabelKey(request.reason)) : null))
     : null;
-  const typeLabel = request
-    ? t(
-        request.type === "cancellation"
-          ? "mpOrdRequestTypeCancellation"
-          : "mpOrdRequestTypeRefund",
-      )
-    : "";
+  const typeLabel = request ? t(getRefundRequestTypeLabelKey(request.type)) : "";
   const sentOn = request ? formatOrderDateTime(request.createdAt) : "";
   const escalatedOn = request ? formatOrderDateTime(request.escalatedAt) : "";
 
+  // Return / report details: how the item goes back (never for a
+  // "never arrived" report), who pays the postage, the tracking number and
+  // the seller's answer deadline while the request is pending.
+  const returnMethod =
+    request &&
+    request.type !== "cancellation" &&
+    reasonNeedsReturnMethod(request.reason)
+      ? request.returnMethod
+      : null;
+  const paidBy =
+    returnMethod === "shipping" ? (request?.returnShippingPaidBy ?? null) : null;
+  const respondBy =
+    request?.status === "pending" && isRefundStateAwaitingSeller(state)
+      ? formatDeadlineDate(request.sellerDeadlineAt)
+      : "";
+  const detailRows: { key: string; label: string; value: string; copy?: boolean }[] =
+    [];
+  if (returnMethod) {
+    detailRows.push({
+      key: "method",
+      label: t("mpOrdReturnMethodLabel"),
+      value: t(getReturnMethodLabelKey(returnMethod)),
+    });
+  }
+  if (paidBy) {
+    detailRows.push({
+      key: "paidBy",
+      label: t("mpOrdReturnShippingLabel"),
+      value: t(
+        paidBy === "seller"
+          ? "mpOrdReturnShippingSeller"
+          : "mpOrdReturnShippingBuyer",
+      ),
+    });
+  }
+  if (request?.trackingNumber) {
+    detailRows.push({
+      key: "tracking",
+      label: t("mpOrdTrackingNumberLabel"),
+      value: request.trackingNumber,
+      copy: true,
+    });
+  }
+  if (respondBy) {
+    detailRows.push({
+      key: "respondBy",
+      label: t("mpOrdSellerRespondsBy"),
+      value: respondBy,
+    });
+  }
+
   return (
-    <OrderSection title={t("mpOrdRefundSection")}>
+    <OrderSection
+      title={t(
+        request && request.type !== "cancellation"
+          ? "mpOrdReturnSection"
+          : "mpOrdRefundSection",
+      )}
+    >
       {state && info ? (
         <View style={styles.refundHead}>
           <View
@@ -339,7 +471,7 @@ function RefundStatusCard({
 
       {request?.sellerResponse ? (
         <View style={styles.quote}>
-          <Text style={styles.quoteLabel}>{t("mpOrdSellerReason")}</Text>
+          <Text style={styles.quoteLabel}>{t("mpOrdSellerReply")}</Text>
           <Text style={styles.quoteText} selectable>
             {request.sellerResponse}
           </Text>
@@ -379,6 +511,23 @@ function RefundStatusCard({
             label={t("rvViewPhoto")}
             styles={styles}
           />
+          {detailRows.length > 0 ? (
+            <View style={styles.detailRows}>
+              {detailRows.map((row) => (
+                <View
+                  key={row.key}
+                  style={styles.detailRow}
+                  accessible
+                  accessibilityLabel={`${row.label}: ${row.value}`}
+                >
+                  <Text style={styles.detailLabel}>{row.label}</Text>
+                  <Text style={styles.detailValue} selectable={row.copy}>
+                    {row.value}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          ) : null}
 
           {request.escalationNote || request.escalationPhotoUrl ? (
             <>
@@ -407,6 +556,79 @@ function RefundStatusCard({
           ) : null}
         </>
       ) : null}
+    </OrderSection>
+  );
+}
+
+/**
+ * Approved return sent by mail, no tracking number yet: the customer types
+ * it here. The response replaces the order (state → return_shipped), so the
+ * card goes away and the number shows read-only in the status card.
+ */
+function AddTrackingCard({
+  order,
+  onSaved,
+  styles,
+}: {
+  order: ShopOrder;
+  onSaved: (next: ShopOrder) => void;
+  styles: Styles;
+}) {
+  const { t } = useTranslation();
+  const { showBanner } = useNotificationContext();
+  const [value, setValue] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [sending, setSending] = useState(false);
+  const sendingRef = useRef(false);
+  const trimmed = value.trim();
+
+  const submit = async () => {
+    if (sendingRef.current || !trimmed) return;
+    sendingRef.current = true;
+    setSending(true);
+    setError(null);
+    try {
+      const next = await addReturnTracking(order.id, trimmed);
+      onSaved(next);
+      showBanner(t("mpOrdTrackingSaved"), t("mpOrdTrackingSavedText"), "success");
+    } catch (err) {
+      setError(getOrderErrorMessage(err, t("mpOrdTrackingSaveFailed")));
+    } finally {
+      sendingRef.current = false;
+      setSending(false);
+    }
+  };
+
+  return (
+    <OrderSection title={t("mpOrdAddTrackingTitle")}>
+      <Text style={styles.trackingText}>{t("mpOrdAddTrackingText")}</Text>
+      <FlowTextField
+        label={t("mpOrdTrackingNumberLabel")}
+        required
+        value={value}
+        onChangeText={(text) => {
+          setValue(text);
+          if (error) setError(null);
+        }}
+        maxCount={TRACKING_NUMBER_MAX}
+        placeholder={t("mpOrdTrackingPlaceholder")}
+        autoCapitalize="characters"
+        autoCorrect={false}
+        autoComplete="off"
+        returnKeyType="done"
+        editable={!sending}
+        onSubmitEditing={() => void submit()}
+        error={error}
+      />
+      <FlowButton
+        label={t("mpOrdSaveTracking")}
+        icon="local-shipping"
+        compact
+        loading={sending}
+        disabled={sending || !trimmed}
+        onPress={() => void submit()}
+        style={styles.trackingButton}
+      />
     </OrderSection>
   );
 }
@@ -478,7 +700,7 @@ function CustomerOrder({ orderId }: { orderId: string }) {
   );
 
   const openRequest = useCallback(
-    (mode: "cancellation" | "refund" | "escalate") => {
+    (mode: "cancellation" | "return" | "report" | "escalate") => {
       router.push({
         pathname: "/(main)/shop/refundRequest" as any,
         params: { orderId, mode },
@@ -527,17 +749,26 @@ function CustomerOrder({ orderId }: { orderId: string }) {
     }
   }, [openingSeller, router, t]);
 
+  // Buttons come only from refundActions (return policy guide § refundActions)
   const renderHelp = (current: ShopOrder) => {
     const shipping = !isPickupOrder(current);
     const actions = current.refundActions;
     const canCancel = !!actions?.canRequestCancellation;
-    const canRefund = !!actions?.canRequestRefund;
+    const canReturn = !!actions?.canRequestReturn;
+    const canReport = !!actions?.canReportProblem;
     const canEscalate = !!actions?.canEscalate;
     const canContact =
       current.refundState === "cancelled_not_refunded" &&
       current.items.length > 0;
-    if (!canCancel && !canRefund && !canEscalate && !canContact) return null;
-    const deadline = formatOrderDate(actions?.refundDeadline);
+    if (!canCancel && !canReturn && !canReport && !canEscalate && !canContact) {
+      return null;
+    }
+    const returnUntil = canReturn
+      ? getReturnDeadlineText(
+          actions?.returnDeadline ?? current.returnPolicy?.deadlineAt,
+          t,
+        )
+      : null;
     return (
       <View style={styles.section}>
         <Text style={styles.sectionTitle} accessibilityRole="header">
@@ -554,7 +785,7 @@ function CustomerOrder({ orderId }: { orderId: string }) {
         {canCancel ? (
           <OptionRow
             icon="cancel"
-            title={t("mpOrdRequestCancellation")}
+            title={t("mpOrdCancelOrder")}
             subtitle={t(
               shipping
                 ? "mpOrdRequestCancellationSub"
@@ -563,16 +794,20 @@ function CustomerOrder({ orderId }: { orderId: string }) {
             onPress={() => openRequest("cancellation")}
           />
         ) : null}
-        {canRefund ? (
+        {canReturn ? (
           <OptionRow
             icon="assignment-return"
-            title={t("mpOrdRequestRefund")}
-            subtitle={
-              deadline
-                ? t("mpOrdRefundAvailableUntil", { date: deadline })
-                : null
-            }
-            onPress={() => openRequest("refund")}
+            title={t("mpOrdRequestReturn")}
+            subtitle={returnUntil}
+            onPress={() => openRequest("return")}
+          />
+        ) : null}
+        {canReport ? (
+          <OptionRow
+            icon="report-problem"
+            title={t("mpOrdReportProblem")}
+            subtitle={t("mpOrdReportProblemSub")}
+            onPress={() => openRequest("report")}
           />
         ) : null}
         {canContact ? (
@@ -583,9 +818,6 @@ function CustomerOrder({ orderId }: { orderId: string }) {
             onPress={() => void contactSeller()}
             disabled={openingSeller}
           />
-        ) : null}
-        {canCancel || canRefund ? (
-          <InfoNote text={t("mpRefundPolicyNote")} />
         ) : null}
       </View>
     );
@@ -613,13 +845,16 @@ function CustomerOrder({ orderId }: { orderId: string }) {
       (current.status === "shipped" || current.status === "completed") &&
       !isRefundStateRefunded(current.refundState);
     return (
-      <ScrollView
+      <KeyboardAwareScrollView
         style={styles.flex}
         contentContainerStyle={[
           styles.content,
           { paddingBottom: insets.bottom + moderateHeightScale(32) },
         ]}
         showsVerticalScrollIndicator={false}
+        bottomOffset={moderateHeightScale(32)}
+        keyboardDismissMode="interactive"
+        keyboardShouldPersistTaps="handled"
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -637,7 +872,29 @@ function CustomerOrder({ orderId }: { orderId: string }) {
 
         <RefundStatusCard order={current} styles={styles} theme={theme} />
 
+        {/* Only while the customer still has to ship the item back: never for a
+            "never arrived" report (refunded on approve, nothing to send) and
+            not once the order moved on (refunded / under review). */}
+        {canAddReturnTracking(current) &&
+        reasonNeedsReturnMethod(current.refundRequest?.reason) &&
+        current.refundState === "return_approved" ? (
+          <AddTrackingCard
+            key={current.refundRequest?.id ?? "tracking"}
+            order={current}
+            onSaved={setOrder}
+            styles={styles}
+          />
+        ) : null}
+
         {renderHelp(current)}
+
+        {current.returnPolicy ? (
+          // The card draws its own heading + card (OrderSection would nest a second card)
+          <ReturnPolicyCard
+            policy={current.returnPolicy}
+            deadlineAt={current.returnPolicy.deadlineAt}
+          />
+        ) : null}
 
         {shipping && current.shippingDetails ? (
           <OrderSection title={t("orderShippingDetails")}>
@@ -689,7 +946,7 @@ function CustomerOrder({ orderId }: { orderId: string }) {
             <OrderHistoryTimeline order={current} />
           </OrderSection>
         ) : null}
-      </ScrollView>
+      </KeyboardAwareScrollView>
     );
   };
 

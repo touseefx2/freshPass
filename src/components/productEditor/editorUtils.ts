@@ -3,6 +3,7 @@ import type {
   ProductDraftImage,
   ProductDraftVariant,
 } from "@/src/components/productFormScreen";
+import type { ProductReturnPolicy } from "@/src/types/shopProduct";
 
 /** Hard cap when 0-4 options: main + option photos share this total. */
 export const MAX_PRODUCT_PHOTOS = 4;
@@ -37,15 +38,50 @@ export function getPhotoLimits(
 }
 export const MAX_BENEFIT_LENGTH = 120;
 
-/** Editor steps: Photos & name → Category & details → Price & stock → Options → Marketplace → Review. */
+/** Editor steps: Photos & name → Category & details → Price & stock → Options → Marketplace → Return policy → Review. */
 export const STEP_PHOTOS = 0;
 export const STEP_DETAILS = 1;
 export const STEP_PRICE = 2;
 export const STEP_OPTIONS = 3;
 export const STEP_MARKETPLACE = 4;
-export const STEP_REVIEW = 5;
-export type EditorStep = 0 | 1 | 2 | 3 | 4 | 5;
-export const EDITOR_TOTAL_STEPS = 6;
+export const STEP_RETURNS = 5;
+export const STEP_REVIEW = 6;
+export type EditorStep = 0 | 1 | 2 | 3 | 4 | 5 | 6;
+export const EDITOR_TOTAL_STEPS = 7;
+
+// ── Return policy (backend return policy guide) ─────────────────────
+
+/** Return windows the backend accepts. */
+export const RETURN_WINDOW_CHOICES = [7, 14, 20] as const;
+export const RETURN_POLICY_TEXT_MAX = 1000;
+
+/** A product with returns off (new products start here). */
+export const EMPTY_RETURN_POLICY: ProductReturnPolicy = {
+  enabled: false,
+  windowDays: null,
+  text: null,
+  shippingPaidBy: null,
+};
+
+/**
+ * What gets saved: returns off clears every other field; on keeps a valid
+ * window (7/14/20) and the trimmed text (empty → null).
+ */
+export function cleanReturnPolicy(
+  policy: ProductReturnPolicy | null | undefined,
+): ProductReturnPolicy {
+  if (!policy?.enabled) return EMPTY_RETURN_POLICY;
+  const days = policy.windowDays;
+  return {
+    enabled: true,
+    windowDays:
+      days != null && (RETURN_WINDOW_CHOICES as readonly number[]).includes(days)
+        ? days
+        : null,
+    text: policy.text?.trim() ? policy.text.trim() : null,
+    shippingPaidBy: policy.shippingPaidBy ?? null,
+  };
+}
 
 // Keeps "12." while typing; one decimal point, two decimals max.
 export const cleanMoney = (v: string) => {
@@ -190,7 +226,11 @@ export type ProductFieldKey =
   | "inventory"
   | "threshold"
   | "marketplace"
-  | "featured";
+  | "featured"
+  | "returnPolicy"
+  | "returnWindow"
+  | "returnPayer"
+  | "returnText";
 
 export type ServerFieldTarget = {
   step: EditorStep;
@@ -219,6 +259,10 @@ const PRODUCT_KEYS: Record<string, { step: EditorStep; field?: ProductFieldKey }
   remove_variants: { step: STEP_OPTIONS },
   show_in_marketplace: { step: STEP_MARKETPLACE, field: "marketplace" },
   featured_requested: { step: STEP_MARKETPLACE, field: "featured" },
+  return_policy_enabled: { step: STEP_RETURNS, field: "returnPolicy" },
+  return_window_days: { step: STEP_RETURNS, field: "returnWindow" },
+  return_shipping_paid_by: { step: STEP_RETURNS, field: "returnPayer" },
+  return_policy_text: { step: STEP_RETURNS, field: "returnText" },
 };
 
 const VARIANT_KEYS: Record<string, VariantErrorKey> = {

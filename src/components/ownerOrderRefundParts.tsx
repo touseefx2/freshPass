@@ -20,7 +20,10 @@ import {
   widthScale,
 } from "@/src/theme/dimensions";
 import { formatShopPrice } from "@/src/constants/demoShopProduct";
-import { formatOrderDateTime } from "@/src/components/shopOrderParts";
+import {
+  formatDeadlineDate,
+  formatOrderDateTime,
+} from "@/src/components/shopOrderParts";
 import type {
   BusinessShopOrder,
   OrderEarnings,
@@ -28,12 +31,19 @@ import type {
   OrderRefundState,
   ShopOrder,
 } from "@/src/types/shopOrder";
-import { getRefundReasonLabelKey } from "@/src/utils/shopOrderHelpers";
+import {
+  getRefundReasonLabelKey,
+  getRefundRequestTypeLabelKey,
+  getReturnMethodLabelKey,
+  isRefundStateAwaitingSeller,
+  reasonNeedsReturnMethod,
+} from "@/src/utils/shopOrderHelpers";
 
 /**
  * Seller (business mode) pieces for the owner's order screens: earnings,
- * the customer's cancellation / refund request, the cancel choice cards,
- * the Stripe fee note and the list badge. Guide §2 + §6 Steps 4–5.
+ * the customer's cancellation / return / problem report, the cancel choice
+ * cards, the footer notes and the list badge. Return policy guide
+ * § Business Flows.
  */
 
 type IconName = keyof typeof MaterialIcons.glyphMap;
@@ -44,10 +54,7 @@ type IconName = keyof typeof MaterialIcons.glyphMap;
 export function isRefundAwaitingSeller(
   order: Pick<ShopOrder, "refundState">,
 ): boolean {
-  return (
-    order.refundState === "cancellation_requested" ||
-    order.refundState === "refund_requested"
-  );
+  return isRefundStateAwaitingSeller(order.refundState);
 }
 
 /** A cancellation request is open: ship / ready for pickup are blocked (422). */
@@ -55,6 +62,27 @@ export function isCancellationRequestOpen(
   order: Pick<ShopOrder, "refundState">,
 ): boolean {
   return order.refundState === "cancellation_requested";
+}
+
+/**
+ * Approving refunds at once: a cancellation, or a "never arrived" report
+ * (nothing to send back). Returns / other reports wait for confirm-receipt.
+ */
+export function isImmediateRefundRequest(
+  request: Pick<OrderRefundRequest, "type" | "reason"> | null | undefined,
+): boolean {
+  if (!request) return false;
+  return (
+    request.type === "cancellation" ||
+    (request.type === "report" && request.reason === "never_arrived")
+  );
+}
+
+/** The returned item comes back (not a cancellation, not "never arrived"). */
+function requestHasReturn(
+  request: Pick<OrderRefundRequest, "type" | "reason">,
+): boolean {
+  return request.type !== "cancellation" && reasonNeedsReturnMethod(request.reason);
 }
 
 /** List rows that need the seller's eye (badge on the owner's order list). */
@@ -68,10 +96,29 @@ export function getOwnerListRefundBadge(
         icon: "pan-tool",
         tone: "action",
       };
-    case "refund_requested":
+    case "return_requested":
       return {
-        labelKey: "mpSelBadgeRefundRequested",
-        icon: "currency-exchange",
+        labelKey: "mpSelBadgeReturnRequested",
+        icon: "assignment-return",
+        tone: "action",
+      };
+    case "problem_reported":
+      return {
+        labelKey: "mpSelBadgeProblemReported",
+        icon: "report-problem",
+        tone: "action",
+      };
+    // The item is coming back: the seller confirms receipt to refund
+    case "return_shipped":
+      return {
+        labelKey: "mpSelBadgeReturnShipped",
+        icon: "local-shipping",
+        tone: "action",
+      };
+    case "awaiting_in_person_return":
+      return {
+        labelKey: "mpSelBadgeInPersonReturn",
+        icon: "storefront",
         tone: "action",
       };
     case "under_review":
@@ -86,11 +133,11 @@ export function getOwnerListRefundBadge(
 }
 
 /**
- * Title + text of the owner's "what now" card while a cancellation / refund
- * is involved; null keeps the normal status wording.
+ * Title + text of the owner's "what now" card while a cancellation / return /
+ * problem report is involved; null keeps the normal status wording.
  */
 export function getOwnerRefundStageKeys(
-  order: Pick<BusinessShopOrder, "refundState" | "canRefund">,
+  order: Pick<BusinessShopOrder, "refundState" | "canRefund" | "refundRequest">,
 ): { title: string; text: string } | null {
   if (order.canRefund) {
     return {
@@ -104,12 +151,40 @@ export function getOwnerRefundStageKeys(
         title: "mpSelStageCancelRequestedTitle",
         text: "mpSelStageCancelRequestedText",
       };
-    case "refund_requested":
+    case "return_requested":
       return {
-        title: "mpSelStageRefundRequestedTitle",
-        text: "mpSelStageRefundRequestedText",
+        title: "mpSelStageReturnRequestedTitle",
+        text: "mpSelStageReturnRequestedText",
       };
-    case "refund_on_the_way":
+    case "problem_reported":
+      return {
+        title: "mpSelStageProblemReportedTitle",
+        text:
+          order.refundRequest?.reason === "never_arrived"
+            ? "mpSelStageNeverArrivedText"
+            : "mpSelStageProblemReportedText",
+      };
+    case "return_approved":
+      return {
+        title: "mpSelStageReturnApprovedTitle",
+        text: "mpSelStageReturnApprovedText",
+      };
+    case "return_shipped":
+      return {
+        title: "mpSelStageReturnShippedTitle",
+        text: "mpSelStageReturnShippedText",
+      };
+    case "awaiting_in_person_return":
+      return {
+        title: "mpSelStageInPersonTitle",
+        text: "mpSelStageInPersonText",
+      };
+    case "return_received":
+      return {
+        title: "mpSelStageReturnReceivedTitle",
+        text: "mpSelStageReturnReceivedText",
+      };
+    case "refund_pending":
       return {
         title: "mpSelStageOnTheWayTitle",
         text: "mpSelStageOnTheWayText",
@@ -119,7 +194,7 @@ export function getOwnerRefundStageKeys(
         title: "mpSelStageRefundedTitle",
         text: "mpSelStageRefundedText",
       };
-    case "refund_declined":
+    case "return_declined":
       return {
         title: "mpSelStageDeclinedTitle",
         text: "mpSelStageDeclinedText",
@@ -153,16 +228,25 @@ export function getOwnerRefundStageKeys(
 function getSellerRequestStateKey(state: OrderRefundState | null | undefined) {
   switch (state) {
     case "cancellation_requested":
-    case "refund_requested":
+    case "return_requested":
+    case "problem_reported":
       return "mpSelRequestWaitingOnYou";
-    case "refund_on_the_way":
-      return "mpRefundStateOnTheWay";
+    case "return_approved":
+      return "mpSelRequestAwaitingItem";
+    case "return_shipped":
+      return "mpSelRequestItemShipped";
+    case "awaiting_in_person_return":
+      return "mpSelRequestInPerson";
+    case "return_received":
+      return "mpSelRequestReceived";
+    case "refund_pending":
+      return "mpRefundStateRefundPending";
     case "refunded":
       return "mpSelRequestApproved";
-    case "refund_declined":
+    case "return_declined":
       return "mpSelRequestDeclined";
     case "under_review":
-      return "mpRefundStateUnderReview";
+      return "mpSelReviewInProgress";
     case "refunded_by_freshpass":
       return "mpRefundStateRefundedByFreshpass";
     case "declined_reviewed":
@@ -339,6 +423,37 @@ const createStyles = (theme: Theme) =>
     statePillText: {
       fontSize: fontSize.size13,
       fontFamily: fonts.fontBold,
+    },
+    deadline: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: moderateWidthScale(10),
+      marginTop: moderateHeightScale(12),
+      padding: moderateWidthScale(12),
+      borderRadius: moderateWidthScale(14),
+      backgroundColor: theme.orangeBrown01,
+    },
+    deadlineLate: {
+      backgroundColor: theme.lightRed,
+    },
+    deadlineText: {
+      flex: 1,
+      minWidth: 0,
+      gap: moderateHeightScale(2),
+    },
+    deadlineTitle: {
+      fontSize: fontSize.size15,
+      fontFamily: fonts.fontBold,
+      color: theme.orangeBrownText,
+    },
+    deadlineTitleLate: {
+      color: theme.red,
+    },
+    deadlineSub: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontRegular,
+      color: theme.darkGreen,
+      lineHeight: fontSize.size18,
     },
     fields: {
       gap: moderateHeightScale(12),
@@ -740,31 +855,63 @@ function Field({
   );
 }
 
+/** Is an ISO time already behind us? (unparseable → no) */
+function isPast(iso: string | null | undefined): boolean {
+  if (!iso) return false;
+  const time = Date.parse(iso);
+  return Number.isFinite(time) && time < Date.now();
+}
+
 /**
- * The customer's cancellation / refund request: what they asked, why, their
- * note and photo, the seller's answer and — once escalated — FreshPass's
- * review. Read-only; the buttons live in the screen's footer.
+ * The customer's cancellation / return / problem report: type, reason, note,
+ * photo, how the item comes back and who pays for it, the 3-business-day
+ * reply deadline, the return's tracking / delivery / receipt, the seller's
+ * answer and — once escalated — FreshPass's review. Read-only; the buttons
+ * live in the screen's footer.
  */
 export function RefundRequestSection({
   request,
   refundState,
+  needsReceipt = false,
   onOpenPhoto,
 }: {
   request: OrderRefundRequest;
   refundState: OrderRefundState | null | undefined;
+  /** `canConfirmReceipt`: the seller must confirm the item came back. */
+  needsReceipt?: boolean;
   onOpenPhoto: (uri: string) => void;
 }) {
   const { theme, styles } = usePartStyles();
   const { t } = useTranslation();
-  const cancellation = request.type === "cancellation";
-  const waiting =
-    refundState === "cancellation_requested" ||
-    refundState === "refund_requested";
+  const awaitingSeller = isRefundStateAwaitingSeller(refundState);
+  const waiting = awaitingSeller || needsReceipt;
   const stateKey = getSellerRequestStateKey(refundState);
   const reason =
     request.reasonLabel ??
     (request.reason ? t(getRefundReasonLabelKey(request.reason)) : null);
   const asked = formatOrderDateTime(request.createdAt);
+  const typeLabel = t(getRefundRequestTypeLabelKey(request.type));
+  const hasReturn = requestHasReturn(request);
+  const returnMethod =
+    hasReturn && request.returnMethod
+      ? t(getReturnMethodLabelKey(request.returnMethod))
+      : null;
+  const paidBy =
+    hasReturn && request.returnShippingPaidBy && request.returnMethod !== "in_person"
+      ? t(
+          request.returnShippingPaidBy === "seller"
+            ? "mpSelPaidByYou"
+            : "mpSelPaidByCustomer",
+        )
+      : null;
+  const deadline = awaitingSeller
+    ? formatDeadlineDate(request.sellerDeadlineAt)
+    : "";
+  const deadlinePassed = !!deadline && isPast(request.sellerDeadlineAt);
+  const shippedBack =
+    !!request.trackingNumber ||
+    !!request.carrierDeliveredAt ||
+    !!request.sellerReceivedAt;
   const escalated =
     !!request.escalatedAt ||
     !!request.escalationNote ||
@@ -773,9 +920,12 @@ export function RefundRequestSection({
     refundState === "declined_reviewed";
 
   const pillTone =
-    refundState === "refunded" || refundState === "refunded_by_freshpass"
+    refundState === "refunded" ||
+    refundState === "refunded_by_freshpass" ||
+    refundState === "return_received" ||
+    refundState === "refund_pending"
       ? { box: styles.statePillGood, color: theme.darkGreen, icon: "check-circle" as IconName }
-      : refundState === "refund_declined" || refundState === "declined_reviewed"
+      : refundState === "return_declined" || refundState === "declined_reviewed"
         ? { box: styles.statePillBad, color: theme.red, icon: "block" as IconName }
         : refundState === "under_review"
           ? { box: styles.statePillNeutral, color: theme.apptBlueAccent, icon: "gavel" as IconName }
@@ -790,6 +940,19 @@ export function RefundRequestSection({
           ? "mpSelReviewInProgress"
           : null;
 
+  const headIcon: IconName =
+    request.type === "cancellation"
+      ? "pan-tool"
+      : request.type === "report"
+        ? "report-problem"
+        : "assignment-return";
+  const headTitle =
+    request.type === "cancellation"
+      ? t("mpSelRequestCancellationTitle")
+      : request.type === "report"
+        ? t("mpSelRequestReportTitle")
+        : t("mpSelRequestReturnTitle");
+
   return (
     <View style={styles.section}>
       <View style={styles.sectionHead}>
@@ -801,22 +964,18 @@ export function RefundRequestSection({
         <View style={styles.requestTop}>
           <View style={styles.requestIcon}>
             <MaterialIcons
-              name={cancellation ? "pan-tool" : "currency-exchange"}
+              name={headIcon}
               size={moderateWidthScale(22)}
               color={theme.selectCard}
             />
           </View>
           <View style={styles.requestHeadText}>
-            <Text style={styles.requestTitle}>
-              {cancellation
-                ? t("mpSelRequestCancellationTitle")
-                : t("mpSelRequestRefundTitle")}
+            <Text style={styles.requestTitle}>{headTitle}</Text>
+            <Text style={styles.requestDate}>
+              {asked
+                ? `${typeLabel} · ${t("mpSelRequestAskedOn", { date: asked })}`
+                : typeLabel}
             </Text>
-            {asked ? (
-              <Text style={styles.requestDate}>
-                {t("mpSelRequestAskedOn", { date: asked })}
-              </Text>
-            ) : null}
           </View>
         </View>
 
@@ -830,6 +989,36 @@ export function RefundRequestSection({
             <Text style={[styles.statePillText, { color: pillTone.color }]}>
               {t(stateKey)}
             </Text>
+          </View>
+        ) : null}
+
+        {deadline ? (
+          <View
+            style={[styles.deadline, deadlinePassed && styles.deadlineLate]}
+            accessible
+          >
+            <MaterialIcons
+              name={deadlinePassed ? "error-outline" : "timer"}
+              size={moderateWidthScale(20)}
+              color={deadlinePassed ? theme.red : theme.orangeBrownText}
+            />
+            <View style={styles.deadlineText}>
+              <Text
+                style={[
+                  styles.deadlineTitle,
+                  deadlinePassed && styles.deadlineTitleLate,
+                ]}
+              >
+                {deadlinePassed
+                  ? t("mpSelRespondOverdue", { date: deadline })
+                  : t("mpSelRespondBy", { date: deadline })}
+              </Text>
+              <Text style={styles.deadlineSub}>
+                {deadlinePassed
+                  ? t("mpSelRespondOverdueNote")
+                  : t("mpSelRespondByNote")}
+              </Text>
+            </View>
           </View>
         ) : null}
 
@@ -849,7 +1038,39 @@ export function RefundRequestSection({
           {!reason && !request.note && !request.photoUrl ? (
             <Text style={styles.fieldValue}>{t("mpSelNoReasonGiven")}</Text>
           ) : null}
+          <Field label={t("mpSelReturnMethod")} value={returnMethod} />
+          <Field label={t("mpSelReturnShippingPaidBy")} value={paidBy} />
         </View>
+
+        {shippedBack ? (
+          <View style={styles.subBlock}>
+            <View style={styles.subHead}>
+              <MaterialIcons
+                name={
+                  request.returnMethod === "in_person"
+                    ? "storefront"
+                    : "local-shipping"
+                }
+                size={moderateWidthScale(20)}
+                color={theme.buttonBack}
+              />
+              <Text style={styles.subTitle}>{t("mpSelReturnItemTitle")}</Text>
+            </View>
+            <Field
+              label={t("mpSelTrackingNumber")}
+              value={request.trackingNumber}
+              strong
+            />
+            <Field
+              label={t("mpSelCarrierDeliveredOn")}
+              value={formatOrderDateTime(request.carrierDeliveredAt)}
+            />
+            <Field
+              label={t("mpSelReceivedOn")}
+              value={formatOrderDateTime(request.sellerReceivedAt)}
+            />
+          </View>
+        ) : null}
 
         {request.sellerResponse ? (
           <View style={styles.subBlock}>
@@ -974,18 +1195,32 @@ export function CancelChoiceCard({
 
 // ── Fee note ────────────────────────────────────────────────────────
 
-/** "The Stripe processing fee is not returned on refunds." — under every Refund / Approve button. */
-export function StripeFeeNote({ style }: { style?: StyleProp<ViewStyle> }) {
+/**
+ * Small centred note under a footer button. Default: "The Stripe processing
+ * fee is not returned on refunds." — under every Refund / Approve button.
+ */
+export function StripeFeeNote({
+  style,
+  text,
+  icon = "info-outline",
+}: {
+  style?: StyleProp<ViewStyle>;
+  /** Other wording (e.g. the auto-confirm note under Confirm receipt). */
+  text?: string;
+  icon?: IconName;
+}) {
   const { theme, styles } = usePartStyles();
   const { t } = useTranslation();
   return (
     <View style={[styles.feeNote, style]}>
       <MaterialIcons
-        name="info-outline"
+        name={icon}
         size={moderateWidthScale(16)}
         color={theme.lightGreen}
       />
-      <Text style={styles.feeNoteText}>{t("mpStripeFeeNotRefunded")}</Text>
+      <Text style={styles.feeNoteText}>
+        {text ?? t("mpStripeFeeNotRefunded")}
+      </Text>
     </View>
   );
 }

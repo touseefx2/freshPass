@@ -84,7 +84,8 @@ export type NotificationSubType =
   | "order_cancelled"
   | "business_order_paid"
   | "business_order_refunded"
-  // Cancellation / refund requests (customer: type "order"; seller: type "business_order")
+  // Cancellation / refund requests (customer: type "order"; seller: type "business_order",
+  // or type "order" for return policy pushes — their sub_types are not in the guide)
   | "order_refund_declined"
   | "order_refund_reviewed"
   | "business_order_refund_requested"
@@ -312,6 +313,7 @@ function openOwnerReelsList(
  * - type "business_follower" → owner's businessDetail
  * - type "business_reel" + comment → reelsFeed+comments; booking → appointment; likes → reelStats
  * - type "order" + order_id / model_id (customer role) → shop order screen (every order_* subType)
+ * - type "order" + order_id / model_id (business role: return policy seller pushes) → owner order screen
  * - type "business_order" (owner: new paid order / refunds / refund requests) → owner order screen
  * - type "business_product" (owner: low / out of stock / product_moderated) → edit product; products list if deleted
  * - type "business_job" (owner: new job application) → that post's manage screen with its applicants
@@ -912,8 +914,11 @@ export function navigateFromNotificationData(
   }
 
   // Product order updates (shipped, shipping details, ready for pickup,
-  // picked up, cancelled, refund declined / reviewed) — all open the
-  // customer's order screen
+  // picked up, cancelled, return approved / received, refund declined /
+  // reviewed) — customer: their order screen. Return policy pushes also use
+  // type "order" for the seller (return requested, problem reported, return
+  // shipped, escalated, reviewed, refund failed) — business mode: the owner's
+  // order screen (data.mode already switched the side above)
   if (type === "order") {
     const orderId = pickNumber(data, "order_id", "model_id");
     const userRole = store.getState().user.userRole;
@@ -926,6 +931,18 @@ export function navigateFromNotificationData(
         order_id: orderId,
         subType,
       });
+      return;
+    }
+    if (orderId != null && userRole === "business") {
+      router.push({
+        pathname:
+          "/(main)/dashboard/(account)/(businessProfileSettings)/orderDetail" as any,
+        params: { id: String(orderId) },
+      });
+      Logger.log(
+        "------>navigateFromNotificationData (order, business mode) -> owner orderDetail",
+        { order_id: orderId, subType },
+      );
       return;
     }
   }

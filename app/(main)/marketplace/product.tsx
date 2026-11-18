@@ -33,6 +33,7 @@ import VariantChips from "@/src/components/marketplace/detail/VariantChips";
 import QuantityStepper from "@/src/components/marketplace/detail/QuantityStepper";
 import ReviewSummary from "@/src/components/marketplace/detail/ReviewSummary";
 import ReviewCard from "@/src/components/marketplace/detail/ReviewCard";
+import { ReturnPolicyCard } from "@/src/components/returnPolicyParts";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { setGuestModeModalVisible } from "@/src/state/slices/generalSlice";
 import { isOwnBusinessInCustomerMode } from "@/src/state/slices/userSlice";
@@ -861,9 +862,16 @@ export default function MarketplaceProductScreen() {
                   color={theme.selectCard}
                 />
               </View>
-              <Text style={styles.fulfilSmall}>{t("mpRefundPolicyNote")}</Text>
+              {/* With a return policy the card below covers returns — keep the cancel rule here */}
+              <Text style={styles.fulfilSmall}>
+                {product.returnPolicy ? t("mpCancelPolicyNote") : t("mpRefundPolicyNote")}
+              </Text>
             </View>
           </FlowCard>
+
+          {product.returnPolicy ? (
+            <ReturnPolicyCard policy={product.returnPolicy} />
+          ) : null}
 
           {/* Stock and delivery problems already show in the card above */}
           {block && (block.kind === "own" || block.kind === "paymentsOff" || block.kind === "chooseOption") ? (
