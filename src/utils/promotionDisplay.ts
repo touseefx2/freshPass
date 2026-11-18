@@ -13,8 +13,9 @@ export type ServiceOfferPrice = {
 };
 
 /**
- * The offer that applies to a service row: the active offer when it covers the
- * service, otherwise (no active offer) the first offer that covers it.
+ * The offer that applies to a service row. An active (picked / linked) offer
+ * wins when it covers the service. Otherwise: the cheapest offer this customer
+ * qualifies for; if none qualifies, the first offer that covers it (label only).
  */
 export function pickServiceOffer(
   promotions: Promotion[],
@@ -22,23 +23,24 @@ export function pickServiceOffer(
   serviceId: number | string,
 ): ServiceOfferPrice | null {
   const id = Number(serviceId);
-  const find = (p: Promotion) => p.services.find((s) => s.id === id);
+  const matches: ServiceOfferPrice[] = [];
   const active =
     activeId != null ? promotions.find((p) => p.id === activeId) : undefined;
-  const candidates = active ? [active] : promotions;
-  for (const promotion of candidates) {
-    const service = find(promotion);
-    if (service) {
-      return {
-        promotion,
-        service,
-        showDiscount:
-          promotion.eligibility?.eligible === true &&
-          service.final_price < service.original_price,
-      };
-    }
+  for (const promotion of active ? [active] : promotions) {
+    const service = promotion.services.find((s) => s.id === id);
+    if (!service) continue;
+    matches.push({
+      promotion,
+      service,
+      showDiscount:
+        promotion.eligibility?.eligible === true &&
+        service.final_price < service.original_price,
+    });
   }
-  return null;
+  const best = matches
+    .filter((m) => m.showDiscount)
+    .sort((a, b) => a.service.final_price - b.service.final_price)[0];
+  return best ?? matches[0] ?? null;
 }
 
 /** "15% OFF" headline from the server's savings label. */
