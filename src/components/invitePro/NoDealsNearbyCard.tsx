@@ -52,13 +52,25 @@ export default function NoDealsNearbyCard({ style }: NoDealsNearbyCardProps) {
         <View style={styles.leafMedium} />
         <View style={styles.leafSmall} />
 
-        <Text
-          style={styles.eyebrow}
-          maxFontSizeMultiplier={1.2}
-          accessibilityRole="header"
-        >
-          {t("ndcEyebrow")}
-        </Text>
+        <View style={styles.headerRow}>
+          <Text
+            style={styles.eyebrow}
+            maxFontSizeMultiplier={1.2}
+            accessibilityRole="header"
+          >
+            {t("ndcEyebrow")}
+          </Text>
+          <View style={styles.earnBadge}>
+            <MaterialCommunityIcons
+              name="gift-outline"
+              size={moderateWidthScale(13)}
+              color={theme.darkGreen}
+            />
+            <Text style={styles.earnBadgeText} maxFontSizeMultiplier={1.2}>
+              {t("earnRewardsBadge")}
+            </Text>
+          </View>
+        </View>
 
         <View style={styles.pinCircle}>
           <MaterialCommunityIcons
@@ -83,15 +95,21 @@ export default function NoDealsNearbyCard({ style }: NoDealsNearbyCardProps) {
           onPress={handleInvite}
           style={styles.inviteButton}
           accessibilityRole="button"
-          accessibilityLabel={t("ipBannerCta")}
+          accessibilityLabel={t("ipBannerInviteCta")}
         >
-          <Text style={styles.inviteButtonText}>{t("ipBannerCta")}</Text>
+          <Text style={styles.inviteButtonText}>
+            {t("ipBannerInviteCta")}
+          </Text>
           <MaterialCommunityIcons
             name="arrow-right"
             size={moderateWidthScale(18)}
             color={theme.darkGreen}
           />
         </TouchableOpacity>
+
+        <Text style={styles.footerText} maxFontSizeMultiplier={1.2}>
+          {t("ipBannerFooter")}
+        </Text>
 
         <TouchableOpacity
           activeOpacity={0.7}
@@ -157,13 +175,35 @@ const createStyles = (theme: Theme) =>
       borderBottomLeftRadius: moderateWidthScale(50),
       transform: [{ rotate: "-25deg" }],
     },
+    headerRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      alignSelf: "stretch",
+      marginBottom: moderateHeightScale(14),
+    },
     eyebrow: {
       fontSize: fontSize.size11,
       fontFamily: fonts.fontBold,
       color: theme.orangeBrown,
       letterSpacing: 2,
       textTransform: "uppercase",
-      marginBottom: moderateHeightScale(14),
+    },
+    earnBadge: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(5),
+      borderWidth: 1.5,
+      borderColor: theme.goldBorder,
+      borderRadius: moderateWidthScale(999),
+      paddingHorizontal: moderateWidthScale(12),
+      paddingVertical: moderateHeightScale(5),
+      backgroundColor: theme.goldenBuy,
+    },
+    earnBadgeText: {
+      fontSize: fontSize.size11,
+      fontFamily: fonts.fontExtraBold,
+      color: theme.darkGreen,
     },
     pinCircle: {
       width: moderateWidthScale(52),
@@ -209,6 +249,13 @@ const createStyles = (theme: Theme) =>
       fontSize: fontSize.size16,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
+    },
+    footerText: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontRegular,
+      color: theme.white85,
+      textAlign: "center",
+      marginBottom: moderateHeightScale(12),
     },
     exploreLink: {
       paddingVertical: moderateHeightScale(4),

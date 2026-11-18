@@ -2043,7 +2043,7 @@ function ReelFeedItemBase({
                     {t("classOnReel")}
                   </Text>
                 </View>
-              ) : reel.master_class.can_enroll ? (
+              ) : (
                 <TouchableOpacity
                   style={styles.shopBtn}
                   activeOpacity={0.85}
@@ -2055,13 +2055,15 @@ function ReelFeedItemBase({
                   }}
                 >
                   <MaterialIcons
-                    name="school"
+                    name={reel.master_class.can_enroll ? "school" : "check-circle"}
                     size={moderateWidthScale(14)}
                     color={theme.white}
                   />
-                  <Text style={styles.shopBtnText}>{t("enrollNow")}</Text>
+                  <Text style={styles.shopBtnText}>
+                    {reel.master_class.can_enroll ? t("enrollNow") : t("viewClass")}
+                  </Text>
                 </TouchableOpacity>
-              ) : null}
+              )}
             </View>
             {showAsCustomer ? (
               <TouchableOpacity

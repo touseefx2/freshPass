@@ -68,7 +68,6 @@ const createStyles = (theme: Theme) =>
     },
     row: {
       width: widthScale(310),
-      height: heightScale(132),
       borderRadius: moderateWidthScale(12),
     },
     strip: {
@@ -117,6 +116,30 @@ const createStyles = (theme: Theme) =>
       color: theme.orangeBrownText,
       letterSpacing: 1.2,
     },
+    earnBadge: {
+      position: "absolute",
+      top: moderateHeightScale(12),
+      right: moderateWidthScale(12),
+      zIndex: 1,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(5),
+      backgroundColor: theme.goldenBuy,
+      borderWidth: 1.5,
+      borderColor: theme.goldBorder,
+      borderRadius: moderateWidthScale(999),
+      paddingHorizontal: moderateWidthScale(12),
+      paddingVertical: moderateHeightScale(5),
+    },
+    earnBadgeCompact: {
+      top: moderateHeightScale(10),
+      right: moderateWidthScale(10),
+    },
+    earnBadgeText: {
+      fontSize: fontSize.size11,
+      fontFamily: fonts.fontExtraBold,
+      color: theme.darkGreen,
+    },
     title: {
       fontSize: fontSize.size14,
       fontFamily: fonts.fontBold,
@@ -146,6 +169,16 @@ const createStyles = (theme: Theme) =>
       fontSize: fontSize.size14,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
+    },
+    footer: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontRegular,
+      color: "#000000",
+      marginTop: moderateHeightScale(4),
+      marginBottom: moderateHeightScale(4),
+    },
+    footerFull: {
+      marginTop: moderateHeightScale(10),
     },
     medallion: {
       width: moderateWidthScale(60),
@@ -203,6 +236,22 @@ export default function InviteProBanner({
       accessibilityLabel={t("ipBannerTitle")}
       accessibilityHint={t("ipBannerA11yHint")}
     >
+      {/* Earn Rewards badge — absolutely positioned top-right */}
+      <View style={[styles.earnBadge, compact && styles.earnBadgeCompact]}>
+        <MaterialCommunityIcons
+          name="gift-outline"
+          size={moderateWidthScale(13)}
+          color={theme.darkGreen}
+        />
+        <Text
+          style={styles.earnBadgeText}
+          numberOfLines={1}
+          maxFontSizeMultiplier={MAX_FONT_SCALE}
+        >
+          {t("earnRewardsBadge")}
+        </Text>
+      </View>
+
       <View
         style={[styles.content, !compact && styles.contentFull]}
         pointerEvents="none"
@@ -231,19 +280,27 @@ export default function InviteProBanner({
               {t("ipBannerTitle")}
             </Text>
           </View>
-          <View style={[styles.button, !compact && styles.buttonFull]}>
+          <View>
+            <View style={[styles.button, !compact && styles.buttonFull]}>
+              <Text
+                style={styles.buttonText}
+                numberOfLines={1}
+                maxFontSizeMultiplier={MAX_FONT_SCALE}
+              >
+                {t("ipBannerInviteCta")}
+              </Text>
+              <MaterialCommunityIcons
+                name="arrow-right"
+                size={moderateWidthScale(16)}
+                color={theme.darkGreen}
+              />
+            </View>
             <Text
-              style={styles.buttonText}
-              numberOfLines={1}
+              style={[styles.footer, !compact && styles.footerFull]}
               maxFontSizeMultiplier={MAX_FONT_SCALE}
             >
-              {t("ipBannerCta")}
+              {t("ipBannerFooter")}
             </Text>
-            <MaterialCommunityIcons
-              name="arrow-right"
-              size={moderateWidthScale(16)}
-              color={theme.darkGreen}
-            />
           </View>
         </View>
 
