@@ -216,8 +216,8 @@ const createStyles = (theme: Theme) =>
       gap: moderateWidthScale(12),
     },
     detailLabel: {
-      flexShrink: 0,
-      maxWidth: "50%",
+      flexShrink: 1,
+      flexBasis: "45%",
       fontSize: fontSize.size14,
       fontFamily: fonts.fontRegular,
       color: theme.lightGreen,

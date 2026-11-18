@@ -4133,6 +4133,7 @@
   "mpRefReviewInfoReturn": "The seller has 3 business days to answer. If they approve, send the item back. Your refund goes through once they receive it.",
   "mpRefReviewInfoReport": "The seller has 3 business days to answer. If they approve, send the item back at the seller's cost. Your refund goes through once they receive it.",
   "mpRefReviewInfoNeverArrived": "The seller has 3 business days to answer. If they approve, you're refunded right away. There's nothing to send back.",
+  "mpRefReviewInfoInPerson": "The seller has 3 business days to answer. If they approve, bring the item to the salon. Your refund goes through once they receive it.",
   "mpRefSentReportTitle": "Report sent",
   "mpRefSentReport": "The seller has been told about the problem.",
   "mpRefSentReturn": "The seller has been asked to approve your return.",

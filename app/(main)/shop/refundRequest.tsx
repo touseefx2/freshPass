@@ -1033,11 +1033,13 @@ export default function RefundRequestScreen() {
         ? "mpRefReviewInfoEscalate"
         : mode === "cancellation"
           ? "mpRefReviewInfoCancellation"
-          : mode === "report"
-            ? hasMethodStep
-              ? "mpRefReviewInfoReport"
-              : "mpRefReviewInfoNeverArrived"
-            : "mpRefReviewInfoReturn";
+          : mode === "report" && !hasMethodStep
+            ? "mpRefReviewInfoNeverArrived"
+            : returnMethod === "in_person"
+              ? "mpRefReviewInfoInPerson"
+              : mode === "report"
+                ? "mpRefReviewInfoReport"
+                : "mpRefReviewInfoReturn";
     return (
       <>
         <ScrollView
