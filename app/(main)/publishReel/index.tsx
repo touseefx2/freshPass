@@ -1160,6 +1160,7 @@ export default function PublishReelScreen() {
             />
           </View>
 
+          {/* Promotion text hidden — promotions now come from Profile Offers.
           <View style={styles.field}>
             <Text style={[styles.label, { marginBottom: moderateHeightScale(8) }]}>
               {t("promotionText")}
@@ -1173,6 +1174,7 @@ export default function PublishReelScreen() {
               maxLength={255}
             />
           </View>
+          */}
 
           {canLinkProduct ? (
             <View style={styles.field}>

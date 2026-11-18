@@ -20,6 +20,7 @@ import {
   hasBusinessGoldFrame,
 } from "@/src/components/jobs/jobBadges";
 import { createStyles } from "./styles";
+import PromotionPill from "@/src/components/promotion/PromotionPill";
 import InviteProBanner, {
   withInviteBanners,
 } from "@/src/components/invitePro/InviteProBanner";
@@ -36,6 +37,7 @@ interface VerifiedSalon {
   ownerName?: string | null;
   isHiring?: boolean;
   hasClass?: boolean;
+  hasPromotion?: boolean;
 }
 
 interface ShowBusinessProps {
@@ -118,6 +120,7 @@ export default function ShowDeals({
               {salon.rating || 0}/ {salon.reviewCount || 0} reviews
             </Text>
           </View>
+          <PromotionPill visible={salon.hasPromotion} />
           {/* <TouchableOpacity
             style={styles.verifiedSalonViewDetail}
             onPress={() => {

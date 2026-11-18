@@ -70,6 +70,8 @@ type Props = {
   refreshKey: number;
   awaitingOutcomeData: AwaitingOutcomeAppointment[] | null;
   awaitingOutcomeLoading: boolean;
+  awaitingOutcomeCount?: number;
+  awaitingOutcomeError?: boolean;
   onRefreshAwaitingOutcome: () => void;
   /** Home scrolls here when an appointment_outcomes push is tapped */
   awaitingOutcomeRef?: RefObject<View | null>;
@@ -81,6 +83,8 @@ export default function BusinessHomeContent({
   refreshKey,
   awaitingOutcomeData,
   awaitingOutcomeLoading,
+  awaitingOutcomeCount,
+  awaitingOutcomeError,
   onRefreshAwaitingOutcome,
   awaitingOutcomeRef,
   paymentsRefreshKey,
@@ -261,6 +265,8 @@ export default function BusinessHomeContent({
           <AwaitingOutcomeSection
             data={awaitingOutcomeData}
             loading={awaitingOutcomeLoading}
+            totalCount={awaitingOutcomeCount}
+            error={awaitingOutcomeError}
             onRefresh={onRefreshAwaitingOutcome}
           />
           <PaymentsToConfirmSection refreshKey={paymentsRefreshKey} />

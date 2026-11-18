@@ -1842,6 +1842,7 @@
   "withinCutoffWarningBodyMembership": "If you cancel within the {{hours}}-hour window, late cancellation: {{lateAction}}. If you do not attend, no-show: {{noShowAction}}.",
   "awaitingOutcome": "Needs your attention",
   "awaitingOutcomeHelp": "Confirm whether the customer attended.",
+  "awaitingOutcomeLoadError": "Couldn't load appointments that need your attention.",
   "markCompleted": "Mark Completed",
   "markNoShow": "Mark No-Show",
   "confirmNoShow": "Confirm No-Show",
@@ -5438,5 +5439,7 @@
   "mcLiveEditConfirmText": "Enrolled students will be notified about these changes.",
   "mcLiveEditSaved": "Changes saved",
   "mcDiscardChangesTitle": "Discard changes?",
-  "mcDiscardChangesText": "Your edits have not been saved."
+  "mcDiscardChangesText": "Your edits have not been saved.",
+  "pcuPercentOffPill": "% off",
+  "pcuHasPromotionA11y": "Has a promotion"
 }

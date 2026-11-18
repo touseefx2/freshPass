@@ -27,6 +27,7 @@ import {
   hasBusinessGoldFrame,
 } from "@/src/components/jobs/jobBadges";
 import { createStyles } from "./styles";
+import PromotionPill from "@/src/components/promotion/PromotionPill";
 import type {
   ServiceItem,
   SubscriptionItem,
@@ -43,6 +44,7 @@ export interface VerifiedSalon {
   /** Has at least one open job post */
   isHiring?: boolean;
   hasClass?: boolean;
+  hasPromotion?: boolean;
   services?: ServiceItem[];
   subscriptions?: SubscriptionItem[];
 }
@@ -116,6 +118,7 @@ export function BusinessCard({
               {salon.rating || 0}/ {salon.reviewCount || 0} reviews
             </Text>
           </View>
+          <PromotionPill visible={salon.hasPromotion} />
           {/* <TouchableOpacity
             style={styles.verifiedSalonViewDetail}
             onPress={() => {

@@ -21,6 +21,7 @@ import {
   hasBusinessGoldFrame,
 } from "@/src/components/jobs/jobBadges";
 import { createStyles } from "./styles";
+import PromotionPill from "@/src/components/promotion/PromotionPill";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -36,6 +37,7 @@ export interface FavoriteBusiness {
   isOfficial?: boolean;
   isHiring?: boolean;
   hasClass?: boolean;
+  hasPromotion?: boolean;
 }
 
 interface ShowFavoritesProps {
@@ -169,6 +171,7 @@ export default function ShowFavorites({
               <Text style={styles.ratingText}>
                 {item.rating || 0} · {item.reviewCount || 0} reviews
               </Text>
+              <PromotionPill visible={item.hasPromotion} />
             </View>
           </View>
         </TouchableOpacity>

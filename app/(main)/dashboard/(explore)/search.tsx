@@ -48,6 +48,7 @@ import {
   BusinessCornerBadges,
   HIRING_FRAME_WIDTH,
 } from "@/src/components/jobs/jobBadges";
+import PromotionPill from "@/src/components/promotion/PromotionPill";
 import {
   getDefaultBusinessLogo,
 } from "@/src/services/remoteConfigService";
@@ -85,6 +86,7 @@ export type BusinessSearchItem = {
   is_hiring?: boolean;
   /** Has a master class listed in Deals right now */
   has_active_class?: boolean;
+  has_promotion?: boolean;
   createdAt: string;
 };
 
@@ -305,6 +307,14 @@ const createStyles = (theme: Theme) =>
     },
     businessContent: {
       flex: 1,
+    },
+    businessTitleRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(8),
+    },
+    businessTitleShrink: {
+      flexShrink: 1,
     },
     businessTitle: {
       fontSize: fontSize.size16,
@@ -775,9 +785,15 @@ export default function SearchScreen() {
                       styles={styles}
                     />
                     <View style={styles.businessContent}>
-                      <Text style={styles.businessTitle} numberOfLines={1}>
-                        {item.title}
-                      </Text>
+                      <View style={styles.businessTitleRow}>
+                        <Text
+                          style={[styles.businessTitle, styles.businessTitleShrink]}
+                          numberOfLines={1}
+                        >
+                          {item.title}
+                        </Text>
+                        <PromotionPill visible={item.has_promotion === true} />
+                      </View>
                       {!!item.owner?.name?.trim() && (
                         <Text
                           style={styles.businessOwnerName}

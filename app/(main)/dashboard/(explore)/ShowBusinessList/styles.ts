@@ -93,7 +93,7 @@ export const createStyles = (theme: Theme) =>
     verifiedSalonBottomRow: {
       flexDirection: "row",
       alignItems: "center",
-      justifyContent: "space-between",
+      gap: moderateWidthScale(6),
     },
     verifiedSalonRatingButton: {
       flexDirection: "row",

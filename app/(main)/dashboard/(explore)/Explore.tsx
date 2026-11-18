@@ -81,6 +81,7 @@ interface VerifiedSalon {
   ownerName?: string | null;
   isHiring?: boolean;
   hasClass?: boolean;
+  hasPromotion?: boolean;
   services?: ServiceItem[];
   subscriptions?: SubscriptionItem[];
 }
@@ -355,6 +356,7 @@ export default function ExploreScreen() {
           owner_name?: string | null;
           is_hiring?: boolean;
           has_active_class?: boolean;
+          has_promotion?: boolean;
           portfolio_photos?: Array<{
             id: number;
             path: string;
@@ -386,6 +388,7 @@ export default function ExploreScreen() {
             ownerName: getOwnerName(item),
             isHiring: item.is_hiring === true,
             hasClass: item.has_active_class === true,
+            hasPromotion: item.has_promotion === true,
           };
         });
 
@@ -460,6 +463,7 @@ export default function ExploreScreen() {
           owner_name?: string | null;
           is_hiring?: boolean;
           has_active_class?: boolean;
+          has_promotion?: boolean;
           portfolio_photos?: Array<{ id: number; path: string; url: string }>;
           services?: Array<{
             id: number;
@@ -506,6 +510,7 @@ export default function ExploreScreen() {
             ownerName: getOwnerName(item),
             isHiring: item.is_hiring === true,
             hasClass: item.has_active_class === true,
+            hasPromotion: item.has_promotion === true,
           };
 
           const services: ServiceItem[] | undefined = item.services?.map(

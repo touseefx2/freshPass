@@ -1402,6 +1402,7 @@
   "withinCutoffWarningBodyMembership": "If you cancel within the {{hours}}-hour window, late cancellation: {{lateAction}}. If you do not attend, no-show: {{noShowAction}}.",
   "awaitingOutcome": "対応が必要です",
   "awaitingOutcomeHelp": "お客様が来店したか確認してください。",
+  "awaitingOutcomeLoadError": "対応が必要な予約を読み込めませんでした。",
   "markCompleted": "Mark Completed",
   "markNoShow": "Mark No-Show",
   "confirmNoShow": "Confirm No-Show",
@@ -4078,5 +4079,7 @@
   "mcProfileBannerTitle": "マスタークラス",
   "mcProfileBannerLink": "クラスを見る",
   "mcProfileSectionTitle": "マスタークラス",
-  "mcProfileSectionSubtitle": "{{name}}から学ぼう。クラス開始前にお申し込みください。"
+  "mcProfileSectionSubtitle": "{{name}}から学ぼう。クラス開始前にお申し込みください。",
+  "pcuPercentOffPill": "%オフ",
+  "pcuHasPromotionA11y": "プロモーションあり"
 }

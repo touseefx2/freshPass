@@ -1402,6 +1402,7 @@
   "withinCutoffWarningBodyMembership": "If you cancel within the {{hours}}-hour window, late cancellation: {{lateAction}}. If you do not attend, no-show: {{noShowAction}}.",
   "awaitingOutcome": "Necesita tu atención",
   "awaitingOutcomeHelp": "Confirma si el cliente asistió.",
+  "awaitingOutcomeLoadError": "No se pudieron cargar las citas que requieren tu atención.",
   "markCompleted": "Mark Completed",
   "markNoShow": "Mark No-Show",
   "confirmNoShow": "Confirm No-Show",
@@ -4084,5 +4085,7 @@
   "mcProfileBannerTitle": "Clases magistrales",
   "mcProfileBannerLink": "Ver clases",
   "mcProfileSectionTitle": "Clases magistrales",
-  "mcProfileSectionSubtitle": "Aprende de {{name}}. Inscríbete antes de que empiece la clase."
+  "mcProfileSectionSubtitle": "Aprende de {{name}}. Inscríbete antes de que empiece la clase.",
+  "pcuPercentOffPill": "% dto.",
+  "pcuHasPromotionA11y": "Tiene una promoción"
 }

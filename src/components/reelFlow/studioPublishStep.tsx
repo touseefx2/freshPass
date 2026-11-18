@@ -888,6 +888,7 @@ export default function StudioPublishStep({
               placeholder={t("lookTagPlaceholder")}
               maxLength={100}
             />
+            {/* Promotion text hidden — promotions now come from Profile Offers.
             <FlowTextField
               label={t("promotionText")}
               value={promotionText}
@@ -895,6 +896,7 @@ export default function StudioPublishStep({
               placeholder={t("promotionTextPlaceholder")}
               maxLength={255}
             />
+            */}
           </View>
         ) : null}
 

@@ -56,6 +56,7 @@ export type AvailableNowBusiness = {
   is_hiring?: boolean;
   /** Has a master class listed in Deals — gold frame + class corner badge */
   has_active_class?: boolean;
+  has_promotion?: boolean;
   is_official?: boolean;
   is_favorited?: boolean;
   /** true: Solo, or no staff yet — booked against the business's own hours */

@@ -24,6 +24,7 @@ import type {
   AvailableNowListItem,
 } from "@/src/types/availableNow";
 import { getAvailableNowBadge } from "@/src/utils/availableNow";
+import PromotionPill from "@/src/components/promotion/PromotionPill";
 import { resolveApiImageUrl } from "@/src/utils/media";
 
 type AppRouter = ReturnType<typeof useRouter>;
@@ -99,6 +100,11 @@ const createStyles = (theme: Theme) =>
       height: heightScale(110),
       justifyContent: "space-between",
     },
+    topRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(6),
+    },
     badge: {
       backgroundColor: theme.darkGreenLight,
       paddingHorizontal: moderateWidthScale(10),
@@ -108,6 +114,7 @@ const createStyles = (theme: Theme) =>
       alignItems: "center",
       gap: moderateWidthScale(6),
       alignSelf: "flex-start",
+      flexShrink: 1,
       maxWidth: "100%",
     },
     dot: {
@@ -255,16 +262,17 @@ export default function AvailableNowCard({
       />
 
       <View style={styles.content}>
-        {badge ? (
-          <View style={styles.badge}>
-            <View style={[styles.dot, !badge.available && styles.dotLater]} />
-            <Text style={styles.badgeText} numberOfLines={1}>
-              {badge.label}
-            </Text>
-          </View>
-        ) : (
-          <View />
-        )}
+        <View style={styles.topRow}>
+          {badge ? (
+            <View style={styles.badge}>
+              <View style={[styles.dot, !badge.available && styles.dotLater]} />
+              <Text style={styles.badgeText} numberOfLines={1}>
+                {badge.label}
+              </Text>
+            </View>
+          ) : null}
+          <PromotionPill visible={business?.has_promotion === true} />
+        </View>
         <View style={styles.info}>
           <Text style={styles.title} numberOfLines={1}>
             {business?.title || ""}

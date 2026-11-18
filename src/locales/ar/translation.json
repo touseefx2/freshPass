@@ -1402,6 +1402,7 @@
   "withinCutoffWarningBodyMembership": "If you cancel within the {{hours}}-hour window, late cancellation: {{lateAction}}. If you do not attend, no-show: {{noShowAction}}.",
   "awaitingOutcome": "تحتاج انتباهك",
   "awaitingOutcomeHelp": "أكّد ما إذا حضر العميل.",
+  "awaitingOutcomeLoadError": "تعذر تحميل المواعيد التي تحتاج إلى انتباهك.",
   "markCompleted": "Mark Completed",
   "markNoShow": "Mark No-Show",
   "confirmNoShow": "Confirm No-Show",
@@ -4118,5 +4119,7 @@
   "mcProfileBannerTitle": "الدورات الاحترافية",
   "mcProfileBannerLink": "عرض الدورات",
   "mcProfileSectionTitle": "الدورات الاحترافية",
-  "mcProfileSectionSubtitle": "تعلّم من {{name}}. سجّل قبل بدء الدورة."
+  "mcProfileSectionSubtitle": "تعلّم من {{name}}. سجّل قبل بدء الدورة.",
+  "pcuPercentOffPill": "% خصم",
+  "pcuHasPromotionA11y": "لديه عرض"
 }

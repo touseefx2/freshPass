@@ -152,6 +152,8 @@ export default function HomeScreen() {
     AwaitingOutcomeAppointment[] | null
   >(null);
   const [awaitingOutcomeLoading, setAwaitingOutcomeLoading] = useState(false);
+  const [awaitingOutcomeCount, setAwaitingOutcomeCount] = useState(0);
+  const [awaitingOutcomeError, setAwaitingOutcomeError] = useState(false);
   // appointment_outcomes push tap → scroll to "Needs your attention" once loaded
   const [scrollToAwaitingOutcome, setScrollToAwaitingOutcome] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
@@ -407,14 +409,20 @@ export default function HomeScreen() {
           : Array.isArray(response.data)
             ? (response.data as unknown as AwaitingOutcomeAppointment[])
             : [];
+        const count = Number((response.data as any)?.count);
         setAwaitingOutcomeData(list);
+        setAwaitingOutcomeCount(
+          Number.isFinite(count) && count >= list.length ? count : list.length,
+        );
+        setAwaitingOutcomeError(false);
       } else {
-        setAwaitingOutcomeData([]);
+        // Keep what is already shown; section shows Retry only if it has nothing
+        setAwaitingOutcomeError(true);
       }
     } catch (error: any) {
       if (isRequestCanceled(error)) return;
       Logger.error("Awaiting outcome fetch error:", error);
-      setAwaitingOutcomeData([]);
+      setAwaitingOutcomeError(true);
     } finally {
       setAwaitingOutcomeLoading(false);
     }
@@ -515,7 +523,7 @@ export default function HomeScreen() {
     if (
       !scrollToAwaitingOutcome ||
       showLoadingState ||
-      awaitingOutcomeData == null ||
+      (awaitingOutcomeData == null && !awaitingOutcomeError) ||
       awaitingOutcomeLoading
     ) {
       return;
@@ -539,6 +547,7 @@ export default function HomeScreen() {
     showLoadingState,
     awaitingOutcomeData,
     awaitingOutcomeLoading,
+    awaitingOutcomeError,
   ]);
 
   return (
@@ -586,6 +595,8 @@ export default function HomeScreen() {
                 refreshKey={businessHomeRefreshKey}
                 awaitingOutcomeData={awaitingOutcomeData}
                 awaitingOutcomeLoading={awaitingOutcomeLoading}
+                awaitingOutcomeCount={awaitingOutcomeCount}
+                awaitingOutcomeError={awaitingOutcomeError}
                 onRefreshAwaitingOutcome={handleFetchAwaitingOutcome}
                 awaitingOutcomeRef={awaitingOutcomeRef}
                 paymentsRefreshKey={paymentsRefreshKey}
@@ -604,6 +615,8 @@ export default function HomeScreen() {
                   refreshKey={businessHomeRefreshKey}
                   awaitingOutcomeData={awaitingOutcomeData}
                   awaitingOutcomeLoading={awaitingOutcomeLoading}
+                awaitingOutcomeCount={awaitingOutcomeCount}
+                awaitingOutcomeError={awaitingOutcomeError}
                   onRefreshAwaitingOutcome={handleFetchAwaitingOutcome}
                   awaitingOutcomeRef={awaitingOutcomeRef}
                   paymentsRefreshKey={paymentsRefreshKey}

@@ -1402,6 +1402,7 @@
   "withinCutoffWarningBodyMembership": "If you cancel within the {{hours}}-hour window, late cancellation: {{lateAction}}. If you do not attend, no-show: {{noShowAction}}.",
   "awaitingOutcome": "Benötigt Ihre Aufmerksamkeit",
   "awaitingOutcomeHelp": "Bestätigen Sie, ob der Kunde erschienen ist.",
+  "awaitingOutcomeLoadError": "Termine, die deine Aufmerksamkeit brauchen, konnten nicht geladen werden.",
   "markCompleted": "Mark Completed",
   "markNoShow": "Mark No-Show",
   "confirmNoShow": "Confirm No-Show",
@@ -4081,5 +4082,7 @@
   "mcProfileBannerTitle": "Masterclasses",
   "mcProfileBannerLink": "Kurse ansehen",
   "mcProfileSectionTitle": "Masterclasses",
-  "mcProfileSectionSubtitle": "Lerne von {{name}}. Melde dich vor Kursbeginn an."
+  "mcProfileSectionSubtitle": "Lerne von {{name}}. Melde dich vor Kursbeginn an.",
+  "pcuPercentOffPill": "% Rabatt",
+  "pcuHasPromotionA11y": "Hat eine Aktion"
 }

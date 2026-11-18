@@ -565,6 +565,7 @@ interface VerifiedSalon {
   ownerName?: string | null;
   isHiring?: boolean;
   hasClass?: boolean;
+  hasPromotion?: boolean;
 }
 
 export default function DashboardContent() {
@@ -730,6 +731,7 @@ export default function DashboardContent() {
           isOfficial: Boolean(item.is_official),
           isHiring: item.is_hiring === true,
           hasClass: item.has_active_class === true,
+          hasPromotion: item.has_promotion === true,
         }),
       );
       setFavoriteBusinesses(mappedFavorites);
@@ -767,6 +769,7 @@ export default function DashboardContent() {
           logo_url: string | null;
           is_hiring?: boolean;
           has_active_class?: boolean;
+          has_promotion?: boolean;
           owner?: { id?: number; name?: string | null } | null;
           owner_name?: string | null;
           portfolio_photos?: Array<{
@@ -789,6 +792,7 @@ export default function DashboardContent() {
           ownerName: getOwnerName(item),
           isHiring: item.is_hiring === true,
           hasClass: item.has_active_class === true,
+          hasPromotion: item.has_promotion === true,
         }));
 
         setVerifiedSalonsDeals(mappedSalons);
@@ -876,6 +880,7 @@ export default function DashboardContent() {
           logo_url: string | null;
           is_hiring?: boolean;
           has_active_class?: boolean;
+          has_promotion?: boolean;
           owner?: { id?: number; name?: string | null } | null;
           owner_name?: string | null;
           portfolio_photos?: Array<{
@@ -897,6 +902,7 @@ export default function DashboardContent() {
           ownerName: getOwnerName(item),
           isHiring: item.is_hiring === true,
           hasClass: item.has_active_class === true,
+          hasPromotion: item.has_promotion === true,
         }));
 
         setVerifiedSalons(mappedSalons);

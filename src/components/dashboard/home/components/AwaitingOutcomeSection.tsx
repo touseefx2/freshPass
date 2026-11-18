@@ -40,8 +40,15 @@ export interface AwaitingOutcomeAppointment {
 interface AwaitingOutcomeSectionProps {
   data: AwaitingOutcomeAppointment[] | null;
   loading?: boolean;
+  /** Total waiting on the server (list may be one page of it) */
+  totalCount?: number;
+  /** Last fetch failed */
+  error?: boolean;
   onRefresh: () => void;
 }
+
+// Home shows a short preview; "View all" opens the full list.
+const PREVIEW_LIMIT = 3;
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -235,9 +242,38 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontBold,
       color: theme.red,
     },
-    loaderWrap: {
+    errorCard: {
+      backgroundColor: theme.white,
+      borderRadius: moderateWidthScale(8),
+      borderWidth: 1,
+      borderColor: theme.borderLight,
+      paddingHorizontal: moderateWidthScale(16),
       paddingVertical: moderateHeightScale(12),
+      flexDirection: "row",
       alignItems: "center",
+      gap: moderateWidthScale(10),
+      marginBottom: moderateHeightScale(12),
+    },
+    errorText: {
+      flex: 1,
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontMedium,
+      color: theme.lightGreen,
+    },
+    retryButton: {
+      minWidth: moderateWidthScale(70),
+      height: moderateHeightScale(32),
+      paddingHorizontal: moderateWidthScale(12),
+      borderRadius: moderateWidthScale(6),
+      borderWidth: 1,
+      borderColor: theme.darkGreen,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    retryText: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
     },
   });
 
@@ -262,15 +298,15 @@ function formatDateTime(date: string, time: string): string {
     ? dateObj.format("MMM D, YYYY")
     : date;
   const timeObj = dayjs(`2025-01-01 ${time}`, "YYYY-MM-DD HH:mm");
-  const formattedTime = timeObj.isValid()
-    ? timeObj.format("h:mm A")
-    : time;
+  const formattedTime = timeObj.isValid() ? timeObj.format("h:mm A") : time;
   return `${formattedDate} • ${formattedTime}`;
 }
 
 export default function AwaitingOutcomeSection({
   data,
   loading,
+  totalCount,
+  error,
   onRefresh,
 }: AwaitingOutcomeSectionProps) {
   const { t } = useTranslation();
@@ -278,7 +314,8 @@ export default function AwaitingOutcomeSection({
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
   const router = useRouter();
-  const isBusiness = useAppSelector((state) => state.user.userRole) === "business";
+  const isBusiness =
+    useAppSelector((state) => state.user.userRole) === "business";
   // Marking happens on the Update status step screen; refresh the list when
   // coming back from it.
   const refreshOnReturn = useRef(false);
@@ -292,9 +329,15 @@ export default function AwaitingOutcomeSection({
   );
 
   const items = data || [];
-  if (!loading && items.length === 0) {
+  // Loads quietly in the background: nothing on screen until data arrives,
+  // hidden when empty, error card with Retry only when there is nothing to show.
+  const showError = !!error && items.length === 0;
+  if (items.length === 0 && !showError) {
     return null;
   }
+  const total = Math.max(totalCount ?? 0, items.length);
+  const visibleItems = items.slice(0, PREVIEW_LIMIT);
+  const showViewAll = total > PREVIEW_LIMIT;
 
   const openDetails = (id: number) => {
     refreshOnReturn.current = true;
@@ -317,38 +360,54 @@ export default function AwaitingOutcomeSection({
       <View style={styles.sectionHeader}>
         <View style={styles.headerLeft}>
           <Text style={styles.sectionTitle}>{t("awaitingOutcome")}</Text>
-          <View style={styles.countBadge}>
-            <Text style={styles.countBadgeText}>{items.length}</Text>
-          </View>
+          {total > 0 ? (
+            <View style={styles.countBadge}>
+              <Text style={styles.countBadgeText}>{total}</Text>
+            </View>
+          ) : null}
         </View>
-        <TouchableOpacity
-          onPress={() =>
-            isBusiness
-              ? router.push({
-                  pathname: "/(main)/dashboard/(account)/allAppointments" as any,
-                  params: { status: "needsAttention" },
-                })
-              : router.push("/(main)/dashboard/(calendar)")
-          }
-          activeOpacity={0.7}
-          hitSlop={12}
-        >
-          <Text style={styles.viewAllText}>{t("viewAll")} &gt;</Text>
-        </TouchableOpacity>
+        {showViewAll ? (
+          <TouchableOpacity
+            onPress={() =>
+              isBusiness
+                ? router.push({
+                    pathname:
+                      "/(main)/dashboard/(account)/allAppointments" as any,
+                    params: { status: "needsAttention" },
+                  })
+                : router.push("/(main)/dashboard/(calendar)")
+            }
+            activeOpacity={0.7}
+            hitSlop={12}
+          >
+            <Text style={styles.viewAllText}>{t("viewAll")} &gt;</Text>
+          </TouchableOpacity>
+        ) : null}
       </View>
       <Text style={styles.helpText}>{t("awaitingOutcomeHelp")}</Text>
 
-      {loading && items.length === 0 ? (
-        <View style={styles.loaderWrap}>
-          <ActivityIndicator color={theme.darkGreen} />
+      {showError ? (
+        <View style={styles.errorCard}>
+          <Text style={styles.errorText}>{t("awaitingOutcomeLoadError")}</Text>
+          <TouchableOpacity
+            style={styles.retryButton}
+            onPress={onRefresh}
+            disabled={loading}
+            activeOpacity={0.7}
+            hitSlop={8}
+          >
+            {loading ? (
+              <ActivityIndicator size="small" color={theme.darkGreen} />
+            ) : (
+              <Text style={styles.retryText}>{t("retry")}</Text>
+            )}
+          </TouchableOpacity>
         </View>
       ) : (
-        items.map((item) => {
+        visibleItems.map((item) => {
           const isMembership = item.appointmentType === "subscription";
           const isPayLater =
-            !isMembership &&
-            item.paymentMethod === "pay_later" &&
-            !item.paidAt;
+            !isMembership && item.paymentMethod === "pay_later" && !item.paidAt;
           const paymentChipLabel = isMembership
             ? item.subscription || t("membershipsSection")
             : isPayLater
@@ -409,10 +468,7 @@ export default function AwaitingOutcomeSection({
                   color={theme.darkGreen}
                 />
                 <Text numberOfLines={1} style={styles.infoText}>
-                  {formatDateTime(
-                    item.appointmentDate,
-                    item.appointmentTime,
-                  )}
+                  {formatDateTime(item.appointmentDate, item.appointmentTime)}
                 </Text>
               </View>
 
@@ -474,7 +530,6 @@ export default function AwaitingOutcomeSection({
           );
         })
       )}
-
     </View>
   );
 }

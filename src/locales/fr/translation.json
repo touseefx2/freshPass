@@ -1402,6 +1402,7 @@
   "withinCutoffWarningBodyMembership": "If you cancel within the {{hours}}-hour window, late cancellation: {{lateAction}}. If you do not attend, no-show: {{noShowAction}}.",
   "awaitingOutcome": "Nécessite votre attention",
   "awaitingOutcomeHelp": "Confirmez si le client s'est présenté.",
+  "awaitingOutcomeLoadError": "Impossible de charger les rendez-vous qui nécessitent votre attention.",
   "markCompleted": "Mark Completed",
   "markNoShow": "Mark No-Show",
   "confirmNoShow": "Confirm No-Show",
@@ -4084,5 +4085,7 @@
   "mcProfileBannerTitle": "Master classes",
   "mcProfileBannerLink": "Voir les cours",
   "mcProfileSectionTitle": "Master classes",
-  "mcProfileSectionSubtitle": "Apprenez avec {{name}}. Inscrivez-vous avant le début du cours."
+  "mcProfileSectionSubtitle": "Apprenez avec {{name}}. Inscrivez-vous avant le début du cours.",
+  "pcuPercentOffPill": "% de remise",
+  "pcuHasPromotionA11y": "Promotion en cours"
 }
