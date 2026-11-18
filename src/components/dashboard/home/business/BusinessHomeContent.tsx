@@ -252,7 +252,7 @@ export default function BusinessHomeContent({
           title={appointmentsTitle}
           actionLabel={t("seeAll")}
           onAction={() =>
-            router.push("/(main)/dashboard/(account)/allAppointments" as any)
+            router.push("/(main)/homeAllAppointments" as any)
           }
         />
         <PeriodAppointmentsCard

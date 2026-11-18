@@ -216,7 +216,7 @@ export default function StaffHomeContent({
           title={appointmentsTitle}
           actionLabel={t("seeAll")}
           onAction={() =>
-            router.push("/(main)/dashboard/(account)/myAppointments" as any)
+            router.push("/(main)/homeMyAppointments" as any)
           }
         />
         <PeriodAppointmentsCard

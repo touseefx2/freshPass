@@ -212,7 +212,7 @@ export default function StaffOverview({ staff, statsFor, onStaffChanged }: Props
   const [menuStaff, setMenuStaff] = useState<StaffData | null>(null);
 
   const openTeam = () => {
-    router.push("/(main)/dashboard/(account)/(businessProfileSettings)/team" as any);
+    router.push("/(main)/homeTeam" as any);
   };
 
   const handleAddStaff = () => {

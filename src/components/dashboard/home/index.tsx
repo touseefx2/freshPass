@@ -639,7 +639,7 @@ export default function HomeScreen() {
                       onSeeAll={() =>
                         router.push({
                           pathname:
-                            "/(main)/dashboard/(account)/myAppointments" as any,
+                            "/(main)/homeMyAppointments" as any,
                           params: { status: "all" },
                         })
                       }

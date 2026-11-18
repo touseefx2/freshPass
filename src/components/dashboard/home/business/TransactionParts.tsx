@@ -376,7 +376,7 @@ export function useTransactionPress(
     if (item.orderId != null) {
       router.push({
         pathname:
-          "/(main)/dashboard/(account)/(businessProfileSettings)/orderDetail" as any,
+          "/(main)/orderDetail" as any,
         params: { id: String(item.orderId) },
       });
       return;

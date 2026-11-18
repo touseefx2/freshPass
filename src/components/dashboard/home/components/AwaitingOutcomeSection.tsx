@@ -372,7 +372,7 @@ export default function AwaitingOutcomeSection({
               isBusiness
                 ? router.push({
                     pathname:
-                      "/(main)/dashboard/(account)/allAppointments" as any,
+                      "/(main)/homeAllAppointments" as any,
                     params: { status: "needsAttention" },
                   })
                 : router.push("/(main)/dashboard/(calendar)")
