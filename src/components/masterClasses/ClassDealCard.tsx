@@ -19,6 +19,7 @@ import {
 } from "@/src/theme/dimensions";
 import {
   HIRING_CORNER_OVERHANG,
+  HIRING_CORNER_RADIUS,
   HIRING_FRAME_WIDTH,
 } from "@/src/components/jobs/jobBadges";
 import type { MasterClass } from "@/src/types/masterClass";
@@ -199,9 +200,9 @@ const createStyles = (theme: Theme) =>
       elevation: 2,
       top: -HIRING_CORNER_OVERHANG,
       right: -moderateWidthScale(4),
-      width: HIRING_CORNER_OVERHANG * 2,
-      height: HIRING_CORNER_OVERHANG * 2,
-      borderRadius: HIRING_CORNER_OVERHANG,
+      width: HIRING_CORNER_RADIUS * 2,
+      height: HIRING_CORNER_RADIUS * 2,
+      borderRadius: HIRING_CORNER_RADIUS,
       backgroundColor: theme.orangeBrown,
       alignItems: "center",
       justifyContent: "center",

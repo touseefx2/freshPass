@@ -33,8 +33,10 @@ import {
 
 type IconName = keyof typeof MaterialIcons.glyphMap;
 
+/** Radius of the round corner badge (hiring / master class). */
+export const HIRING_CORNER_RADIUS = moderateWidthScale(14);
 /** How far the corner badge sticks out above a card (leave this much room). */
-export const HIRING_CORNER_OVERHANG = moderateWidthScale(14);
+export const HIRING_CORNER_OVERHANG = HIRING_CORNER_RADIUS + moderateWidthScale(6);
 /** Thin gold frame width on hiring business cards. */
 export const HIRING_FRAME_WIDTH = 2;
 
@@ -135,9 +137,9 @@ const createStyles = (theme: Theme) =>
     cornerBadgeMd: {
       top: -HIRING_CORNER_OVERHANG,
       right: -moderateWidthScale(4),
-      width: HIRING_CORNER_OVERHANG * 2,
-      height: HIRING_CORNER_OVERHANG * 2,
-      borderRadius: HIRING_CORNER_OVERHANG,
+      width: HIRING_CORNER_RADIUS * 2,
+      height: HIRING_CORNER_RADIUS * 2,
+      borderRadius: HIRING_CORNER_RADIUS,
     },
     cornerBadgeSm: {
       top: -moderateWidthScale(6),
@@ -385,7 +387,7 @@ function ClassCornerBadge({
   const { t } = useTranslation();
   const { theme, styles } = useJobBadgeStyles();
   const sm = size === "sm";
-  const step = sm ? moderateWidthScale(22) : HIRING_CORNER_OVERHANG * 2 + 4;
+  const step = sm ? moderateWidthScale(22) : HIRING_CORNER_RADIUS * 2 + 4;
   return (
     <View
       style={[
