@@ -214,11 +214,11 @@ export default function DashboardLayout() {
     }
     const echo = getEcho(userAccessToken);
     if (!echo) {
-      if (__DEV__) console.log("[InboxSocket] getEcho returned null — no socket");
+      Logger.log("[InboxSocket] getEcho returned null — no socket");
       return;
     }
     const channelName = `users.${userId}`;
-    if (__DEV__) console.log("[InboxSocket] subscribe", channelName);
+    Logger.log("[InboxSocket] subscribe", channelName);
     const channel = echo.private(channelName);
 
     if (__DEV__) {
@@ -227,10 +227,10 @@ export default function DashboardLayout() {
         error?: (cb: (err: unknown) => void) => void;
       };
       chAny.subscribed?.(() => {
-        console.log("[InboxSocket] subscribed OK", channelName);
+        Logger.log("[InboxSocket] subscribed OK", channelName);
       });
       chAny.error?.((err) => {
-        console.log("[InboxSocket] subscription ERROR", channelName, err);
+        Logger.log("[InboxSocket] subscription ERROR", channelName, err);
       });
     }
 

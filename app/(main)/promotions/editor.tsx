@@ -22,6 +22,7 @@ import { useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import {
+  heightScale,
   iconScale,
   moderateHeightScale,
   moderateWidthScale,
@@ -54,13 +55,11 @@ import type {
 } from "@/src/types/promotion";
 import { ClassStateView } from "@/src/components/masterClasses/parts";
 import {
-  EditorChips,
   EditorFieldError,
   EditorHelper,
   EditorLabel,
   EditorPickerBox,
   EditorRow,
-  EditorSegmented,
   EditorTextInput,
 } from "@/src/components/masterClasses/editorFields";
 import {
@@ -581,18 +580,14 @@ export default function PromotionEditorScreen() {
 
         <View onLayout={track("audience")} style={styles.field}>
           <EditorLabel label={t("proFieldAudience")} required />
-          <EditorChips<PromotionAudience>
-            options={[
-              { value: "new", label: t("proAudienceNew") },
-              { value: "returning", label: t("proAudienceReturning") },
-              { value: "everyone", label: t("proAudienceEveryone") },
-            ]}
+          <AudienceChips
             value={form.audience}
             onChange={(v) => {
               set("audience", v);
               clearError("audience");
             }}
-            accessibilityLabel={t("proFieldAudience")}
+            theme={theme}
+            styles={styles}
           />
           <EditorFieldError message={errors.audience} />
           {!errors.audience ? <EditorHelper text={audienceHelp} /> : null}
@@ -600,7 +595,7 @@ export default function PromotionEditorScreen() {
 
         <View onLayout={track("discount_value")} style={styles.field}>
           <EditorLabel label={t("proFieldDiscount")} required />
-          <EditorSegmented<PromotionDiscountType>
+          <DiscountSegmented
             options={[
               { value: "percent", label: t("proDiscountPercent") },
               { value: "fixed", label: t("proDiscountFixed") },
@@ -610,6 +605,7 @@ export default function PromotionEditorScreen() {
               set("discountType", v);
               clearError("discount_value");
             }}
+            theme={theme}
             accessibilityLabel={t("proFieldDiscount")}
           />
           <EditorTextInput
@@ -869,6 +865,7 @@ export default function PromotionEditorScreen() {
           </View>
         ) : null}
 
+        {/* ── Footer ──────────────────────────────────────── */}
         <View style={styles.footer}>
           {isEdit ? (
             <PrimaryButton
@@ -1072,6 +1069,127 @@ export default function PromotionEditorScreen() {
 
 // ── Small local pieces ──────────────────────────────────────────────
 
+const AUDIENCE_OPTIONS: { value: PromotionAudience; labelKey: string }[] = [
+  { value: "new", labelKey: "proAudienceNew" },
+  { value: "returning", labelKey: "proAudienceReturning" },
+  { value: "everyone", labelKey: "proAudienceEveryone" },
+];
+
+function AudienceChips({
+  value,
+  onChange,
+  theme,
+  styles,
+}: {
+  value: PromotionAudience;
+  onChange: (v: PromotionAudience) => void;
+  theme: Theme;
+  styles: Styles;
+}) {
+  const { t } = useTranslation();
+  return (
+    <View
+      style={styles.audChips}
+      accessibilityRole="radiogroup"
+      accessibilityLabel={t("proFieldAudience")}
+    >
+      {AUDIENCE_OPTIONS.map((opt) => {
+        const on = opt.value === value;
+        return (
+          <TouchableOpacity
+            key={opt.value}
+            activeOpacity={0.8}
+            onPress={() => onChange(opt.value)}
+            style={[styles.audChip, on && styles.audChipOn]}
+            accessibilityRole="radio"
+            accessibilityState={{ selected: on, checked: on }}
+            accessibilityLabel={t(opt.labelKey)}
+          >
+            {on ? (
+              <View style={styles.audCheck}>
+                <Ionicons name="checkmark" size={iconScale(14)} color={theme.goldTextDark} />
+              </View>
+            ) : null}
+            <Text style={[styles.audChipText, on && styles.audChipTextOn]}>
+              {t(opt.labelKey)}
+            </Text>
+          </TouchableOpacity>
+        );
+      })}
+    </View>
+  );
+}
+
+function DiscountSegmented({
+  options,
+  value,
+  onChange,
+  theme,
+  accessibilityLabel,
+}: {
+  options: { value: PromotionDiscountType; label: string }[];
+  value: PromotionDiscountType;
+  onChange: (v: PromotionDiscountType) => void;
+  theme: Theme;
+  accessibilityLabel?: string;
+}) {
+  return (
+    <View
+      style={{
+        flexDirection: "row",
+        borderRadius: moderateWidthScale(28),
+        borderWidth: 1.5,
+        borderColor: theme.goldBorder,
+        backgroundColor: theme.white,
+        overflow: "hidden",
+      }}
+      accessibilityRole="radiogroup"
+      accessibilityLabel={accessibilityLabel}
+    >
+      {options.map((opt) => {
+        const on = opt.value === value;
+        return (
+          <TouchableOpacity
+            key={opt.value}
+            activeOpacity={0.8}
+            onPress={() => onChange(opt.value)}
+            style={[
+              {
+                flex: 1,
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: moderateWidthScale(6),
+                minHeight: heightScale(44),
+                borderRadius: moderateWidthScale(27),
+              },
+              on && {
+                backgroundColor: theme.tileGoldCream,
+              },
+            ]}
+            accessibilityRole="radio"
+            accessibilityState={{ selected: on, checked: on }}
+            accessibilityLabel={opt.label}
+          >
+            {on ? (
+              <Ionicons name="checkmark" size={iconScale(17)} color={theme.goldTextDark} />
+            ) : null}
+            <Text
+              style={{
+                fontSize: fontSize.size15,
+                fontFamily: on ? fonts.fontBold : fonts.fontMedium,
+                color: theme.darkGreen,
+              }}
+            >
+              {opt.label}
+            </Text>
+          </TouchableOpacity>
+        );
+      })}
+    </View>
+  );
+}
+
 type Styles = ReturnType<typeof createStyles>;
 
 function PrimaryButton({
@@ -1250,6 +1368,44 @@ const createStyles = (theme: Theme) =>
     },
     field: { gap: moderateHeightScale(8) },
     discountInput: { marginTop: moderateHeightScale(2) },
+    // ── Audience chips (golden border + checkmark) ──
+    audChips: {
+      flexDirection: "row",
+      gap: moderateWidthScale(10),
+    },
+    audChip: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      minHeight: heightScale(48),
+      borderRadius: heightScale(10),
+      borderWidth: 1.5,
+      borderColor: theme.borderLight,
+      backgroundColor: "transparent",
+      paddingHorizontal: moderateWidthScale(14),
+      paddingVertical: moderateHeightScale(10),
+    },
+    audChipOn: {
+      borderColor: theme.goldBorder,
+      borderWidth: 2,
+      backgroundColor: "transparent",
+    },
+    audCheck: {
+      position: "absolute",
+      top: moderateHeightScale(6),
+      right: moderateWidthScale(6),
+    },
+    audChipText: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
+      textAlign: "center",
+    },
+    audChipTextOn: {
+      fontFamily: fonts.fontSemiBold,
+      color: theme.darkGreen,
+    },
+    // ── More options ──
     moreToggle: {
       flexDirection: "row",
       alignItems: "center",

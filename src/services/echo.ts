@@ -16,6 +16,7 @@
 import EchoImport from "laravel-echo";
 // React Native build — avoids Node WS/http deps that break Metro
 import PusherImport from "pusher-js/react-native";
+import Logger from "@/src/services/logger";
 
 type EchoConstructor = typeof import("laravel-echo").default;
 type PusherConstructor = typeof import("pusher-js").default;
@@ -119,24 +120,20 @@ export interface EchoConfig {
  */
 export function getEchoConfig(accessToken: string | null): EchoConfig | null {
   if (!REVERB_APP_KEY || !accessToken || !accessToken.trim()) {
-    if (__DEV__) {
-      console.log("[Echo] getEchoConfig null:", {
-        hasKey: Boolean(REVERB_APP_KEY),
-        keyLength: REVERB_APP_KEY?.length ?? 0,
-        hasToken: Boolean(accessToken?.trim()),
-      });
-    }
+    Logger.log("[Echo] getEchoConfig null:", {
+      hasKey: Boolean(REVERB_APP_KEY),
+      keyLength: REVERB_APP_KEY?.length ?? 0,
+      hasToken: Boolean(accessToken?.trim()),
+    });
     return null;
   }
   const wsHost = getWsHost();
   const authEndpoint = getAuthEndpoint();
   if (!wsHost || !authEndpoint) {
-    if (__DEV__) {
-      console.log("[Echo] getEchoConfig null: missing host/auth", {
-        wsHost,
-        authEndpoint,
-      });
-    }
+    Logger.log("[Echo] getEchoConfig null: missing host/auth", {
+      wsHost,
+      authEndpoint,
+    });
     return null;
   }
 
@@ -202,18 +199,15 @@ export function getEcho(
   }
 
   try {
-    if (__DEV__) {
-      console.log("[Echo] config", {
-        key: config.key ? `${config.key.slice(0, 6)}…` : "(empty)",
-        keyLength: config.key?.length ?? 0,
-        wsHost: config.wsHost,
-        wsPort: config.wsPort,
-        wssPort: config.wssPort,
-        forceTLS: config.forceTLS,
-        authEndpoint: config.authEndpoint,
-      });
-      // (Pusher as unknown as { logToConsole?: boolean }).logToConsole = true;
-    }
+    Logger.log("[Echo] config", {
+      key: config.key ? `${config.key.slice(0, 6)}…` : "(empty)",
+      keyLength: config.key?.length ?? 0,
+      wsHost: config.wsHost,
+      wsPort: config.wsPort,
+      wssPort: config.wssPort,
+      forceTLS: config.forceTLS,
+      authEndpoint: config.authEndpoint,
+    });
 
     echoInstance = new Echo({
       broadcaster: "reverb",
@@ -229,10 +223,10 @@ export function getEcho(
       Pusher,
     });
     lastToken = accessToken;
-    if (__DEV__) console.log("[Echo] instance created OK");
+    Logger.log("[Echo] instance created OK");
     return echoInstance;
   } catch (err) {
-    if (__DEV__) console.log("[Echo] new Echo() FAILED", err);
+    Logger.log("[Echo] new Echo() FAILED", err);
     return null;
   }
 }

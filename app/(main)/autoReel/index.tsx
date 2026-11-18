@@ -88,6 +88,9 @@ import ProductPickerSheet, {
   useInventoryProducts,
 } from "@/src/components/reelFlow/productPickerSheet";
 import { useReelCategoryOptions } from "@/src/hooks/useReelCategoryOptions";
+import { listMine as listMyClasses } from "@/src/services/masterClassService";
+import type { MasterClass } from "@/src/types/masterClass";
+import { formatClassPrice } from "@/src/utils/masterClassHelpers";
 
 /**
  * AI Auto Reel after it's started (from the AI auto reel steps, a push or
@@ -380,6 +383,57 @@ const createStyles = (theme: Theme) =>
     sheetContent: {
       gap: moderateHeightScale(12),
     },
+    attachToggleRow: {
+      flexDirection: "row",
+      gap: moderateWidthScale(8),
+      marginTop: moderateHeightScale(8),
+    },
+    attachToggle: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(4),
+      paddingHorizontal: moderateWidthScale(12),
+      paddingVertical: moderateHeightScale(6),
+      borderRadius: moderateWidthScale(16),
+      borderWidth: 1.5,
+      borderColor: theme.lightGreen015,
+      backgroundColor: theme.white,
+    },
+    attachToggleActive: {
+      backgroundColor: theme.darkGreen,
+      borderColor: theme.darkGreen,
+    },
+    attachToggleText: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    attachToggleTextActive: {
+      color: theme.white,
+    },
+    classRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingHorizontal: widthScale(16),
+      paddingVertical: moderateHeightScale(12),
+      gap: moderateWidthScale(10),
+    },
+    classTitle: {
+      fontSize: fontSize.size15,
+      fontFamily: fonts.fontSemiBold,
+    },
+    classSub: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontRegular,
+      marginTop: moderateHeightScale(2),
+    },
+    emptyClassText: {
+      textAlign: "center",
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontRegular,
+      paddingVertical: heightScale(24),
+      paddingHorizontal: widthScale(16),
+    },
   });
 
 type Styles = ReturnType<typeof createStyles>;
@@ -526,6 +580,12 @@ export default function AutoReelScreen() {
   const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
   const [productTag, setProductTag] = useState("");
   const [productSheetOpen, setProductSheetOpen] = useState(false);
+  type AttachmentType = "product" | "class";
+  const [attachmentType, setAttachmentType] = useState<AttachmentType>("product");
+  const [selectedClassId, setSelectedClassId] = useState<number | null>(null);
+  const [classSheetOpen, setClassSheetOpen] = useState(false);
+  const [myClasses, setMyClasses] = useState<MasterClass[]>([]);
+  const [classesLoading, setClassesLoading] = useState(true);
   // created_at stays the original time after a retry — time the retry locally
   const [retryStartedAt, setRetryStartedAt] = useState<number | null>(null);
   const inFlightRef = useRef(false);
@@ -878,8 +938,11 @@ export default function AutoReelScreen() {
               ...(serviceId != null ? { service_id: serviceId } : {}),
             }
           : {}),
-        ...(selectedProductId != null
-          ? { product_id: selectedProductId, product_tag: productTag || null }
+        ...(attachmentType === "product" && selectedProductId != null
+          ? { product_id: selectedProductId, product_tag: productTag || null, master_class_id: null }
+          : {}),
+        ...(attachmentType === "class" && selectedClassId != null
+          ? { master_class_id: selectedClassId, product_id: null }
           : {}),
       });
       applyReel(data);
@@ -923,6 +986,19 @@ export default function AutoReelScreen() {
       ? null
       : (products.products.find((p) => Number(p.id) === selectedProductId) ??
         null);
+
+  useEffect(() => {
+    if (!canLinkProduct || view !== "publish") return;
+    listMyClasses("upcoming", 1)
+      .then((result) => setMyClasses(result.items.filter((c) => c.status === "published")))
+      .catch(() => {})
+      .finally(() => setClassesLoading(false));
+  }, [canLinkProduct, view]);
+
+  const selectedClass =
+    selectedClassId == null
+      ? null
+      : (myClasses.find((c) => c.id === selectedClassId) ?? null);
 
   const templateName = autoReel
     ? autoReel.template?.name || t("autoReelTemplateRemoved")
@@ -1807,16 +1883,55 @@ export default function AutoReelScreen() {
               </>
             ) : null}
             {canLinkProduct ? (
-              <OptionRow
-                icon="sell"
-                title={t("flowPromoteProductOptional")}
-                subtitle={
-                  selectedProduct?.name || productTag || t("flowPromoteProductSub")
-                }
-                done={selectedProductId != null}
-                onPress={() => setProductSheetOpen(true)}
-                disabled={publishing}
-              />
+              <>
+                <View style={styles.attachToggleRow}>
+                  {(["product", "class"] as const).map((type) => {
+                    const active = attachmentType === type;
+                    return (
+                      <TouchableOpacity
+                        key={type}
+                        style={[styles.attachToggle, active && styles.attachToggleActive]}
+                        onPress={() => setAttachmentType(type)}
+                        disabled={publishing}
+                      >
+                        <MaterialIcons
+                          name={type === "product" ? "sell" : "school"}
+                          size={moderateWidthScale(16)}
+                          color={active ? theme.white : theme.lightGreen5}
+                        />
+                        <Text style={[styles.attachToggleText, active && styles.attachToggleTextActive]}>
+                          {type === "product" ? t("product") : t("mcMasterClass")}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+                {attachmentType === "product" ? (
+                  <OptionRow
+                    icon="sell"
+                    title={t("flowPromoteProductOptional")}
+                    subtitle={
+                      selectedProduct?.name || productTag || t("flowPromoteProductSub")
+                    }
+                    done={selectedProductId != null}
+                    onPress={() => setProductSheetOpen(true)}
+                    disabled={publishing}
+                  />
+                ) : (
+                  <OptionRow
+                    icon="school"
+                    title={t("linkClass")}
+                    subtitle={
+                      selectedClass
+                        ? `${selectedClass.title} — ${formatClassPrice(selectedClass.enrollment_price ?? selectedClass.price)}`
+                        : t("noUpcomingClassesHint")
+                    }
+                    done={selectedClassId != null}
+                    onPress={() => setClassSheetOpen(true)}
+                    disabled={publishing || classesLoading}
+                  />
+                )}
+              </>
             ) : null}
             <FlowButton
               label={autoBuilt ? t("autoBuildPublishNow") : t("flowPublishCta")}
@@ -1848,21 +1963,65 @@ export default function AutoReelScreen() {
       </KeyboardAwareScrollView>
 
       {canLinkProduct ? (
-        <ProductPickerSheet
-          visible={productSheetOpen}
-          onClose={() => setProductSheetOpen(false)}
-          products={products.products}
-          loading={products.loading}
-          error={products.error}
-          onRetry={products.retry}
-          selectedId={selectedProductId}
-          isOwner={userRole === "business"}
-          onSelect={(product) => {
-            setSelectedProductId(product ? Number(product.id) : null);
-            setProductTag(product?.name ?? "");
-            setProductSheetOpen(false);
-          }}
-        />
+        <>
+          <ProductPickerSheet
+            visible={productSheetOpen}
+            onClose={() => setProductSheetOpen(false)}
+            products={products.products}
+            loading={products.loading}
+            error={products.error}
+            onRetry={products.retry}
+            selectedId={selectedProductId}
+            isOwner={userRole === "business"}
+            onSelect={(product) => {
+              setSelectedProductId(product ? Number(product.id) : null);
+              setProductTag(product?.name ?? "");
+              setProductSheetOpen(false);
+            }}
+          />
+          <ModalizeBottomSheet
+            visible={classSheetOpen}
+            onClose={() => setClassSheetOpen(false)}
+            title={t("linkClass")}
+          >
+            {classesLoading ? (
+              <ActivityIndicator style={{ marginVertical: heightScale(24) }} color={theme.buttonBack} />
+            ) : myClasses.length === 0 ? (
+              <Text style={[styles.emptyClassText, { color: theme.lightGreen5 }]}>
+                {t("noUpcomingClasses")}
+              </Text>
+            ) : (
+              <ScrollView style={{ maxHeight: heightScale(320) }}>
+                {myClasses.map((cls) => (
+                  <TouchableOpacity
+                    key={cls.id}
+                    style={[
+                      styles.classRow,
+                      cls.id === selectedClassId && { backgroundColor: theme.buttonBack + "18" },
+                    ]}
+                    onPress={() => {
+                      setSelectedClassId(cls.id === selectedClassId ? null : cls.id);
+                      setClassSheetOpen(false);
+                    }}
+                  >
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.classTitle, { color: theme.darkGreen }]} numberOfLines={1}>
+                        {cls.title}
+                      </Text>
+                      <Text style={[styles.classSub, { color: theme.lightGreen5 }]} numberOfLines={1}>
+                        {cls.date} · {formatClassPrice(cls.enrollment_price ?? cls.price)}
+                        {cls.seats_left != null ? ` · ${cls.seats_left} seats left` : ""}
+                      </Text>
+                    </View>
+                    {cls.id === selectedClassId ? (
+                      <MaterialIcons name="check-circle" size={moderateWidthScale(22)} color={theme.buttonBack} />
+                    ) : null}
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            )}
+          </ModalizeBottomSheet>
+        </>
       ) : null}
     </>
   );

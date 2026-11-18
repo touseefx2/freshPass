@@ -1992,6 +1992,95 @@ function ReelFeedItemBase({
           </View>
         ) : null}
 
+        {reel.master_class && !shopProduct && (showAsOwner || !productDismissed) ? (
+          <View style={styles.productCardWrap}>
+            <View style={styles.productCard}>
+              <View style={styles.productThumb}>
+                {(reel.master_class.media?.thumbnail_url ?? (reel.master_class.media?.type === "image" ? reel.master_class.media.url : null)) ? (
+                  <AppImage
+                    uri={(reel.master_class.media!.thumbnail_url ?? reel.master_class.media!.url)!}
+                    style={{ width: "100%", height: "100%" }}
+                    resizeMode="cover"
+                  />
+                ) : (
+                  <MaterialIcons
+                    name="school"
+                    size={moderateWidthScale(24)}
+                    color={theme.black}
+                  />
+                )}
+              </View>
+              <View style={styles.productBody}>
+                <Text style={styles.productTitle} numberOfLines={1}>
+                  {reel.master_class.title}
+                </Text>
+                {!!reel.master_class.date && (
+                  <Text style={styles.productDesc} numberOfLines={1}>
+                    {reel.master_class.date}{reel.master_class.time ? ` · ${reel.master_class.time}` : ""}
+                  </Text>
+                )}
+                <Text style={styles.productPrice}>
+                  {reel.master_class.enrollment_price != null
+                    ? `$${Number(reel.master_class.enrollment_price).toFixed(2)}`
+                    : reel.master_class.price != null
+                      ? `$${Number(reel.master_class.price).toFixed(2)}`
+                      : ""}
+                  {reel.master_class.seats_left != null ? (
+                    <Text style={styles.productDesc}>
+                      {"  "}{reel.master_class.seats_left} {t("seatsLeft")}
+                    </Text>
+                  ) : null}
+                </Text>
+              </View>
+              {showAsOwner ? (
+                <View style={styles.productOnReelPill}>
+                  <MaterialIcons
+                    name="link"
+                    size={moderateWidthScale(14)}
+                    color={theme.white}
+                  />
+                  <Text style={styles.productOnReelText}>
+                    {t("classOnReel")}
+                  </Text>
+                </View>
+              ) : reel.master_class.can_enroll ? (
+                <TouchableOpacity
+                  style={styles.shopBtn}
+                  activeOpacity={0.85}
+                  onPress={() => {
+                    router.push({
+                      pathname: "/(main)/classes/detail" as any,
+                      params: { id: reel.master_class!.id },
+                    });
+                  }}
+                >
+                  <MaterialIcons
+                    name="school"
+                    size={moderateWidthScale(14)}
+                    color={theme.white}
+                  />
+                  <Text style={styles.shopBtnText}>{t("enrollNow")}</Text>
+                </TouchableOpacity>
+              ) : null}
+            </View>
+            {showAsCustomer ? (
+              <TouchableOpacity
+                style={styles.productClose}
+                activeOpacity={0.8}
+                hitSlop={10}
+                onPress={() => onDismissProduct?.(reel.id)}
+                accessibilityLabel={t("close")}
+              >
+                <MaterialIcons
+                  name="close"
+                  size={moderateWidthScale(16)}
+                  color={theme.black}
+                />
+              </TouchableOpacity>
+            ) : null}
+          </View>
+        ) : null}
+
         {showAsCustomer ? (
           <View style={styles.ctaRow}>
             <TouchableOpacity

@@ -380,6 +380,7 @@ export default function ProClassDetailScreen() {
   const isVideo = cls.media?.type === "video";
   const videoUrl = isVideo ? cls.media?.url ?? null : null;
   const reason = getModerationReason(cls);
+  const listingActive = listing?.status === "active";
   const canEdit = isDraft || (isPublished && isUpcoming);
   const canCancel = isPublished && isUpcoming;
   const showStudents = !isDraft;
@@ -763,9 +764,9 @@ export default function ProClassDetailScreen() {
           <View style={styles.manageRow}>
             {canEdit
               ? renderOutlineButton(
-                  isDraft ? t("mcEdit") : t("mcReschedule"),
+                  isDraft ? t("mcEdit") : listingActive ? t("mcEdit") : t("mcReschedule"),
                   () => openEditor(cls.id),
-                  isDraft ? "create-outline" : "calendar-outline",
+                  isDraft ? "create-outline" : listingActive ? "create-outline" : "calendar-outline",
                   { flex: true },
                 )
               : null}

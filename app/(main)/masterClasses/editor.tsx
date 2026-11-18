@@ -620,16 +620,22 @@ export default function MasterClassEditorScreen() {
     if (step > 1) setStep((s) => (s - 1) as EditorStep);
   }, [step]);
 
+  const listingActive = serverClass?.listing?.status === "active";
   const mode: "create" | "edit" | "reschedule" | "locked" = !serverClass
     ? "create"
     : serverClass.status === "draft"
       ? "edit"
       : serverClass.status === "published"
-        ? "reschedule"
+        ? listingActive
+          ? "edit"
+          : "reschedule"
         : "locked";
   const modeRef = useRef(mode);
   modeRef.current = mode;
   const reschedule = mode === "reschedule";
+  const liveEdit = serverClass?.status === "published" && listingActive;
+  const liveEditRef = useRef(liveEdit);
+  liveEditRef.current = liveEdit;
 
   const dirty = useMemo(
     () =>
@@ -992,6 +998,67 @@ export default function MasterClassEditorScreen() {
     }
   };
 
+  const doLiveEdit = async () => {
+    const id = classIdRef.current;
+    if (!id) return;
+    const body = changedBody(form, savedForm);
+    if (!Object.keys(body).length) {
+      leave();
+      return;
+    }
+    setBusy("draft");
+    setFormError(null);
+    try {
+      const saved = await updateClass(id, body);
+      const next = formFromClass(saved);
+      baselineRef.current = serverBaseline(saved);
+      setServerClass(saved);
+      setSavedForm(next);
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      showBannerRef.current(t("mcClassSaved"), t("mcLiveEditSaved"), "success", 3500);
+      leave();
+    } catch (err) {
+      applyServerErrors(err);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const onSaveLiveEdit = () => {
+    Keyboard.dismiss();
+    if (busyRef.current) return;
+    if (media.uploading) {
+      setFormError(t("mcWaitForUpload"));
+      warn();
+      return;
+    }
+    const e = validate(form, "publish", t, serverClass?.timezone);
+    if (hasErrors(e)) {
+      const target = stepForFirstError(e);
+      if (target && target !== step) setStep(target);
+      setErrors(e);
+      setFormError(t("mcErrorFixFields"));
+      setTimeout(() => scrollToFirst(e), 100);
+      warn();
+      return;
+    }
+    const body = changedBody(form, savedForm);
+    const sensitiveChanged =
+      body.date !== undefined ||
+      body.time !== undefined ||
+      body.price !== undefined ||
+      body.discounted_price !== undefined ||
+      body.format !== undefined;
+    if (sensitiveChanged) {
+      Alert.alert(t("mcLiveEditConfirmTitle"), t("mcLiveEditConfirmText"), [
+        { text: t("cancel"), style: "cancel" },
+        { text: t("mcSaveChanges"), onPress: () => void doLiveEdit() },
+      ]);
+    } else {
+      void doLiveEdit();
+    }
+  };
+
   const onSaveNewTime = () => {
     Keyboard.dismiss();
     if (busyRef.current) return;
@@ -1022,6 +1089,13 @@ export default function MasterClassEditorScreen() {
 
       if (modeRef.current === "reschedule" || modeRef.current === "locked") {
         Alert.alert(t("mcDiscardNewTimeTitle"), t("mcDiscardNewTimeText"), [
+          keepEditing,
+          discard(t("flowDiscard")),
+        ]);
+        return;
+      }
+      if (serverClass?.status === "published" && serverClass?.listing?.status === "active") {
+        Alert.alert(t("mcDiscardChangesTitle"), t("mcDiscardChangesText"), [
           keepEditing,
           discard(t("flowDiscard")),
         ]);
@@ -1096,9 +1170,11 @@ export default function MasterClassEditorScreen() {
       return;
     }
     // Sent away (notification tap, Go Home): keep a valid draft quietly.
+    // Live edits (published + active listing) must NOT auto-save — they
+    // require the explicit confirmation dialog in onSaveLiveEdit.
     const current = formRef.current;
     if (
-      (modeRef.current === "create" || modeRef.current === "edit") &&
+      (modeRef.current === "create" || (modeRef.current === "edit" && !liveEditRef.current)) &&
       current.title.trim() &&
       !hasErrors(validate(current, "draft", t))
     ) {
@@ -1202,9 +1278,11 @@ export default function MasterClassEditorScreen() {
 
   const heading = reschedule
     ? t("mcRescheduleClass")
-    : paramId
+    : liveEdit
       ? t("mcEditClass")
-      : t("mcCreateClass");
+      : paramId
+        ? t("mcEditClass")
+        : t("mcCreateClass");
 
   const STEP_TITLES: Record<EditorStep, string> = {
     1: paramId ? t("mcEditClass") : t("mcCreateClass"),
@@ -2144,40 +2222,54 @@ export default function MasterClassEditorScreen() {
                   onEdit={() => setStep(1)}
                 />
 
-                <DealPlacementCard fee={fee} days={days} />
+                {!liveEdit ? <DealPlacementCard fee={fee} days={days} /> : null}
 
-                <View style={styles.actions}>
-                  <PrimaryButton
-                    label={`Continue to Payment — ${formatClassPrice(fee)}`}
-                    loading={busy === "publish"}
-                    disabled={busy !== null}
-                    onPress={() => void onPublish()}
-                    styles={styles}
-                    theme={theme}
-                  />
-                  <TouchableOpacity
-                    activeOpacity={0.75}
-                    onPress={() => void onSaveDraft()}
-                    disabled={busy !== null}
-                    style={[styles.secondary, busy !== null && styles.disabled]}
-                    accessibilityRole="button"
-                    accessibilityState={{ disabled: busy !== null, busy: busy === "draft" }}
-                    accessibilityLabel={t("mcSaveAsDraft")}
-                  >
-                    {busy === "draft" ? (
-                      <ActivityIndicator color={theme.darkGreen} />
-                    ) : (
-                      <>
-                        <Ionicons
-                          name="document-outline"
-                          size={iconScale(18)}
-                          color={theme.darkGreen}
-                        />
-                        <Text style={styles.secondaryText}>{t("mcSaveAsDraft")}</Text>
-                      </>
-                    )}
-                  </TouchableOpacity>
-                </View>
+                {liveEdit ? (
+                  <View style={styles.actions}>
+                    <PrimaryButton
+                      label={t("mcSaveChanges")}
+                      icon="checkmark-circle-outline"
+                      loading={busy === "draft"}
+                      disabled={!dirty || busy !== null}
+                      onPress={onSaveLiveEdit}
+                      styles={styles}
+                      theme={theme}
+                    />
+                  </View>
+                ) : (
+                  <View style={styles.actions}>
+                    <PrimaryButton
+                      label={`Continue to Payment — ${formatClassPrice(fee)}`}
+                      loading={busy === "publish"}
+                      disabled={busy !== null}
+                      onPress={() => void onPublish()}
+                      styles={styles}
+                      theme={theme}
+                    />
+                    <TouchableOpacity
+                      activeOpacity={0.75}
+                      onPress={() => void onSaveDraft()}
+                      disabled={busy !== null}
+                      style={[styles.secondary, busy !== null && styles.disabled]}
+                      accessibilityRole="button"
+                      accessibilityState={{ disabled: busy !== null, busy: busy === "draft" }}
+                      accessibilityLabel={t("mcSaveAsDraft")}
+                    >
+                      {busy === "draft" ? (
+                        <ActivityIndicator color={theme.darkGreen} />
+                      ) : (
+                        <>
+                          <Ionicons
+                            name="document-outline"
+                            size={iconScale(18)}
+                            color={theme.darkGreen}
+                          />
+                          <Text style={styles.secondaryText}>{t("mcSaveAsDraft")}</Text>
+                        </>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                )}
               </>
             ) : null}
 

@@ -29,6 +29,9 @@ import { fetchMyProducts } from "@/src/services/productService";
 import { isLinkedProductError } from "@/src/components/reelFlow/productPickerSheet";
 import { isInStock, type ShopProduct } from "@/src/types/shopProduct";
 import { formatShopPrice } from "@/src/constants/demoShopProduct";
+import { listMine as listMyClasses } from "@/src/services/masterClassService";
+import type { MasterClass } from "@/src/types/masterClass";
+import { formatClassPrice } from "@/src/utils/masterClassHelpers";
 import { businessEndpoints } from "@/src/services/endpoints";
 import Logger from "@/src/services/logger";
 import { fetchReelServiceOptions } from "@/src/services/reelServicesOptions";
@@ -282,6 +285,35 @@ const createStyles = (theme: Theme) =>
       color: theme.lightGreen,
       lineHeight: fontSize.size16,
     },
+    attachToggleRow: {
+      flexDirection: "row",
+      gap: moderateWidthScale(8),
+      marginBottom: moderateHeightScale(2),
+    },
+    attachToggle: {
+      flex: 1,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: moderateWidthScale(6),
+      paddingVertical: moderateHeightScale(10),
+      borderRadius: moderateWidthScale(12),
+      borderWidth: 1.5,
+      borderColor: theme.lightGreen015,
+      backgroundColor: theme.white,
+    },
+    attachToggleActive: {
+      backgroundColor: theme.darkGreen,
+      borderColor: theme.darkGreen,
+    },
+    attachToggleText: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    attachToggleTextActive: {
+      color: theme.white,
+    },
     chipRow: {
       flexDirection: "row",
       flexWrap: "wrap",
@@ -494,6 +526,13 @@ export default function PublishReelScreen() {
   const [productsLoading, setProductsLoading] = useState(true);
   const [productsError, setProductsError] = useState(false);
   const [showProductPicker, setShowProductPicker] = useState(false);
+  type AttachmentType = "product" | "class";
+  const [attachmentType, setAttachmentType] = useState<AttachmentType>("product");
+  const [selectedClassId, setSelectedClassId] = useState<number | null>(null);
+  const [myClasses, setMyClasses] = useState<MasterClass[]>([]);
+  const [classesLoading, setClassesLoading] = useState(true);
+  const [classesError, setClassesError] = useState(false);
+  const [showClassPicker, setShowClassPicker] = useState(false);
   const [categoryId, setCategoryId] = useState<number | null>(
     resolvedBusinessCategory?.id ?? null,
   );
@@ -551,6 +590,33 @@ export default function PublishReelScreen() {
       if (canLinkProduct) void loadProducts();
     }, [canLinkProduct, loadProducts]),
   );
+
+  const loadClasses = useCallback(async () => {
+    setClassesError(false);
+    try {
+      const result = await listMyClasses("upcoming", 1);
+      setMyClasses(result.items.filter((c) => c.status === "published"));
+    } catch (error) {
+      Logger.error("Failed to load classes for reel:", error);
+      setClassesError(true);
+    } finally {
+      setClassesLoading(false);
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (canLinkProduct) void loadClasses();
+    }, [canLinkProduct, loadClasses]),
+  );
+
+  const selectedClass =
+    selectedClassId == null
+      ? null
+      : (myClasses.find((c) => c.id === selectedClassId) ??
+        (existing?.master_class && existing.master_class.id === selectedClassId
+          ? (existing.master_class as unknown as MasterClass)
+          : null));
 
   // Editing: the reel's linked product may be missing from the list (e.g. deleted)
   const selectedProduct =
@@ -610,6 +676,13 @@ export default function PublishReelScreen() {
         setProductTag(reel.product_tag || "");
         const pid = reel.product_id ?? reel.product?.id ?? null;
         if (pid) setSelectedProductId(Number(pid));
+        const mcId = reel.master_class_id ?? reel.master_class?.id ?? null;
+        if (mcId) {
+          setSelectedClassId(Number(mcId));
+          setAttachmentType("class");
+        } else if (pid) {
+          setAttachmentType("product");
+        }
         userPickedCategoryRef.current = true;
         setCategoryId(reel.category?.id ?? resolvedBusinessCategory?.id ?? null);
         setCategoryName(
@@ -776,8 +849,13 @@ export default function PublishReelScreen() {
     ...(serviceId ? { service_id: serviceId } : {}),
     ...(lookTag.trim() ? { look_tag: lookTag.trim() } : {}),
     ...(promotionText.trim() ? { promotion_text: promotionText.trim() } : {}),
-    ...(productTag.trim() ? { product_tag: productTag.trim() } : {}),
-    ...(selectedProductId != null ? { product_id: selectedProductId } : {}),
+    ...(attachmentType === "product" && productTag.trim() ? { product_tag: productTag.trim() } : {}),
+    ...(attachmentType === "product" && selectedProductId != null
+      ? { product_id: selectedProductId, master_class_id: null }
+      : {}),
+    ...(attachmentType === "class" && selectedClassId != null
+      ? { master_class_id: selectedClassId, product_id: null }
+      : {}),
     ...(publish ? { publish: true } : {}),
   });
 
@@ -793,8 +871,9 @@ export default function PublishReelScreen() {
           service_id: serviceId,
           look_tag: lookTag.trim() || null,
           promotion_text: promotionText.trim() || null,
-          product_tag: productTag.trim() || null,
-          product_id: selectedProductId,
+          product_tag: attachmentType === "product" ? (productTag.trim() || null) : null,
+          product_id: attachmentType === "product" ? selectedProductId : null,
+          master_class_id: attachmentType === "class" ? selectedClassId : null,
         });
         showBanner(t("success"), t("reelSaved"), "success", 2500);
       } else {
@@ -841,8 +920,9 @@ export default function PublishReelScreen() {
           service_id: serviceId,
           look_tag: lookTag.trim() || null,
           promotion_text: promotionText.trim() || null,
-          product_tag: productTag.trim() || null,
-          product_id: selectedProductId,
+          product_tag: attachmentType === "product" ? (productTag.trim() || null) : null,
+          product_id: attachmentType === "product" ? selectedProductId : null,
+          master_class_id: attachmentType === "class" ? selectedClassId : null,
         });
         if (existing?.status !== "published") {
           await publishReel(reelId);
@@ -1097,199 +1177,147 @@ export default function PublishReelScreen() {
           {canLinkProduct ? (
             <View style={styles.field}>
               <Text style={[styles.label, { marginBottom: moderateHeightScale(8) }]}>
-                {t("productTag")}
+                {t("reelAttachment")}
               </Text>
-              <View style={styles.categoryShell}>
-                <TouchableOpacity
-                  activeOpacity={0.75}
-                  onPress={() => setShowProductPicker((open) => !open)}
-                  style={styles.categoryRow}
-                  accessibilityRole="button"
-                  accessibilityLabel={t("productTag")}
-                  accessibilityValue={{ text: selectedProduct?.name || productTag || t("none") }}
-                  accessibilityState={{ expanded: showProductPicker }}
-                >
-                  {selectedProduct?.imageUri ? (
-                    <Image
-                      source={{ uri: selectedProduct.imageUri }}
-                      style={styles.productThumbSmall}
-                      contentFit="cover"
-                    />
-                  ) : (
-                    <View style={[styles.productThumbSmall, styles.productThumbEmpty]}>
+              {/* Product / Class toggle */}
+              <View style={styles.attachToggleRow}>
+                {(["product", "class"] as AttachmentType[]).map((type) => {
+                  const active = attachmentType === type;
+                  return (
+                    <TouchableOpacity
+                      key={type}
+                      style={[styles.attachToggle, active && styles.attachToggleActive]}
+                      onPress={() => {
+                        setAttachmentType(type);
+                        setShowProductPicker(false);
+                        setShowClassPicker(false);
+                      }}
+                      activeOpacity={0.75}
+                    >
                       <MaterialIcons
-                        name="inventory-2"
+                        name={type === "product" ? "inventory-2" : "school"}
                         size={moderateWidthScale(16)}
-                        color={theme.buttonBack}
+                        color={active ? theme.white : theme.darkGreen}
                       />
-                    </View>
-                  )}
-                  <View style={styles.categoryTextCol}>
-                    <Text style={styles.categoryMeta}>
-                      {showProductPicker
-                        ? t("hideProducts")
-                        : selectedProduct || productTag
-                          ? t("changeProduct")
-                          : t("linkProduct")}
-                    </Text>
-                    <Text style={styles.categoryValue} numberOfLines={1}>
-                      {selectedProduct?.name || productTag || t("none")}
-                    </Text>
-                  </View>
-                  <MaterialIcons
-                    name={showProductPicker ? "keyboard-arrow-up" : "keyboard-arrow-down"}
-                    size={moderateWidthScale(22)}
-                    color={theme.lightGreen}
-                  />
-                </TouchableOpacity>
+                      <Text style={[styles.attachToggleText, active && styles.attachToggleTextActive]}>
+                        {type === "product" ? t("product") : t("mcMasterClass")}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
 
-                {showProductPicker ? (
-                  <ScrollView
-                    style={styles.productPickerWrap}
-                    nestedScrollEnabled
-                    keyboardShouldPersistTaps="handled"
-                  >
-                    {productsLoading ? (
-                      <View style={styles.categoryLoading}>
-                        <ActivityIndicator size="small" color={theme.darkGreen} />
-                      </View>
-                    ) : productsError ? (
-                      <TouchableOpacity
-                        style={styles.productEmpty}
-                        onPress={() => {
-                          setProductsLoading(true);
-                          void loadProducts();
-                        }}
-                        activeOpacity={0.7}
-                        accessibilityRole="button"
-                      >
-                        <MaterialIcons
-                          name="refresh"
-                          size={moderateWidthScale(22)}
-                          color={theme.buttonBack}
+              {/* Product picker */}
+              {attachmentType === "product" ? (
+                <>
+                  <View style={[styles.categoryShell, { marginTop: moderateHeightScale(10) }]}>
+                    <TouchableOpacity
+                      activeOpacity={0.75}
+                      onPress={() => setShowProductPicker((open) => !open)}
+                      style={styles.categoryRow}
+                      accessibilityRole="button"
+                      accessibilityLabel={t("productTag")}
+                      accessibilityValue={{ text: selectedProduct?.name || productTag || t("none") }}
+                      accessibilityState={{ expanded: showProductPicker }}
+                    >
+                      {selectedProduct?.imageUri ? (
+                        <Image
+                          source={{ uri: selectedProduct.imageUri }}
+                          style={styles.productThumbSmall}
+                          contentFit="cover"
                         />
-                        <Text style={styles.productEmptyTitle}>
-                          {t("productsLoadFailed")}
-                        </Text>
-                        <Text style={styles.productEmptyText}>{t("tapToRetry")}</Text>
-                      </TouchableOpacity>
-                    ) : products.length === 0 ? (
-                      <View style={styles.productEmpty}>
-                        <View style={styles.productEmptyIcon}>
+                      ) : (
+                        <View style={[styles.productThumbSmall, styles.productThumbEmpty]}>
                           <MaterialIcons
                             name="inventory-2"
-                            size={moderateWidthScale(22)}
+                            size={moderateWidthScale(16)}
                             color={theme.buttonBack}
                           />
                         </View>
-                        <Text style={styles.productEmptyTitle}>
-                          {t("noInventoryProducts")}
+                      )}
+                      <View style={styles.categoryTextCol}>
+                        <Text style={styles.categoryMeta}>
+                          {showProductPicker
+                            ? t("hideProducts")
+                            : selectedProduct || productTag
+                              ? t("changeProduct")
+                              : t("linkProduct")}
                         </Text>
-                        <Text style={styles.productEmptyText}>
-                          {userRole === "business"
-                            ? t("noInventoryProductsHintOwner")
-                            : t("noInventoryProductsHintStaff")}
+                        <Text style={styles.categoryValue} numberOfLines={1}>
+                          {selectedProduct?.name || productTag || t("none")}
                         </Text>
                       </View>
-                    ) : (
-                      <>
-                        <TouchableOpacity
-                          style={[
-                            styles.categoryOption,
-                            !selectedProductId && !productTag && styles.categoryOptionActive,
-                          ]}
-                          onPress={() => {
-                            setSelectedProductId(null);
-                            setProductTag("");
-                            setShowProductPicker(false);
-                          }}
-                          activeOpacity={0.7}
-                        >
-                          <Text style={styles.categoryOptionText}>{t("none")}</Text>
-                          {!selectedProductId && !productTag ? (
+                      <MaterialIcons
+                        name={showProductPicker ? "keyboard-arrow-up" : "keyboard-arrow-down"}
+                        size={moderateWidthScale(22)}
+                        color={theme.lightGreen}
+                      />
+                    </TouchableOpacity>
+
+                    {showProductPicker ? (
+                      <ScrollView
+                        style={styles.productPickerWrap}
+                        nestedScrollEnabled
+                        keyboardShouldPersistTaps="handled"
+                      >
+                        {productsLoading ? (
+                          <View style={styles.categoryLoading}>
+                            <ActivityIndicator size="small" color={theme.darkGreen} />
+                          </View>
+                        ) : productsError ? (
+                          <TouchableOpacity
+                            style={styles.productEmpty}
+                            onPress={() => {
+                              setProductsLoading(true);
+                              void loadProducts();
+                            }}
+                            activeOpacity={0.7}
+                            accessibilityRole="button"
+                          >
                             <MaterialIcons
-                              name="check"
-                              size={moderateWidthScale(18)}
-                              color={theme.darkGreen}
+                              name="refresh"
+                              size={moderateWidthScale(22)}
+                              color={theme.buttonBack}
                             />
-                          ) : null}
-                        </TouchableOpacity>
-                        {products.map((p) => {
-                          const active = Number(p.id) === selectedProductId;
-                          const hidden = !p.published;
-                          const outOfStock = !hidden && !isInStock(p);
-                          return (
+                            <Text style={styles.productEmptyTitle}>
+                              {t("productsLoadFailed")}
+                            </Text>
+                            <Text style={styles.productEmptyText}>{t("tapToRetry")}</Text>
+                          </TouchableOpacity>
+                        ) : products.length === 0 ? (
+                          <View style={styles.productEmpty}>
+                            <View style={styles.productEmptyIcon}>
+                              <MaterialIcons
+                                name="inventory-2"
+                                size={moderateWidthScale(22)}
+                                color={theme.buttonBack}
+                              />
+                            </View>
+                            <Text style={styles.productEmptyTitle}>
+                              {t("noInventoryProducts")}
+                            </Text>
+                            <Text style={styles.productEmptyText}>
+                              {userRole === "business"
+                                ? t("noInventoryProductsHintOwner")
+                                : t("noInventoryProductsHintStaff")}
+                            </Text>
+                          </View>
+                        ) : (
+                          <>
                             <TouchableOpacity
-                              key={p.id}
                               style={[
-                                styles.productOption,
-                                active && styles.categoryOptionActive,
+                                styles.categoryOption,
+                                !selectedProductId && !productTag && styles.categoryOptionActive,
                               ]}
                               onPress={() => {
-                                setSelectedProductId(Number(p.id));
-                                setProductTag(p.name);
+                                setSelectedProductId(null);
+                                setProductTag("");
                                 setShowProductPicker(false);
                               }}
-                              // Hidden from the shop → nothing for customers to buy
-                              disabled={hidden}
                               activeOpacity={0.7}
-                              accessibilityRole="button"
-                              accessibilityState={{ selected: active, disabled: hidden }}
                             >
-                              {p.imageUri ? (
-                                <Image
-                                  source={{ uri: p.imageUri }}
-                                  style={[styles.productThumb, hidden && styles.productDimmed]}
-                                  contentFit="cover"
-                                />
-                              ) : (
-                                <View
-                                  style={[
-                                    styles.productThumb,
-                                    styles.productThumbEmpty,
-                                    hidden && styles.productDimmed,
-                                  ]}
-                                >
-                                  <MaterialIcons
-                                    name="inventory-2"
-                                    size={moderateWidthScale(18)}
-                                    color={theme.buttonBack}
-                                  />
-                                </View>
-                              )}
-                              <View style={[styles.productTextCol, hidden && styles.productDimmed]}>
-                                <Text
-                                  style={[
-                                    styles.productName,
-                                    active && styles.categoryOptionTextActive,
-                                  ]}
-                                  numberOfLines={1}
-                                >
-                                  {p.name}
-                                </Text>
-                                <Text style={styles.productMeta} numberOfLines={1}>
-                                  {[p.brand, formatShopPrice(p.sellingPrice)]
-                                    .filter(Boolean)
-                                    .join(" · ")}
-                                </Text>
-                              </View>
-                              {hidden || outOfStock ? (
-                                <View
-                                  style={[
-                                    styles.productBadge,
-                                    hidden ? styles.productBadgeHidden : styles.productBadgeStock,
-                                  ]}
-                                >
-                                  <Text
-                                    style={[
-                                      styles.productBadgeText,
-                                      hidden ? styles.productBadgeTextHidden : styles.productBadgeTextStock,
-                                    ]}
-                                  >
-                                    {hidden ? t("productHiddenFromShop") : t("outOfStock")}
-                                  </Text>
-                                </View>
-                              ) : active ? (
+                              <Text style={styles.categoryOptionText}>{t("none")}</Text>
+                              {!selectedProductId && !productTag ? (
                                 <MaterialIcons
                                   name="check"
                                   size={moderateWidthScale(18)}
@@ -1297,18 +1325,289 @@ export default function PublishReelScreen() {
                                 />
                               ) : null}
                             </TouchableOpacity>
-                          );
-                        })}
-                      </>
-                    )}
-                  </ScrollView>
-                ) : null}
-              </View>
-              <Text style={styles.productHelper}>
-                {products.some((p) => !p.published)
-                  ? t("productTagHelperHidden")
-                  : t("productTagHelper")}
-              </Text>
+                            {products.map((p) => {
+                              const active = Number(p.id) === selectedProductId;
+                              const hidden = !p.published;
+                              const outOfStock = !hidden && !isInStock(p);
+                              return (
+                                <TouchableOpacity
+                                  key={p.id}
+                                  style={[
+                                    styles.productOption,
+                                    active && styles.categoryOptionActive,
+                                  ]}
+                                  onPress={() => {
+                                    setSelectedProductId(Number(p.id));
+                                    setProductTag(p.name);
+                                    setShowProductPicker(false);
+                                  }}
+                                  disabled={hidden}
+                                  activeOpacity={0.7}
+                                  accessibilityRole="button"
+                                  accessibilityState={{ selected: active, disabled: hidden }}
+                                >
+                                  {p.imageUri ? (
+                                    <Image
+                                      source={{ uri: p.imageUri }}
+                                      style={[styles.productThumb, hidden && styles.productDimmed]}
+                                      contentFit="cover"
+                                    />
+                                  ) : (
+                                    <View
+                                      style={[
+                                        styles.productThumb,
+                                        styles.productThumbEmpty,
+                                        hidden && styles.productDimmed,
+                                      ]}
+                                    >
+                                      <MaterialIcons
+                                        name="inventory-2"
+                                        size={moderateWidthScale(18)}
+                                        color={theme.buttonBack}
+                                      />
+                                    </View>
+                                  )}
+                                  <View style={[styles.productTextCol, hidden && styles.productDimmed]}>
+                                    <Text
+                                      style={[
+                                        styles.productName,
+                                        active && styles.categoryOptionTextActive,
+                                      ]}
+                                      numberOfLines={1}
+                                    >
+                                      {p.name}
+                                    </Text>
+                                    <Text style={styles.productMeta} numberOfLines={1}>
+                                      {[p.brand, formatShopPrice(p.sellingPrice)]
+                                        .filter(Boolean)
+                                        .join(" · ")}
+                                    </Text>
+                                  </View>
+                                  {hidden || outOfStock ? (
+                                    <View
+                                      style={[
+                                        styles.productBadge,
+                                        hidden ? styles.productBadgeHidden : styles.productBadgeStock,
+                                      ]}
+                                    >
+                                      <Text
+                                        style={[
+                                          styles.productBadgeText,
+                                          hidden ? styles.productBadgeTextHidden : styles.productBadgeTextStock,
+                                        ]}
+                                      >
+                                        {hidden ? t("productHiddenFromShop") : t("outOfStock")}
+                                      </Text>
+                                    </View>
+                                  ) : active ? (
+                                    <MaterialIcons
+                                      name="check"
+                                      size={moderateWidthScale(18)}
+                                      color={theme.darkGreen}
+                                    />
+                                  ) : null}
+                                </TouchableOpacity>
+                              );
+                            })}
+                          </>
+                        )}
+                      </ScrollView>
+                    ) : null}
+                  </View>
+                  <Text style={styles.productHelper}>
+                    {products.some((p) => !p.published)
+                      ? t("productTagHelperHidden")
+                      : t("productTagHelper")}
+                  </Text>
+                </>
+              ) : null}
+
+              {/* Class picker */}
+              {attachmentType === "class" ? (
+                <>
+                  <View style={[styles.categoryShell, { marginTop: moderateHeightScale(10) }]}>
+                    <TouchableOpacity
+                      activeOpacity={0.75}
+                      onPress={() => setShowClassPicker((open) => !open)}
+                      style={styles.categoryRow}
+                      accessibilityRole="button"
+                      accessibilityLabel={t("mcMasterClass")}
+                      accessibilityValue={{ text: selectedClass?.title || t("none") }}
+                      accessibilityState={{ expanded: showClassPicker }}
+                    >
+                      {selectedClass?.media?.url || selectedClass?.media?.thumbnail_url ? (
+                        <Image
+                          source={{ uri: selectedClass.media.thumbnail_url || selectedClass.media.url! }}
+                          style={styles.productThumbSmall}
+                          contentFit="cover"
+                        />
+                      ) : (
+                        <View style={[styles.productThumbSmall, styles.productThumbEmpty]}>
+                          <MaterialIcons
+                            name="school"
+                            size={moderateWidthScale(16)}
+                            color={theme.buttonBack}
+                          />
+                        </View>
+                      )}
+                      <View style={styles.categoryTextCol}>
+                        <Text style={styles.categoryMeta}>
+                          {showClassPicker
+                            ? t("hideClasses")
+                            : selectedClass
+                              ? t("changeClass")
+                              : t("linkClass")}
+                        </Text>
+                        <Text style={styles.categoryValue} numberOfLines={1}>
+                          {selectedClass?.title || t("none")}
+                        </Text>
+                      </View>
+                      <MaterialIcons
+                        name={showClassPicker ? "keyboard-arrow-up" : "keyboard-arrow-down"}
+                        size={moderateWidthScale(22)}
+                        color={theme.lightGreen}
+                      />
+                    </TouchableOpacity>
+
+                    {showClassPicker ? (
+                      <ScrollView
+                        style={styles.productPickerWrap}
+                        nestedScrollEnabled
+                        keyboardShouldPersistTaps="handled"
+                      >
+                        {classesLoading ? (
+                          <View style={styles.categoryLoading}>
+                            <ActivityIndicator size="small" color={theme.darkGreen} />
+                          </View>
+                        ) : classesError ? (
+                          <TouchableOpacity
+                            style={styles.productEmpty}
+                            onPress={() => {
+                              setClassesLoading(true);
+                              void loadClasses();
+                            }}
+                            activeOpacity={0.7}
+                            accessibilityRole="button"
+                          >
+                            <MaterialIcons
+                              name="refresh"
+                              size={moderateWidthScale(22)}
+                              color={theme.buttonBack}
+                            />
+                            <Text style={styles.productEmptyTitle}>
+                              {t("classesLoadFailed")}
+                            </Text>
+                            <Text style={styles.productEmptyText}>{t("tapToRetry")}</Text>
+                          </TouchableOpacity>
+                        ) : myClasses.length === 0 ? (
+                          <View style={styles.productEmpty}>
+                            <View style={styles.productEmptyIcon}>
+                              <MaterialIcons
+                                name="school"
+                                size={moderateWidthScale(22)}
+                                color={theme.buttonBack}
+                              />
+                            </View>
+                            <Text style={styles.productEmptyTitle}>
+                              {t("noUpcomingClasses")}
+                            </Text>
+                            <Text style={styles.productEmptyText}>
+                              {t("noUpcomingClassesHint")}
+                            </Text>
+                          </View>
+                        ) : (
+                          <>
+                            <TouchableOpacity
+                              style={[
+                                styles.categoryOption,
+                                !selectedClassId && styles.categoryOptionActive,
+                              ]}
+                              onPress={() => {
+                                setSelectedClassId(null);
+                                setShowClassPicker(false);
+                              }}
+                              activeOpacity={0.7}
+                            >
+                              <Text style={styles.categoryOptionText}>{t("none")}</Text>
+                              {!selectedClassId ? (
+                                <MaterialIcons
+                                  name="check"
+                                  size={moderateWidthScale(18)}
+                                  color={theme.darkGreen}
+                                />
+                              ) : null}
+                            </TouchableOpacity>
+                            {myClasses.map((cls) => {
+                              const active = cls.id === selectedClassId;
+                              const imgUri = cls.media?.thumbnail_url || cls.media?.url;
+                              return (
+                                <TouchableOpacity
+                                  key={cls.id}
+                                  style={[
+                                    styles.productOption,
+                                    active && styles.categoryOptionActive,
+                                  ]}
+                                  onPress={() => {
+                                    setSelectedClassId(cls.id);
+                                    setShowClassPicker(false);
+                                  }}
+                                  activeOpacity={0.7}
+                                  accessibilityRole="button"
+                                  accessibilityState={{ selected: active }}
+                                >
+                                  {imgUri ? (
+                                    <Image
+                                      source={{ uri: imgUri }}
+                                      style={styles.productThumb}
+                                      contentFit="cover"
+                                    />
+                                  ) : (
+                                    <View style={[styles.productThumb, styles.productThumbEmpty]}>
+                                      <MaterialIcons
+                                        name="school"
+                                        size={moderateWidthScale(18)}
+                                        color={theme.buttonBack}
+                                      />
+                                    </View>
+                                  )}
+                                  <View style={styles.productTextCol}>
+                                    <Text
+                                      style={[
+                                        styles.productName,
+                                        active && styles.categoryOptionTextActive,
+                                      ]}
+                                      numberOfLines={1}
+                                    >
+                                      {cls.title}
+                                    </Text>
+                                    <Text style={styles.productMeta} numberOfLines={1}>
+                                      {[
+                                        cls.date,
+                                        cls.enrollment_price != null ? formatClassPrice(cls.enrollment_price) : null,
+                                        cls.seats_left != null ? `${cls.seats_left} seats left` : null,
+                                      ].filter(Boolean).join(" · ")}
+                                    </Text>
+                                  </View>
+                                  {active ? (
+                                    <MaterialIcons
+                                      name="check"
+                                      size={moderateWidthScale(18)}
+                                      color={theme.darkGreen}
+                                    />
+                                  ) : null}
+                                </TouchableOpacity>
+                              );
+                            })}
+                          </>
+                        )}
+                      </ScrollView>
+                    ) : null}
+                  </View>
+                  <Text style={styles.productHelper}>
+                    {t("classTagHelper")}
+                  </Text>
+                </>
+              ) : null}
             </View>
           ) : null}
       </KeyboardAwareScrollView>

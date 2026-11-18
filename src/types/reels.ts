@@ -1,6 +1,36 @@
 import type { MediaVideo } from "@/src/types/media";
 import type { ShopProduct } from "@/src/types/shopProduct";
 
+/** Master class attached to a reel (subset returned by the reel endpoints). */
+export type ReelMasterClass = {
+  id: number;
+  label: string;
+  title: string;
+  price: number | null;
+  discounted_price: number | null;
+  enrollment_price: number | null;
+  date: string | null;
+  time: string | null;
+  capacity: number | null;
+  seats_taken: number;
+  seats_left: number | null;
+  format: "in_person" | "online";
+  media: {
+    id: number;
+    type: "image" | "video";
+    url: string | null;
+    thumbnail_url: string | null;
+  } | null;
+  business: {
+    id: number;
+    title: string;
+    image_url: string | null;
+    instructor_name: string | null;
+  } | null;
+  status: string;
+  can_enroll: boolean;
+};
+
 export type ReelStatus = "draft" | "published" | "removed";
 
 export type ReelCategory = {
@@ -82,6 +112,8 @@ export type OwnerReel = {
   product_tag: string | null;
   product_id?: number | null;
   product?: ShopProduct | null;
+  master_class_id?: number | null;
+  master_class?: ReelMasterClass | null;
   published_at: string | null;
   category: ReelCategory | null;
   service: ReelService | null;
@@ -108,6 +140,8 @@ export type FeedReel = {
   product_tag: string | null;
   product_id?: number | null;
   product?: ShopProduct | null;
+  master_class_id?: number | null;
+  master_class?: ReelMasterClass | null;
   published_at: string | null;
   video: ReelVideo;
   category: ReelCategory | null;
@@ -238,6 +272,7 @@ export type CreateReelPayload = {
   promotion_text?: string;
   product_tag?: string;
   product_id?: number | null;
+  master_class_id?: number | null;
   publish?: boolean;
 };
 
@@ -250,6 +285,7 @@ export type UpdateReelPayload = {
   promotion_text?: string | null;
   product_tag?: string | null;
   product_id?: number | null;
+  master_class_id?: number | null;
 };
 
 export type FunnelWindow = {
@@ -757,6 +793,7 @@ export type PublishAutoReelPayload = {
   promotion_text?: string | null;
   product_tag?: string | null;
   product_id?: number | null;
+  master_class_id?: number | null;
 };
 
 /** Video to play/download: the auto reel's own video, else an older result's draft video */
