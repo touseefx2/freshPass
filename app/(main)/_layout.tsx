@@ -32,6 +32,7 @@ export default function MainLayout() {
         name="reelsFeed/index"
         options={{
           animation: "fade",
+          gestureEnabled: false,
           contentStyle: { flex: 1, backgroundColor: colors.black },
           ...(Platform.OS === "android"
             ? {
@@ -47,6 +48,7 @@ export default function MainLayout() {
         name="reelsFeed"
         options={{
           animation: "fade",
+          gestureEnabled: false,
           contentStyle: { flex: 1, backgroundColor: colors.black },
           ...(Platform.OS === "android"
             ? {

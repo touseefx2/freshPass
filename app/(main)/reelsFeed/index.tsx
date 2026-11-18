@@ -2741,14 +2741,26 @@ export default function ReelsFeedScreen() {
   ]);
 
   const showCategoryToast = useCallback((name: string) => {
-    setCategoryToast(name);
     if (categoryToastTimerRef.current) {
       clearTimeout(categoryToastTimerRef.current);
+      categoryToastTimerRef.current = null;
     }
+    setCategoryToast(name);
+  }, []);
+
+  // Count down only once the new category is on screen (slow loads hid it).
+  useEffect(() => {
+    if (!categoryToast || loading) return;
     categoryToastTimerRef.current = setTimeout(() => {
       setCategoryToast(null);
     }, 1400);
-  }, []);
+    return () => {
+      if (categoryToastTimerRef.current) {
+        clearTimeout(categoryToastTimerRef.current);
+        categoryToastTimerRef.current = null;
+      }
+    };
+  }, [categoryToast, loading]);
 
   const switchCategoryByOffset = useCallback(
     (offset: number) => {
@@ -2893,10 +2905,13 @@ export default function ReelsFeedScreen() {
             !showSwipeGuide &&
             categoryCards.length > 1,
         )
-        .activeOffsetX([-28, 28])
-        .failOffsetY([-18, 18])
+        .activeOffsetX([-20, 20])
+        .failOffsetY([-30, 30])
         .onEnd((e) => {
-          if (Math.abs(e.translationX) < 56) return;
+          const dx = Math.abs(e.translationX);
+          if (dx <= Math.abs(e.translationY)) return;
+          const isFlick = dx >= 24 && Math.abs(e.velocityX) > 450;
+          if (dx < 56 && !isFlick) return;
           if (e.translationX < 0) {
             runOnJS(switchCategoryByOffset)(1);
           } else {
@@ -3629,16 +3644,28 @@ export default function ReelsFeedScreen() {
     [runReelTryOn],
   );
 
+  const categoryToastNode = categoryToast ? (
+    <View
+      pointerEvents="none"
+      style={[styles.categoryToast, { top: insets.top + moderateHeightScale(58) }]}
+    >
+      <Text style={styles.categoryToastText}>{categoryToast}</Text>
+    </View>
+  ) : null;
+
   if (loading && reels.length === 0) {
     return (
-      <View style={styles.root} onLayout={onRootLayout}>
-        <StatusBar
-          translucent={true}
-          backgroundColor="transparent"
-          barStyle="light-content"
-        />
-        <ReelsFeedSkeleton onBack={goBack} />
-      </View>
+      <GestureDetector gesture={categoryPanGesture}>
+        <View style={styles.root} onLayout={onRootLayout}>
+          <StatusBar
+            translucent={true}
+            backgroundColor="transparent"
+            barStyle="light-content"
+          />
+          <ReelsFeedSkeleton onBack={goBack} />
+          {categoryToastNode}
+        </View>
+      </GestureDetector>
     );
   }
 
@@ -3655,7 +3682,9 @@ export default function ReelsFeedScreen() {
       feedTab === "following" && (requiresLogin || isGuest);
 
     return (
+      <GestureDetector gesture={categoryPanGesture}>
       <View style={styles.emptyWrap} onLayout={onRootLayout}>
+        {categoryToastNode}
         <StatusBar
           translucent={true}
           backgroundColor="transparent"
@@ -3726,6 +3755,7 @@ export default function ReelsFeedScreen() {
           </TouchableOpacity>
         ) : null}
       </View>
+      </GestureDetector>
     );
   }
 
@@ -3823,17 +3853,7 @@ export default function ReelsFeedScreen() {
         </View>
       </GestureDetector>
 
-      {categoryToast ? (
-        <View
-          pointerEvents="none"
-          style={[
-            styles.categoryToast,
-            { top: insets.top + moderateHeightScale(58) },
-          ]}
-        >
-          <Text style={styles.categoryToastText}>{categoryToast}</Text>
-        </View>
-      ) : null}
+      {categoryToastNode}
 
       <ReelsSwipeGuide
         visible={showSwipeGuide}
