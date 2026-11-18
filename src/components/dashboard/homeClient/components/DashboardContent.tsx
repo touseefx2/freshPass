@@ -14,6 +14,7 @@ import {
   LayoutChangeEvent,
   NativeScrollEvent,
   NativeSyntheticEvent,
+  RefreshControl,
 } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useAppSelector, useTheme, useAppDispatch } from "@/src/hooks/hooks";
@@ -568,7 +569,12 @@ interface VerifiedSalon {
   hasPromotion?: boolean;
 }
 
-export default function DashboardContent() {
+export default function DashboardContent({
+  onRefreshExtra,
+}: {
+  /** Parent's own calls (header badges, profile) to rerun on pull-to-refresh */
+  onRefreshExtra?: () => Promise<unknown> | void;
+} = {}) {
   const { colors } = useTheme();
   const { t } = useTranslation();
   const theme = colors as Theme;
@@ -628,6 +634,12 @@ export default function DashboardContent() {
   >([]);
   const [favoritesLoading, setFavoritesLoading] = useState(false);
   const [favoritesError, setFavoritesError] = useState(false);
+  const favoritesCountRef = useRef(0);
+  favoritesCountRef.current = favoriteBusinesses.length;
+  // Pull-to-refresh: lists keep showing while they reload; sections that
+  // load themselves (reels, Available Now, deals strip) reload on this key.
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
   const [appointments, setAppointments] = useState<AppointmentCard[]>([]);
   const isCategoryScrollingRef = useRef(false);
   const [proTipLoading, setProTipLoading] = useState(false);
@@ -738,7 +750,7 @@ export default function DashboardContent() {
     } catch (error) {
       if (isRequestCanceled(error)) return;
       Logger.error("Failed to fetch favorite businesses:", error);
-      setFavoritesError(true);
+      if (favoritesCountRef.current === 0) setFavoritesError(true);
     } finally {
       setFavoritesLoading(false);
     }
@@ -1143,6 +1155,30 @@ export default function DashboardContent() {
     }, []),
   );
 
+  const handleRefresh = async () => {
+    if (refreshing) return;
+    setRefreshing(true);
+    setRefreshKey((key) => key + 1);
+    const calls: Array<Promise<unknown> | void> = [onRefreshExtra?.()];
+    if (userRole === "customer") {
+      calls.push(fetchAppointments(), fetchFavoriteBusinesses());
+    }
+    if (isCusotmerandGuest) {
+      calls.push(
+        fetchCategories(),
+        fetchBusinesses(),
+        fetchBusinessesDeals(),
+        fetchDealClasses(),
+        fetchProTipCards(),
+      );
+    }
+    try {
+      await Promise.allSettled(calls);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   // Reload the deal lists once the location arrives or changes (the focus
   // effect above has [] deps). Skips the first run: focus already loaded.
   const dealsLocationKey = dealsLocationRef.current
@@ -1179,6 +1215,14 @@ export default function DashboardContent() {
       nestedScrollEnabled
       style={styles.container}
       contentContainerStyle={styles.contentContainer}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={handleRefresh}
+          tintColor={theme.primary}
+          colors={[theme.primary]}
+        />
+      }
       scrollEventThrottle={100}
       onScroll={(e: NativeSyntheticEvent<NativeScrollEvent>) => {
         scrollYRef.current = e.nativeEvent.contentOffset.y;
@@ -1330,12 +1374,12 @@ export default function DashboardContent() {
           updateReelsInView();
         }}
       >
-        <HomeReelsSection inView={reelsInView} />
+        <HomeReelsSection inView={reelsInView} refreshKey={refreshKey} />
       </View>
 
-      <HomeAvailableNowSection />
+      <HomeAvailableNowSection refreshKey={refreshKey} />
 
-      <HomeSlotOffersSection />
+      <HomeSlotOffersSection refreshKey={refreshKey} />
 
       {userRole === "customer" && appointments.length > 0 && (
         <View style={styles.section}>

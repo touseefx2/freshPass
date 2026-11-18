@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   ScrollView,
@@ -95,7 +95,12 @@ const createStyles = (theme: Theme) =>
   });
 
 /** Customer home strip: businesses with free time left today, soonest then nearest. */
-export default function HomeAvailableNowSection() {
+export default function HomeAvailableNowSection({
+  refreshKey = 0,
+}: {
+  /** Bumped by the home screen's pull-to-refresh */
+  refreshKey?: number;
+} = {}) {
   const { colors } = useTheme();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -134,6 +139,11 @@ export default function HomeAvailableNowSection() {
       load();
     }, [load]),
   );
+
+  // Parent pull-to-refresh: reload in place (first value is the initial load)
+  useEffect(() => {
+    if (refreshKey) load();
+  }, [refreshKey]);
 
   // Same range as the strip: the rest of today
   const openAll = () =>

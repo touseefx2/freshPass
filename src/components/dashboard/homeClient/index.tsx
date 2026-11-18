@@ -317,7 +317,16 @@ export default function HomeScreen() {
           translucent
         />
         <DashboardHeaderClient />
-        <DashboardContent />
+        <DashboardContent
+          onRefreshExtra={() => {
+            if (!isCustomer || isGuest || !user.accessToken) return;
+            dispatch(fetchNotificationUnreadCount());
+            return Promise.allSettled([
+              handleFetchChatUnreadCount(),
+              handleFetchUserDetails(),
+            ]);
+          }}
+        />
       </View>
 
       <LocationEnableModal

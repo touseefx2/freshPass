@@ -179,7 +179,10 @@ const createStyles = (theme: Theme) =>
 
 export default function HomeReelsSection({
   inView = true,
+  refreshKey = 0,
 }: {
+  /** Bumped by the home screen's pull-to-refresh */
+  refreshKey?: number;
   /** Section is on screen in the parent scroll; previews stop when it isn't */
   inView?: boolean;
 }) {
@@ -237,6 +240,11 @@ export default function HomeReelsSection({
       load();
     }, [load]),
   );
+
+  // Parent pull-to-refresh: reload in place (first value is the initial load)
+  useEffect(() => {
+    if (refreshKey) load();
+  }, [refreshKey]);
 
   const openFeed = useCallback(
     (card: ReelCategoryCard) => {

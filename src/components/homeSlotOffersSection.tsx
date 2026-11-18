@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   ScrollView,
@@ -149,7 +149,12 @@ const createStyles = (theme: Theme) =>
     },
   });
 
-export default function HomeSlotOffersSection() {
+export default function HomeSlotOffersSection({
+  refreshKey = 0,
+}: {
+  /** Bumped by the home screen's pull-to-refresh */
+  refreshKey?: number;
+} = {}) {
   const { t } = useTranslation();
   const { colors } = useTheme();
   const theme = colors as Theme;
@@ -170,7 +175,8 @@ export default function HomeSlotOffersSection() {
 
   const load = useCallback(async () => {
     const requestId = ++requestIdRef.current;
-    setLoading(true);
+    // Keep current deals on screen while reloading
+    if (itemsRef.current.length === 0) setLoading(true);
     try {
       const hasLocation = lat != null && lng != null;
       const { items: deals } = await fetchSlotOffers({
@@ -197,6 +203,11 @@ export default function HomeSlotOffersSection() {
       load();
     }, [load]),
   );
+
+  // Parent pull-to-refresh: reload in place (first value is the initial load)
+  useEffect(() => {
+    if (refreshKey) load();
+  }, [refreshKey]);
 
   const showEmptyBanner =
     !loading && !failed && (!items || items.length === 0);
