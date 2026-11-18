@@ -65,7 +65,7 @@ import {
 import {
   EditorDateSheet,
   EditorSheet,
-  EditorTimeSheet,
+  WheelTimePickerSheet,
 } from "@/src/components/masterClasses/editorSheets";
 import {
   WeekdayChips,
@@ -953,11 +953,9 @@ export default function PromotionEditorScreen() {
         }}
         onClose={() => setSheet(null)}
       />
-      <EditorTimeSheet
+      <WheelTimePickerSheet
         visible={sheet === "bookByTime"}
         value={form.bookByTime}
-        date={form.bookByDate}
-        timeZone={timeZone}
         onConfirm={(time) => {
           set("bookByTime", time);
           clearError("booking_ends_at");
@@ -992,11 +990,9 @@ export default function PromotionEditorScreen() {
         }}
         onClose={() => setSheet(null)}
       />
-      <EditorTimeSheet
+      <WheelTimePickerSheet
         visible={sheet === "timeFrom"}
         value={form.timeFrom}
-        date={null}
-        timeZone={timeZone}
         onConfirm={(time) => {
           set("timeFrom", time);
           clearError("time_from");
@@ -1004,11 +1000,9 @@ export default function PromotionEditorScreen() {
         }}
         onClose={() => setSheet(null)}
       />
-      <EditorTimeSheet
+      <WheelTimePickerSheet
         visible={sheet === "timeTo"}
         value={form.timeTo}
-        date={null}
-        timeZone={timeZone}
         onConfirm={(time) => {
           set("timeTo", time);
           clearError("time_from");

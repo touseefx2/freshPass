@@ -586,6 +586,7 @@ export default function AutoReelScreen() {
   const [classSheetOpen, setClassSheetOpen] = useState(false);
   const [myClasses, setMyClasses] = useState<MasterClass[]>([]);
   const [classesLoading, setClassesLoading] = useState(true);
+  const [classesError, setClassesError] = useState(false);
   // created_at stays the original time after a retry — time the retry locally
   const [retryStartedAt, setRetryStartedAt] = useState<number | null>(null);
   const inFlightRef = useRef(false);
@@ -989,9 +990,10 @@ export default function AutoReelScreen() {
 
   useEffect(() => {
     if (!canLinkProduct || view !== "publish") return;
+    setClassesError(false);
     listMyClasses("upcoming", 1)
       .then((result) => setMyClasses(result.items.filter((c) => c.status === "published")))
-      .catch(() => {})
+      .catch(() => setClassesError(true))
       .finally(() => setClassesLoading(false));
   }, [canLinkProduct, view]);
 
@@ -1986,6 +1988,22 @@ export default function AutoReelScreen() {
           >
             {classesLoading ? (
               <ActivityIndicator style={{ marginVertical: heightScale(24) }} color={theme.buttonBack} />
+            ) : classesError ? (
+              <TouchableOpacity
+                onPress={() => {
+                  setClassesLoading(true);
+                  setClassesError(false);
+                  listMyClasses("upcoming", 1)
+                    .then((result) => setMyClasses(result.items.filter((c) => c.status === "published")))
+                    .catch(() => setClassesError(true))
+                    .finally(() => setClassesLoading(false));
+                }}
+                style={{ alignItems: "center", paddingVertical: heightScale(24) }}
+              >
+                <Text style={[styles.emptyClassText, { color: theme.lightGreen5 }]}>
+                  {t("classesLoadFailed")}
+                </Text>
+              </TouchableOpacity>
             ) : myClasses.length === 0 ? (
               <Text style={[styles.emptyClassText, { color: theme.lightGreen5 }]}>
                 {t("noUpcomingClasses")}

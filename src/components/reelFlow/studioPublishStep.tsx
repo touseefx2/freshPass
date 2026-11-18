@@ -321,6 +321,7 @@ export default function StudioPublishStep({
   const [classSheetOpen, setClassSheetOpen] = useState(false);
   const [myClasses, setMyClasses] = useState<MasterClass[]>([]);
   const [classesLoading, setClassesLoading] = useState(true);
+  const [classesError, setClassesError] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
 
   const [publishing, setPublishing] = useState(false);
@@ -362,9 +363,10 @@ export default function StudioPublishStep({
 
   useEffect(() => {
     if (!canLinkProduct) return;
+    setClassesError(false);
     listMyClasses("upcoming", 1)
       .then((result) => setMyClasses(result.items.filter((c) => c.status === "published")))
-      .catch(() => {})
+      .catch(() => setClassesError(true))
       .finally(() => setClassesLoading(false));
   }, [canLinkProduct]);
 
@@ -942,6 +944,22 @@ export default function StudioPublishStep({
           >
             {classesLoading ? (
               <ActivityIndicator style={{ marginVertical: heightScale(24) }} color={theme.buttonBack} />
+            ) : classesError ? (
+              <TouchableOpacity
+                onPress={() => {
+                  setClassesLoading(true);
+                  setClassesError(false);
+                  listMyClasses("upcoming", 1)
+                    .then((result) => setMyClasses(result.items.filter((c) => c.status === "published")))
+                    .catch(() => setClassesError(true))
+                    .finally(() => setClassesLoading(false));
+                }}
+                style={{ alignItems: "center", paddingVertical: heightScale(24) }}
+              >
+                <Text style={[styles.emptyClassText, { color: theme.lightGreen5 }]}>
+                  {t("classesLoadFailed")}
+                </Text>
+              </TouchableOpacity>
             ) : myClasses.length === 0 ? (
               <Text style={[styles.emptyClassText, { color: theme.lightGreen5 }]}>
                 {t("noUpcomingClasses")}
