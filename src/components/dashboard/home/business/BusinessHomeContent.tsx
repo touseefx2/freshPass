@@ -63,7 +63,7 @@ const styles = StyleSheet.create({
   },
   // Margin on the card itself: no empty gap when the banner is turned off
   givesBack: {
-    marginTop: moderateHeightScale(14),
+    marginTop: moderateHeightScale(24),
     marginHorizontal: GUTTER,
   },
 });
@@ -203,9 +203,6 @@ export default function BusinessHomeContent({
         <HomeQuickCards />
       </View>
 
-      {/* FreshPass Gives Back (renders nothing when turned off) */}
-      <GivesBackBanner refreshKey={refreshKey} style={styles.givesBack} />
-
       <View style={[styles.gutter, styles.periodTabs]}>
         <PeriodTabs
           period={period}
@@ -291,6 +288,10 @@ export default function BusinessHomeContent({
           />
         </View>
       ) : null}
+
+      {/* FreshPass Gives Back, below Staff Overview (client 11-19); at the
+          end for owners without a team. Renders nothing when turned off */}
+      <GivesBackBanner refreshKey={refreshKey} style={styles.givesBack} />
 
       <DateRangeSheet
         visible={rangeVisible}

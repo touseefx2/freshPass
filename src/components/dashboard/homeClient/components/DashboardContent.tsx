@@ -1270,14 +1270,6 @@ export default function DashboardContent({
         </View>
       )}
 
-      {/* FreshPass Gives Back (signed-in customers; renders nothing when off) */}
-      {userRole === "customer" && !isGuest && (
-        <GivesBackBanner
-          refreshKey={refreshKey}
-          style={styles.givesBack}
-        />
-      )}
-
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>{t("freshPassDeals")}</Text>
         {dealsNothingNearby ||
@@ -1389,6 +1381,15 @@ export default function DashboardContent({
       >
         <HomeReelsSection inView={reelsInView} refreshKey={refreshKey} />
       </View>
+
+      {/* FreshPass Gives Back, below the reels (client 11-19). Signed-in
+          customers only; renders nothing when turned off */}
+      {userRole === "customer" && !isGuest && (
+        <GivesBackBanner
+          refreshKey={refreshKey}
+          style={styles.givesBack}
+        />
+      )}
 
       <HomeAvailableNowSection refreshKey={refreshKey} />
 

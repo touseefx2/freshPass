@@ -351,11 +351,10 @@ export default function MyRecommendationsScreen() {
     const result = await fetchMyRecommendations(page);
     pageRef.current = page;
     lastPageRef.current = result.lastPage;
-    setItems((prev) => {
-      const next = page === 1 ? result.items : [...(prev ?? []), ...result.items];
-      setTotal(Math.max(result.total ?? 0, next.length));
-      return next;
-    });
+    setItems((prev) =>
+      page === 1 ? result.items : [...(prev ?? []), ...result.items],
+    );
+    setTotal(result.total ?? 0);
   }, []);
 
   const loadFirst = useCallback(async () => {
@@ -643,7 +642,10 @@ export default function MyRecommendationsScreen() {
               <Text style={styles.introText}>
                 {t("givesBackListIntroPrefix")}{" "}
                 <Text style={styles.introCount}>
-                  {t("givesBackFamiliesCount", { count: total })}
+                  {t("givesBackFamiliesCount", {
+                    // meta.total can be missing: never show fewer than loaded
+                    count: Math.max(total, items.length),
+                  })}
                 </Text>
                 {t("givesBackListIntroSuffix")}
               </Text>
