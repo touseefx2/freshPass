@@ -54,6 +54,16 @@ const C = GIVES_BACK_COLORS;
 export const formatCount = (value: number) =>
   String(Math.round(value)).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 
+// Large system text sizes grow the card, but never past this (keeps the
+// layout the same on small Android phones with big font settings)
+const MAX_FONT_SCALE = 1.25;
+const ONE_LINE = {
+  numberOfLines: 1,
+  adjustsFontSizeToFit: true,
+  minimumFontScale: 0.75,
+  maxFontSizeMultiplier: MAX_FONT_SCALE,
+} as const;
+
 /** 68.4 → "68.4%", 100 → "100%" */
 const formatPercent = (value: number) => `${Number(value.toFixed(1))}%`;
 
@@ -115,18 +125,33 @@ export default function GivesBackBanner({ refreshKey = 0, style }: Props) {
           accessible={false}
         />
         <View style={styles.headerText}>
-          <Text style={styles.title} accessibilityRole="header">
+          <Text
+            style={styles.title}
+            accessibilityRole="header"
+            maxFontSizeMultiplier={MAX_FONT_SCALE}
+          >
             {t("givesBackTitle")}
           </Text>
           {description ? (
-            <Text style={styles.description}>{description}</Text>
+            <Text
+              style={styles.description}
+              maxFontSizeMultiplier={MAX_FONT_SCALE}
+            >
+              {description}
+            </Text>
           ) : null}
         </View>
       </View>
 
       <View style={styles.body}>
         <View style={styles.tag}>
-          <Text style={styles.tagText}>
+          <Text
+            style={styles.tagText}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.75}
+            maxFontSizeMultiplier={MAX_FONT_SCALE}
+          >
             {t("givesBackGoalTag", { goal: goalText })}
           </Text>
         </View>
@@ -144,10 +169,16 @@ export default function GivesBackBanner({ refreshKey = 0, style }: Props) {
             numberOfLines={1}
             adjustsFontSizeToFit
             minimumFontScale={0.6}
+            maxFontSizeMultiplier={MAX_FONT_SCALE}
           >
             {formatCount(count)} / {goalText}
           </Text>
-          <Text style={styles.countLabel}>{t("givesBackSubscribers")}</Text>
+          <Text
+            style={styles.countLabel}
+            maxFontSizeMultiplier={MAX_FONT_SCALE}
+          >
+            {t("givesBackSubscribers")}
+          </Text>
         </View>
 
         <View
@@ -163,7 +194,9 @@ export default function GivesBackBanner({ refreshKey = 0, style }: Props) {
               ]}
             />
           </View>
-          <Text style={styles.percent}>{formatPercent(percentage)}</Text>
+          <Text style={styles.percent} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+            {formatPercent(percentage)}
+          </Text>
         </View>
 
         {unlocked ? (
@@ -180,7 +213,10 @@ export default function GivesBackBanner({ refreshKey = 0, style }: Props) {
                 size={moderateWidthScale(22)}
                 color={C.white}
               />
-              <Text style={[styles.buttonText, styles.buttonTextActive]}>
+              <Text
+                style={[styles.buttonText, styles.buttonTextActive]}
+                {...ONE_LINE}
+              >
                 {t("givesBackRecommend")}
               </Text>
             </TouchableOpacity>
@@ -192,7 +228,9 @@ export default function GivesBackBanner({ refreshKey = 0, style }: Props) {
               hitSlop={8}
               accessibilityRole="button"
             >
-              <Text style={styles.link}>{t("givesBackMyRecommendations")}</Text>
+              <Text style={styles.link} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+                {t("givesBackMyRecommendations")}
+              </Text>
             </TouchableOpacity>
           </>
         ) : (
@@ -212,9 +250,15 @@ export default function GivesBackBanner({ refreshKey = 0, style }: Props) {
                 size={moderateWidthScale(24)}
                 color={C.lockedText}
               />
-              <Text style={styles.buttonText}>{t("givesBackRecommend")}</Text>
+              <Text style={styles.buttonText} {...ONE_LINE}>
+                {t("givesBackRecommend")}
+              </Text>
             </View>
-            <Text style={styles.unlocks} importantForAccessibility="no">
+            <Text
+              style={styles.unlocks}
+              importantForAccessibility="no"
+              maxFontSizeMultiplier={MAX_FONT_SCALE}
+            >
               {t("givesBackUnlocksAt", { goal: goalText })}
             </Text>
           </>
@@ -228,11 +272,12 @@ const styles = StyleSheet.create({
   card: {
     borderRadius: moderateWidthScale(20),
     backgroundColor: C.body,
-    shadowColor: "#3A2A10",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 12,
-    elevation: 4,
+    // Lifted off the cream home background (client 11-19: "a bit elevated")
+    shadowColor: "#1E2A10",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.22,
+    shadowRadius: 18,
+    elevation: 10,
   },
   // ── Header
   header: {
@@ -329,6 +374,7 @@ const styles = StyleSheet.create({
   buttonLocked: { backgroundColor: C.lockedButton },
   buttonActive: { backgroundColor: C.ink },
   buttonText: {
+    flexShrink: 1,
     fontSize: fontSize.size17,
     fontFamily: fonts.fontBold,
     color: C.lockedText,
