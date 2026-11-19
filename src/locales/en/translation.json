@@ -5620,5 +5620,15 @@
   "givesBackStatus_pending": "Pending",
   "givesBackStatus_contacted": "Contacted",
   "givesBackStatus_supported": "Supported",
-  "givesBackStatus_rejected": "Not selected"
+  "givesBackStatus_rejected": "Not selected",
+  "givesBackOpenFile": "Open",
+  "givesBackOpenFileFailed": "Couldn't open this file.",
+  "givesBackFilesCount_one": "{{count}} file",
+  "givesBackFilesCount_other": "{{count}} files",
+  "givesBackFamiliesCount_one": "{{count}} family",
+  "givesBackFamiliesCount_other": "{{count}} families",
+  "givesBackListIntroPrefix": "Thank you for caring. You've recommended",
+  "givesBackListIntroSuffix": ". Track each one's status here.",
+  "givesBackViewDetails": "View details",
+  "givesBackHideDetails": "Hide details"
 }

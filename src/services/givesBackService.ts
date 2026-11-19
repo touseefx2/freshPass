@@ -151,14 +151,16 @@ export async function submitFamilyRecommendation(
 export async function fetchMyRecommendations(page = 1): Promise<{
   items: GivesBackRecommendation[];
   lastPage: number;
+  total: number;
 }> {
   const response = await ApiService.get<
     Envelope<GivesBackRecommendation[]> & {
-      meta?: { current_page?: number; last_page?: number };
+      meta?: { current_page?: number; last_page?: number; total?: number };
     }
   >(givesBackEndpoints.mine(page));
   return {
     items: Array.isArray(response?.data) ? response.data : [],
     lastPage: toNumber(response?.meta?.last_page, 1),
+    total: toNumber(response?.meta?.total),
   };
 }

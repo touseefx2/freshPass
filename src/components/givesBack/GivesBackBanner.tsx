@@ -35,7 +35,8 @@ import Logger from "@/src/services/logger";
 
 // Colors taken from the client design (fixed brand card, same in every theme)
 export const GIVES_BACK_COLORS = {
-  header: "#2F4222",
+  // Same dark green as the unlocked "Recommend a Family" button (client 11-19)
+  header: "#283618",
   body: "#FDF5E9",
   ink: "#283618",
   muted: "#5C574E",
