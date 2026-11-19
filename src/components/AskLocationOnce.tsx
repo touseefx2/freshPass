@@ -87,6 +87,8 @@ const readAndSaveLocation = async (dispatch: AppDispatch) => {
       }
     } catch {}
     if (!locationName) return;
+    // Cleared while this read was in flight — don't put it back
+    if (autoRefillOff) return;
 
     const locationPayload = {
       lat: coordinates.latitude,
@@ -153,10 +155,12 @@ export default function AskLocationOnce({
     if (!isCustomerRef.current || checkingRef.current) return;
     if (modeSwitchOpenRef.current) return; // re-runs when the menu closes
     resetSessionFlagsFor(userKeyRef.current);
+    // User cleared the location on purpose — no auto read or popup on ANY
+    // screen (incl. freshly mounted ones) for the rest of this session.
+    if (autoRefillOff) return;
     const isFirst = firstCheckRef.current;
     firstCheckRef.current = false;
     if (hasLocationRef.current && !(isFirst && refreshWhenSet)) return;
-    if (!isFirst && autoRefillOff) return;
 
     checkingRef.current = true;
     try {
