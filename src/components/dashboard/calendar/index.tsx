@@ -14,6 +14,7 @@ import {
   ActivityIndicator,
   Pressable,
   GestureResponderEvent,
+  PixelRatio,
 } from "react-native";
 import { useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { useTranslation } from "react-i18next";
@@ -224,6 +225,11 @@ const MIN_BLOCK_HEIGHT_DETAILED = heightScale(52);
 const TIME_GUTTER_WIDTH = widthScale(58);
 const WEEK_GUTTER_WIDTH = widthScale(48);
 const BLOCK_LINE_HEIGHT = moderateHeightScale(16);
+// Appointment box text: cap OS font scaling and shrink text to fit short
+// boxes, so nothing is cut on small phones / big font settings (user 11-19).
+const BLOCK_FONT_SCALE_CAP = 1.15;
+const BLOCK_MIN_TEXT_SCALE = 0.75;
+const BLOCK_WRAPPER_PAD_BOTTOM = moderateHeightScale(2);
 const GRID_START_HOUR = 0;
 const GRID_END_HOUR = 24;
 const MONTH_CELL_HEIGHT = heightScale(60);
@@ -334,8 +340,9 @@ const layoutDayAppointments = (
   if (cluster.length > 0) clusters.push(cluster);
 
   const positioned: PositionedAppointment[] = [];
+  const placed: { start: number; column: number; cluster: number }[] = [];
 
-  clusters.forEach((group) => {
+  clusters.forEach((group, clusterIndex) => {
     // columnEnds[i] = end minutes of the last appointment placed in that lane
     const columnEnds: number[] = [];
     const assignments: { appointment: CalendarAppointment; column: number }[] =
@@ -366,10 +373,67 @@ const layoutDayAppointments = (
         column,
         totalColumns,
       });
+      placed.push({
+        start: appointment.start_minutes,
+        column,
+        cluster: clusterIndex,
+      });
     });
   });
 
+  // The min height must not run under the next booking below (it covered
+  // the earlier card's text): stop each box where the next one starts.
+  positioned.forEach((item, i) => {
+    const me = placed[i];
+    let nextStart = Infinity;
+    placed.forEach((other, j) => {
+      if (j === i || other.start <= me.start) return;
+      if (other.cluster === me.cluster && other.column !== me.column) return;
+      nextStart = Math.min(nextStart, other.start);
+    });
+    if (nextStart !== Infinity) {
+      const room = ((nextStart - me.start) / 60) * hourHeight;
+      item.height = Math.max(
+        Math.min(item.height, room),
+        (blockMinutes(item.appointment) / 60) * hourHeight,
+      );
+    }
+  });
+
   return positioned;
+};
+
+/**
+ * How the text of one appointment box fits its height: how many lines to
+ * show, the text scale, and the vertical padding. Lines are dropped from
+ * the bottom (week: duration first) before text gets smaller than the min.
+ */
+const fitBlockText = (
+  boxHeight: number,
+  lineHeights: number[],
+  padNormal: number,
+  padTight: number,
+  minLines: number,
+  gapNormal = 0,
+) => {
+  const fs = Math.min(PixelRatio.getFontScale(), BLOCK_FONT_SCALE_CAP);
+  const inner = boxHeight - BLOCK_WRAPPER_PAD_BOTTOM;
+  for (let lines = lineHeights.length; lines >= minLines; lines--) {
+    const textH =
+      lineHeights.slice(0, lines).reduce((sum, h) => sum + h, 0) * fs;
+    if (inner >= textH + padNormal * 2 + gapNormal * (lines - 1)) {
+      return { lines, scale: 1, pad: padNormal };
+    }
+    const scale = (inner - padTight * 2) / textH;
+    if (scale >= BLOCK_MIN_TEXT_SCALE || lines === minLines) {
+      return {
+        lines,
+        scale: Math.max(Math.min(scale, 1), BLOCK_MIN_TEXT_SCALE),
+        pad: padTight,
+      };
+    }
+  }
+  return { lines: minLines, scale: BLOCK_MIN_TEXT_SCALE, pad: padTight };
 };
 
 const createStyles = (theme: Theme) =>
@@ -619,7 +683,10 @@ const createStyles = (theme: Theme) =>
     },
     hourLabel: {
       position: "absolute",
+      // Full gutter width so "12 PM" stays on one line (big font settings)
+      left: moderateWidthScale(2),
       right: moderateWidthScale(4),
+      textAlign: "right",
       fontSize: fontSize.size11,
       fontFamily: fonts.fontMedium,
       color: theme.darkGreen,
@@ -656,7 +723,7 @@ const createStyles = (theme: Theme) =>
       position: "absolute",
       zIndex: 2,
       paddingHorizontal: moderateWidthScale(1),
-      paddingBottom: moderateHeightScale(2),
+      paddingBottom: BLOCK_WRAPPER_PAD_BOTTOM,
     },
     block: {
       flex: 1,
@@ -2808,6 +2875,38 @@ export default function CalendarScreen({ fullscreen = false }: CalendarScreenPro
       extraCount = totalColumns - MAX_DAY_LANES;
     }
 
+    // Fit text to the box (short bookings / small phones / big fonts)
+    const weekLines = [
+      fontSize.size9 * 1.35,
+      fontSize.size8 * 1.35,
+      ...(cancelled ? [] : [fontSize.size8 * 1.35]),
+    ];
+    const dayLines = [fontSize.size14 * 1.3, fontSize.size12 * 1.3];
+    const fit = isCompact
+      ? fitBlockText(
+          height,
+          weekLines,
+          moderateHeightScale(4),
+          moderateHeightScale(2),
+          1,
+        )
+      : fitBlockText(
+          height,
+          dayLines,
+          moderateHeightScale(8),
+          moderateHeightScale(3),
+          1,
+          moderateHeightScale(2),
+        );
+    const fz = (size: number) => ({
+      fontSize: size * fit.scale,
+      lineHeight: size * 1.3 * fit.scale,
+    });
+    const fzWeek = (size: number) => ({
+      fontSize: size * fit.scale,
+      lineHeight: size * 1.35 * fit.scale,
+    });
+
     const handlePress = () => {
       if ((isCompact && hasOverlap) || (isLastVisibleLane && extraCount > 0)) {
         openOverlapList(appointment.date, appointment.start_minutes, top);
@@ -2835,6 +2934,8 @@ export default function CalendarScreen({ fullscreen = false }: CalendarScreenPro
             styles.block,
             !isCompact && styles.blockDetailed,
             { backgroundColor: palette.bg, borderLeftColor: palette.accent },
+            { paddingVertical: fit.pad },
+            !isCompact && fit.pad !== moderateHeightScale(8) && { gap: 0 },
           ]}
           activeOpacity={0.8}
           onPress={handlePress}
@@ -2843,28 +2944,34 @@ export default function CalendarScreen({ fullscreen = false }: CalendarScreenPro
             <>
               <Text
                 numberOfLines={1}
+                maxFontSizeMultiplier={BLOCK_FONT_SCALE_CAP}
                 style={[
                   styles.blockClient,
                   cancelled && { color: theme.red },
-                  { fontSize: fontSize.size9, fontFamily: fonts.fontBold },
+                  { fontFamily: fonts.fontBold },
+                  fzWeek(fontSize.size9),
                 ]}
               >
                 {appointment.client_name}
               </Text>
-              <Text
-                numberOfLines={1}
-                style={[
-                  styles.blockService,
-                  cancelled && styles.cancelledLabel,
-                  { fontSize: fontSize.size8 },
-                ]}
-              >
-                {cancelled ? "CANCELLED" : appointment.title}
-              </Text>
-              {!cancelled && (
+              {fit.lines >= 2 && (
                 <Text
                   numberOfLines={1}
-                  style={[styles.blockService, { fontSize: fontSize.size8 }]}
+                  maxFontSizeMultiplier={BLOCK_FONT_SCALE_CAP}
+                  style={[
+                    styles.blockService,
+                    cancelled && styles.cancelledLabel,
+                    fzWeek(fontSize.size8),
+                  ]}
+                >
+                  {cancelled ? "CANCELLED" : appointment.title}
+                </Text>
+              )}
+              {!cancelled && fit.lines >= 3 && (
+                <Text
+                  numberOfLines={1}
+                  maxFontSizeMultiplier={BLOCK_FONT_SCALE_CAP}
+                  style={[styles.blockService, fzWeek(fontSize.size8)]}
                 >
                   {appointment.duration}
                 </Text>
@@ -2875,38 +2982,52 @@ export default function CalendarScreen({ fullscreen = false }: CalendarScreenPro
               <View style={styles.blockHeaderRow}>
                 <Text
                   numberOfLines={1}
+                  maxFontSizeMultiplier={BLOCK_FONT_SCALE_CAP}
                   style={[
                     styles.blockClientDetailed,
                     cancelled && { color: theme.red },
+                    fz(fontSize.size14),
                   ]}
                 >
                   {appointment.client_name}
                 </Text>
                 {visibleCols === 1 && (
-                  <Text numberOfLines={1} style={styles.blockTimeRange}>
+                  <Text
+                    numberOfLines={1}
+                    maxFontSizeMultiplier={BLOCK_FONT_SCALE_CAP}
+                    style={[styles.blockTimeRange, fz(fontSize.size12)]}
+                  >
                     {`${formatShortTimeLabel(appointment.start_minutes)} – ${formatMinutesLabel(
                       (appointment.start_minutes + appointment.duration_minutes) % (24 * 60),
                     )}`}
                   </Text>
                 )}
               </View>
+              {fit.lines >= 2 && (
               <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
                 <Text
                   numberOfLines={1}
+                  maxFontSizeMultiplier={BLOCK_FONT_SCALE_CAP}
                   style={[
                     styles.blockServiceDetailed,
                     cancelled && styles.cancelledLabel,
                     { flex: 1 },
+                    fz(fontSize.size12),
                   ]}
                 >
                   {cancelled ? "CANCELLED" : toTitleCase(appointment.title)}
                 </Text>
                 {!cancelled && (
-                  <Text numberOfLines={1} style={styles.blockTimeRange}>
+                  <Text
+                    numberOfLines={1}
+                    maxFontSizeMultiplier={BLOCK_FONT_SCALE_CAP}
+                    style={[styles.blockTimeRange, fz(fontSize.size12)]}
+                  >
                     {appointment.duration}
                   </Text>
                 )}
               </View>
+              )}
             </>
           )}
           {extraCount > 0 && (
@@ -3225,6 +3346,9 @@ export default function CalendarScreen({ fullscreen = false }: CalendarScreenPro
           {hours.map((hour, index) => (
             <Text
               key={hour}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              maxFontSizeMultiplier={BLOCK_FONT_SCALE_CAP}
               style={[
                 styles.hourLabel,
                 { top: index * hourHeight - moderateHeightScale(6) },
