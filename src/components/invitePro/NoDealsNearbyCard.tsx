@@ -55,7 +55,8 @@ export default function NoDealsNearbyCard({ style }: NoDealsNearbyCardProps) {
         <View style={styles.headerRow}>
           <Text
             style={styles.eyebrow}
-            maxFontSizeMultiplier={1.2}
+            numberOfLines={1}
+            maxFontSizeMultiplier={1}
             accessibilityRole="header"
           >
             {t("ndcEyebrow")}
@@ -66,7 +67,11 @@ export default function NoDealsNearbyCard({ style }: NoDealsNearbyCardProps) {
               size={moderateWidthScale(13)}
               color={theme.darkGreen}
             />
-            <Text style={styles.earnBadgeText} maxFontSizeMultiplier={1.2}>
+            <Text
+              style={styles.earnBadgeText}
+              numberOfLines={1}
+              maxFontSizeMultiplier={1}
+            >
               {t("earnRewardsBadge")}
             </Text>
           </View>
@@ -87,8 +92,12 @@ export default function NoDealsNearbyCard({ style }: NoDealsNearbyCardProps) {
           </View>
         </View>
 
-        <Text style={styles.title}>{t("ndcTitle")}</Text>
-        <Text style={styles.subtitle}>{t("ndcSubtitle")}</Text>
+        <Text style={styles.title} maxFontSizeMultiplier={1.2}>
+          {t("ndcTitle")}
+        </Text>
+        <Text style={styles.subtitle} maxFontSizeMultiplier={1.2}>
+          {t("ndcSubtitle")}
+        </Text>
 
         <TouchableOpacity
           activeOpacity={0.85}
@@ -97,7 +106,13 @@ export default function NoDealsNearbyCard({ style }: NoDealsNearbyCardProps) {
           accessibilityRole="button"
           accessibilityLabel={t("ipBannerInviteCta")}
         >
-          <Text style={styles.inviteButtonText}>
+          <Text
+            style={styles.inviteButtonText}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.8}
+            maxFontSizeMultiplier={1.2}
+          >
             {t("ipBannerInviteCta")}
           </Text>
           <MaterialCommunityIcons
@@ -180,23 +195,27 @@ const createStyles = (theme: Theme) =>
       alignItems: "center",
       justifyContent: "space-between",
       alignSelf: "stretch",
+      gap: moderateWidthScale(8),
+      marginHorizontal: -moderateWidthScale(12),
       marginBottom: moderateHeightScale(14),
     },
     eyebrow: {
+      flexShrink: 1,
       fontSize: fontSize.size11,
       fontFamily: fonts.fontBold,
       color: theme.orangeBrown,
-      letterSpacing: 2,
+      letterSpacing: 1.6,
       textTransform: "uppercase",
     },
     earnBadge: {
+      flexShrink: 0,
       flexDirection: "row",
       alignItems: "center",
       gap: moderateWidthScale(5),
       borderWidth: 1.5,
       borderColor: theme.goldBorder,
       borderRadius: moderateWidthScale(999),
-      paddingHorizontal: moderateWidthScale(12),
+      paddingHorizontal: moderateWidthScale(10),
       paddingVertical: moderateHeightScale(5),
       backgroundColor: theme.goldenBuy,
     },
@@ -236,6 +255,7 @@ const createStyles = (theme: Theme) =>
       marginBottom: moderateHeightScale(18),
     },
     inviteButton: {
+      maxWidth: "100%",
       backgroundColor: theme.orangeBrown,
       paddingHorizontal: moderateWidthScale(32),
       paddingVertical: moderateHeightScale(14),
@@ -246,6 +266,7 @@ const createStyles = (theme: Theme) =>
       marginBottom: moderateHeightScale(14),
     },
     inviteButtonText: {
+      flexShrink: 1,
       fontSize: fontSize.size16,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,

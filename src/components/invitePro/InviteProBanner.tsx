@@ -2,7 +2,7 @@
 // Variants: row (FreshPass Deals horizontal), strip (Last-Minute strip),
 // list (Last-Minute vertical), standalone (empty-section fallback).
 
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import {
   StyleProp,
   StyleSheet,
@@ -57,6 +57,10 @@ export function withInviteBanners<T>(items: T[]): WithInviteBanners<T>[] {
 
 /** Text inside a fixed-height card: cap OS font scaling so nothing clips. */
 const MAX_FONT_SCALE = 1.2;
+/** Row/strip banners sit in a fixed-height deal row (same as the cards). */
+const COMPACT_FONT_SCALE = 1.05;
+/** Smallest shrink for text that must stay on its line(s). */
+const MIN_TEXT_SCALE = 0.7;
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -102,7 +106,7 @@ const createStyles = (theme: Theme) =>
     textColCompact: {
       alignSelf: "stretch",
       justifyContent: "space-between",
-      gap: moderateHeightScale(6),
+      gap: moderateHeightScale(4),
     },
     eyebrowRow: {
       flexDirection: "row",
@@ -110,7 +114,11 @@ const createStyles = (theme: Theme) =>
       gap: moderateWidthScale(5),
       marginBottom: moderateHeightScale(6),
     },
+    eyebrowRowCompact: {
+      marginBottom: moderateHeightScale(4),
+    },
     eyebrow: {
+      flexShrink: 1,
       fontSize: fontSize.size12,
       fontFamily: fonts.fontBold,
       color: theme.orangeBrownText,
@@ -160,6 +168,9 @@ const createStyles = (theme: Theme) =>
       alignSelf: "flex-start",
       gap: moderateWidthScale(6),
     },
+    buttonCompact: {
+      paddingVertical: moderateHeightScale(6),
+    },
     buttonFull: {
       marginTop: moderateHeightScale(14),
       paddingHorizontal: moderateWidthScale(20),
@@ -177,10 +188,15 @@ const createStyles = (theme: Theme) =>
       marginTop: moderateHeightScale(4),
       marginBottom: moderateHeightScale(4),
     },
+    footerCompact: {
+      marginTop: moderateHeightScale(3),
+      marginBottom: 0,
+    },
     footerFull: {
       marginTop: moderateHeightScale(10),
     },
     medallion: {
+      flexShrink: 0,
       width: moderateWidthScale(60),
       height: moderateWidthScale(60),
       borderRadius: moderateWidthScale(30),
@@ -209,6 +225,20 @@ export default function InviteProBanner({
   const isGuest = useAppSelector((state: any) => state.user.isGuest);
 
   const compact = variant === "row" || variant === "strip";
+  const fontScale = compact ? COMPACT_FONT_SCALE : MAX_FONT_SCALE;
+
+  // The Earn Rewards badge floats top-right; keep the eyebrow text out from
+  // under it on narrow phones / big font settings.
+  const [badgeWidth, setBadgeWidth] = useState(0);
+  const badgeRight = moderateWidthScale(compact ? 10 : 12);
+  const textColRight =
+    moderateWidthScale(compact ? 14 : 16) + // content padding
+    moderateWidthScale(compact ? 60 : 72) + // medallion
+    moderateWidthScale(12); // gap
+  const eyebrowPadRight = Math.max(
+    0,
+    badgeRight + badgeWidth + moderateWidthScale(6) - textColRight,
+  );
 
   const handlePress = () => {
     if (isGuest) {
@@ -237,7 +267,10 @@ export default function InviteProBanner({
       accessibilityHint={t("ipBannerA11yHint")}
     >
       {/* Earn Rewards badge — absolutely positioned top-right */}
-      <View style={[styles.earnBadge, compact && styles.earnBadgeCompact]}>
+      <View
+        style={[styles.earnBadge, compact && styles.earnBadgeCompact]}
+        onLayout={(e) => setBadgeWidth(e.nativeEvent.layout.width)}
+      >
         <MaterialCommunityIcons
           name="gift-outline"
           size={moderateWidthScale(13)}
@@ -246,7 +279,7 @@ export default function InviteProBanner({
         <Text
           style={styles.earnBadgeText}
           numberOfLines={1}
-          maxFontSizeMultiplier={MAX_FONT_SCALE}
+          maxFontSizeMultiplier={fontScale}
         >
           {t("earnRewardsBadge")}
         </Text>
@@ -258,7 +291,13 @@ export default function InviteProBanner({
       >
         <View style={[styles.textCol, compact && styles.textColCompact]}>
           <View>
-            <View style={styles.eyebrowRow}>
+            <View
+              style={[
+                styles.eyebrowRow,
+                compact && styles.eyebrowRowCompact,
+                { paddingRight: eyebrowPadRight },
+              ]}
+            >
               <MaterialCommunityIcons
                 name="gift-outline"
                 size={moderateWidthScale(15)}
@@ -267,7 +306,9 @@ export default function InviteProBanner({
               <Text
                 style={styles.eyebrow}
                 numberOfLines={1}
-                maxFontSizeMultiplier={MAX_FONT_SCALE}
+                adjustsFontSizeToFit
+                minimumFontScale={MIN_TEXT_SCALE}
+                maxFontSizeMultiplier={fontScale}
               >
                 {t("ipBannerEyebrow")}
               </Text>
@@ -275,17 +316,24 @@ export default function InviteProBanner({
             <Text
               style={[styles.title, !compact && styles.titleFull]}
               numberOfLines={2}
-              maxFontSizeMultiplier={compact ? MAX_FONT_SCALE : undefined}
+              adjustsFontSizeToFit={compact}
+              minimumFontScale={MIN_TEXT_SCALE}
+              maxFontSizeMultiplier={compact ? fontScale : undefined}
             >
               {t("ipBannerTitle")}
             </Text>
           </View>
           <View>
-            <View style={[styles.button, !compact && styles.buttonFull]}>
+            <View
+              style={[
+                styles.button,
+                compact ? styles.buttonCompact : styles.buttonFull,
+              ]}
+            >
               <Text
                 style={styles.buttonText}
                 numberOfLines={1}
-                maxFontSizeMultiplier={MAX_FONT_SCALE}
+                maxFontSizeMultiplier={fontScale}
               >
                 {t("ipBannerInviteCta")}
               </Text>
@@ -296,8 +344,15 @@ export default function InviteProBanner({
               />
             </View>
             <Text
-              style={[styles.footer, !compact && styles.footerFull]}
-              maxFontSizeMultiplier={MAX_FONT_SCALE}
+              style={[
+                styles.footer,
+                compact ? styles.footerCompact : styles.footerFull,
+              ]}
+              // Compact: one line, shrinks to fit the fixed-height card.
+              numberOfLines={compact ? 1 : undefined}
+              adjustsFontSizeToFit={compact}
+              minimumFontScale={MIN_TEXT_SCALE}
+              maxFontSizeMultiplier={fontScale}
             >
               {t("ipBannerFooter")}
             </Text>
