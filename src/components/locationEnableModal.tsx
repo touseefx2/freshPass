@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from "react";
 import Logger from "@/src/services/logger";
-import { Modal, StyleSheet, View, Text, TouchableOpacity } from "react-native";
+import { Modal, StyleSheet, View, Text, TouchableOpacity, Platform } from "react-native";
 import { useTheme } from "@/src/hooks/hooks";
 import { useTranslation } from "react-i18next";
 import { Theme } from "@/src/theme/colors";
@@ -11,6 +11,7 @@ import {
   widthScale,
 } from "@/src/theme/dimensions";
 import * as Location from "expo-location";
+import { ensureLocationServicesOn } from "@/src/services/locationPermissionService";
 import Button from "@/src/components/button";
 import { MapPinIcon } from "@/assets/icons";
 import NotificationBanner from "@/src/components/notificationBanner";
@@ -150,9 +151,13 @@ export default function LocationEnableModal({
       type: "error",
     });
     try {
-      const servicesEnabled = await Location.hasServicesEnabledAsync();
+      const servicesEnabled = await ensureLocationServicesOn();
       if (!servicesEnabled) {
-        const errorMsg = "Please turn on your phone location";
+        // iOS can't switch it on for the user — tell them where it lives
+        const errorMsg =
+          Platform.OS === "ios"
+            ? "Please turn on Location Services in Settings → Privacy & Security → Location Services"
+            : "Please turn on your phone location";
         setModalBanner({
           visible: true,
           title: "Location Error",

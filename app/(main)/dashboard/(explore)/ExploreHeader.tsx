@@ -40,6 +40,7 @@ import {
   clearSearchState,
 } from "@/src/state/slices/generalSlice";
 import { clearLocation, setLocation } from "@/src/state/slices/userSlice";
+import { stopAutoLocationRefill } from "@/src/components/AskLocationOnce";
 
 function formatSelectedDateLabel(d: dayjs.Dayjs): string {
   if (dayjs().isSame(d, "day")) return "Today";
@@ -321,7 +322,10 @@ export default function ExploreHeader({
 
           {location.lat && (
             <Pressable
-              onPress={() => dispatch(clearLocation())}
+              onPress={() => {
+                stopAutoLocationRefill();
+                dispatch(clearLocation());
+              }}
               style={styles.clearButton}
               hitSlop={moderateWidthScale(8)}
             >

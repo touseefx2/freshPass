@@ -33,7 +33,10 @@ import { LocationPinIcon } from "@/assets/icons";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import LocationEnableModal from "@/src/components/locationEnableModal";
 import * as Location from "expo-location";
-import { handleLocationPermission } from "@/src/services/locationPermissionService";
+import {
+  ensureLocationServicesOn,
+  handleLocationPermission,
+} from "@/src/services/locationPermissionService";
 import {
   addToRecentLocations,
   setCurrentLocation,
@@ -385,7 +388,7 @@ export default function LocationScreen() {
   };
 
   const getCurrentLocation = async () => {
-    const servicesEnabled = await Location.hasServicesEnabledAsync();
+    const servicesEnabled = await ensureLocationServicesOn();
     setEnablingLocation(servicesEnabled);
     if (!servicesEnabled) return;
     try {

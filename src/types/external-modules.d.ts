@@ -54,6 +54,8 @@ declare module "expo-location" {
 
   export interface PermissionResponse {
     status: PermissionStatus;
+    granted?: boolean;
+    canAskAgain?: boolean;
   }
 
   export interface LocationObjectCoords {
@@ -98,6 +100,7 @@ declare module "expo-location" {
   }
 
   export function requestForegroundPermissionsAsync(): Promise<PermissionResponse>;
+  export function getForegroundPermissionsAsync(): Promise<PermissionResponse>;
   export function getCurrentPositionAsync(
     options?: LocationOptions
   ): Promise<LocationObject>;
@@ -105,6 +108,7 @@ declare module "expo-location" {
     options?: LocationLastKnownOptions
   ): Promise<LocationObject | null>;
   export function hasServicesEnabledAsync(): Promise<boolean>;
+  export function enableNetworkProviderAsync(): Promise<void>;
   export function reverseGeocodeAsync(
     location: LocationObjectCoords,
     options?: { useGoogleMaps?: boolean; timeout?: number }

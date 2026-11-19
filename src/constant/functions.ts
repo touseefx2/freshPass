@@ -1,5 +1,6 @@
 import { Platform, I18nManager } from "react-native";
 import * as Location from "expo-location";
+import { ensureLocationServicesOn } from "@/src/services/locationPermissionService";
 import Logger from "@/src/services/logger";
 import {
   Coordinates,
@@ -219,7 +220,7 @@ export const resolveAddressViaGoogle = async (
 export const resolveCurrentLocation = async ({
   apiKey,
 }: ResolveCurrentLocationArgs): Promise<ResolveCurrentLocationResult> => {
-  const servicesEnabled = await Location.hasServicesEnabledAsync();
+  const servicesEnabled = await ensureLocationServicesOn();
   if (!servicesEnabled) {
     return {
       status: "error",
