@@ -303,7 +303,7 @@ const styles = StyleSheet.create({
   description: {
     fontSize: fontSize.size14,
     fontFamily: fonts.fontRegular,
-    color: C.whiteSoft,
+    color: C.white,
     lineHeight: fontSize.size14 * 1.35,
   },
   // ── Body
