@@ -1160,6 +1160,16 @@ export const supportEndpoints = {
 };
 
 /**
+ * FreshPass Gives Back (subscriber goal banner + family recommendations)
+ */
+export const givesBackEndpoints = {
+  banner: `/api/gives-back/banner`,
+  recommend: `/api/gives-back/recommend`,
+  mine: (page = 1, perPage = 15) =>
+    `/api/gives-back/my-recommendations?page=${page}&per_page=${perPage}`,
+};
+
+/**
  * Product inventory endpoints
  */
 export const productEndpoints = {

@@ -56,6 +56,7 @@ import HomeSlotOffersSection from "@/src/components/homeSlotOffersSection";
 import FreshyTryOnBanner from "@/src/components/FreshyTryOnBanner";
 import MarketplaceBanner from "@/src/components/marketplace/MarketplaceBanner";
 import InviteProBanner from "@/src/components/invitePro/InviteProBanner";
+import GivesBackBanner from "@/src/components/givesBack/GivesBackBanner";
 import NoDealsNearbyCard from "@/src/components/invitePro/NoDealsNearbyCard";
 import { fetchFollowing } from "@/src/services/followService";
 import { listPublic as listDealClasses } from "@/src/services/masterClassService";
@@ -457,6 +458,10 @@ const createStyles = (theme: Theme) =>
     section: {
       marginTop: moderateHeightScale(16),
       gap: moderateHeightScale(14),
+    },
+    givesBack: {
+      marginTop: moderateHeightScale(16),
+      marginHorizontal: moderateWidthScale(16),
     },
     sectionTitle: {
       fontSize: fontSize.size20,
@@ -1263,6 +1268,14 @@ export default function DashboardContent({
             }}
           />
         </View>
+      )}
+
+      {/* FreshPass Gives Back (signed-in customers; renders nothing when off) */}
+      {userRole === "customer" && !isGuest && (
+        <GivesBackBanner
+          refreshKey={refreshKey}
+          style={styles.givesBack}
+        />
       )}
 
       <View style={styles.section}>

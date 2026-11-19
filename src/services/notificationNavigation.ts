@@ -35,6 +35,7 @@ import {
 import { getUserMode } from "@/src/services/userModeService";
 import { requestAwaitingOutcomeScroll } from "@/src/services/homeScrollRequest";
 import { fetchSlotOfferDetail } from "@/src/services/slotOfferService";
+import { clearGivesBackBannerCache } from "@/src/services/givesBackService";
 
 export type NotificationSubType =
   | "appointment_scheduled"
@@ -643,6 +644,14 @@ export function navigateFromNotificationData(
       void openModeratedReel(router, reelId);
     }
     // posting_restored / account_restored: nothing to open (row is marked read)
+    return;
+  }
+
+  // FreshPass Gives Back goal reached → Home, where the banner now shows
+  // the unlocked "Recommend a Family" button
+  if (type === "gives_back_unlocked") {
+    clearGivesBackBannerCache();
+    resetToDashboardHome();
     return;
   }
 

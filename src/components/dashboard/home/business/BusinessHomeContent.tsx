@@ -31,6 +31,7 @@ import {
 } from "./HomeStatCards";
 import BookingProfileCard from "./BookingProfileCard";
 import HomeQuickCards from "./HomeQuickCards";
+import GivesBackBanner from "@/src/components/givesBack/GivesBackBanner";
 import { PeriodAppointmentsCard } from "./AppointmentRows";
 import StaffOverview, { type StaffPeriodStats } from "./StaffOverview";
 import {
@@ -59,6 +60,11 @@ const styles = StyleSheet.create({
   },
   periodTabs: {
     marginTop: moderateHeightScale(18),
+  },
+  // Margin on the card itself: no empty gap when the banner is turned off
+  givesBack: {
+    marginTop: moderateHeightScale(14),
+    marginHorizontal: GUTTER,
   },
 });
 
@@ -196,6 +202,9 @@ export default function BusinessHomeContent({
       <View style={[styles.gutter, styles.first]}>
         <HomeQuickCards />
       </View>
+
+      {/* FreshPass Gives Back (renders nothing when turned off) */}
+      <GivesBackBanner refreshKey={refreshKey} style={styles.givesBack} />
 
       <View style={[styles.gutter, styles.periodTabs]}>
         <PeriodTabs
