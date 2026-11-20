@@ -480,12 +480,14 @@ export default function AddAppointmentScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [salonTimeZone]);
 
-  // Salon or barber day off: greyed in the date strip, like customer booking.
+  // Day off greyed in the date strip, same rule as available-slots: the
+  // barber's own row for the day decides alone; no row → salon hours.
   const isDayClosed = (day: dayjs.Dayjs) => {
     if (!schedule) return false;
     const name = day.locale("en").format("dddd").toLowerCase();
-    if (schedule.closedDays.includes(name)) return true;
-    return staffId != null && !!schedule.staffClosedDays[staffId]?.includes(name);
+    const own = staffId != null ? schedule.staffDays[staffId]?.[name] : undefined;
+    if (own !== undefined) return own;
+    return schedule.closedDays.includes(name);
   };
 
   const timezoneText = salonTimeZone

@@ -158,15 +158,12 @@ export function checkSlot(input: SlotCheckInput, t: TFunction): SlotProblem | nu
     return null;
   };
 
-  const salonRow = hours?.hours[enWeekday] ?? hours?.hours[weekday];
-  const salonReason = check(salonRow, "salon");
-  if (salonReason) return salonReason;
-  if (staffId != null && hours?.staffHours[staffId]) {
-    const rows = hours.staffHours[staffId];
-    const staffReason = check(rows[enWeekday] ?? rows[weekday], "staff");
-    if (staffReason) return staffReason;
-  }
-  return null;
+  // Same rule as the server (getWorkingHoursForDate): the barber's own row
+  // for the day decides alone; no row → salon hours. Never both.
+  const staffRows = staffId != null ? hours?.staffHours[staffId] : undefined;
+  const staffRow = staffRows?.[enWeekday] ?? staffRows?.[weekday];
+  if (staffRow) return check(staffRow, "staff");
+  return check(hours?.hours[enWeekday] ?? hours?.hours[weekday], "salon");
 }
 
 /** Live or paused deals hold their slot; booked ones are already appointments. */

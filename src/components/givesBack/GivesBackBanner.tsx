@@ -143,6 +143,7 @@ export default function GivesBackBanner({ refreshKey = 0, style }: Props) {
           {description ? (
             <Text
               style={styles.description}
+              numberOfLines={2}
               maxFontSizeMultiplier={MAX_FONT_SCALE}
             >
               {description}
@@ -206,7 +207,7 @@ export default function GivesBackBanner({ refreshKey = 0, style }: Props) {
           >
             <MaterialIcons
               name="volunteer-activism"
-              size={moderateWidthScale(22)}
+              size={moderateWidthScale(18)}
               color={C.white}
             />
             <Text
@@ -230,7 +231,7 @@ export default function GivesBackBanner({ refreshKey = 0, style }: Props) {
             >
               <MaterialIcons
                 name="lock-outline"
-                size={moderateWidthScale(24)}
+                size={moderateWidthScale(19)}
                 color={C.lockedText}
               />
               <Text style={styles.buttonText} {...ONE_LINE}>
@@ -285,8 +286,8 @@ export default function GivesBackBanner({ refreshKey = 0, style }: Props) {
   );
 }
 
-const BORDER = 2.5;
-const RADIUS = moderateWidthScale(20);
+const BORDER = 2;
+const RADIUS = moderateWidthScale(16);
 
 const styles = StyleSheet.create({
   card: {
@@ -296,91 +297,91 @@ const styles = StyleSheet.create({
     backgroundColor: C.body,
     // Soft lift off the cream home background
     shadowColor: "#1E2A10",
-    shadowOffset: { width: 0, height: 6 },
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.16,
-    shadowRadius: 12,
+    shadowRadius: 10,
     elevation: 6,
   },
   // ── Header
   header: {
     flexDirection: "row",
     alignItems: "center",
-    gap: moderateWidthScale(12),
-    paddingHorizontal: moderateWidthScale(16),
-    paddingVertical: moderateHeightScale(14),
+    gap: moderateWidthScale(10),
+    paddingHorizontal: moderateWidthScale(14),
+    paddingVertical: moderateHeightScale(9),
     backgroundColor: C.header,
     borderTopLeftRadius: RADIUS - BORDER,
     borderTopRightRadius: RADIUS - BORDER,
   },
   icon: {
-    width: moderateWidthScale(62),
-    height: moderateWidthScale(52),
+    width: moderateWidthScale(44),
+    height: moderateWidthScale(37),
   },
   headerDivider: {
     width: 1.5,
     alignSelf: "stretch",
-    marginVertical: moderateHeightScale(4),
+    marginVertical: moderateHeightScale(2),
     backgroundColor: C.whiteSoft,
   },
-  headerText: { flex: 1, minWidth: 0, gap: moderateHeightScale(3) },
+  headerText: { flex: 1, minWidth: 0, gap: moderateHeightScale(1) },
   title: {
-    fontSize: fontSize.size19,
+    fontSize: fontSize.size16,
     fontFamily: fonts.fontBold,
     color: C.white,
   },
   description: {
-    fontSize: fontSize.size13,
+    fontSize: fontSize.size11,
     fontFamily: fonts.fontRegular,
     color: C.white,
-    lineHeight: fontSize.size13 * 1.35,
+    lineHeight: fontSize.size11 * 1.3,
   },
   // ── Body
   body: {
-    paddingHorizontal: moderateWidthScale(16),
-    paddingTop: moderateHeightScale(14),
-    paddingBottom: moderateHeightScale(6),
+    paddingHorizontal: moderateWidthScale(14),
+    paddingTop: moderateHeightScale(10),
+    paddingBottom: moderateHeightScale(2),
   },
   tag: {
     alignSelf: "flex-start",
     maxWidth: "100%",
-    paddingHorizontal: moderateWidthScale(12),
-    paddingVertical: moderateHeightScale(5),
+    paddingHorizontal: moderateWidthScale(10),
+    paddingVertical: moderateHeightScale(3),
     borderRadius: moderateWidthScale(999),
     backgroundColor: C.tag,
   },
   tagText: {
-    fontSize: fontSize.size14,
+    fontSize: fontSize.size12,
     fontFamily: fonts.fontBold,
     color: C.ink,
   },
   count: {
-    marginTop: moderateHeightScale(8),
-    fontSize: fontSize.size26,
+    marginTop: moderateHeightScale(5),
+    fontSize: fontSize.size20,
     fontFamily: fonts.fontExtraBold,
     color: C.ink,
     fontVariant: ["tabular-nums"],
   },
   track: {
-    height: heightScale(10),
-    marginTop: moderateHeightScale(12),
-    borderRadius: heightScale(5),
+    height: heightScale(8),
+    marginTop: moderateHeightScale(7),
+    borderRadius: heightScale(4),
     backgroundColor: C.track,
     overflow: "hidden",
   },
   fill: {
     height: "100%",
-    borderRadius: heightScale(5),
+    borderRadius: heightScale(4),
     backgroundColor: C.fill,
   },
   progressLabels: {
     flexDirection: "row",
     justifyContent: "space-between",
     gap: moderateWidthScale(12),
-    marginTop: moderateHeightScale(6),
+    marginTop: moderateHeightScale(4),
   },
   progressLabel: {
     flexShrink: 1,
-    fontSize: fontSize.size14,
+    fontSize: fontSize.size12,
     fontFamily: fonts.fontMedium,
     color: C.ink,
     fontVariant: ["tabular-nums"],
@@ -389,25 +390,25 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: moderateWidthScale(10),
-    minHeight: heightScale(46),
-    marginTop: moderateHeightScale(14),
-    paddingHorizontal: moderateWidthScale(16),
-    borderRadius: moderateWidthScale(12),
+    gap: moderateWidthScale(8),
+    minHeight: heightScale(38),
+    marginTop: moderateHeightScale(10),
+    paddingHorizontal: moderateWidthScale(14),
+    borderRadius: moderateWidthScale(10),
   },
   buttonLocked: { backgroundColor: C.lockedButton },
   buttonActive: { backgroundColor: C.ink },
   buttonText: {
     flexShrink: 1,
-    fontSize: fontSize.size17,
+    fontSize: fontSize.size15,
     fontFamily: fonts.fontMedium,
     color: C.lockedText,
   },
   buttonTextActive: { color: C.white, fontFamily: fonts.fontBold },
   unlocks: {
-    marginTop: moderateHeightScale(8),
+    marginTop: moderateHeightScale(5),
     textAlign: "center",
-    fontSize: fontSize.size13,
+    fontSize: fontSize.size11,
     fontFamily: fonts.fontRegular,
     color: C.muted,
   },
@@ -415,22 +416,22 @@ const styles = StyleSheet.create({
   linksRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginTop: moderateHeightScale(4),
+    marginTop: moderateHeightScale(1),
   },
   linkButton: {
     flex: 1,
-    minHeight: heightScale(40),
+    minHeight: heightScale(32),
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: moderateWidthScale(6),
   },
   linkDivider: {
     width: 1,
-    height: moderateHeightScale(18),
+    height: moderateHeightScale(14),
     backgroundColor: C.muted,
   },
   link: {
-    fontSize: fontSize.size14,
+    fontSize: fontSize.size12,
     fontFamily: fonts.fontMedium,
     color: C.ink,
     textDecorationLine: "underline",

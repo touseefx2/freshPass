@@ -247,13 +247,26 @@ function closedDayNames(rows: unknown): string[] {
     .map((row) => (row.day as string).toLowerCase());
 }
 
+/** Lowercase day name → closed, only for the days a row was sent. */
+function dayRows(rows: unknown): Record<string, boolean> {
+  const out: Record<string, boolean> = {};
+  if (!Array.isArray(rows)) return out;
+  (rows as HoursRow[]).forEach((row) => {
+    if (typeof row?.day === "string") out[row.day.toLowerCase()] = !!row.closed;
+  });
+  return out;
+}
+
 export type OwnerBookingSchedule = {
   /** Salon IANA zone; slot times are in this zone */
   timezone: string | null;
   /** Days the salon is closed */
   closedDays: string[];
-  /** Days each barber (staff id) is off */
-  staffClosedDays: Record<number, string[]>;
+  /**
+   * Each barber's (staff id) own rows: day → closed. A day without a row
+   * follows the salon hours, like available-slots.
+   */
+  staffDays: Record<number, Record<string, boolean>>;
 };
 
 /** Salon zone and closed days, so the date strip can grey them out. */
@@ -270,9 +283,9 @@ export async function fetchOwnerBookingSchedule(
     };
   }>(businessEndpoints.businessDetails(businessId));
   const business = res?.data?.business;
-  const staffClosedDays: Record<number, string[]> = {};
+  const staffDays: Record<number, Record<string, boolean>> = {};
   (business?.staff ?? []).forEach((row) => {
-    if (row?.id != null) staffClosedDays[row.id] = closedDayNames(row.working_hours);
+    if (row?.id != null) staffDays[row.id] = dayRows(row.working_hours);
   });
   return {
     timezone:
@@ -280,7 +293,7 @@ export async function fetchOwnerBookingSchedule(
         ? business.timezone
         : null,
     closedDays: closedDayNames(business?.hours),
-    staffClosedDays,
+    staffDays,
   };
 }
 
