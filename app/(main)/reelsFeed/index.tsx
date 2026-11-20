@@ -103,6 +103,11 @@ import type {
 } from "@/src/types/reels";
 import { resolveApiImageUrl } from "@/src/utils/media";
 import {
+  getReelClassClosesAt,
+  isReelClassOpen,
+} from "@/src/utils/masterClassHelpers";
+import { subscribeToClassUnavailable } from "@/src/services/masterClassService";
+import {
   clearPendingReelTryOn,
   pollReelTryOnJob,
   savePendingReelTryOn,
@@ -849,6 +854,8 @@ type ReelItemProps = {
   /** Customer closed the product card on this reel (until the feed is reopened). */
   productDismissed?: boolean;
   onDismissProduct?: (reelId: number) => void;
+  /** Class detail answered 404 for this reel's class: hide its card. */
+  classUnavailable?: boolean;
   onPublish?: () => void;
   /** Report plays: `/view` when playback starts, `/watch` when the play ends. */
   trackPlays?: boolean;
@@ -886,6 +893,7 @@ function ReelFeedItemBase({
   onWantLook,
   productDismissed = false,
   onDismissProduct,
+  classUnavailable = false,
   onPublish,
   trackPlays = false,
   onPlayStart,
@@ -1409,6 +1417,21 @@ function ReelFeedItemBase({
   const postedByAvatarUri = resolveApiImageUrl(reel.posted_by?.image_url);
   const dispatch = useAppDispatch();
   const shopProduct = reel.product ?? null;
+  // Attached class hides itself at its start time while the reel stays open
+  // (the feed was loaded before it closed); the server drops it on next load.
+  const reelClass = reel.master_class ?? null;
+  const reelClassClosesAt = getReelClassClosesAt(reelClass);
+  const [, setReelClassTick] = useState(0);
+  useEffect(() => {
+    if (reelClassClosesAt == null) return;
+    const wait = reelClassClosesAt - Date.now();
+    // setTimeout overflows past ~24.8 days; the next render re-checks anyway
+    if (wait <= 0 || wait > 2147483647) return;
+    const timer = setTimeout(() => setReelClassTick((n) => n + 1), wait + 500);
+    return () => clearTimeout(timer);
+  }, [reelClassClosesAt]);
+  const showReelClass =
+    !!reelClass && !classUnavailable && isReelClassOpen(reelClass);
   // Sale price is what the buyer pays; regular shown crossed out
   const productUnit = useMemo(
     () => (shopProduct ? getUnitPrice(normalizeShopProduct(shopProduct)) : null),
@@ -1992,7 +2015,7 @@ function ReelFeedItemBase({
           </View>
         ) : null}
 
-        {reel.master_class && !shopProduct && (showAsOwner || !productDismissed) ? (
+        {reel.master_class && showReelClass && !shopProduct && (showAsOwner || !productDismissed) ? (
           <View style={styles.productCardWrap}>
             <View style={styles.productCard}>
               <View style={styles.productThumb}>
@@ -3419,6 +3442,21 @@ export default function ReelsFeedScreen() {
     setDismissedProductReelIds((prev) => new Set(prev).add(reelId));
   }, []);
 
+  // Classes that answered 404 when opened from a reel (ended, listing expired,
+  // full, removed) — their cards stay hidden until the feed is reloaded.
+  const [unavailableClassIds, setUnavailableClassIds] = useState<Set<number>>(
+    () => new Set(),
+  );
+  useEffect(
+    () =>
+      subscribeToClassUnavailable((id) => {
+        setUnavailableClassIds((prev) =>
+          prev.has(id) ? prev : new Set(prev).add(id),
+        );
+      }),
+    [],
+  );
+
   const openProfile = useCallback(
     (reel: FeedReel) => {
       router.push({
@@ -3838,6 +3876,10 @@ export default function ReelsFeedScreen() {
                 onWantLook={wantLook}
                 productDismissed={dismissedProductReelIds.has(item.id)}
                 onDismissProduct={dismissProduct}
+                classUnavailable={
+                  item.master_class != null &&
+                  unavailableClassIds.has(item.master_class.id)
+                }
                 onPublish={handlePublishPreview}
                 // Opening I Want This Look ends the play (video keeps running)
                 trackPlays={
@@ -3897,6 +3939,7 @@ export default function ReelsFeedScreen() {
       <ImagePickerModal
         visible={tryOnPickerVisible}
         onClose={() => setTryOnPickerVisible(false)}
+        mirrorSelfie
         onImageSelected={handleTryOnImageSelected}
       />
 

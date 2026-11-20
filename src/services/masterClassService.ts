@@ -284,6 +284,34 @@ function emit(change: MasterClassChange) {
   });
 }
 
+/**
+ * A customer opened a class that is no longer open (detail 404: ended,
+ * listing expired, full or removed). Screens still showing it (reel cards)
+ * hide it. Kept apart from the change events above, which carry a class.
+ */
+const unavailableListeners = new Set<(id: number) => void>();
+
+export function subscribeToClassUnavailable(
+  listener: (id: number) => void,
+): () => void {
+  unavailableListeners.add(listener);
+  return () => {
+    unavailableListeners.delete(listener);
+  };
+}
+
+export function markClassUnavailable(id: number | string) {
+  const classId = Number(id);
+  if (!Number.isFinite(classId)) return;
+  unavailableListeners.forEach((listener) => {
+    try {
+      listener(classId);
+    } catch {
+      // never break the screen that reported it
+    }
+  });
+}
+
 // ── Pro ─────────────────────────────────────────────────────────────
 
 /** GET /master-classes/mine?tab=…&page=… */

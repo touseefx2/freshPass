@@ -149,6 +149,40 @@ export function isClassDateTimeInFuture(
 }
 
 /**
+ * A class attached to a reel is shown only while it is still open: published
+ * and its start time not passed (classes stay listed until they start). The
+ * feed has no timezone, so the phone clock decides; unparseable dates stay.
+ */
+type ReelClassTiming = {
+  status?: string | null;
+  starts_at?: string | null;
+};
+
+/**
+ * Start instant of a reel's class (enrolment closes then, the server drops it
+ * from the feed). Only from `starts_at` with an offset: `date`/`time` are on
+ * the salon clock with no zone, and reading them on the phone clock hid the
+ * card hours early for customers east of the salon. null = don't hide by time.
+ */
+export function getReelClassClosesAt(
+  mc: ReelClassTiming | null | undefined,
+): number | null {
+  const iso = mc?.starts_at;
+  if (!iso || !/(Z|[+-]\d{2}:?\d{2})$/i.test(iso)) return null;
+  const at = dayjs(iso);
+  return at.isValid() ? at.valueOf() : null;
+}
+
+export function isReelClassOpen(
+  mc: ReelClassTiming | null | undefined,
+): boolean {
+  if (!mc) return false;
+  if (mc.status && mc.status !== "published") return false;
+  const closesAt = getReelClassClosesAt(mc);
+  return closesAt == null || closesAt > Date.now();
+}
+
+/**
  * What cancelling now refunds. `refund_if_cancelled_now` is from the last
  * fetch, so once `refund_deadline` has passed it counts as 0 (a rescheduled
  * seat keeps its full refund until the class starts).

@@ -11,6 +11,8 @@ export type ReelMasterClass = {
   enrollment_price: number | null;
   date: string | null;
   time: string | null;
+  /** ISO 8601 with the salon's offset — exact start instant (asked of backend 11-20). */
+  starts_at?: string | null;
   capacity: number | null;
   seats_taken: number;
   seats_left: number | null;

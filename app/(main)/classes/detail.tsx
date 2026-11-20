@@ -31,6 +31,7 @@ import {
   enrollmentPaymentSheet,
   getClass,
   getEnrollment,
+  markClassUnavailable,
   parseApiError,
   pollUntil,
 } from "@/src/services/masterClassService";
@@ -152,6 +153,8 @@ export default function ClassDetailScreen() {
         if (err.status === 404) {
           setCls(null);
           setLoad("notFound");
+          // Reel cards still showing this class hide it on the way back.
+          markClassUnavailable(classId);
         } else if (!loadedRef.current) {
           setLoad("error");
         }

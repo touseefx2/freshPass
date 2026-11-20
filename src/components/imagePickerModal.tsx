@@ -25,6 +25,10 @@ import {
 import ModalizeBottomSheet from "@/src/components/modalizeBottomSheet";
 import * as ImagePicker from "expo-image-picker";
 import {
+  mirrorFrontCameraSelfie,
+  selfieCameraOptions,
+} from "@/src/utils/mirrorSelfie";
+import {
   handleMediaLibraryPermission,
   handleCameraPermission,
 } from "@/src/services/mediaPermissionService";
@@ -66,6 +70,8 @@ interface ImagePickerModalProps {
   enableEditor?: boolean;
   /** "circle" for profile photos, "square" for portfolio. Default "square". Only used when enableEditor is true. */
   cropShape?: "circle" | "square";
+  /** Mirror iOS front-camera selfies to match the preview. Defaults to true for circle (profile) pickers. */
+  mirrorSelfie?: boolean;
 }
 
 const createStyles = (theme: Theme) =>
@@ -106,11 +112,16 @@ export default function ImagePickerModal({
   cameraIcon = "camera-alt",
   enableEditor = false,
   cropShape = "square",
+  mirrorSelfie,
 }: ImagePickerModalProps) {
   const { colors } = useTheme();
   const { t } = useTranslation();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
+
+  // Selfie pickers (profile photo, try-on) mirror iOS front-camera photos;
+  // never portfolio/products — mirroring flips work sides and text.
+  const isSelfiePicker = mirrorSelfie ?? cropShape === "circle";
 
   // Photo editor state for single-image editing
   const [editorUri, setEditorUri] = useState("");
@@ -219,10 +230,13 @@ export default function ImagePickerModal({
         quality,
         allowsEditing: false,
         ...iosCompatiblePickerOptions,
+        ...(isSelfiePicker ? selfieCameraOptions : {}),
       });
 
       if (!result.canceled && result.assets && result.assets[0]) {
-        const asset = result.assets[0];
+        const asset = isSelfiePicker
+          ? await mirrorFrontCameraSelfie(result.assets[0])
+          : result.assets[0];
         if (enableEditor) {
           openEditor(asset.uri, asset.width, asset.height);
         } else {
@@ -233,7 +247,7 @@ export default function ImagePickerModal({
       Logger.error("Error taking photo:", error);
       Alert.alert(t("error"), t("failedToTakePhoto"));
     }
-  }, [onCameraPress, onClose, onImageSelected, quality, enableEditor, openEditor]);
+  }, [onCameraPress, onClose, onImageSelected, quality, enableEditor, openEditor, isSelfiePicker]);
 
   return (
     <>

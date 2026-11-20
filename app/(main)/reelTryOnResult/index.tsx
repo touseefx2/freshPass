@@ -486,6 +486,7 @@ export default function ReelTryOnResultScreen() {
         <ImagePickerModal
           visible={pickerVisible}
           onClose={() => setPickerVisible(false)}
+          mirrorSelfie
           onImageSelected={(uri) => {
             setPickerVisible(false);
             void startTryAnother(uri);
@@ -574,6 +575,7 @@ export default function ReelTryOnResultScreen() {
       <ImagePickerModal
         visible={pickerVisible}
         onClose={() => setPickerVisible(false)}
+        mirrorSelfie
         onImageSelected={(uri) => {
           setPickerVisible(false);
           void startTryAnother(uri);

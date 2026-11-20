@@ -30,6 +30,10 @@ import ReelMediaTile, {
 import LocalVideoPreviewModal from "@/src/components/localVideoPreviewModal";
 import { MaterialCommunityIcons, MaterialIcons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
+import {
+  mirrorFrontCameraSelfie,
+  selfieCameraOptions,
+} from "@/src/utils/mirrorSelfie";
 import * as DocumentPicker from "expo-document-picker";
 import {
   handleMediaLibraryPermission,
@@ -483,6 +487,7 @@ export default function Tools() {
         mediaTypes: ["images"],
         quality: 0.8,
         allowsEditing: false,
+        ...(toolType === "Hair Tryon" ? selfieCameraOptions : {}),
         ...(Platform.OS === "ios" && {
           preferredAssetRepresentationMode:
             ImagePicker.UIImagePickerPreferredAssetRepresentationMode
@@ -491,7 +496,11 @@ export default function Tools() {
       });
 
       if (!result.canceled && result.assets && result.assets[0]) {
-        const asset = result.assets[0];
+        // Try-On only: iOS selfies come out un-mirrored; match the preview
+        const asset =
+          toolType === "Hair Tryon"
+            ? await mirrorFrontCameraSelfie(result.assets[0])
+            : result.assets[0];
         if (toolType === "Generate Post") {
           setPostImage(asset.uri);
         } else if (toolType === "Hair Tryon") {
