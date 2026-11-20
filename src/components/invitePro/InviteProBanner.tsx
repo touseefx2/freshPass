@@ -61,6 +61,8 @@ const MAX_FONT_SCALE = 1.2;
 const COMPACT_FONT_SCALE = 1.05;
 /** Smallest shrink for text that must stay on its line(s). */
 const MIN_TEXT_SCALE = 0.7;
+/** Gift circle on the right (was 60, client 11-20: smaller). */
+const MEDALLION = moderateWidthScale(44);
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -195,19 +197,17 @@ const createStyles = (theme: Theme) =>
     footerFull: {
       marginTop: moderateHeightScale(6),
     },
+    // Smaller circle, a little below the Earn Rewards pill (client 11-20);
+    // marginTop is set from the pill's measured bottom
     medallion: {
       flexShrink: 0,
-      width: moderateWidthScale(60),
-      height: moderateWidthScale(60),
-      borderRadius: moderateWidthScale(30),
+      alignSelf: "flex-start",
+      width: MEDALLION,
+      height: MEDALLION,
+      borderRadius: MEDALLION / 2,
       backgroundColor: theme.orangeBrown01,
       alignItems: "center",
       justifyContent: "center",
-    },
-    medallionFull: {
-      width: moderateWidthScale(60),
-      height: moderateWidthScale(60),
-      borderRadius: moderateWidthScale(30),
     },
   });
 
@@ -230,10 +230,11 @@ export default function InviteProBanner({
   // The Earn Rewards badge floats top-right; keep the eyebrow text out from
   // under it on narrow phones / big font settings.
   const [badgeWidth, setBadgeWidth] = useState(0);
+  const [badgeBottom, setBadgeBottom] = useState(0);
   const badgeRight = moderateWidthScale(compact ? 10 : 12);
   const textColRight =
     moderateWidthScale(14) + // content padding
-    moderateWidthScale(60) + // medallion
+    MEDALLION + // medallion
     moderateWidthScale(12); // gap
   const eyebrowPadRight = Math.max(
     0,
@@ -269,7 +270,11 @@ export default function InviteProBanner({
       {/* Earn Rewards badge — absolutely positioned top-right */}
       <View
         style={[styles.earnBadge, compact && styles.earnBadgeCompact]}
-        onLayout={(e) => setBadgeWidth(e.nativeEvent.layout.width)}
+        onLayout={(e) => {
+          const { width, y, height } = e.nativeEvent.layout;
+          setBadgeWidth(width);
+          setBadgeBottom(y + height);
+        }}
       >
         <MaterialCommunityIcons
           name="gift-outline"
@@ -359,10 +364,23 @@ export default function InviteProBanner({
           </View>
         </View>
 
-        <View style={[styles.medallion, !compact && styles.medallionFull]}>
+        <View
+          style={[
+            styles.medallion,
+            {
+              // Just under the pill: pill bottom + small gap − content top padding
+              marginTop: Math.max(
+                0,
+                badgeBottom +
+                  moderateHeightScale(8) -
+                  moderateHeightScale(compact ? 10 : 12),
+              ),
+            },
+          ]}
+        >
           <MaterialCommunityIcons
             name="gift-outline"
-            size={moderateWidthScale(28)}
+            size={moderateWidthScale(21)}
             color={theme.orangeBrown}
           />
         </View>
