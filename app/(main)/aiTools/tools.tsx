@@ -30,10 +30,8 @@ import ReelMediaTile, {
 import LocalVideoPreviewModal from "@/src/components/localVideoPreviewModal";
 import { MaterialCommunityIcons, MaterialIcons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
-import {
-  mirrorFrontCameraSelfie,
-  selfieCameraOptions,
-} from "@/src/utils/mirrorSelfie";
+import { takeSelfie } from "@/src/components/selfieCamera";
+import PhotoEditorModal from "@/src/components/PhotoEditorModal";
 import * as DocumentPicker from "expo-document-picker";
 import {
   handleMediaLibraryPermission,
@@ -172,6 +170,12 @@ export default function Tools() {
   const [hairTryonSourceImage, setHairTryonSourceImage] = useState<
     string | null
   >(null);
+  // Try-On photo goes through the crop editor first (like profile photos)
+  const [tryOnEditorPhoto, setTryOnEditorPhoto] = useState<{
+    uri: string;
+    width?: number;
+    height?: number;
+  } | null>(null);
   const [hairTryonPrompt, setHairTryonPrompt] = useState<string>("");
   const [hairTryonSelectedType, setHairTryonSelectedType] =
     useState<HairTryonType | null>(null);
@@ -416,8 +420,13 @@ export default function Tools() {
             setPostImage(result.assets[0].uri);
           }
         } else if (toolType === "Hair Tryon") {
-          if (result.assets[0]) {
-            setHairTryonSourceImage(result.assets[0].uri);
+          const picked = result.assets[0];
+          if (picked) {
+            setTryOnEditorPhoto({
+              uri: picked.uri,
+              width: picked.width,
+              height: picked.height,
+            });
           }
         } else if (toolType === "Generate Collage") {
           const newImages: MediaFile[] = result.assets
@@ -477,6 +486,15 @@ export default function Tools() {
   const handleTakePhoto = useCallback(async () => {
     setImagePickerVisible(false);
     setMediaPickerVisible(false);
+
+    // Try-On = selfie: our own camera keeps the photo as previewed
+    // (the system camera flips front-camera shots after the shutter).
+    if (toolType === "Hair Tryon") {
+      const selfie = await takeSelfie();
+      if (selfie) setTryOnEditorPhoto(selfie);
+      return;
+    }
+
     const hasPermission = await handleCameraPermission();
     if (!hasPermission) {
       return;
@@ -487,7 +505,6 @@ export default function Tools() {
         mediaTypes: ["images"],
         quality: 0.8,
         allowsEditing: false,
-        ...(toolType === "Hair Tryon" ? selfieCameraOptions : {}),
         ...(Platform.OS === "ios" && {
           preferredAssetRepresentationMode:
             ImagePicker.UIImagePickerPreferredAssetRepresentationMode
@@ -496,15 +513,9 @@ export default function Tools() {
       });
 
       if (!result.canceled && result.assets && result.assets[0]) {
-        // Try-On only: iOS selfies come out un-mirrored; match the preview
-        const asset =
-          toolType === "Hair Tryon"
-            ? await mirrorFrontCameraSelfie(result.assets[0])
-            : result.assets[0];
+        const asset = result.assets[0];
         if (toolType === "Generate Post") {
           setPostImage(asset.uri);
-        } else if (toolType === "Hair Tryon") {
-          setHairTryonSourceImage(asset.uri);
         } else if (toolType === "Generate Collage") {
           if (collageImages.length >= 6) {
             showBanner(
@@ -1756,6 +1767,20 @@ export default function Tools() {
       <HairPipelineProcessingModal
         state={hairPipelineState}
         onClose={closeHairPipelineModal}
+      />
+
+      <PhotoEditorModal
+        visible={!!tryOnEditorPhoto}
+        imageUri={tryOnEditorPhoto?.uri ?? ""}
+        imageWidth={tryOnEditorPhoto?.width}
+        imageHeight={tryOnEditorPhoto?.height}
+        cropShape="square"
+        cropAspectRatio={3 / 4}
+        onDone={(croppedUri) => {
+          setTryOnEditorPhoto(null);
+          setHairTryonSourceImage(croppedUri);
+        }}
+        onCancel={() => setTryOnEditorPhoto(null)}
       />
 
       <AiHairTryOnConsentModal

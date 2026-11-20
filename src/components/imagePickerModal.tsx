@@ -24,10 +24,7 @@ import {
 } from "@/src/theme/dimensions";
 import ModalizeBottomSheet from "@/src/components/modalizeBottomSheet";
 import * as ImagePicker from "expo-image-picker";
-import {
-  mirrorFrontCameraSelfie,
-  selfieCameraOptions,
-} from "@/src/utils/mirrorSelfie";
+import { takeSelfie } from "@/src/components/selfieCamera";
 import {
   handleMediaLibraryPermission,
   handleCameraPermission,
@@ -70,7 +67,10 @@ interface ImagePickerModalProps {
   enableEditor?: boolean;
   /** "circle" for profile photos, "square" for portfolio. Default "square". Only used when enableEditor is true. */
   cropShape?: "circle" | "square";
-  /** Mirror iOS front-camera selfies to match the preview. Defaults to true for circle (profile) pickers. */
+  /**
+   * Take Photo opens our selfie camera (front, photo stays as previewed)
+   * instead of the system camera. Defaults to true for circle (profile) pickers.
+   */
   mirrorSelfie?: boolean;
 }
 
@@ -119,8 +119,8 @@ export default function ImagePickerModal({
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
 
-  // Selfie pickers (profile photo, try-on) mirror iOS front-camera photos;
-  // never portfolio/products — mirroring flips work sides and text.
+  // Selfie pickers (profile photo, try-on) use our selfie camera; never
+  // portfolio/products — those stay on the system camera (back lens, no mirror).
   const isSelfiePicker = mirrorSelfie ?? cropShape === "circle";
 
   // Photo editor state for single-image editing
@@ -219,6 +219,17 @@ export default function ImagePickerModal({
       onCameraPress();
       return;
     }
+    if (isSelfiePicker) {
+      const selfie = await takeSelfie();
+      if (!selfie) return;
+      if (enableEditor) {
+        openEditor(selfie.uri, selfie.width, selfie.height);
+      } else {
+        onImageSelected(selfie.uri);
+      }
+      return;
+    }
+
     const hasPermission = await handleCameraPermission();
     if (!hasPermission) {
       return;
@@ -230,13 +241,10 @@ export default function ImagePickerModal({
         quality,
         allowsEditing: false,
         ...iosCompatiblePickerOptions,
-        ...(isSelfiePicker ? selfieCameraOptions : {}),
       });
 
       if (!result.canceled && result.assets && result.assets[0]) {
-        const asset = isSelfiePicker
-          ? await mirrorFrontCameraSelfie(result.assets[0])
-          : result.assets[0];
+        const asset = result.assets[0];
         if (enableEditor) {
           openEditor(asset.uri, asset.width, asset.height);
         } else {

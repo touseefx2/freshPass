@@ -150,7 +150,14 @@
         "expo-image-picker",
         {
           "photosPermission": "The app accesses your photos to let you share them with your clients.",
-          "cameraPermission": "The app accesses your camera to let you take photos for your portfolio."
+          "cameraPermission": "The app accesses your camera to let you take photos, like a selfie for Try-On or photos for your portfolio."
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "The app accesses your camera to let you take photos, like a selfie for Try-On or photos for your portfolio.",
+          "recordAudioAndroid": false
         }
       ],
       [

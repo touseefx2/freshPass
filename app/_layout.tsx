@@ -26,6 +26,7 @@ import MaintenanceModeHandler from "@/src/components/MaintenanceModeHandler";
 import FirebaseMonitoringHandler from "@/src/components/FirebaseMonitoringHandler";
 import GuestModeModal from "@/src/components/guestModeModal";
 import FullImageModal from "@/src/components/fullImageModal";
+import { SelfieCameraHost } from "@/src/components/selfieCamera";
 import StripeConnectModalHandler from "@/src/components/StripeConnectModalHandler";
 import StripeConnectedCongratsModalHandler from "@/src/components/StripeConnectedCongratsModalHandler";
 import TryOnPurchaseSuccessModalHandler from "@/src/components/TryOnPurchaseSuccessModalHandler";
@@ -134,6 +135,7 @@ export default function RootLayout() {
                     <ActionLoader />
                     <GuestModeModal />
                     <FullImageModal />
+                    <SelfieCameraHost />
                     <StripeConnectModalHandler />
                     <StripeConnectedCongratsModalHandler />
                     <TryOnPurchaseSuccessModalHandler />
