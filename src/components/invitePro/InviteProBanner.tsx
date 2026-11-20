@@ -97,8 +97,8 @@ const createStyles = (theme: Theme) =>
       gap: moderateWidthScale(12),
     },
     contentFull: {
-      paddingHorizontal: moderateWidthScale(16),
-      paddingVertical: moderateHeightScale(16),
+      paddingHorizontal: moderateWidthScale(14),
+      paddingVertical: moderateHeightScale(12),
     },
     textCol: {
       flex: 1,
@@ -155,8 +155,8 @@ const createStyles = (theme: Theme) =>
       lineHeight: fontSize.size14 * 1.3,
     },
     titleFull: {
-      fontSize: fontSize.size16,
-      lineHeight: fontSize.size16 * 1.3,
+      fontSize: fontSize.size15,
+      lineHeight: fontSize.size15 * 1.3,
     },
     button: {
       backgroundColor: theme.orangeBrown,
@@ -172,9 +172,9 @@ const createStyles = (theme: Theme) =>
       paddingVertical: moderateHeightScale(6),
     },
     buttonFull: {
-      marginTop: moderateHeightScale(14),
-      paddingHorizontal: moderateWidthScale(20),
-      paddingVertical: moderateHeightScale(10),
+      marginTop: moderateHeightScale(10),
+      paddingHorizontal: moderateWidthScale(16),
+      paddingVertical: moderateHeightScale(8),
     },
     buttonText: {
       fontSize: fontSize.size14,
@@ -193,7 +193,7 @@ const createStyles = (theme: Theme) =>
       marginBottom: 0,
     },
     footerFull: {
-      marginTop: moderateHeightScale(10),
+      marginTop: moderateHeightScale(6),
     },
     medallion: {
       flexShrink: 0,
@@ -205,9 +205,9 @@ const createStyles = (theme: Theme) =>
       justifyContent: "center",
     },
     medallionFull: {
-      width: moderateWidthScale(72),
-      height: moderateWidthScale(72),
-      borderRadius: moderateWidthScale(36),
+      width: moderateWidthScale(60),
+      height: moderateWidthScale(60),
+      borderRadius: moderateWidthScale(30),
     },
   });
 
@@ -232,8 +232,8 @@ export default function InviteProBanner({
   const [badgeWidth, setBadgeWidth] = useState(0);
   const badgeRight = moderateWidthScale(compact ? 10 : 12);
   const textColRight =
-    moderateWidthScale(compact ? 14 : 16) + // content padding
-    moderateWidthScale(compact ? 60 : 72) + // medallion
+    moderateWidthScale(14) + // content padding
+    moderateWidthScale(60) + // medallion
     moderateWidthScale(12); // gap
   const eyebrowPadRight = Math.max(
     0,
@@ -362,7 +362,7 @@ export default function InviteProBanner({
         <View style={[styles.medallion, !compact && styles.medallionFull]}>
           <MaterialCommunityIcons
             name="gift-outline"
-            size={moderateWidthScale(compact ? 28 : 34)}
+            size={moderateWidthScale(28)}
             color={theme.orangeBrown}
           />
         </View>

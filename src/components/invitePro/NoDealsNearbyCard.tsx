@@ -80,13 +80,13 @@ export default function NoDealsNearbyCard({ style }: NoDealsNearbyCardProps) {
         <View style={styles.pinCircle}>
           <MaterialCommunityIcons
             name="map-marker-outline"
-            size={moderateWidthScale(28)}
+            size={moderateWidthScale(22)}
             color={theme.orangeBrown}
           />
           <View style={styles.pinSparkle}>
             <MaterialCommunityIcons
               name="star-four-points"
-              size={moderateWidthScale(10)}
+              size={moderateWidthScale(8)}
               color={theme.orangeBrown}
             />
           </View>
@@ -117,7 +117,7 @@ export default function NoDealsNearbyCard({ style }: NoDealsNearbyCardProps) {
           </Text>
           <MaterialCommunityIcons
             name="arrow-right"
-            size={moderateWidthScale(18)}
+            size={moderateWidthScale(16)}
             color={theme.darkGreen}
           />
         </TouchableOpacity>
@@ -133,7 +133,7 @@ export default function NoDealsNearbyCard({ style }: NoDealsNearbyCardProps) {
           accessibilityRole="button"
           accessibilityLabel={t("ndcExplore")}
         >
-          <Text style={styles.exploreLinkText}>{t("ndcExplore")}</Text>
+          <Text style={styles.exploreLinkText} maxFontSizeMultiplier={1.2}>{t("ndcExplore")}</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -144,8 +144,8 @@ const createStyles = (theme: Theme) =>
   StyleSheet.create({
     outerFrame: {
       backgroundColor: theme.noticeCream,
-      borderRadius: moderateWidthScale(20),
-      padding: moderateWidthScale(8),
+      borderRadius: moderateWidthScale(18),
+      padding: moderateWidthScale(6),
       marginHorizontal: moderateWidthScale(20),
     },
     card: {
@@ -153,9 +153,9 @@ const createStyles = (theme: Theme) =>
       borderRadius: moderateWidthScale(16),
       borderWidth: 1.5,
       borderColor: theme.goldBorder,
-      paddingHorizontal: moderateWidthScale(24),
-      paddingTop: moderateHeightScale(22),
-      paddingBottom: moderateHeightScale(20),
+      paddingHorizontal: moderateWidthScale(18),
+      paddingTop: moderateHeightScale(16),
+      paddingBottom: moderateHeightScale(14),
       alignItems: "center",
       overflow: "hidden",
     },
@@ -196,8 +196,8 @@ const createStyles = (theme: Theme) =>
       justifyContent: "space-between",
       alignSelf: "stretch",
       gap: moderateWidthScale(8),
-      marginHorizontal: -moderateWidthScale(12),
-      marginBottom: moderateHeightScale(14),
+      marginHorizontal: -moderateWidthScale(8),
+      marginBottom: moderateHeightScale(10),
     },
     eyebrow: {
       flexShrink: 1,
@@ -225,13 +225,13 @@ const createStyles = (theme: Theme) =>
       color: theme.darkGreen,
     },
     pinCircle: {
-      width: moderateWidthScale(52),
-      height: moderateWidthScale(52),
-      borderRadius: moderateWidthScale(26),
+      width: moderateWidthScale(42),
+      height: moderateWidthScale(42),
+      borderRadius: moderateWidthScale(21),
       backgroundColor: "rgba(221, 161, 94, 0.15)",
       alignItems: "center",
       justifyContent: "center",
-      marginBottom: moderateHeightScale(14),
+      marginBottom: moderateHeightScale(10),
     },
     pinSparkle: {
       position: "absolute",
@@ -239,35 +239,35 @@ const createStyles = (theme: Theme) =>
       right: moderateWidthScale(2),
     },
     title: {
-      fontSize: fontSize.size22,
+      fontSize: fontSize.size19,
       fontFamily: fonts.fontExtraBold,
       color: theme.noticeCream,
       textAlign: "center",
-      lineHeight: fontSize.size22 * 1.25,
-      marginBottom: moderateHeightScale(8),
+      lineHeight: fontSize.size19 * 1.25,
+      marginBottom: moderateHeightScale(6),
     },
     subtitle: {
-      fontSize: fontSize.size14,
+      fontSize: fontSize.size13,
       fontFamily: fonts.fontRegular,
       color: theme.white85,
       textAlign: "center",
-      lineHeight: fontSize.size14 * 1.45,
-      marginBottom: moderateHeightScale(18),
+      lineHeight: fontSize.size13 * 1.45,
+      marginBottom: moderateHeightScale(12),
     },
     inviteButton: {
       maxWidth: "100%",
       backgroundColor: theme.orangeBrown,
-      paddingHorizontal: moderateWidthScale(32),
-      paddingVertical: moderateHeightScale(14),
+      paddingHorizontal: moderateWidthScale(24),
+      paddingVertical: moderateHeightScale(10),
       borderRadius: moderateWidthScale(999),
       flexDirection: "row",
       alignItems: "center",
       gap: moderateWidthScale(8),
-      marginBottom: moderateHeightScale(14),
+      marginBottom: moderateHeightScale(10),
     },
     inviteButtonText: {
       flexShrink: 1,
-      fontSize: fontSize.size16,
+      fontSize: fontSize.size15,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
     },
@@ -276,13 +276,13 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontRegular,
       color: theme.white85,
       textAlign: "center",
-      marginBottom: moderateHeightScale(12),
+      marginBottom: moderateHeightScale(8),
     },
     exploreLink: {
       paddingVertical: moderateHeightScale(4),
     },
     exploreLinkText: {
-      fontSize: fontSize.size14,
+      fontSize: fontSize.size13,
       fontFamily: fonts.fontMedium,
       color: theme.noticeCream,
       textDecorationLine: "underline",

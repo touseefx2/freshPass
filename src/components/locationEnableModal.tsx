@@ -29,14 +29,14 @@ const createStyles = (theme: Theme) =>
       backgroundColor: "rgba(0, 0, 0, 0.6)",
       justifyContent: "center",
       alignItems: "center",
-      paddingHorizontal: moderateWidthScale(20),
+      paddingHorizontal: moderateWidthScale(28),
     },
     modalBox: {
       backgroundColor: theme.background,
-      borderRadius: moderateWidthScale(20),
-      padding: moderateWidthScale(24),
+      borderRadius: moderateWidthScale(18),
+      padding: moderateWidthScale(18),
       width: "100%",
-      maxWidth: widthScale(380),
+      maxWidth: widthScale(340),
       shadowColor: "#000",
       shadowOffset: {
         width: 0,
@@ -48,40 +48,46 @@ const createStyles = (theme: Theme) =>
     },
 
     iconWrapper: {
+      marginBottom: moderateHeightScale(14),
+    },
+    headerRow: {
+      flexDirection: "row",
       alignItems: "center",
-      marginBottom: moderateHeightScale(24),
-      paddingHorizontal: moderateWidthScale(20),
+      gap: moderateWidthScale(10),
+    },
+    headerText: {
+      flex: 1,
     },
     iconContainer: {
-      width: moderateWidthScale(50),
-      height: moderateWidthScale(50),
-      borderRadius: moderateWidthScale(50 / 2),
+      width: moderateWidthScale(42),
+      height: moderateWidthScale(42),
+      borderRadius: moderateWidthScale(21),
       backgroundColor: theme.orangeBrown30,
       alignItems: "center",
       justifyContent: "center",
     },
     title: {
-      fontSize: fontSize.size21,
+      fontSize: fontSize.size18,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
     },
     subtitle: {
-      fontSize: fontSize.size16,
+      fontSize: fontSize.size13,
       fontFamily: fonts.fontMedium,
       color: theme.lightGreen,
     },
     descriptionContainer: {
       backgroundColor: theme.orangeBrown30,
       borderRadius: moderateWidthScale(12),
-      padding: moderateWidthScale(16),
-      marginBottom: moderateHeightScale(24),
-      gap: moderateHeightScale(12),
+      padding: moderateWidthScale(12),
+      marginBottom: moderateHeightScale(16),
+      gap: moderateHeightScale(8),
     },
     descriptionText: {
-      fontSize: fontSize.size14,
+      fontSize: fontSize.size13,
       fontFamily: fonts.fontRegular,
       color: theme.text,
-      lineHeight: moderateHeightScale(20),
+      lineHeight: fontSize.size13 * 1.4,
     },
     bulletPoint: {
       flexDirection: "row",
@@ -92,24 +98,27 @@ const createStyles = (theme: Theme) =>
       height: moderateWidthScale(6),
       borderRadius: moderateWidthScale(3),
       backgroundColor: theme.darkGreen,
-      marginTop: moderateHeightScale(7),
+      marginTop: fontSize.size13 * 0.7 - moderateWidthScale(3),
     },
     bulletText: {
       flex: 1,
-      fontSize: fontSize.size14,
+      fontSize: fontSize.size13,
       fontFamily: fonts.fontRegular,
       color: theme.text,
-      lineHeight: moderateHeightScale(20),
+      lineHeight: fontSize.size13 * 1.4,
     },
     buttonContainer: {
-      gap: moderateHeightScale(12),
+      gap: moderateHeightScale(10),
+    },
+    enableButton: {
+      height: moderateHeightScale(42),
     },
     skipButton: {
       alignItems: "center",
       justifyContent: "center",
     },
     skipButtonText: {
-      fontSize: fontSize.size15,
+      fontSize: fontSize.size14,
       fontFamily: fonts.fontMedium,
       color: theme.lightGreen,
     },
@@ -196,22 +205,19 @@ export default function LocationEnableModal({
       <View style={styles.modalOverlay}>
         <View style={styles.modalBox}>
           <View style={styles.iconWrapper}>
-            <View
-              style={{
-                flexDirection: "row",
-                gap: moderateWidthScale(10),
-              }}
-            >
+            <View style={styles.headerRow}>
               <View style={styles.iconContainer}>
                 <MapPinIcon
-                  width={moderateWidthScale(20)}
-                  height={moderateHeightScale(30)}
+                  width={moderateWidthScale(17)}
+                  height={moderateWidthScale(24)}
                   color={theme.darkGreen}
                 />
               </View>
-              <View>
-                <Text style={styles.title}>{t("enableLocation")}</Text>
-                <Text style={styles.subtitle}>
+              <View style={styles.headerText}>
+                <Text style={styles.title} maxFontSizeMultiplier={1.2}>
+                  {t("enableLocation")}
+                </Text>
+                <Text style={styles.subtitle} maxFontSizeMultiplier={1.2}>
                   {screenName === "setLocation"
                     ? t("getCurrentLocationForMap")
                     : t("turnOnLocationDiscover")}
@@ -223,38 +229,38 @@ export default function LocationEnableModal({
           <View style={styles.descriptionContainer}>
             {screenName === "setLocation" ? (
               <>
-                <Text style={styles.descriptionText}>
+                <Text style={styles.descriptionText} maxFontSizeMultiplier={1.2}>
                   To select your location on the map, we need to access your
                   current location. This will help you see your position and
                   choose the right location.
                 </Text>
                 <View style={styles.bulletPoint}>
                   <View style={styles.bulletDot} />
-                  <Text style={styles.bulletText}>
+                  <Text style={styles.bulletText} maxFontSizeMultiplier={1.2}>
                     Get your current location to show on the map
                   </Text>
                 </View>
                 <View style={styles.bulletPoint}>
                   <View style={styles.bulletDot} />
-                  <Text style={styles.bulletText}>
+                  <Text style={styles.bulletText} maxFontSizeMultiplier={1.2}>
                     Easily select and confirm your location
                   </Text>
                 </View>
               </>
             ) : (
               <>
-                <Text style={styles.descriptionText}>
+                <Text style={styles.descriptionText} maxFontSizeMultiplier={1.2}>
                   Businesses are shown based on your current location
                 </Text>
                 <View style={styles.bulletPoint}>
                   <View style={styles.bulletDot} />
-                  <Text style={styles.bulletText}>
+                  <Text style={styles.bulletText} maxFontSizeMultiplier={1.2}>
                     Find salons and services closest to you
                   </Text>
                 </View>
                 <View style={styles.bulletPoint}>
                   <View style={styles.bulletDot} />
-                  <Text style={styles.bulletText}>
+                  <Text style={styles.bulletText} maxFontSizeMultiplier={1.2}>
                     Without location, businesses will appear randomly
                   </Text>
                 </View>
@@ -267,6 +273,7 @@ export default function LocationEnableModal({
               title={t("enableLocation")}
               onPress={handleContinue}
               textColor={theme.white}
+              containerStyle={styles.enableButton}
             />
 
             <TouchableOpacity
@@ -276,7 +283,9 @@ export default function LocationEnableModal({
               // Enable button is only 12 above, so keep vertical slop small
               hitSlop={{ top: 6, bottom: 6, left: 16, right: 16 }}
             >
-              <Text style={styles.skipButtonText}>{t("skipForNow")}</Text>
+              <Text style={styles.skipButtonText} maxFontSizeMultiplier={1.2}>
+                {t("skipForNow")}
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
