@@ -2262,17 +2262,23 @@ export default function BookingNow() {
     const selectedDay = date.startOf("day");
     if (selectedDay.isBefore(salonToday)) return true;
     const dayName = getDayNameFromDate(date);
-    // Same rule as available-slots: a picked staff's row for the day decides
+    // Same rule as available-slots: a staff's own row for the day decides
     // alone; no row → business hours. Never both.
-    if (selectedStaff !== "anyone" && selectedStaffMember?.working_hours) {
-      const staffDayHours = selectedStaffMember.working_hours[dayName];
-      if (staffDayHours) return !staffDayHours.isOpen;
+    const worksThatDay = (hours: BusinessHours | null | undefined) => {
+      const row = hours?.[dayName];
+      if (row) return row.isOpen;
+      const business = businessHours?.[dayName];
+      return !business || business.isOpen;
+    };
+    if (selectedStaff !== "anyone") {
+      return !worksThatDay(selectedStaffMember?.working_hours);
     }
-    if (businessHours) {
-      const dayHours = businessHours[dayName];
-      if (dayHours && !dayHours.isOpen) return true;
+    // Anyone: open when at least one staff works that day (slots are the
+    // union of every staff's own hours, even on a business-closed day).
+    if (staffMembers.length > 0) {
+      return !staffMembers.some((s) => worksThatDay(s.working_hours));
     }
-    return false;
+    return !worksThatDay(null);
   };
 
   useEffect(() => {
@@ -2582,7 +2588,7 @@ export default function BookingNow() {
     return null;
     // isDateDisabled reads staff / business hours
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedDate, selectedStaffMember, businessHours]);
+  }, [selectedDate, selectedStaff, selectedStaffMember, staffMembers, businessHours]);
 
   const dateStripRef = useRef<ScrollView>(null);
   // "30 min slots ⌄" dropdown, placed under the link it opens from.
