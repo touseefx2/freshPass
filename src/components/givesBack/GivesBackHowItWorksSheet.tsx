@@ -88,7 +88,7 @@ export default function GivesBackHowItWorksSheet({
               accessibilityRole="button"
               accessibilityLabel={t("close")}
             >
-              <Feather name="x" size={moderateWidthScale(24)} color={C.ink} />
+              <Feather name="x" size={moderateWidthScale(20)} color={C.ink} />
             </Pressable>
           </View>
         }
@@ -96,7 +96,7 @@ export default function GivesBackHowItWorksSheet({
           <View
             style={[
               styles.footer,
-              { paddingBottom: insets.bottom + moderateHeightScale(14) },
+              { paddingBottom: insets.bottom + moderateHeightScale(10) },
             ]}
           >
             <TouchableOpacity
@@ -172,7 +172,7 @@ export default function GivesBackHowItWorksSheet({
           <View style={styles.note}>
             <Feather
               name="info"
-              size={moderateWidthScale(18)}
+              size={moderateWidthScale(14)}
               color={C.ink}
             />
             <Text style={styles.noteText} maxFontSizeMultiplier={MAX_FONT_SCALE}>
@@ -199,12 +199,12 @@ const styles = StyleSheet.create({
   },
   header: {
     alignItems: "flex-end",
-    paddingTop: moderateHeightScale(18),
-    paddingHorizontal: moderateWidthScale(18),
+    paddingTop: moderateHeightScale(12),
+    paddingHorizontal: moderateWidthScale(14),
   },
   closeButton: {
-    width: moderateWidthScale(32),
-    height: moderateWidthScale(32),
+    width: moderateWidthScale(28),
+    height: moderateWidthScale(28),
     alignItems: "center",
     justifyContent: "center",
   },
@@ -213,77 +213,77 @@ const styles = StyleSheet.create({
     paddingHorizontal: moderateWidthScale(20),
   },
   icon: {
-    width: moderateWidthScale(96),
-    height: moderateWidthScale(80),
+    width: moderateWidthScale(68),
+    height: moderateWidthScale(56),
   },
   title: {
-    marginTop: moderateHeightScale(8),
-    fontSize: fontSize.size28,
+    marginTop: moderateHeightScale(6),
+    fontSize: fontSize.size22,
     fontFamily: fonts.fontExtraBold,
     color: C.ink,
     textAlign: "center",
   },
   tagline: {
-    marginTop: moderateHeightScale(4),
-    fontSize: fontSize.size15,
+    marginTop: moderateHeightScale(2),
+    fontSize: fontSize.size13,
     fontFamily: fonts.fontRegular,
     color: C.ink,
     textAlign: "center",
   },
   steps: {
     alignSelf: "stretch",
-    marginTop: moderateHeightScale(18),
+    marginTop: moderateHeightScale(10),
   },
   step: {
     flexDirection: "row",
     alignItems: "center",
-    gap: moderateWidthScale(14),
-    paddingVertical: moderateHeightScale(14),
+    gap: moderateWidthScale(12),
+    paddingVertical: moderateHeightScale(9),
   },
   stepDivider: {
     borderTopWidth: StyleSheet.hairlineWidth * 2,
     borderTopColor: C.divider,
   },
   number: {
-    width: moderateWidthScale(36),
-    height: moderateWidthScale(36),
-    borderRadius: moderateWidthScale(18),
+    width: moderateWidthScale(28),
+    height: moderateWidthScale(28),
+    borderRadius: moderateWidthScale(14),
     backgroundColor: C.number,
     alignItems: "center",
     justifyContent: "center",
   },
   numberText: {
-    fontSize: fontSize.size18,
+    fontSize: fontSize.size14,
     fontFamily: fonts.fontBold,
     color: C.ink,
   },
-  stepText: { flex: 1, minWidth: 0, gap: moderateHeightScale(3) },
+  stepText: { flex: 1, minWidth: 0, gap: moderateHeightScale(2) },
   stepTitle: {
-    fontSize: fontSize.size17,
+    fontSize: fontSize.size14,
     fontFamily: fonts.fontBold,
     color: C.ink,
   },
   stepBody: {
-    fontSize: fontSize.size14,
+    fontSize: fontSize.size12,
     fontFamily: fonts.fontRegular,
     color: C.ink,
-    lineHeight: fontSize.size14 * 1.4,
+    lineHeight: fontSize.size12 * 1.35,
   },
   note: {
     alignSelf: "stretch",
     flexDirection: "row",
     alignItems: "center",
-    gap: moderateWidthScale(10),
-    marginTop: moderateHeightScale(10),
-    marginBottom: moderateHeightScale(16),
-    paddingHorizontal: moderateWidthScale(14),
-    paddingVertical: moderateHeightScale(12),
-    borderRadius: moderateWidthScale(12),
+    gap: moderateWidthScale(8),
+    marginTop: moderateHeightScale(6),
+    marginBottom: moderateHeightScale(12),
+    paddingHorizontal: moderateWidthScale(12),
+    paddingVertical: moderateHeightScale(8),
+    borderRadius: moderateWidthScale(10),
     backgroundColor: C.note,
   },
   noteText: {
     flex: 1,
-    fontSize: fontSize.size13,
+    fontSize: fontSize.size11,
     fontFamily: fonts.fontMedium,
     color: C.ink,
   },
@@ -293,15 +293,15 @@ const styles = StyleSheet.create({
     backgroundColor: C.sheet,
   },
   button: {
-    minHeight: heightScale(50),
-    borderRadius: moderateWidthScale(14),
+    minHeight: heightScale(44),
+    borderRadius: moderateWidthScale(12),
     backgroundColor: C.ink,
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: moderateWidthScale(16),
   },
   buttonText: {
-    fontSize: fontSize.size18,
+    fontSize: fontSize.size15,
     fontFamily: fonts.fontBold,
     color: C.white,
   },
