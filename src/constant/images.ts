@@ -21,4 +21,6 @@ export const IMAGES = {
   tryOnAfter: require("@/assets/images/tryOnAfter.png"),
   marketplaceBanner: require("@/assets/images/marketplaceBanner.png"),
   givesBackIcon: require("@/assets/images/givesBackIcon.png"),
+  // Same icon with dark green people, for cream backgrounds
+  givesBackIconOnLight: require("@/assets/images/givesBackIconOnLight.png"),
 };

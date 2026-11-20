@@ -25,11 +25,13 @@ import {
   type GivesBackBanner as BannerData,
 } from "@/src/services/givesBackService";
 import Logger from "@/src/services/logger";
+import GivesBackHowItWorksSheet from "@/src/components/givesBack/GivesBackHowItWorksSheet";
 
 /**
- * FreshPass Gives Back banner (client design 11-19): dark green header with
- * the hands + family icon, subscriber goal count + progress, and
- * "Recommend a Family" (locked until the goal is reached).
+ * FreshPass Gives Back banner (client sample 11-20): gold-framed card, dark
+ * green header (icon | title + description), "38 / 1,000 subscribers",
+ * progress bar with joined / goal labels, "Nominate a Family" (locked until
+ * the goal is reached), and How it works | My Nominations links.
  * Renders nothing while loading, on error, or when the admin turned it off.
  */
 
@@ -41,6 +43,8 @@ export const GIVES_BACK_COLORS = {
   ink: "#283618",
   muted: "#5C574E",
   tag: "#F5CC7B",
+  // Gold card frame (client sample 11-20)
+  border: "#E9B54F",
   fill: "#E2A023",
   track: "#D9D9C3",
   lockedButton: "#CACAC9",
@@ -81,6 +85,7 @@ export default function GivesBackBanner({ refreshKey = 0, style }: Props) {
     getCachedGivesBackBanner,
   );
   const loadingRef = useRef(false);
+  const [howOpen, setHowOpen] = useState(false);
 
   const load = useCallback(() => {
     if (loadingRef.current) return;
@@ -109,6 +114,7 @@ export default function GivesBackBanner({ refreshKey = 0, style }: Props) {
 
   const { goal, count, percentage, unlocked, description } = banner;
   const goalText = formatCount(goal);
+  const countText = formatCount(count);
 
   const openForm = () => {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -125,11 +131,12 @@ export default function GivesBackBanner({ refreshKey = 0, style }: Props) {
           accessibilityIgnoresInvertColors
           accessible={false}
         />
+        <View style={styles.headerDivider} />
         <View style={styles.headerText}>
           <Text
             style={styles.title}
             accessibilityRole="header"
-            maxFontSizeMultiplier={MAX_FONT_SCALE}
+            {...ONE_LINE}
           >
             {t("givesBackTitle")}
           </Text>
@@ -146,24 +153,20 @@ export default function GivesBackBanner({ refreshKey = 0, style }: Props) {
 
       <View style={styles.body}>
         <View style={styles.tag}>
-          <Text
-            style={styles.tagText}
-            numberOfLines={1}
-            adjustsFontSizeToFit
-            minimumFontScale={0.75}
-            maxFontSizeMultiplier={MAX_FONT_SCALE}
-          >
+          <Text style={styles.tagText} {...ONE_LINE}>
             {t("givesBackGoalTag", { goal: goalText })}
           </Text>
         </View>
 
         <View
           accessible
+          accessibilityRole="progressbar"
           accessibilityLabel={t("givesBackCountA11y", {
-            count: formatCount(count),
+            count: countText,
             goal: goalText,
             percent: formatPercent(percentage),
           })}
+          accessibilityValue={{ min: 0, max: 100, now: Math.round(percentage) }}
         >
           <Text
             style={styles.count}
@@ -172,68 +175,47 @@ export default function GivesBackBanner({ refreshKey = 0, style }: Props) {
             minimumFontScale={0.6}
             maxFontSizeMultiplier={MAX_FONT_SCALE}
           >
-            {formatCount(count)} / {goalText}
+            {t("givesBackCountLine", { count: countText, goal: goalText })}
           </Text>
-          <Text
-            style={styles.countLabel}
-            maxFontSizeMultiplier={MAX_FONT_SCALE}
-          >
-            {t("givesBackSubscribers")}
-          </Text>
-        </View>
-
-        <View
-          style={styles.progressRow}
-          accessibilityRole="progressbar"
-          accessibilityValue={{ min: 0, max: 100, now: Math.round(percentage) }}
-        >
           <View style={styles.track}>
             <View
               style={[
                 styles.fill,
-                { width: `${Math.min(100, Math.max(0, percentage))}%` },
+                // A sliver always shows, so a small count still reads as "started"
+                { width: `${Math.min(100, Math.max(count > 0 ? 3 : 0, percentage))}%` },
               ]}
             />
           </View>
-          <Text style={styles.percent} maxFontSizeMultiplier={MAX_FONT_SCALE}>
-            {formatPercent(percentage)}
-          </Text>
+          <View style={styles.progressLabels}>
+            <Text style={styles.progressLabel} {...ONE_LINE}>
+              {t("givesBackJoined", { count: countText })}
+            </Text>
+            <Text style={styles.progressLabel} {...ONE_LINE}>
+              {t("givesBackGoalLabel", { goal: goalText })}
+            </Text>
+          </View>
         </View>
 
         {unlocked ? (
-          <>
-            <TouchableOpacity
-              style={[styles.button, styles.buttonActive]}
-              onPress={openForm}
-              activeOpacity={0.85}
-              accessibilityRole="button"
-              accessibilityHint={t("givesBackRecommendHint")}
+          <TouchableOpacity
+            style={[styles.button, styles.buttonActive]}
+            onPress={openForm}
+            activeOpacity={0.85}
+            accessibilityRole="button"
+            accessibilityHint={t("givesBackRecommendHint")}
+          >
+            <MaterialIcons
+              name="volunteer-activism"
+              size={moderateWidthScale(22)}
+              color={C.white}
+            />
+            <Text
+              style={[styles.buttonText, styles.buttonTextActive]}
+              {...ONE_LINE}
             >
-              <MaterialIcons
-                name="volunteer-activism"
-                size={moderateWidthScale(22)}
-                color={C.white}
-              />
-              <Text
-                style={[styles.buttonText, styles.buttonTextActive]}
-                {...ONE_LINE}
-              >
-                {t("givesBackRecommend")}
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.linkButton}
-              onPress={() =>
-                router.push("/(main)/givesBack/myRecommendations" as any)
-              }
-              hitSlop={8}
-              accessibilityRole="button"
-            >
-              <Text style={styles.link} maxFontSizeMultiplier={MAX_FONT_SCALE}>
-                {t("givesBackMyRecommendations")}
-              </Text>
-            </TouchableOpacity>
-          </>
+              {t("givesBackRecommend")}
+            </Text>
+          </TouchableOpacity>
         ) : (
           <>
             <View
@@ -264,101 +246,142 @@ export default function GivesBackBanner({ refreshKey = 0, style }: Props) {
             </Text>
           </>
         )}
+
+        <View style={styles.linksRow}>
+          <TouchableOpacity
+            style={styles.linkButton}
+            onPress={() => setHowOpen(true)}
+            hitSlop={{ top: 6, bottom: 6 }}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+          >
+            <Text style={styles.link} {...ONE_LINE}>
+              {t("givesBackHowItWorks")}
+            </Text>
+          </TouchableOpacity>
+          <View style={styles.linkDivider} />
+          <TouchableOpacity
+            style={styles.linkButton}
+            onPress={() =>
+              router.push("/(main)/givesBack/myRecommendations" as any)
+            }
+            hitSlop={{ top: 6, bottom: 6 }}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+          >
+            <Text style={styles.link} {...ONE_LINE}>
+              {t("givesBackMyRecommendations")}
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
+
+      <GivesBackHowItWorksSheet
+        visible={howOpen}
+        goal={goalText}
+        onClose={() => setHowOpen(false)}
+      />
     </View>
   );
 }
 
+const BORDER = 2.5;
+const RADIUS = moderateWidthScale(20);
+
 const styles = StyleSheet.create({
   card: {
-    borderRadius: moderateWidthScale(20),
+    borderRadius: RADIUS,
+    borderWidth: BORDER,
+    borderColor: C.border,
     backgroundColor: C.body,
-    // Lifted off the cream home background (client 11-19: "a bit elevated")
+    // Soft lift off the cream home background
     shadowColor: "#1E2A10",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.22,
-    shadowRadius: 18,
-    elevation: 10,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.16,
+    shadowRadius: 12,
+    elevation: 6,
   },
   // ── Header
   header: {
     flexDirection: "row",
     alignItems: "center",
-    gap: moderateWidthScale(14),
-    paddingHorizontal: moderateWidthScale(18),
-    paddingVertical: moderateHeightScale(18),
+    gap: moderateWidthScale(12),
+    paddingHorizontal: moderateWidthScale(16),
+    paddingVertical: moderateHeightScale(14),
     backgroundColor: C.header,
-    borderTopLeftRadius: moderateWidthScale(20),
-    borderTopRightRadius: moderateWidthScale(20),
+    borderTopLeftRadius: RADIUS - BORDER,
+    borderTopRightRadius: RADIUS - BORDER,
   },
   icon: {
-    width: moderateWidthScale(74),
-    height: moderateWidthScale(62),
+    width: moderateWidthScale(62),
+    height: moderateWidthScale(52),
   },
-  headerText: { flex: 1, minWidth: 0, gap: moderateHeightScale(4) },
+  headerDivider: {
+    width: 1.5,
+    alignSelf: "stretch",
+    marginVertical: moderateHeightScale(4),
+    backgroundColor: C.whiteSoft,
+  },
+  headerText: { flex: 1, minWidth: 0, gap: moderateHeightScale(3) },
   title: {
-    fontSize: fontSize.size20,
+    fontSize: fontSize.size19,
     fontFamily: fonts.fontBold,
     color: C.white,
   },
   description: {
-    fontSize: fontSize.size14,
+    fontSize: fontSize.size13,
     fontFamily: fonts.fontRegular,
     color: C.white,
-    lineHeight: fontSize.size14 * 1.35,
+    lineHeight: fontSize.size13 * 1.35,
   },
   // ── Body
   body: {
     paddingHorizontal: moderateWidthScale(16),
-    paddingTop: moderateHeightScale(16),
-    paddingBottom: moderateHeightScale(16),
+    paddingTop: moderateHeightScale(14),
+    paddingBottom: moderateHeightScale(6),
   },
   tag: {
     alignSelf: "flex-start",
+    maxWidth: "100%",
     paddingHorizontal: moderateWidthScale(12),
     paddingVertical: moderateHeightScale(5),
     borderRadius: moderateWidthScale(999),
     backgroundColor: C.tag,
   },
   tagText: {
-    fontSize: fontSize.size13,
+    fontSize: fontSize.size14,
     fontFamily: fonts.fontBold,
     color: C.ink,
   },
   count: {
-    marginTop: moderateHeightScale(10),
-    fontSize: fontSize.size34,
+    marginTop: moderateHeightScale(8),
+    fontSize: fontSize.size26,
     fontFamily: fonts.fontExtraBold,
     color: C.ink,
     fontVariant: ["tabular-nums"],
   },
-  countLabel: {
-    marginTop: moderateHeightScale(1),
-    fontSize: fontSize.size15,
-    fontFamily: fonts.fontRegular,
-    color: C.muted,
-  },
-  progressRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: moderateWidthScale(12),
-    marginTop: moderateHeightScale(14),
-  },
   track: {
-    flex: 1,
-    height: heightScale(11),
-    borderRadius: heightScale(6),
+    height: heightScale(10),
+    marginTop: moderateHeightScale(12),
+    borderRadius: heightScale(5),
     backgroundColor: C.track,
     overflow: "hidden",
   },
   fill: {
     height: "100%",
-    borderRadius: heightScale(6),
+    borderRadius: heightScale(5),
     backgroundColor: C.fill,
   },
-  percent: {
-    fontSize: fontSize.size16,
-    fontFamily: fonts.fontBold,
+  progressLabels: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    gap: moderateWidthScale(12),
+    marginTop: moderateHeightScale(6),
+  },
+  progressLabel: {
+    flexShrink: 1,
+    fontSize: fontSize.size14,
+    fontFamily: fonts.fontMedium,
     color: C.ink,
     fontVariant: ["tabular-nums"],
   },
@@ -367,31 +390,44 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: moderateWidthScale(10),
-    minHeight: heightScale(48),
-    marginTop: moderateHeightScale(18),
+    minHeight: heightScale(46),
+    marginTop: moderateHeightScale(14),
     paddingHorizontal: moderateWidthScale(16),
-    borderRadius: moderateWidthScale(14),
+    borderRadius: moderateWidthScale(12),
   },
   buttonLocked: { backgroundColor: C.lockedButton },
   buttonActive: { backgroundColor: C.ink },
   buttonText: {
     flexShrink: 1,
     fontSize: fontSize.size17,
-    fontFamily: fonts.fontBold,
+    fontFamily: fonts.fontMedium,
     color: C.lockedText,
   },
-  buttonTextActive: { color: C.white },
+  buttonTextActive: { color: C.white, fontFamily: fonts.fontBold },
   unlocks: {
-    marginTop: moderateHeightScale(10),
+    marginTop: moderateHeightScale(8),
     textAlign: "center",
-    fontSize: fontSize.size14,
+    fontSize: fontSize.size13,
     fontFamily: fonts.fontRegular,
     color: C.muted,
   },
+  // ── Links: How it works | My Nominations
+  linksRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: moderateHeightScale(4),
+  },
   linkButton: {
-    alignSelf: "center",
-    marginTop: moderateHeightScale(10),
-    paddingVertical: moderateHeightScale(4),
+    flex: 1,
+    minHeight: heightScale(40),
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: moderateWidthScale(6),
+  },
+  linkDivider: {
+    width: 1,
+    height: moderateHeightScale(18),
+    backgroundColor: C.muted,
   },
   link: {
     fontSize: fontSize.size14,
