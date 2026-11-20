@@ -4790,7 +4790,7 @@
   "mcFullRefundWindow": "Full refund if you cancel at least {{hours}} hours before the class.",
   "mcEnrolledText": "Your seat is confirmed. We'll remind you before the class.",
   "mcEnrolledOnlineNote": "Online — the meeting link is in your class details",
-  "mcClassUnavailableText": "It may have ended, filled up or been removed.",
+  "mcClassUnavailableText": "It may have already started, ended or been removed.",
   "mcClassLoadError": "Couldn't load this class",
   "mcMyClassesSubtitle": "Classes you enrolled in, with their time, place and refunds.",
   "mcEmptyMyCancelledText": "Class seats you cancel show up here.",

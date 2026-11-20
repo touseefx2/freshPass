@@ -1680,7 +1680,12 @@ export default function BookingNow() {
           return dayMap[dayLower] || day;
         };
 
-        const parseBusinessHours = (hoursArray: any[] | null | undefined) => {
+        // Staff hours: only the days the API sent (fillMissing false), so a
+        // missing day falls back to business hours like available-slots does.
+        const parseBusinessHours = (
+          hoursArray: any[] | null | undefined,
+          fillMissing = true,
+        ) => {
           if (
             !hoursArray ||
             !Array.isArray(hoursArray) ||
@@ -1701,7 +1706,7 @@ export default function BookingNow() {
             "Saturday",
             "Sunday",
           ];
-          DAYS.forEach((day) => {
+          if (fillMissing) DAYS.forEach((day) => {
             businessHours[day] = {
               isOpen: false,
               fromHours: 0,
@@ -1817,7 +1822,10 @@ export default function BookingNow() {
             }
 
             // Parse working_hours if available (even if empty array)
-            const staffWorkingHours = parseBusinessHours(staff.working_hours);
+            const staffWorkingHours = parseBusinessHours(
+              staff.working_hours,
+              false,
+            );
 
             return {
               id: staff.id || staff.user_id || 0,
@@ -2254,9 +2262,11 @@ export default function BookingNow() {
     const selectedDay = date.startOf("day");
     if (selectedDay.isBefore(salonToday)) return true;
     const dayName = getDayNameFromDate(date);
+    // Same rule as available-slots: a picked staff's row for the day decides
+    // alone; no row → business hours. Never both.
     if (selectedStaff !== "anyone" && selectedStaffMember?.working_hours) {
       const staffDayHours = selectedStaffMember.working_hours[dayName];
-      if (staffDayHours && !staffDayHours.isOpen) return true;
+      if (staffDayHours) return !staffDayHours.isOpen;
     }
     if (businessHours) {
       const dayHours = businessHours[dayName];

@@ -153,33 +153,21 @@ export function isClassDateTimeInFuture(
  * and its start time not passed (classes stay listed until they start). The
  * feed has no timezone, so the phone clock decides; unparseable dates stay.
  */
-type ReelClassTiming = {
-  status?: string | null;
-  starts_at?: string | null;
-};
-
 /**
- * Start instant of a reel's class (enrolment closes then, the server drops it
- * from the feed). Only from `starts_at` with an offset: `date`/`time` are on
- * the salon clock with no zone, and reading them on the phone clock hid the
- * card hours early for customers east of the salon. null = don't hide by time.
+ * A reel's attached class is shown while published and not started (enrolment
+ * closes at the start; the server then drops it from the feed). `starts_at`
+ * carries the salon offset; without it the class stays and the detail 404
+ * decides. `date`/`time` aren't used: no zone, the phone clock hid it early.
  */
-export function getReelClassClosesAt(
-  mc: ReelClassTiming | null | undefined,
-): number | null {
-  const iso = mc?.starts_at;
-  if (!iso || !/(Z|[+-]\d{2}:?\d{2})$/i.test(iso)) return null;
-  const at = dayjs(iso);
-  return at.isValid() ? at.valueOf() : null;
-}
-
 export function isReelClassOpen(
-  mc: ReelClassTiming | null | undefined,
+  mc: { status?: string | null; starts_at?: string | null } | null | undefined,
 ): boolean {
   if (!mc) return false;
   if (mc.status && mc.status !== "published") return false;
-  const closesAt = getReelClassClosesAt(mc);
-  return closesAt == null || closesAt > Date.now();
+  const iso = mc.starts_at;
+  if (!iso || !/(Z|[+-]\d{2}:?\d{2})$/i.test(iso)) return true;
+  const at = dayjs(iso);
+  return !at.isValid() || at.isAfter(dayjs());
 }
 
 /**

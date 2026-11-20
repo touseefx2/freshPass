@@ -102,10 +102,7 @@ import type {
   ReelLookResponse,
 } from "@/src/types/reels";
 import { resolveApiImageUrl } from "@/src/utils/media";
-import {
-  getReelClassClosesAt,
-  isReelClassOpen,
-} from "@/src/utils/masterClassHelpers";
+import { isReelClassOpen } from "@/src/utils/masterClassHelpers";
 import { subscribeToClassUnavailable } from "@/src/services/masterClassService";
 import {
   clearPendingReelTryOn,
@@ -1417,21 +1414,9 @@ function ReelFeedItemBase({
   const postedByAvatarUri = resolveApiImageUrl(reel.posted_by?.image_url);
   const dispatch = useAppDispatch();
   const shopProduct = reel.product ?? null;
-  // Attached class hides itself at its start time while the reel stays open
-  // (the feed was loaded before it closed); the server drops it on next load.
-  const reelClass = reel.master_class ?? null;
-  const reelClassClosesAt = getReelClassClosesAt(reelClass);
-  const [, setReelClassTick] = useState(0);
-  useEffect(() => {
-    if (reelClassClosesAt == null) return;
-    const wait = reelClassClosesAt - Date.now();
-    // setTimeout overflows past ~24.8 days; the next render re-checks anyway
-    if (wait <= 0 || wait > 2147483647) return;
-    const timer = setTimeout(() => setReelClassTick((n) => n + 1), wait + 500);
-    return () => clearTimeout(timer);
-  }, [reelClassClosesAt]);
+  // Closed classes (started / unpublished, or 404 when opened) hide their card
   const showReelClass =
-    !!reelClass && !classUnavailable && isReelClassOpen(reelClass);
+    !classUnavailable && isReelClassOpen(reel.master_class);
   // Sale price is what the buyer pays; regular shown crossed out
   const productUnit = useMemo(
     () => (shopProduct ? getUnitPrice(normalizeShopProduct(shopProduct)) : null),

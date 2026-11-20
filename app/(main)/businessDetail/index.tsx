@@ -3693,6 +3693,8 @@ export default function BusinessDetailScreen() {
 
     const parseBusinessHours = (
       hoursArray: any[] | null | undefined,
+      // Staff hours: false keeps only the days sent (missing → business hours)
+      fillMissing = true,
     ) => {
       if (
         !hoursArray ||
@@ -3716,7 +3718,7 @@ export default function BusinessDetailScreen() {
         "Saturday",
         "Sunday",
       ];
-      DAYS.forEach((day) => {
+      if (fillMissing) DAYS.forEach((day) => {
         businessHours[day] = {
           isOpen: false,
           fromHours: 0,
@@ -3819,7 +3821,7 @@ export default function BusinessDetailScreen() {
 
         // Parse working_hours if available (even if empty array)
         const staffWorkingHours =
-          parseBusinessHours(staff.working_hours);
+          parseBusinessHours(staff.working_hours, false);
 
         return {
           id: staff.id || staff.user_id || 0,
