@@ -2948,6 +2948,8 @@ export default function CalendarScreen({ fullscreen = false }: CalendarScreenPro
                 style={[
                   styles.blockClient,
                   cancelled && { color: theme.red },
+                  // No room for the "CANCELLED" line → strike the name
+                  cancelled && fit.lines < 2 && { textDecorationLine: "line-through" },
                   { fontFamily: fonts.fontBold },
                   fzWeek(fontSize.size9),
                 ]}
@@ -2986,6 +2988,7 @@ export default function CalendarScreen({ fullscreen = false }: CalendarScreenPro
                   style={[
                     styles.blockClientDetailed,
                     cancelled && { color: theme.red },
+                    cancelled && fit.lines < 2 && { textDecorationLine: "line-through" },
                     fz(fontSize.size14),
                   ]}
                 >
