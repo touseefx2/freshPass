@@ -1282,8 +1282,9 @@ export function navigateFromNotificationData(
   // (client 11-23), else the Followers list. Both sit on the main stack so
   // back returns to the notification list.
   if (type === "business_follower") {
+    // Backend 11-23: data.follower_id + sender = the follower
     const followerId =
-      pickNumber(data, "follower_id", "follower_user_id", "user_id", "customer_id") ??
+      pickNumber(data, "follower_id") ??
       (data.sender?.id != null ? Number(data.sender.id) : null);
     if (followerId != null && Number.isFinite(followerId)) {
       router.push({
