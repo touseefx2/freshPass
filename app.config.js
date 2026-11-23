@@ -31,6 +31,15 @@ module.exports = {
   ...appJson,
   expo: {
     ...appJson.expo,
+    // OTA channel baked into every build (EAS or local Xcode/Gradle):
+    // live-API builds get "production" updates, dev-API builds "development",
+    // so a dev test build never pulls a live update (or the reverse).
+    updates: {
+      ...appJson.expo.updates,
+      requestHeaders: {
+        "expo-channel-name": usesDevApi ? "development" : "production",
+      },
+    },
     ios: {
       ...appJson.expo.ios,
       associatedDomains: [

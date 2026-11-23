@@ -27,7 +27,8 @@
       "autoIncrement": true,
       "android": {
         "gradleCommand": ":app:bundleRelease :app:uploadCrashlyticsSymbolFileRelease"
-      }
+      },
+      "channel": "production"
     }
   },
   "submit": {

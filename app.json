@@ -227,6 +227,14 @@
         "projectId": "a60362a5-ab12-4c36-8266-068fcb6ea83e"
       }
     },
-    "owner": "fresh-pass-org"
+    "owner": "fresh-pass-org",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/a60362a5-ab12-4c36-8266-068fcb6ea83e",
+      "checkAutomatically": "ON_LOAD",
+      "fallbackToCacheTimeout": 0
+    }
   }
 }
