@@ -14,7 +14,8 @@
     "android:release:apk": "node scripts/android-release.js apk",
     "android:release:aab": "node scripts/android-release.js aab",
     "ios:sync": "node scripts/ios-version.js",
-    "update:prod": "eas update --channel production --environment production"
+    "update:dev": "node scripts/ota-update.js dev",
+    "update:prod": "node scripts/ota-update.js prod"
   },
   "dependencies": {
     "@expo/metro-runtime": "^6.1.2",
