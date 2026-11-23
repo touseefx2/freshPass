@@ -2,7 +2,15 @@ import { useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { useSocialLogin } from "@/src/hooks/useSocialLogin";
 import { useTranslation } from "react-i18next";
 import React, { useMemo, useCallback, useState } from "react";
-import { View, Text, StatusBar, Platform, Alert } from "react-native";
+import {
+  View,
+  Text,
+  StatusBar,
+  Platform,
+  Alert,
+  TouchableOpacity,
+} from "react-native";
+import { Feather } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import {
   SafeAreaView,
@@ -43,6 +51,11 @@ export default function SocialLogin() {
     router.push(`/${MAIN_ROUTES.LOGIN}`);
   };
 
+  const handleBack = () => {
+    if (router.canGoBack()) router.back();
+    else router.replace(`/${MAIN_ROUTES.ROLE}`);
+  };
+
   const handleGuestLogin = () => {
     router.push(`/${MAIN_ROUTES.INTRODUCTION_CLIENT}`);
   };
@@ -70,92 +83,110 @@ export default function SocialLogin() {
   const isGuest = selectedRole === "customer" ? true : false; // Set to true to show guest login button
 
   return (
-  <>
-    <SafeAreaView style={styles.container}>
-      <StatusBar
-        animated
-        translucent
-        backgroundColor={"transparent"}
-        barStyle={"light-content"}
-      />
-      <View style={styles.backgroundImageContainer}>
-        <Image
-          source={IMAGES.socialBackgroud}
-          style={[
-            styles.backgroundImage,
-            {
-              bottom: !isButtonMode ? 90 : 70,
-            },
-          ]}
+    <>
+      <SafeAreaView style={styles.container}>
+        <StatusBar
+          animated
+          translucent
+          backgroundColor={"transparent"}
+          barStyle={"light-content"}
         />
-      </View>
-
-      <View
-        style={[
-          styles.bottomSection,
-          {
-            paddingBottom: isButtonMode
-              ? insets.bottom + 5
-              : moderateHeightScale(24),
-          },
-          // !isGuest && { gap: moderateHeightScale(18) },
-        ]}
-      >
-        <Button
-          title={t("signInOrRegister")}
-          onPress={handleSignInOrRegister}
-          containerStyle={{ width: "100%" }}
-        />
-
-        <SectionSeparator />
-
-        <SocialAuthOptions
-          onGoogle={() => handleSocialLogin("google")}
-          onApple={() => handleSocialLogin("apple")}
-          onFacebook={() => handleSocialLogin("facebook")}
-          onGuest={handleGuestLogin}
-          isGuest={isGuest}
-        />
-
-        <Text style={styles.legalText}>
-          {t("byContinuingYouAgree")}{" "}
-          <Text style={styles.legalLink} onPress={handleTermsPress}>
-            {t("termsOfService")}
-          </Text>{" "}
-          &{" "}
-          <Text style={styles.legalLink} onPress={handlePrivacyPress}>
-            {t("privacyPolicy")}
-          </Text>
-        </Text>
-      </View>
-
-      <View style={styles.topSection}>
-        <View style={styles.logoContainer}>
-          <LeafLogo
-            width={moderateWidthScale(25)}
-            height={moderateWidthScale(33)}
-            color1={(colors as Theme).white}
-            color2={(colors as Theme).white}
+        <View style={styles.backgroundImageContainer}>
+          <Image
+            source={IMAGES.socialBackgroud}
+            style={[
+              styles.backgroundImage,
+              {
+                bottom: !isButtonMode ? 90 : 70,
+              },
+            ]}
           />
-          <Text style={styles.logoText}>{t("freshPass")}</Text>
         </View>
 
-        <View style={styles.taglineContainer}>
-          <Text style={styles.tagline1}>
-            {t("alwaysReadyAlwaysYouShort").split(" ").slice(0, 2).join(" ")}{" "}
-            <Text style={styles.tagline2}>
-              {t("alwaysReadyAlwaysYouShort").split(" ").slice(2).join(" ")}
+        <View
+          style={[
+            styles.bottomSection,
+            {
+              paddingBottom: isButtonMode
+                ? insets.bottom + 5
+                : moderateHeightScale(24),
+            },
+            // !isGuest && { gap: moderateHeightScale(18) },
+          ]}
+        >
+          <Button
+            title={t("signInOrRegister")}
+            onPress={handleSignInOrRegister}
+            containerStyle={{ width: "100%" }}
+          />
+
+          <SectionSeparator />
+
+          <SocialAuthOptions
+            onGoogle={() => handleSocialLogin("google")}
+            onApple={() => handleSocialLogin("apple")}
+            onFacebook={() => handleSocialLogin("facebook")}
+            onGuest={handleGuestLogin}
+            isGuest={isGuest}
+          />
+
+          <Text style={styles.legalText}>
+            {t("byContinuingYouAgree")}{" "}
+            <Text style={styles.legalLink} onPress={handleTermsPress}>
+              {t("termsOfService")}
+            </Text>{" "}
+            &{" "}
+            <Text style={styles.legalLink} onPress={handlePrivacyPress}>
+              {t("privacyPolicy")}
             </Text>
           </Text>
         </View>
-      </View>
-    </SafeAreaView>
-    <WebViewModal
-      visible={webViewVisible}
-      url={webViewUrl}
-      title={webViewTitle}
-      onClose={() => setWebViewVisible(false)}
-    />
-  </>
+
+        <View style={styles.topSection}>
+          <View style={styles.logoContainer}>
+            <LeafLogo
+              width={moderateWidthScale(25)}
+              height={moderateWidthScale(33)}
+              color1={(colors as Theme).white}
+              color2={(colors as Theme).white}
+            />
+            <Text style={styles.logoText}>{t("freshPass")}</Text>
+          </View>
+
+          <View style={styles.taglineContainer}>
+            <Text style={styles.tagline1}>
+              {t("alwaysReadyAlwaysYouShort").split(" ").slice(0, 2).join(" ")}{" "}
+              <Text style={styles.tagline2}>
+                {t("alwaysReadyAlwaysYouShort").split(" ").slice(2).join(" ")}
+              </Text>
+            </Text>
+          </View>
+        </View>
+      </SafeAreaView>
+      {/* Back to role picker (iOS has no hardware back, e.g. picked business by mistake) */}
+      <TouchableOpacity
+        onPress={handleBack}
+        activeOpacity={0.7}
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        accessibilityRole="button"
+        accessibilityLabel={t("back")}
+        style={[
+          styles.backButton,
+          { top: insets.top + moderateHeightScale(8) },
+        ]}
+      >
+        <Feather
+          name="chevron-left"
+          size={moderateWidthScale(24)}
+          color={(colors as Theme).white}
+        />
+      </TouchableOpacity>
+      <WebViewModal
+        visible={webViewVisible}
+        url={webViewUrl}
+        title={webViewTitle}
+        onClose={() => setWebViewVisible(false)}
+      />
+    </>
   );
 }

@@ -93,6 +93,16 @@ export const createStyles = (theme: Theme) =>
       width: "100%",
       alignSelf: "center",
     },
+    backButton: {
+      position: "absolute",
+      left: moderateWidthScale(16),
+      width: moderateWidthScale(40),
+      height: moderateWidthScale(40),
+      borderRadius: moderateWidthScale(20),
+      backgroundColor: "rgba(0, 0, 0, 0.35)",
+      alignItems: "center",
+      justifyContent: "center",
+    },
     legalText: {
       fontSize: fontSize.size12,
       fontFamily: fonts.fontRegular,
