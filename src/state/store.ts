@@ -58,6 +58,7 @@ const generalPersistConfig = {
     "isVisitFirst",
     "isFirstShowTryOn",
     "hasSeenReelsSwipeGuide",
+    "hasSeenPhotoEditorGuide",
     "aiHairTryOnConsentAccepted",
     "aiChatDataConsentAccepted",
     "aiVoiceDataConsentAccepted",

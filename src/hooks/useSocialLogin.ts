@@ -41,6 +41,7 @@ import type {
   SocialLoginApiResponse,
 } from "@/src/types/socialLogin";
 import { getExpoPushToken } from "../services/notificationPermissionService";
+import { withSingleRole } from "@/src/utils/accountRole";
 import {
   clearPendingInviteCode,
   getPendingInviteCode,
@@ -129,30 +130,10 @@ export function useSocialLogin() {
   const handleSocialLoginResponse = useCallback(
     (response: SocialLoginApiResponse) => {
       if (response.success && response.data) {
-        const { token, isNewCreated } = response.data;
-        // When the server adds a role to an existing account (customer signing
-        // up as business), it sends the new role/active_mode on `data` itself.
-        const user = response.data.user && {
-          ...response.data.user,
-          role: response.data.role || response.data.user.role,
-          active_mode:
-            response.data.active_mode !== undefined
-              ? response.data.active_mode
-              : response.data.user.active_mode,
-        };
+        const { user, token, isNewCreated } = withSingleRole(response.data);
 
         if (user && token) {
-          // Accounts with several roles come back joined ("business, customer").
-          // Business/staff accounts keep that role; active_mode carries the mode.
-          const roles = (user.role || "")
-            .toLowerCase()
-            .split(",")
-            .map((r) => r.trim());
-          const userRoleLower = roles.includes("business")
-            ? "business"
-            : roles.includes("staff")
-              ? "staff"
-              : roles[0];
+          const userRoleLower = user.role;
 
           if (userRoleLower === "customer") {
             dispatch(

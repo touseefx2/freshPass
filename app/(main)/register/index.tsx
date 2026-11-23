@@ -185,11 +185,15 @@ export default function Register() {
       }>(generalEndpoints.checkEmail, { email: trimmedEmail });
 
       if (response?.data?.exists) {
+        // Business side: logging in with the existing password adds the
+        // business role to that account (server) and opens business setup.
         showBanner(
           "User already exists",
-          "An account with this email address already exists. Please sign in or use a different email.",
+          userRole === "business"
+            ? "You already have a FreshPass account with this email. Sign in with your password to add your business."
+            : "An account with this email address already exists. Please sign in or use a different email.",
           "error",
-          5000,
+          userRole === "business" ? 7000 : 5000,
         );
         return;
       }
@@ -207,7 +211,7 @@ export default function Register() {
     } finally {
       setIsCheckingEmail(false);
     }
-  }, [email, isSubscribed, router, showBanner]);
+  }, [email, isSubscribed, router, showBanner, userRole]);
 
   const handleLogin = useCallback(() => {
     router.back();

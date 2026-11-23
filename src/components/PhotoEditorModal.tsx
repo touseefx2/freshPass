@@ -23,7 +23,9 @@ import * as ImageManipulator from "expo-image-manipulator";
 import { Image as RNImage } from "react-native";
 import Svg, { Path, Circle as SvgCircle } from "react-native-svg";
 import AppImage from "@/src/components/AppImage";
-import { useTheme } from "@/src/hooks/hooks";
+import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
+import { setHasSeenPhotoEditorGuide } from "@/src/state/slices/generalSlice";
+import PhotoEditorGuide from "@/src/components/PhotoEditorGuide";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import {
@@ -163,6 +165,13 @@ export default function PhotoEditorModal({
   const styles = useMemo(() => createStyles(theme, insets), [colors, insets]);
 
   const [processing, setProcessing] = useState(false);
+  // First-time gesture guide — device-level flag, survives logout
+  const dispatch = useAppDispatch();
+  const hasSeenGuide = useAppSelector((s) => s.general.hasSeenPhotoEditorGuide);
+  const showGuide = visible && !!imageUri && !hasSeenGuide;
+  const dismissGuide = useCallback(() => {
+    dispatch(setHasSeenPhotoEditorGuide(true));
+  }, [dispatch]);
   const [imageSize, setImageSize] = useState<{
     width: number;
     height: number;
@@ -472,6 +481,12 @@ export default function PhotoEditorModal({
             <ActivityIndicator size="large" color="#fff" />
           </View>
         )}
+
+        <PhotoEditorGuide
+          visible={showGuide}
+          imageUri={imageUri}
+          onDismiss={dismissGuide}
+        />
       </GestureHandlerRootView>
     </Modal>
   );

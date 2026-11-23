@@ -39,6 +39,7 @@ import {
 } from "@/src/utils/navigation";
 import { ApiService, getAccountSuspendedMessage } from "@/src/services/api";
 import { businessEndpoints } from "@/src/services/endpoints";
+import { withSingleRole } from "@/src/utils/accountRole";
 import {
   normalizeUserMode,
   setBusinessStatus,
@@ -240,6 +241,18 @@ export default function Login() {
     );
   };
 
+  // Business role was just added to a customer account: open business setup,
+  // like a new sign-up. Otherwise home.
+  const finishLogin = (loginData: any) => {
+    setUserData(loginData);
+    if (loginData?.isNewCreated && loginData?.user?.role === "business") {
+      dispatch(setFullName(loginData.user?.name || ""));
+      resetToRoute(`/${MAIN_ROUTES.REGISTER_NEXT_STEPS}`);
+    } else {
+      resetToDashboardHome();
+    }
+  };
+
   const handleLogin = useCallback(async () => {
     Keyboard.dismiss();
 
@@ -249,6 +262,10 @@ export default function Login() {
       const body = {
         email: email.trim(),
         password: password,
+        // Existing customer logging in from "I manage a Business": the server
+        // adds the business role and returns isNewCreated. Not sent for the
+        // customer side, so owners who tap it still land on business home.
+        ...(selectedRole === "business" ? { role: "business" } : {}),
         ...(expo_push_token ? { expo_push_token } : {}),
       };
 
@@ -257,7 +274,8 @@ export default function Login() {
 
       // Handle successful login
       if (response.success && response.data) {
-        const { user, token, email_verification_required } = response.data;
+        const loginData = withSingleRole(response.data);
+        const { user, token, email_verification_required } = loginData;
 
         // Set user data in Redux
         if (user && token) {
@@ -275,14 +293,13 @@ export default function Login() {
           ) {
             // Unverified owner/customer: code popup first (it sends a fresh code)
             if (email_verification_required) {
-              setData(response.data);
+              setData(loginData);
               setIsVerificationModalVisible(true);
             } else {
-              setUserData(response.data);
-              resetToDashboardHome();
+              finishLogin(loginData);
             }
           } else if (user?.role?.toLowerCase() === "staff") {
-            setUserData(response.data);
+            setUserData(loginData);
             // Save salon business hours from login response if available
             if (user?.business_hours && Array.isArray(user.business_hours)) {
               const parsedBusinessHours: {
@@ -383,7 +400,7 @@ export default function Login() {
     } finally {
       setIsLoading(false);
     }
-  }, [email, password, savePassword, dispatch, router]);
+  }, [email, password, savePassword, selectedRole, dispatch, router]);
 
   const { handleSocialLogin } = useSocialLogin();
 
@@ -416,8 +433,7 @@ export default function Login() {
 
   const handleVerificationCodeComplete = useCallback(() => {
     if (data) {
-      setUserData(data);
-              resetToDashboardHome();
+      finishLogin(data);
     }
     handleCloseVerificationModal();
   }, [data, router, handleCloseVerificationModal]);

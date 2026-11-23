@@ -76,6 +76,8 @@ export interface GeneralState {
   isFirstShowTryOn: boolean; // Track if first show try-on has been displayed
   /** User has dismissed the first-time reels swipe guide (persisted) */
   hasSeenReelsSwipeGuide: boolean;
+  /** User has dismissed the first-time Edit Photo (crop) guide — device-level, kept on logout */
+  hasSeenPhotoEditorGuide: boolean;
   aiHairTryOnConsentAccepted: boolean; // User accepted AI Hair Try-On data sharing consent
   aiChatDataConsentAccepted: boolean; // User accepted AI chat data sharing with third-party AI
   aiVoiceDataConsentAccepted: boolean; // User accepted AI voice receptionist data sharing
@@ -162,6 +164,7 @@ const initialState: GeneralState = {
   guestModeModalVisible: false,
   isFirstShowTryOn: false,
   hasSeenReelsSwipeGuide: false,
+  hasSeenPhotoEditorGuide: false,
   aiHairTryOnConsentAccepted: false,
   aiChatDataConsentAccepted: false,
   aiVoiceDataConsentAccepted: false,
@@ -468,6 +471,9 @@ const generalSlice = createSlice({
     setHasSeenReelsSwipeGuide(state, action: PayloadAction<boolean>) {
       state.hasSeenReelsSwipeGuide = action.payload;
     },
+    setHasSeenPhotoEditorGuide(state, action: PayloadAction<boolean>) {
+      state.hasSeenPhotoEditorGuide = action.payload;
+    },
     setAiHairTryOnConsentAccepted(state, action: PayloadAction<boolean>) {
       state.aiHairTryOnConsentAccepted = action.payload;
     },
@@ -639,6 +645,7 @@ export const {
   resetSetupReminders,
   setIsFirstShowTryOn,
   setHasSeenReelsSwipeGuide,
+  setHasSeenPhotoEditorGuide,
   setAiHairTryOnConsentAccepted,
   setAiChatDataConsentAccepted,
   setAiVoiceDataConsentAccepted,

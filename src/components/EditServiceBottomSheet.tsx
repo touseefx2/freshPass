@@ -6,11 +6,14 @@ import {
   StatusBar,
   StyleSheet,
   Text,
+  useWindowDimensions,
   TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
 import { Portal } from "@gorhom/portal";
+import { Feather, MaterialIcons } from "@expo/vector-icons";
+import { useTranslation } from "react-i18next";
 import Animated, { ReduceMotion, SlideInDown } from "react-native-reanimated";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -21,6 +24,7 @@ import {
   heightScale,
   moderateHeightScale,
   moderateWidthScale,
+  widthScale,
 } from "@/src/theme/dimensions";
 import {
   addService,
@@ -46,17 +50,19 @@ interface EditServiceBottomSheetProps {
   deleting?: boolean;
 }
 
-const PRESETS = [15, 30, 45, 60];
+// Same slot lengths the customer picks from on the booking time step.
+const SLOT_MINUTE_OPTIONS = [5, 15, 30, 45] as const;
+type SlotMinutes = (typeof SLOT_MINUTE_OPTIONS)[number];
+const DEFAULT_STEP: SlotMinutes = 15;
+const DEFAULT_MINUTES = 30;
 // Old hour/minute steppers allowed up to 12 h 59 min.
 const MAX_MINUTES = 12 * 60 + 59;
 
 const formatDuration = (total: number) => {
+  if (total < 60) return `${total} min`;
   const h = Math.floor(total / 60);
   const m = total % 60;
-  const parts: string[] = [];
-  if (h) parts.push(`${h} hour${h === 1 ? "" : "s"}`);
-  if (m) parts.push(`${m} minute${m === 1 ? "" : "s"}`);
-  return parts.join(" ");
+  return m ? `${h} hr ${m} min` : `${h} hr`;
 };
 
 const createStyles = (theme: Theme) =>
@@ -134,46 +140,93 @@ const createStyles = (theme: Theme) =>
       color: theme.darkGreen,
       marginRight: moderateWidthScale(2),
     },
-    chipRow: {
+    durationHeader: {
       flexDirection: "row",
-      gap: moderateWidthScale(8),
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: moderateWidthScale(12),
     },
-    chip: {
-      flex: 1,
+    intervalLink: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(2),
+      minHeight: heightScale(28),
+    },
+    intervalLinkText: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontMedium,
+      color: theme.orangeBrownText,
+    },
+    menu: {
+      position: "absolute",
+      minWidth: widthScale(170),
+      borderRadius: moderateWidthScale(14),
+      backgroundColor: theme.white,
+      shadowColor: theme.darkGreen,
+      shadowOffset: { width: 0, height: 8 },
+      shadowOpacity: 0.18,
+      shadowRadius: 16,
+      elevation: 8,
+    },
+    menuInner: {
+      borderRadius: moderateWidthScale(14),
+      borderWidth: 1,
+      borderColor: theme.borderNormal,
+      overflow: "hidden",
+    },
+    menuItem: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: moderateWidthScale(12),
       minHeight: heightScale(44),
-      borderRadius: moderateWidthScale(22),
+      paddingHorizontal: moderateWidthScale(16),
+    },
+    menuItemBorder: {
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: theme.borderNormal,
+    },
+    menuItemOn: {
+      backgroundColor: theme.upcomingCard,
+    },
+    menuText: {
+      fontSize: fontSize.size15,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
+      fontVariant: ["tabular-nums"],
+    },
+    menuTextOn: {
+      fontFamily: fonts.fontBold,
+    },
+    stepper: {
+      flexDirection: "row",
+      alignItems: "center",
+      minHeight: heightScale(56),
+      borderRadius: moderateWidthScale(30),
       borderWidth: 1,
       borderColor: theme.lightGreen2,
       backgroundColor: theme.white,
+      paddingHorizontal: moderateWidthScale(16),
+      paddingVertical: moderateHeightScale(7),
+    },
+    stepperButton: {
+      width: moderateWidthScale(46),
+      height: moderateWidthScale(40),
+      borderRadius: moderateWidthScale(12),
+      backgroundColor: theme.lightGreen07,
       alignItems: "center",
       justifyContent: "center",
-      paddingHorizontal: moderateWidthScale(2),
     },
-    chipActive: {
-      backgroundColor: theme.darkGreen,
-      borderColor: theme.darkGreen,
+    stepperButtonDisabled: {
+      opacity: 0.35,
     },
-    chipText: {
-      fontSize: fontSize.size14,
-      fontFamily: fonts.fontMedium,
-      color: theme.darkGreen,
-    },
-    chipTextActive: {
-      color: theme.white,
-    },
-    customLink: {
-      alignSelf: "flex-start",
-      paddingVertical: moderateHeightScale(4),
-    },
-    customLinkText: {
-      fontSize: fontSize.size14,
-      fontFamily: fonts.fontMedium,
-      color: theme.lightGreen,
-      textDecorationLine: "underline",
-    },
-    customLinkTextActive: {
+    stepperValue: {
+      flex: 1,
+      textAlign: "center",
+      fontSize: fontSize.size20,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
+      fontVariant: ["tabular-nums"],
     },
     actions: {
       marginTop: moderateHeightScale(6),
@@ -214,8 +267,24 @@ export default function EditServiceBottomSheet({
   const styles = useMemo(() => createStyles(colors as Theme), [colors]);
   const theme = colors as Theme;
   const { services } = useAppSelector((state) => state.completeProfile);
-  const customInputRef = useRef<TextInput>(null);
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
+  const { width: windowWidth } = useWindowDimensions();
+  const intervalLinkRef = useRef<View>(null);
+  const [step, setStep] = useState<SlotMinutes>(DEFAULT_STEP);
+  const [intervalMenu, setIntervalMenu] = useState<{
+    top: number;
+    right: number;
+  } | null>(null);
+  const openIntervalMenu = () => {
+    // Overlay fills the screen from 0,0, so page coords place the menu.
+    intervalLinkRef.current?.measure((_x, _y, w, h, pageX, pageY) => {
+      setIntervalMenu({
+        top: pageY + h + moderateHeightScale(4),
+        right: Math.max(moderateWidthScale(20), windowWidth - (pageX + w)),
+      });
+    });
+  };
 
   const service = serviceId ? services.find((s) => s.id === serviceId) : null;
 
@@ -223,8 +292,7 @@ export default function EditServiceBottomSheet({
   const [serviceDescription, setServiceDescription] = useState(
     service?.description ?? service?.name ?? "",
   );
-  const [preset, setPreset] = useState<number | "custom">(30);
-  const [customMinutes, setCustomMinutes] = useState("");
+  const [totalMinutes, setTotalMinutes] = useState(DEFAULT_MINUTES);
   const [price, setPrice] = useState("");
   const [currency] = useState(service?.currency || "USD");
   const [saving, setSaving] = useState(false);
@@ -241,8 +309,7 @@ export default function EditServiceBottomSheet({
     if (serviceId === null) {
       setServiceName("");
       setServiceDescription("");
-      setPreset(30);
-      setCustomMinutes("");
+      setTotalMinutes(DEFAULT_MINUTES);
       setPrice("");
       setErrors({});
     } else if (service) {
@@ -252,13 +319,7 @@ export default function EditServiceBottomSheet({
         Math.max((service.hours || 0) * 60 + (service.minutes || 0), 0),
         MAX_MINUTES,
       );
-      if (PRESETS.includes(total)) {
-        setPreset(total);
-        setCustomMinutes("");
-      } else {
-        setPreset("custom");
-        setCustomMinutes(total ? total.toString() : "");
-      }
+      setTotalMinutes(total || DEFAULT_MINUTES);
       setPrice(service.price.toString());
       setErrors({});
     }
@@ -267,35 +328,25 @@ export default function EditServiceBottomSheet({
   useEffect(() => {
     if (!visible) return;
     const sub = BackHandler.addEventListener("hardwareBackPress", () => {
-      onClose();
+      if (intervalMenu) setIntervalMenu(null);
+      else onClose();
       return true;
     });
     return () => sub.remove();
-  }, [visible, onClose]);
+  }, [visible, onClose, intervalMenu]);
 
-  const totalMinutes =
-    preset === "custom" ? parseInt(customMinutes, 10) || 0 : preset;
-
-  const handleSelectPreset = (value: number | "custom") => {
+  // Snap to the slot grid, so an old 5 or 50 min service steps cleanly.
+  const canDecrease = totalMinutes > step;
+  const canIncrease = totalMinutes + step <= MAX_MINUTES;
+  const changeDuration = (dir: 1 | -1) => {
     setErrors((e) => ({ ...e, duration: undefined }));
-    if (value === "custom") {
-      if (preset !== "custom" && !customMinutes) {
-        setCustomMinutes(String(preset));
-      }
-      setPreset("custom");
-      setTimeout(() => customInputRef.current?.focus(), 50);
-    } else {
-      setPreset(value);
-    }
-  };
-
-  const handleCustomChange = (text: string) => {
-    const cleaned = text.replace(/[^0-9]/g, "").slice(0, 3);
-    const num = parseInt(cleaned, 10);
-    setCustomMinutes(
-      !isNaN(num) && num > MAX_MINUTES ? String(MAX_MINUTES) : cleaned,
-    );
-    setErrors((e) => ({ ...e, duration: undefined }));
+    setTotalMinutes((cur) => {
+      const next =
+        dir === 1
+          ? Math.floor(cur / step) * step + step
+          : Math.ceil(cur / step) * step - step;
+      return Math.min(Math.max(next, step), MAX_MINUTES);
+    });
   };
 
   const handlePriceChange = (text: string) => {
@@ -447,78 +498,71 @@ export default function EditServiceBottomSheet({
           </View>
 
           <View style={styles.field}>
-            <Text style={styles.label}>Duration</Text>
-            <View style={styles.chipRow} accessibilityRole="radiogroup">
-              {PRESETS.map((value) => {
-                const active = preset === value;
-                return (
-                  <TouchableOpacity
-                    key={value}
-                    activeOpacity={0.7}
-                    onPress={() => handleSelectPreset(value)}
-                    style={[styles.chip, active && styles.chipActive]}
-                    accessibilityRole="radio"
-                    accessibilityState={{ selected: active }}
-                  >
-                    <Text
-                      style={[styles.chipText, active && styles.chipTextActive]}
-                      numberOfLines={1}
-                      adjustsFontSizeToFit
-                      minimumFontScale={0.8}
-                    >
-                      {`${value} min`}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-            <TouchableOpacity
-              style={styles.customLink}
-              onPress={() => handleSelectPreset("custom")}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              accessibilityRole="radio"
-              accessibilityState={{ selected: preset === "custom" }}
-            >
-              <Text
-                style={[
-                  styles.customLinkText,
-                  preset === "custom" && styles.customLinkTextActive,
-                ]}
+            <View style={styles.durationHeader}>
+              <Text style={styles.label}>Duration</Text>
+              <TouchableOpacity
+                ref={intervalLinkRef}
+                style={styles.intervalLink}
+                onPress={openIntervalMenu}
+                activeOpacity={0.6}
+                hitSlop={{ top: 8, bottom: 8, left: 12, right: 8 }}
+                accessibilityRole="button"
+                accessibilityLabel={t("bkFlowSlotLength", { count: step })}
+                accessibilityState={{ expanded: intervalMenu != null }}
               >
-                Custom
+                <Text style={styles.intervalLinkText}>
+                  {t("bkFlowSlotLength", { count: step })}
+                </Text>
+                <MaterialIcons
+                  name={intervalMenu ? "expand-less" : "expand-more"}
+                  size={moderateWidthScale(18)}
+                  color={theme.orangeBrownText}
+                />
+              </TouchableOpacity>
+            </View>
+            <View style={styles.stepper}>
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => changeDuration(-1)}
+                disabled={!canDecrease}
+                style={[
+                  styles.stepperButton,
+                  !canDecrease && styles.stepperButtonDisabled,
+                ]}
+                hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                accessibilityRole="button"
+                accessibilityLabel={`Decrease duration by ${step} minutes`}
+              >
+                <Feather name="minus" size={22} color={theme.darkGreen} />
+              </TouchableOpacity>
+              <Text
+                style={styles.stepperValue}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.8}
+                accessibilityLiveRegion="polite"
+              >
+                {formatDuration(totalMinutes)}
               </Text>
-            </TouchableOpacity>
-            {preset !== "custom" && errors.duration ? (
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => changeDuration(1)}
+                disabled={!canIncrease}
+                style={[
+                  styles.stepperButton,
+                  !canIncrease && styles.stepperButtonDisabled,
+                ]}
+                hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                accessibilityRole="button"
+                accessibilityLabel={`Increase duration by ${step} minutes`}
+              >
+                <Feather name="plus" size={22} color={theme.darkGreen} />
+              </TouchableOpacity>
+            </View>
+            {errors.duration ? (
               <Text style={styles.errorText}>{errors.duration}</Text>
             ) : null}
           </View>
-
-          {preset === "custom" ? (
-            <View style={styles.field}>
-              <Text style={styles.label}>Duration in minutes</Text>
-              <View
-                style={[styles.affixRow, errors.duration && styles.inputError]}
-              >
-                <TextInput
-                  ref={customInputRef}
-                  style={styles.affixInput}
-                  value={customMinutes}
-                  onChangeText={handleCustomChange}
-                  keyboardType="number-pad"
-                  placeholder="90"
-                  placeholderTextColor={theme.lightGreen4}
-                  maxLength={3}
-                  accessibilityLabel="Duration in minutes"
-                />
-                <Text style={styles.affixText}>min</Text>
-              </View>
-              {errors.duration ? (
-                <Text style={styles.errorText}>{errors.duration}</Text>
-              ) : totalMinutes > 0 ? (
-                <Text style={styles.helper}>{formatDuration(totalMinutes)}</Text>
-              ) : null}
-            </View>
-          ) : null}
 
           <View style={styles.field}>
             <Text style={styles.label}>{priceLabel}</Text>
@@ -567,6 +611,63 @@ export default function EditServiceBottomSheet({
             ) : null}
           </View>
         </KeyboardAwareScrollView>
+
+        {intervalMenu ? (
+          <>
+            <TouchableOpacity
+              style={StyleSheet.absoluteFillObject}
+              activeOpacity={1}
+              onPress={() => setIntervalMenu(null)}
+              accessibilityLabel={t("close")}
+            />
+            <View
+              style={[
+                styles.menu,
+                { top: intervalMenu.top, right: intervalMenu.right },
+              ]}
+              accessibilityRole="menu"
+            >
+              <View style={styles.menuInner}>
+                {SLOT_MINUTE_OPTIONS.map((minutes, index) => {
+                  const isSelected = step === minutes;
+                  return (
+                    <TouchableOpacity
+                      key={minutes}
+                      activeOpacity={0.7}
+                      style={[
+                        styles.menuItem,
+                        index > 0 && styles.menuItemBorder,
+                        isSelected && styles.menuItemOn,
+                      ]}
+                      onPress={() => {
+                        setIntervalMenu(null);
+                        setStep(minutes);
+                      }}
+                      accessibilityRole="menuitem"
+                      accessibilityState={{ selected: isSelected }}
+                    >
+                      <Text
+                        style={[
+                          styles.menuText,
+                          isSelected && styles.menuTextOn,
+                        ]}
+                      >
+                        {t("bkFlowSlotLength", { count: minutes })}
+                      </Text>
+                      {isSelected ? (
+                        <MaterialIcons
+                          name="check"
+                          size={moderateWidthScale(18)}
+                          color={theme.selectCard}
+                        />
+                      ) : null}
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+          </>
+        ) : null}
       </Animated.View>
     </Portal>
   );
