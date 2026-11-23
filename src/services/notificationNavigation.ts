@@ -28,12 +28,14 @@ import { addProduct, updateProduct } from "@/src/state/slices/inventorySlice";
 import { getPublicReel } from "@/src/services/reelsService";
 import i18n from "i18next";
 import {
+  ApiService,
   showToast,
   signOutRemovedStaff,
   signOutSuspendedAccount,
 } from "@/src/services/api";
 import { getUserMode } from "@/src/services/userModeService";
 import { requestAwaitingOutcomeScroll } from "@/src/services/homeScrollRequest";
+import { appointmentsEndpoints } from "@/src/services/endpoints";
 import { fetchSlotOfferDetail } from "@/src/services/slotOfferService";
 import { clearGivesBackBannerCache } from "@/src/services/givesBackService";
 
@@ -289,12 +291,52 @@ function openOwnerReelsList(
 }
 
 /**
+ * Outcome summary tap (client 11-23): when every appointment already has an
+ * outcome, Home has nothing to show — say so instead of opening it. If the
+ * check fails, open Home as before.
+ */
+async function openAwaitingOutcomes(fromInAppList?: boolean): Promise<void> {
+  let nothingPending = false;
+  try {
+    const res = await ApiService.get<any>(
+      appointmentsEndpoints.awaitingOutcome({ per_page: 1, page: 1 }),
+    );
+    const list = Array.isArray(res?.data?.data)
+      ? res.data.data
+      : Array.isArray(res?.data)
+        ? res.data
+        : null;
+    const count = Number(res?.data?.count);
+    nothingPending =
+      res?.success === true &&
+      list != null &&
+      list.length === 0 &&
+      !(Number.isFinite(count) && count > 0);
+  } catch (error) {
+    Logger.log("Awaiting outcome check failed, opening Home:", error);
+  }
+
+  if (nothingPending) {
+    showToast(
+      i18n.t("allOutcomesMarkedTitle"),
+      i18n.t("allOutcomesMarked"),
+      "info",
+    );
+    if (!fromInAppList) resetToDashboardHome();
+    return;
+  }
+  requestAwaitingOutcomeScroll();
+  resetToDashboardHome();
+}
+
+/**
  * Navigate based on notification data (push payload or API notification item).
  * Used by ExpoNotificationHandler (push tap), Notifications screen (list item tap),
  * and pendingNotificationNavigation (cold start after splash).
  * - type "message" + model_id + sender → chatBox
  * - type "appointment" + model_id → bookingDetailsById
- * - type "appointment_outcomes" → Home, scrolled to "Needs your attention" (model_id = business id)
+ * - type "appointment_outcomes" → Home, scrolled to "Needs your attention" (model_id = business id);
+ *   nothing pending any more → "already marked" message, stays on the list
  * - type "appointment_checkout" + subType appointment_checkout_failed → bookingNow (if business_id) or notification list — never appointment details
  * - type "ai_memory" → Profile → AI Tools → Memories (panel: back first, then chain)
  * - type "airequest" + job_id → aiRequests, then aiResults for that job
@@ -311,7 +353,7 @@ function openOwnerReelsList(
  * - type "affiliation" (solo) → Profile → Edit profile
  * - type "business" | "service" + model_id (customer role) → businessDetail
  * - type "follow" + sub_type follow_new_reel → reelsFeed; else → businessDetail
- * - type "business_follower" → owner's businessDetail
+ * - type "business_follower" → follower's businessCustomerDetail (else Followers list)
  * - type "business_reel" + comment → reelsFeed+comments; booking → appointment; likes → reelStats
  * - type "order" + order_id / model_id (customer role) → shop order screen (every order_* subType)
  * - type "order" + order_id / model_id (business role: return policy seller pushes) → owner order screen
@@ -786,8 +828,7 @@ export function navigateFromNotificationData(
   // Summary of several finished appointments — model_id is the BUSINESS id, not
   // an appointment. Open Home and scroll to "Needs your attention".
   if (type === "appointment_outcomes") {
-    requestAwaitingOutcomeScroll();
-    resetToDashboardHome();
+    void openAwaitingOutcomes(options?.fromInAppList);
     Logger.log(
       "------>navigateFromNotificationData (appointment_outcomes) -> home (awaiting outcome)",
       { subType, count: data.count },
@@ -832,7 +873,7 @@ export function navigateFromNotificationData(
   }
 
   if (type === "appointment") {
-    const modelId = pickNumber(data, "model_id") ?? undefined;
+    const modelId = pickNumber(data, "model_id", "appointment_id") ?? undefined;
     if (modelId != null) {
       // One completion alert → View & Pay (pay, tip, review in one place).
       // Old payment / tip / review requests still sit in notification lists
@@ -1237,21 +1278,24 @@ export function navigateFromNotificationData(
     }
   }
 
-  // R-23 · New follower alert for the business owner
+  // R-23 · New follower alert for the business owner → that follower's detail
+  // (client 11-23), else the Followers list. Both sit on the main stack so
+  // back returns to the notification list.
   if (type === "business_follower") {
-    const ownBusinessId = store.getState().user.business_id;
-    if (ownBusinessId != null) {
-      openBusinessProfile(router, Number(ownBusinessId));
-      Logger.log(
-        "------>navigateFromNotificationData (business_new_follower) -> own businessDetail",
-        { business_id: ownBusinessId },
-      );
-      return;
+    const followerId =
+      pickNumber(data, "follower_id", "follower_user_id", "user_id", "customer_id") ??
+      (data.sender?.id != null ? Number(data.sender.id) : null);
+    if (followerId != null && Number.isFinite(followerId)) {
+      router.push({
+        pathname: "/(main)/businessCustomerDetail",
+        params: { id: String(followerId) },
+      } as any);
+    } else {
+      router.push("/(main)/businessFollowers" as any);
     }
-    navigateViaProfileFromNotification(
-      router,
-      EDIT_PROFILE_PATH,
-      options?.fromInAppList,
+    Logger.log(
+      "------>navigateFromNotificationData (business_new_follower) -> follower",
+      { followerId },
     );
     return;
   }

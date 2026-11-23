@@ -1407,6 +1407,8 @@
   "noShowVisitCardDesc": "If you do not arrive for your appointment, this visit may be used from your membership.",
   "withinCutoffWarningBodyMembership": "If you cancel within the {{hours}}-hour window, late cancellation: {{lateAction}}. If you do not attend, no-show: {{noShowAction}}.",
   "awaitingOutcome": "Nécessite votre attention",
+  "allOutcomesMarkedTitle": "Tout est fait",
+  "allOutcomesMarked": "Tous les rendez-vous sont déjà marqués.",
   "awaitingOutcomeHelp": "Confirmez si le client s'est présenté.",
   "awaitingOutcomeLoadError": "Impossible de charger les rendez-vous qui nécessitent votre attention.",
   "markCompleted": "Mark Completed",

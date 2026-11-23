@@ -72,6 +72,8 @@ export const customerEndpoints = {
  */
 export const businessEndpoints = {
   register: `/api/register`,
+  /** One referral code check at business signup (public): 4 digits = sales rep, else customer invite → { type, code, name } */
+  signupCode: (code: string) => `/api/signup-codes/${encodeURIComponent(code)}`,
   /** Sales rep code check at business signup (public) */
   agentCode: (code: string) => `/api/agent-codes/${encodeURIComponent(code)}`,
   /** Invite a Pro code check at business signup (public): { invite_code, inviter_first_name } */

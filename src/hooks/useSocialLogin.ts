@@ -64,10 +64,10 @@ const SOCIAL_LOGIN_TIMEOUT_MS = 20000;
  */
 async function getInviteCodeBody(
   role: string | null | undefined,
-): Promise<{ invite_code?: string }> {
+): Promise<{ signup_code?: string }> {
   if (role?.toLowerCase() !== "business") return {};
   const code = await getPendingInviteCode();
-  return code ? { invite_code: code } : {};
+  return code ? { signup_code: code } : {};
 }
 
 function generateRandomString() {
@@ -110,16 +110,17 @@ export function useSocialLogin() {
     [t],
   );
 
-  // 422 on invite_code (stale / unknown held code): drop it so the next
+  // 422 on signup_code (stale / unknown held code): drop it so the next
   // attempt works, and show the server's message.
   const alertIfInviteCodeRejected = useCallback(
     (error: any): boolean => {
       if (error?.status !== 422) return false;
-      const raw = error?.data?.errors?.invite_code;
+      const errors = error?.data?.errors;
+      const raw = errors?.signup_code ?? errors?.invite_code;
       const message = Array.isArray(raw) ? raw[0] : raw;
       if (!message) return false;
       void clearPendingInviteCode();
-      Alert.alert(t("inviteCodeRejectedTitle"), String(message));
+      Alert.alert(t("referralCodeRejectedTitle"), String(message));
       return true;
     },
     [t],

@@ -141,15 +141,20 @@ const createStyles = (theme: Theme) =>
     },
   });
 
-type AgentCodeStatus = "idle" | "checking" | "valid" | "notFound" | "unknown";
+type ReferralCodeStatus = "idle" | "checking" | "valid" | "notFound" | "unknown";
 
-// Invite a Pro codes: 8 letters/digits, matched in any case
+// One referral code for both: 4 digits = sales rep agent code, anything else
+// = customer invite code (the server tells them apart)
+const REFERRAL_CODE_MAX = 20;
 const INVITE_CODE_LENGTH = 8;
-const sanitizeInviteCode = (text: string) =>
+const sanitizeReferralCode = (text: string) =>
   text
     .toUpperCase()
     .replace(/[^A-Z0-9]/g, "")
-    .slice(0, INVITE_CODE_LENGTH);
+    .slice(0, REFERRAL_CODE_MAX);
+// Check as soon as it looks complete, so a half-typed invite isn't "not found"
+const isCheckableCode = (code: string) =>
+  /^\d{4}$/.test(code) || code.length >= INVITE_CODE_LENGTH;
 
 export default function RegisterPassword() {
   const { colors } = useTheme();
@@ -183,54 +188,17 @@ export default function RegisterPassword() {
   const selectedRole = useAppSelector((state) => state.general.role);
   const isBusiness = selectedRole?.toLowerCase() === "business";
 
-  // Sales rep agent code (business signup only, optional)
-  const [agentCode, setAgentCode] = useState("");
-  const [agentStatus, setAgentStatus] = useState<AgentCodeStatus>("idle");
-  const [agentRepName, setAgentRepName] = useState("");
-
-  useEffect(() => {
-    setAgentRepName("");
-    if (agentCode.length !== 4) {
-      setAgentStatus("idle");
-      return;
-    }
-    setAgentStatus("checking");
-    let cancelled = false;
-    const timer = setTimeout(async () => {
-      try {
-        const response = await ApiService.get<any>(
-          businessEndpoints.agentCode(agentCode),
-        );
-        if (cancelled) return;
-        if (response?.success) {
-          setAgentRepName(response.data?.rep_first_name || "");
-          setAgentStatus("valid");
-        } else {
-          setAgentStatus("notFound");
-        }
-      } catch (error: any) {
-        if (cancelled) return;
-        // 404 = unknown code; anything else (network, 429) the register call validates.
-        setAgentStatus(error?.status === 404 ? "notFound" : "unknown");
-      }
-    }, 400);
-    return () => {
-      cancelled = true;
-      clearTimeout(timer);
-    };
-  }, [agentCode]);
-
-  const handleAgentCodeChange = useCallback((text: string) => {
-    setAgentCode(text.replace(/\D/g, "").slice(0, 4));
-  }, []);
-
-  // Invite a Pro code (business signup only, optional): pre-filled from the
-  // held link / Play referrer / iPhone clipboard code
-  const [inviteCode, setInviteCode] = useState("");
-  const [inviteStatus, setInviteStatus] = useState<AgentCodeStatus>("idle");
-  const [inviterName, setInviterName] = useState("");
-  // Server 422 on invite_code (shown under the field until the code changes)
-  const [inviteFieldError, setInviteFieldError] = useState<string | null>(null);
+  // Referral code (business signup only, optional): sales rep agent code or
+  // customer invite code in one field, pre-filled from the held invite link /
+  // Play referrer / iPhone clipboard code
+  const [referralCode, setReferralCode] = useState("");
+  const [referralStatus, setReferralStatus] =
+    useState<ReferralCodeStatus>("idle");
+  const [referrerName, setReferrerName] = useState("");
+  // Server 422 on signup_code (shown under the field until the code changes)
+  const [referralFieldError, setReferralFieldError] = useState<string | null>(
+    null,
+  );
 
   useEffect(() => {
     if (!isBusiness) return;
@@ -239,57 +207,56 @@ export default function RegisterPassword() {
     captureInviteForBusinessSignup()
       .then(() => getPendingInviteCode())
       .then((code) => {
-      if (cancelled || !code) return;
-      // Never overwrite what the user already typed
-      setInviteCode((current) => current || sanitizeInviteCode(code));
-    });
+        if (cancelled || !code) return;
+        // Never overwrite what the user already typed
+        setReferralCode((current) => current || sanitizeReferralCode(code));
+      });
     return () => {
       cancelled = true;
     };
   }, [isBusiness]);
 
   useEffect(() => {
-    setInviterName("");
-    if (inviteCode.length !== INVITE_CODE_LENGTH) {
-      setInviteStatus("idle");
+    setReferrerName("");
+    if (!isCheckableCode(referralCode)) {
+      setReferralStatus("idle");
       return;
     }
-    setInviteStatus("checking");
+    setReferralStatus("checking");
     let cancelled = false;
     const timer = setTimeout(async () => {
       try {
         const response = await ApiService.get<any>(
-          businessEndpoints.inviteCode(inviteCode),
+          businessEndpoints.signupCode(referralCode),
         );
         if (cancelled) return;
         if (response?.success === false) {
-          setInviteStatus("notFound");
+          setReferralStatus("notFound");
         } else {
-          // Body may be wrapped ({ success, data }) or flat
           const payload = response?.data ?? response;
-          setInviterName(payload?.inviter_first_name || "");
-          setInviteStatus("valid");
+          setReferrerName(payload?.name || "");
+          setReferralStatus("valid");
         }
       } catch (error: any) {
         if (cancelled) return;
         // 404 = unknown code; anything else (network, 429) the register call validates.
-        setInviteStatus(error?.status === 404 ? "notFound" : "unknown");
+        setReferralStatus(error?.status === 404 ? "notFound" : "unknown");
       }
     }, 400);
     return () => {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [inviteCode]);
+  }, [referralCode]);
 
-  const handleInviteCodeChange = useCallback((text: string) => {
-    setInviteCode(sanitizeInviteCode(text));
-    setInviteFieldError(null);
+  const handleReferralCodeChange = useCallback((text: string) => {
+    setReferralCode(sanitizeReferralCode(text));
+    setReferralFieldError(null);
   }, []);
 
-  const handleClearInviteCode = useCallback(() => {
-    setInviteCode("");
-    setInviteFieldError(null);
+  const handleClearReferralCode = useCallback(() => {
+    setReferralCode("");
+    setReferralFieldError(null);
   }, []);
 
   useEffect(() => {
@@ -412,15 +379,10 @@ export default function RegisterPassword() {
         isSubscribed: isSubscribed,
         name: "",
         ...(expo_push_token ? { expo_push_token } : {}),
-        ...(isBusiness &&
-        agentCode.length === 4 &&
-        (agentStatus === "valid" || agentStatus === "unknown")
-          ? { agent_code: agentCode }
-          : {}),
         // Any entered code goes to the server: an unknown one returns a 422 on
-        // invite_code (no account made), shown on the field to fix or clear.
-        ...(isBusiness && inviteCode.length > 0
-          ? { invite_code: inviteCode }
+        // signup_code (no account made), shown on the field to fix or clear.
+        ...(isBusiness && referralCode.length > 0
+          ? { signup_code: referralCode }
           : {}),
       };
 
@@ -468,14 +430,14 @@ export default function RegisterPassword() {
         Alert.alert(t("error"), response.message || t("registrationFailed"));
       }
     } catch (error: any) {
-      // Unknown invite code: no account was made; show it on the field so
+      // Unknown referral code: no account was made; show it on the field so
       // the user can fix or clear it
-      const inviteError = error?.data?.errors?.invite_code;
-      const inviteErrorText = Array.isArray(inviteError)
-        ? inviteError[0]
-        : inviteError;
-      if (isBusiness && error?.status === 422 && inviteErrorText) {
-        setInviteFieldError(String(inviteErrorText));
+      const errors = error?.data?.errors;
+      const codeError =
+        errors?.signup_code ?? errors?.agent_code ?? errors?.invite_code;
+      const codeErrorText = Array.isArray(codeError) ? codeError[0] : codeError;
+      if (isBusiness && error?.status === 422 && codeErrorText) {
+        setReferralFieldError(String(codeErrorText));
         return;
       }
       // Error message is already formatted by ApiService
@@ -496,8 +458,7 @@ export default function RegisterPassword() {
     confirmPassword.length > 0 &&
     passwordValidation.isValid &&
     matchValidation.isValid &&
-    agentStatus !== "checking" &&
-    inviteStatus !== "checking";
+    referralStatus !== "checking";
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -585,75 +546,44 @@ export default function RegisterPassword() {
               {isBusiness && (
                 <>
                   <FloatingInput
-                    label={t("agentCodeLabel")}
-                    value={agentCode}
-                    onChangeText={handleAgentCodeChange}
-                    inputStyle={styles.agentInput}
-                    keyboardType="number-pad"
-                    maxLength={4}
-                    onClear={() => setAgentCode("")}
-                  />
-                  {agentStatus === "checking" ? (
-                    <Text style={styles.agentStatusText}>
-                      {t("agentCodeChecking")}
-                    </Text>
-                  ) : agentStatus === "valid" ? (
-                    <Text
-                      style={[styles.agentStatusText, styles.agentLinkedText]}
-                    >
-                      ✓ {t("agentCodeLinked", { name: agentRepName })}
-                    </Text>
-                  ) : agentStatus === "notFound" ? (
-                    <Text
-                      style={[styles.agentStatusText, styles.agentNotFoundText]}
-                    >
-                      ✗ {t("agentCodeNotFound")}
-                    </Text>
-                  ) : (
-                    <Text style={styles.agentStatusText}>
-                      {t("agentCodeHint")}
-                    </Text>
-                  )}
-
-                  <FloatingInput
-                    label={t("inviteCodeLabel")}
-                    value={inviteCode}
-                    onChangeText={handleInviteCodeChange}
+                    label={t("referralCodeLabel")}
+                    value={referralCode}
+                    onChangeText={handleReferralCodeChange}
                     inputStyle={styles.agentInput}
                     autoCapitalize="characters"
                     autoCorrect={false}
-                    maxLength={INVITE_CODE_LENGTH}
-                    onClear={handleClearInviteCode}
+                    maxLength={REFERRAL_CODE_MAX}
+                    onClear={handleClearReferralCode}
                   />
-                  {inviteFieldError ? (
+                  {referralFieldError ? (
                     <Text
                       style={[styles.agentStatusText, styles.agentNotFoundText]}
                       accessibilityLiveRegion="polite"
                     >
-                      ✗ {inviteFieldError}
+                      ✗ {referralFieldError}
                     </Text>
-                  ) : inviteStatus === "checking" ? (
+                  ) : referralStatus === "checking" ? (
                     <Text style={styles.agentStatusText}>
-                      {t("inviteCodeChecking")}
+                      {t("referralCodeChecking")}
                     </Text>
-                  ) : inviteStatus === "valid" ? (
+                  ) : referralStatus === "valid" ? (
                     <Text
                       style={[styles.agentStatusText, styles.agentLinkedText]}
                     >
                       ✓{" "}
-                      {inviterName
-                        ? t("inviteCodeInvitedBy", { name: inviterName })
-                        : t("inviteCodeValid")}
+                      {referrerName
+                        ? t("referralCodeReferredBy", { name: referrerName })
+                        : t("referralCodeValid")}
                     </Text>
-                  ) : inviteStatus === "notFound" ? (
+                  ) : referralStatus === "notFound" ? (
                     <Text
                       style={[styles.agentStatusText, styles.agentNotFoundText]}
                     >
-                      ✗ {t("inviteCodeNotFound")}
+                      ✗ {t("referralCodeNotFound")}
                     </Text>
                   ) : (
                     <Text style={styles.agentStatusText}>
-                      {t("inviteCodeHint")}
+                      {t("referralCodeHint")}
                     </Text>
                   )}
                 </>
