@@ -1343,7 +1343,8 @@ export default function SubscriptionScreen() {
   const handleChangeCard = () => {
     if (!subscription || managing) return;
     router.push({
-      pathname: "/(main)/dashboard/(account)/paymentMethod",
+      // Main-stack copy: works from Profile and from the notification mirror
+      pathname: "/(main)/subscriptionCardForm",
       params: {
         subscriptionId: String(subscription.id),
         cardLastFour: subscription.cardLastFour ?? "",

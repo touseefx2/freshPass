@@ -1131,12 +1131,16 @@ export function navigateFromNotificationData(
       };
 
       if (options?.fromInAppList) {
-        if (router.canGoBack()) {
-          router.back();
-        }
-        setTimeout(() => {
-          navigateToSubscriptions();
-        }, AI_MEMORY_BACK_DELAY_MS);
+        // Plain push of the main-stack copy so back returns to the list
+        // (client 11-23: back from Payment received went to Profile menu)
+        const listPath =
+          subscriptionPath === "/(main)/dashboard/(account)/subscription"
+            ? "/(main)/businessSubscription"
+            : subscriptionPath ===
+                "/(main)/dashboard/(account)/subscriptionCustomer"
+              ? "/(main)/customerSubscription"
+              : subscriptionPath;
+        router.push(listPath as any);
       } else {
         navigateToSubscriptions();
       }
