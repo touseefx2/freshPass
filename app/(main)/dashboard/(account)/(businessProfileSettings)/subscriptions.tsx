@@ -736,9 +736,10 @@ export default function ManageSubscriptionsScreen() {
     servicesPerMonth?: number;
   }) => {
     if (!requireStripeToCreate()) return;
-    setCustomSuggestions((prev) => [
-      ...prev,
-      {
+    // A membership the owner builds is selected right away (shows in the
+    // list), never parked under "Popular starting points".
+    dispatch(
+      addSubscription({
         ...subscription,
         servicesPerMonth:
           typeof subscription.servicesPerMonth === "number" &&
@@ -748,8 +749,8 @@ export default function ManageSubscriptionsScreen() {
                 (sum, qty) => sum + (qty || 0),
                 0,
               ) || 1,
-      },
-    ]);
+      }),
+    );
   };
 
   const handleSelectSuggestion = (

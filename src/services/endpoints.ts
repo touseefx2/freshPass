@@ -1172,6 +1172,14 @@ export const reportsEndpoints = {
 };
 
 /**
+ * App feedback (Account settings → Feedback), emailed to the admin
+ */
+export const feedbackEndpoints = {
+  list: `/api/feedback`,
+  submit: `/api/feedback`,
+};
+
+/**
  * FreshPass Support (in-app requests)
  */
 export const supportEndpoints = {

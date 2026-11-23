@@ -61,6 +61,7 @@ export type SoloRowKey =
   | "language"
   | "notifications"
   | "rules"
+  | "feedback"
   | "logout"
   | "delete";
 
@@ -332,6 +333,13 @@ export default function SoloProfileView({
       icon: "file-document-outline",
       tileBg: theme.apptGoldBg,
       iconColor: theme.darkGreen,
+    },
+    {
+      key: "feedback",
+      title: t("feedback"),
+      subtitle: t("feedbackSub"),
+      icon: "message-processing-outline",
+      ...dark,
     },
     {
       key: "logout",

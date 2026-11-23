@@ -87,6 +87,15 @@ export const themes = {
     menuTileNeutral: "#F5F5F5",
     // Raised card on the cream background (solo profile rows)
     surfaceRaised: "#FFFDF3",
+    // Feedback screen: colours measured from the client sample (11-23)
+    feedbackPage: "#FCF7E8",
+    feedbackInput: "#FEFBF4",
+    feedbackInputBorder: "#C8C7C2",
+    feedbackCardBorder: "#E6E2D3",
+    feedbackDivider: "#E4E0D2",
+    feedbackPlaceholder: "#6E706B",
+    feedbackBody: "#202413",
+    sendTan: "#D3AA70",
     apptMintAccent: "#606C38",
     apptPeachBg: "rgba(221, 161, 94, 0.22)",
     apptPeachAccent: "#BC6C25",

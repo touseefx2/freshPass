@@ -194,9 +194,6 @@ const createStyles = (theme: Theme) =>
     stepPlus: {
       backgroundColor: theme.orangeBrown,
     },
-    stepDisabled: {
-      opacity: 0.4,
-    },
     stepValue: {
       minWidth: moderateWidthScale(28),
       textAlign: "center",
@@ -596,15 +593,12 @@ export default function EditSubscriptionBottomSheet({
                       <Text style={styles.perMonth}>Uses per month</Text>
                       <View style={styles.stepper}>
                         <TouchableOpacity
-                          style={[
-                            styles.stepButton,
-                            styles.stepMinus,
-                            count <= 1 && styles.stepDisabled,
-                          ]}
+                          style={[styles.stepButton, styles.stepMinus]}
                           onPress={() =>
-                            handleDecrementServiceCount(service.id)
+                            count <= 1
+                              ? handleRemoveService(service.id)
+                              : handleDecrementServiceCount(service.id)
                           }
-                          disabled={count <= 1}
                           accessibilityRole="button"
                           accessibilityLabel={`Fewer ${service.name}`}
                         >

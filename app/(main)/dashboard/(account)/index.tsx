@@ -798,6 +798,8 @@ export default function AccountScreen() {
       router.push("./barberProfile");
     } else if (key === "rules") {
       router.push("./rulesAndTerms");
+    } else if (key === "feedback") {
+      router.push("/(main)/feedback" as any);
     } else if (key === "notifications") {
       router.push("./notificationSettings");
     } else if (key === "language") {
@@ -955,6 +957,8 @@ export default function AccountScreen() {
         return { name: "smart-toy", family: "material" };
       case "rules":
         return { name: "description", family: "material" };
+      case "feedback":
+        return { name: "message-processing-outline", family: "community" };
       case "logout":
         return { name: "logout", family: "material" };
       case "delete":
@@ -1027,6 +1031,7 @@ export default function AccountScreen() {
       { key: "language", title: t("language") },
       { key: "notifications", title: t("notificationSettings") },
       { key: "rules", title: t("rulesAndTerms") },
+      { key: "feedback", title: t("feedback") },
       { key: "logout", title: t("logOut") },
       { key: "delete", title: t("deleteAccount"), isDelete: true },
     ];
@@ -1183,6 +1188,7 @@ export default function AccountScreen() {
       ? [{ key: "invitePro", title: t("ipScreenTitle") }]
       : []),
     { key: "rules", title: t("rulesAndTerms") },
+    ...(!isGuest ? [{ key: "feedback", title: t("feedback") }] : []),
     { key: "logout", title: isGuest ? t("signIn") : t("logOut") },
     ...(!isGuest
       ? [{ key: "delete", title: t("deleteAccount") }]
