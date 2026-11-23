@@ -151,6 +151,8 @@ export type FeedReel = {
   business: ReelBusiness;
   /** null for owner / Freshy reels and staff who left — show the business only */
   posted_by?: ReelPostedBy | null;
+  /** Posted by the admin (ads / news) — lives only in the Freshy section */
+  is_freshy?: boolean;
   distance_km?: number | null;
   stats: ReelStats;
   viewer: ReelViewer;
@@ -164,6 +166,8 @@ export type ReelCategoryCard = {
   image_url?: string | null;
   total_views: number;
   cover_reel: FeedReel;
+  /** App-made card for the Freshy section (id = FRESHY_SECTION_ID) */
+  is_freshy?: boolean;
 };
 
 export type PageMeta = {

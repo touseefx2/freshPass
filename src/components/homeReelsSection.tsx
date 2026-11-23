@@ -27,7 +27,7 @@ import {
   widthScale,
 } from "@/src/theme/dimensions";
 import Logger from "@/src/services/logger";
-import { fetchReelCategories } from "@/src/services/reelsService";
+import { fetchReelSections } from "@/src/services/reelsService";
 import type { ReelCategoryCard } from "@/src/types/reels";
 import { resolveApiImageUrl } from "@/src/utils/media";
 import RetryButton from "@/src/components/retryButton";
@@ -108,6 +108,13 @@ const createStyles = (theme: Theme) =>
     thumb: {
       width: "100%",
       height: "100%",
+    },
+    freshyThumbWrap: {
+      borderWidth: 2,
+      borderColor: theme.goldBorder,
+    },
+    freshyBadge: {
+      backgroundColor: theme.goldBorder,
     },
     viewsBadge: {
       position: "absolute",
@@ -221,7 +228,7 @@ export default function HomeReelsSection({
     }
     setError(false);
     try {
-      const data = await fetchReelCategories();
+      const data = await fetchReelSections(t("freshySection"));
       setCards(data);
       setError(false);
     } catch (err) {
@@ -233,7 +240,7 @@ export default function HomeReelsSection({
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useFocusEffect(
     useCallback(() => {
@@ -308,7 +315,12 @@ export default function HomeReelsSection({
                 activeOpacity={0.85}
                 onPress={() => openFeed(card)}
               >
-                <View style={styles.thumbWrap}>
+                <View
+                  style={[
+                    styles.thumbWrap,
+                    card.is_freshy && styles.freshyThumbWrap,
+                  ]}
+                >
                   {thumb ? (
                     <AppImage
                       uri={thumb}
@@ -336,16 +348,27 @@ export default function HomeReelsSection({
                   {previewUri ? (
                     <CardPreviewVideo key={previewUri} uri={previewUri} />
                   ) : null}
-                  <View style={styles.viewsBadge}>
-                    <MaterialIcons
-                      name="visibility"
-                      size={moderateWidthScale(12)}
-                      color={theme.white}
-                    />
-                    <Text style={styles.viewsText}>
-                      {formatViews(card.total_views || 0)}
-                    </Text>
-                  </View>
+                  {card.is_freshy ? (
+                    // Admin news / ads: no view total from the server
+                    <View style={[styles.viewsBadge, styles.freshyBadge]}>
+                      <MaterialIcons
+                        name="campaign"
+                        size={moderateWidthScale(13)}
+                        color={theme.white}
+                      />
+                    </View>
+                  ) : (
+                    <View style={styles.viewsBadge}>
+                      <MaterialIcons
+                        name="visibility"
+                        size={moderateWidthScale(12)}
+                        color={theme.white}
+                      />
+                      <Text style={styles.viewsText}>
+                        {formatViews(card.total_views || 0)}
+                      </Text>
+                    </View>
+                  )}
                 </View>
                 <Text style={styles.categoryName} numberOfLines={1}>
                   {card.name}

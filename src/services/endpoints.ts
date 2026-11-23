@@ -998,6 +998,24 @@ export const reelsEndpoints = {
     const query = queryParams.toString();
     return `/api/reels/feed${query ? `?${query}` : ""}`;
   },
+  /** Freshy section: admin's reels (ads / news), newest first. Never in `feed`. */
+  freshyFeed: (params?: {
+    per_page?: number;
+    cursor?: string;
+    latitude?: number;
+    longitude?: number;
+  }) => {
+    const queryParams = new URLSearchParams();
+    if (params?.per_page != null)
+      queryParams.append("per_page", String(params.per_page));
+    if (params?.cursor) queryParams.append("cursor", params.cursor);
+    if (params?.latitude != null)
+      queryParams.append("latitude", String(params.latitude));
+    if (params?.longitude != null)
+      queryParams.append("longitude", String(params.longitude));
+    const query = queryParams.toString();
+    return `/api/reels/feed/freshy${query ? `?${query}` : ""}`;
+  },
   getById: (
     id: number | string,
     params?: { latitude?: number; longitude?: number },

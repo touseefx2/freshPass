@@ -62,10 +62,14 @@ import {
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import Logger from "@/src/services/logger";
 import {
-  fetchReelCategories,
+  fetchFreshyFeed,
   fetchReelFeed,
   fetchReelLook,
+  fetchReelSections,
+  FRESHY_SECTION_ID,
   getMyReel,
+  getPublicReel,
+  isFreshySection,
   likeReel,
   listMyReels,
   publishReel,
@@ -2093,18 +2097,21 @@ function ReelFeedItemBase({
 
         {showAsCustomer ? (
           <View style={styles.ctaRow}>
-            <TouchableOpacity
-              style={styles.ctaPrimary}
-              onPress={() => onWantLook(reel)}
-              activeOpacity={0.85}
-            >
-              <MaterialIcons
-                name="auto-awesome"
-                size={moderateWidthScale(16)}
-                color={theme.buttonText}
-              />
-              <Text style={styles.ctaPrimaryText}>{t("iWantThisLook")}</Text>
-            </TouchableOpacity>
+            {/* Freshy = admin news / ads: no look to try on */}
+            {!reel.is_freshy ? (
+              <TouchableOpacity
+                style={styles.ctaPrimary}
+                onPress={() => onWantLook(reel)}
+                activeOpacity={0.85}
+              >
+                <MaterialIcons
+                  name="auto-awesome"
+                  size={moderateWidthScale(16)}
+                  color={theme.buttonText}
+                />
+                <Text style={styles.ctaPrimaryText}>{t("iWantThisLook")}</Text>
+              </TouchableOpacity>
+            ) : null}
             <TouchableOpacity
               style={styles.ctaSecondary}
               onPress={() => onProfile(reel)}
@@ -2471,7 +2478,8 @@ export default function ReelsFeedScreen() {
 
   const flushCategoryDwell = useCallback(() => {
     const cat = dwellCategoryIdRef.current;
-    if (!cat || dwellFlushedRef.current) return;
+    // Freshy is not a real category: nothing to report
+    if (!cat || isFreshySection(cat) || dwellFlushedRef.current) return;
     dwellFlushedRef.current = true;
     const reelsSeen = Math.min(500, categorySeenSetRef.current.size);
     void reportCategoryDwell(cat, reelsSeen);
@@ -2629,15 +2637,50 @@ export default function ReelsFeedScreen() {
         }
         const useFirstReel =
           !append && !firstReelUsedRef.current && !!firstReelId;
-        const { reels: fetchedReels, meta } = await fetchReelFeed({
-          category_id: feedTab === "for_you" ? categoryId : undefined,
-          first_reel_id: useFirstReel ? firstReelId : undefined,
-          cursor: nextCursor || undefined,
-          latitude: coords?.latitude,
-          longitude: coords?.longitude,
-          tab: feedTab,
-        });
+        const inFreshy = feedTab === "for_you" && isFreshySection(categoryId);
+        let { reels: fetchedReels, meta } = inFreshy
+          ? await fetchFreshyFeed({
+              cursor: nextCursor || undefined,
+              latitude: coords?.latitude,
+              longitude: coords?.longitude,
+            })
+          : await fetchReelFeed({
+              category_id: feedTab === "for_you" ? categoryId : undefined,
+              first_reel_id: useFirstReel ? firstReelId : undefined,
+              cursor: nextCursor || undefined,
+              latitude: coords?.latitude,
+              longitude: coords?.longitude,
+              tab: feedTab,
+            });
         if (isStale()) return;
+        let movedToFreshy = false;
+        if (useFirstReel && feedTab === "for_you") {
+          // The Freshy list has no first_reel_id, and the main feed drops
+          // Freshy reels, so a shared / notified Freshy reel goes in front here
+          const wantedId = Number(firstReelId);
+          const found = fetchedReels.find((r) => r.id === wantedId);
+          let picked: FeedReel | null = found ?? null;
+          if (!picked && (inFreshy || !categoryId)) {
+            try {
+              picked = await getPublicReel(firstReelId!, coords);
+            } catch (error) {
+              Logger.error("Failed to load first reel:", error);
+            }
+            if (isStale()) return;
+          }
+          if (picked?.is_freshy && !inFreshy && !categoryId) {
+            const freshy = await fetchFreshyFeed({
+              latitude: coords?.latitude,
+              longitude: coords?.longitude,
+            });
+            if (isStale()) return;
+            fetchedReels = [picked, ...freshy.reels];
+            meta = freshy.meta;
+            movedToFreshy = true;
+          } else if (picked && inFreshy) {
+            fetchedReels = [{ ...picked, is_freshy: true }, ...fetchedReels];
+          }
+        }
         // Same id twice = two "active" cells playing at once.
         const pageReels = uniqueById(fetchedReels);
         if (!append) {
@@ -2672,6 +2715,13 @@ export default function ReelsFeedScreen() {
         if (!append && pageReels[0]) {
           setActiveId(pageReels[0].id);
         }
+        if (movedToFreshy) {
+          // Keep paging (and the swipe position) in the Freshy section;
+          // reels above already fill it, so no reload
+          tabCacheRef.current.for_you.loaded = true;
+          beginCategoryVisit(String(FRESHY_SECTION_ID));
+          setFeedCategoryId(String(FRESHY_SECTION_ID));
+        }
       } catch (error: any) {
         if (isStale()) return;
         Logger.error("Failed to load reels feed:", error);
@@ -2688,6 +2738,7 @@ export default function ReelsFeedScreen() {
     [
       user.userRole,
       activeId,
+      beginCategoryVisit,
       categoryId,
       coords,
       ensureOwnerBusinessLocation,
@@ -2719,7 +2770,7 @@ export default function ReelsFeedScreen() {
     let cancelled = false;
     (async () => {
       try {
-        const cards = await fetchReelCategories();
+        const cards = await fetchReelSections(t("freshySection"));
         if (!cancelled) setCategoryCards(cards);
       } catch (error) {
         Logger.error("Failed to load reel categories for swipe:", error);

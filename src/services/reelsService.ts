@@ -370,6 +370,73 @@ export async function fetchReelFeed(params: {
   };
 }
 
+/**
+ * Freshy section (admin reels) sits in the category list under this id.
+ * Not a real category: never sent as category_id, no dwell report.
+ */
+export const FRESHY_SECTION_ID = -1;
+
+export const isFreshySection = (categoryId?: number | string | null) =>
+  categoryId != null && String(categoryId) === String(FRESHY_SECTION_ID);
+
+export async function fetchFreshyFeed(params: {
+  per_page?: number;
+  cursor?: string;
+  latitude?: number;
+  longitude?: number;
+}): Promise<{ reels: FeedReel[]; meta: PageMeta }> {
+  const response = await ApiService.get<
+    Envelope<{ data: FeedReel[]; meta: PageMeta }>
+  >(
+    reelsEndpoints.freshyFeed({
+      ...params,
+      per_page: params.per_page ?? REELS_FEED_PER_PAGE,
+    }),
+  );
+  return {
+    // Everything here is a Freshy reel, even if the flag is missing
+    reels: (response?.data?.data ?? []).map((r) => ({ ...r, is_freshy: true })),
+    meta: response?.data?.meta ?? {
+      per_page: params.per_page ?? REELS_FEED_PER_PAGE,
+      has_more: false,
+      next_cursor: null,
+    },
+  };
+}
+
+/** Freshy card for the reels sections, or null when it has no reels / fails. */
+async function fetchFreshyCard(name: string): Promise<ReelCategoryCard | null> {
+  try {
+    const { reels } = await fetchFreshyFeed({ per_page: 1 });
+    const cover = reels[0];
+    if (!cover) return null;
+    return {
+      id: FRESHY_SECTION_ID,
+      name,
+      total_views: 0,
+      cover_reel: cover,
+      is_freshy: true,
+    };
+  } catch (error) {
+    Logger.error("Failed to load Freshy reels:", error);
+    return null;
+  }
+}
+
+/**
+ * Reel sections for the home row and category swipe: Freshy first (when it
+ * has reels), then the pro categories. Pickers keep using fetchReelCategories.
+ */
+export async function fetchReelSections(
+  freshyName: string,
+): Promise<ReelCategoryCard[]> {
+  const [categories, freshy] = await Promise.all([
+    fetchReelCategories(),
+    fetchFreshyCard(freshyName),
+  ]);
+  return freshy ? [freshy, ...categories] : categories;
+}
+
 export async function getPublicReel(
   id: number | string,
   coords?: { latitude?: number; longitude?: number },
