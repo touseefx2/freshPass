@@ -10,7 +10,7 @@ import {
   Alert,
   TouchableOpacity,
 } from "react-native";
-import { Feather } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import {
   SafeAreaView,
@@ -175,10 +175,11 @@ export default function SocialLogin() {
           { top: insets.top + moderateHeightScale(8) },
         ]}
       >
-        <Feather
-          name="chevron-left"
-          size={moderateWidthScale(24)}
-          color={(colors as Theme).white}
+        <Ionicons
+          name="chevron-back"
+          size={moderateWidthScale(22)}
+          color={(colors as Theme).darkGreen}
+          style={{ marginLeft: -moderateWidthScale(2) }}
         />
       </TouchableOpacity>
       <WebViewModal
