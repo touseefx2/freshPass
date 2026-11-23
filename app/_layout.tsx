@@ -6,6 +6,7 @@ import { persistor, store } from "@/src/state/store";
 import { Font } from "@/src/theme/fonts";
 import { useFonts } from "expo-font";
 import { Slot } from "expo-router";
+import * as Updates from "expo-updates";
 import i18n from "i18next";
 import { useEffect, useState } from "react";
 import { I18nextProvider } from "react-i18next";
@@ -109,17 +110,27 @@ export default function RootLayout() {
 
               const state = store.getState();
 
+              const language = state?.general?.language || "en";
+
               // Sync language from persisted state
-              if (
-                state?.general?.language &&
-                i18n.language !== state.general.language
-              ) {
+              if (i18n.language !== language) {
                 try {
-                  i18n.changeLanguage(state.general.language);
-                  setupRTL(state.general.language);
+                  i18n.changeLanguage(language);
                 } catch (error) {
                   Logger.warn("Error changing language:", error);
                 }
+              }
+
+              // Always sync layout direction with the app language. The native
+              // RTL flag outlives logout (clearGeneral resets language to "en")
+              // and an RTL phone/app locale flips the layout by default, so a
+              // non-Arabic user could otherwise get a mirrored app.
+              try {
+                if (setupRTL(language)) {
+                  await Updates.reloadAsync();
+                }
+              } catch (error) {
+                Logger.warn("Error syncing layout direction:", error);
               }
             }}
           >

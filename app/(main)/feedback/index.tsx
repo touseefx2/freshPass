@@ -289,8 +289,13 @@ export default function FeedbackScreen() {
     setSending(true);
     try {
       const item = await submitFeedback({ name, remarks });
-      if (item) setHistory((prev) => [item, ...prev]);
-      else loadHistory();
+      // History never loaded (or no row came back): fetch it again instead
+      // of showing only the new row with the older ones hidden
+      if (item && historyState === "ready") {
+        setHistory((prev) => [item, ...prev]);
+      } else {
+        loadHistory();
+      }
       setName("");
       setRemarks("");
       setErrors({});
