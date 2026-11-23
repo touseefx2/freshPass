@@ -32,5 +32,8 @@ export type SocialLoginApiResponse = {
     };
     token: string;
     isNewCreated?: boolean;
+    /** Set when the server added a role to an existing account */
+    role?: string;
+    active_mode?: string | null;
   };
 };
