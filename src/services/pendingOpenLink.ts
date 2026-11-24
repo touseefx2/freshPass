@@ -1,7 +1,10 @@
 import { router } from "expo-router";
 import { InteractionManager } from "react-native";
 import Logger from "@/src/services/logger";
-import { navigateFromNotificationData } from "@/src/services/notificationNavigation";
+import {
+  navigateFromNotificationData,
+  navigateFromPushNotification,
+} from "@/src/services/notificationNavigation";
 import { store } from "@/src/state/store";
 
 /**
@@ -61,8 +64,16 @@ export function openPendingOpenLink(): void {
   if (!user.isGuest && !user.accessToken) return;
 
   pendingData = undefined;
+  // Credits are bought on the customer side: an owner/staff with a customer
+  // side is switched to it first (same as a push with mode "customer")
+  if (data.type === "ai_tools" && !data.mode) data.mode = "customer";
+
   InteractionManager.runAfterInteractions(() => {
     setTimeout(() => {
+      if (data.mode) {
+        void navigateFromPushNotification(router, data as any);
+        return;
+      }
       // Unknown type → stay on home (no notification list)
       navigateFromNotificationData(router, data as any, {
         skipNotificationScreen: true,

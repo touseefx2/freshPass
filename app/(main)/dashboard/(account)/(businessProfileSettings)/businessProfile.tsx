@@ -1,11 +1,14 @@
-import React, { useMemo, useState, useCallback } from "react";
+import React, { useMemo, useState, useCallback, useEffect, useRef } from "react";
 import {
   StyleSheet,
   Text,
   View,
   ScrollView,
   TouchableOpacity,
+  Share,
+  Platform,
 } from "react-native";
+import * as Clipboard from "expo-clipboard";
 import AppImage from "@/src/components/AppImage";
 import { useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
@@ -179,6 +182,75 @@ const createStyles = (theme: Theme) =>
       borderRadius: moderateWidthScale(12),
       marginTop: moderateHeightScale(28),
     },
+    shareLinkSection: {
+      width: "100%",
+      marginTop: moderateHeightScale(24),
+      backgroundColor: theme.orangeBrown015,
+      borderRadius: moderateWidthScale(12),
+      padding: moderateWidthScale(16),
+    },
+    shareLinkTitle: {
+      fontSize: fontSize.size16,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+      marginBottom: moderateHeightScale(4),
+    },
+    shareLinkDesc: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+      marginBottom: moderateHeightScale(12),
+    },
+    shareLinkUrlRow: {
+      backgroundColor: theme.white,
+      borderRadius: moderateWidthScale(8),
+      paddingHorizontal: moderateWidthScale(12),
+      paddingVertical: moderateHeightScale(10),
+      marginBottom: moderateHeightScale(12),
+      borderWidth: 1,
+      borderColor: theme.borderLight,
+    },
+    shareLinkUrl: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
+    },
+    shareLinkButtons: {
+      flexDirection: "row",
+      gap: moderateWidthScale(10),
+    },
+    copyLinkButton: {
+      flex: 1,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: theme.selectCard,
+      borderRadius: moderateWidthScale(8),
+      paddingVertical: moderateHeightScale(10),
+      gap: moderateWidthScale(6),
+    },
+    copyLinkButtonText: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontBold,
+      color: theme.buttonText,
+    },
+    shareLinkButton: {
+      flex: 1,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: theme.white,
+      borderRadius: moderateWidthScale(8),
+      paddingVertical: moderateHeightScale(10),
+      borderWidth: 1,
+      borderColor: theme.selectCard,
+      gap: moderateWidthScale(6),
+    },
+    shareLinkButtonText: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontBold,
+      color: theme.selectCard,
+    },
   });
 
 interface BusinessProfileData {
@@ -187,6 +259,7 @@ interface BusinessProfileData {
   logo_url: string | null;
   country_code?: string | null;
   phone?: string | null;
+  public_url?: string | null;
 }
 
 export default function BusinessProfileScreen() {
@@ -248,6 +321,45 @@ export default function BusinessProfileScreen() {
 
   const getLogoUri = () => {
     return resolveApiImageUrl(profileData?.logo_url) ?? "";
+  };
+
+  const [linkCopied, setLinkCopied] = useState(false);
+  const copiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(
+    () => () => {
+      if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current);
+    },
+    [],
+  );
+
+  const publicUrl = profileData?.public_url?.trim() || "";
+
+  const handleCopyLink = async () => {
+    if (!publicUrl) return;
+    try {
+      await Clipboard.setStringAsync(publicUrl);
+    } catch (error) {
+      Logger.warn("Copy profile link failed:", error);
+      return;
+    }
+    setLinkCopied(true);
+    if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current);
+    copiedTimerRef.current = setTimeout(() => setLinkCopied(false), 2000);
+  };
+
+  const handleShareLink = async () => {
+    if (!publicUrl) return;
+    try {
+      await Share.share(
+        Platform.OS === "ios"
+          ? { message: publicUrl, url: publicUrl }
+          : {
+              message: `Check out ${profileData?.title || "us"} on FreshPass: ${publicUrl}`,
+            },
+      );
+    } catch (error) {
+      Logger.warn("Share profile link failed:", error);
+    }
   };
 
   const slogan = profileData?.slogan?.trim() || "";
@@ -341,6 +453,49 @@ export default function BusinessProfileScreen() {
                       {businessCategoryName}
                     </Text>
                   </View>
+                </View>
+              </View>
+            )}
+
+            {!!publicUrl && (
+              <View style={styles.shareLinkSection}>
+                <Text style={styles.shareLinkTitle}>Your Page Link</Text>
+                <Text style={styles.shareLinkDesc}>
+                  Add this to your Instagram bio, Facebook page, or TikTok to
+                  help clients find you.
+                </Text>
+                <View style={styles.shareLinkUrlRow}>
+                  <Text style={styles.shareLinkUrl} numberOfLines={1}>
+                    {publicUrl}
+                  </Text>
+                </View>
+                <View style={styles.shareLinkButtons}>
+                  <TouchableOpacity
+                    activeOpacity={0.7}
+                    onPress={handleCopyLink}
+                    style={styles.copyLinkButton}
+                  >
+                    <MaterialIcons
+                      name={linkCopied ? "check" : "content-copy"}
+                      size={moderateWidthScale(18)}
+                      color={theme.buttonText}
+                    />
+                    <Text style={styles.copyLinkButtonText}>
+                      {linkCopied ? "Copied!" : "Copy link"}
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    activeOpacity={0.7}
+                    onPress={handleShareLink}
+                    style={styles.shareLinkButton}
+                  >
+                    <MaterialIcons
+                      name="share"
+                      size={moderateWidthScale(18)}
+                      color={theme.selectCard}
+                    />
+                    <Text style={styles.shareLinkButtonText}>Share</Text>
+                  </TouchableOpacity>
                 </View>
               </View>
             )}
