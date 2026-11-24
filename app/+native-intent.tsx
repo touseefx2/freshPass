@@ -21,6 +21,12 @@ import {
   parseOfferLink,
   setPendingOfferLink,
 } from "@/src/services/pendingOfferLink";
+import {
+  isOpenLink,
+  openPendingOpenLink,
+  parseOpenLink,
+  setPendingOpenLink,
+} from "@/src/services/pendingOpenLink";
 
 /** Stripe billing portal "return" link: com.freshpass://dashboard/subscription */
 function isSubscriptionReturnLink(path: string): boolean {
@@ -83,6 +89,15 @@ export function redirectSystemPath({
       setPendingOfferLink(target);
       if (initial) return "/";
       if (isAppShellReady()) openPendingOfferLink();
+      return "";
+    }
+
+    // Email button via the website /open page (?type=ai_tools…): held until
+    // home is up, then opened like a push tap
+    if (isOpenLink(path)) {
+      setPendingOpenLink(parseOpenLink(path));
+      if (initial) return "/";
+      if (isAppShellReady()) openPendingOpenLink();
       return "";
     }
 

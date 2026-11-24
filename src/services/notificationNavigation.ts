@@ -1466,6 +1466,17 @@ export function navigateFromNotificationData(
     return;
   }
 
+  // Low-credit email "Buy More Credits" (/open?type=ai_tools) → AI Tools,
+  // which has the Buy credits button
+  if (type === "ai_tools") {
+    router.push({
+      pathname: "/(main)/aiTools/toolList" as any,
+      params: { mode: "aiTools" },
+    });
+    Logger.log("------>navigateFromNotificationData (ai_tools) -> toolList");
+    return;
+  }
+
   if (!options?.skipNotificationScreen) {
     router.push("/(main)/notification" as any);
   }

@@ -245,7 +245,13 @@ export default function Login() {
   // like a new sign-up. Otherwise home.
   const finishLogin = (loginData: any) => {
     setUserData(loginData);
-    if (loginData?.isNewCreated && loginData?.user?.role === "business") {
+    // An account that already has a business never re-enters onboarding,
+    // even if the server says isNewCreated.
+    if (
+      loginData?.isNewCreated &&
+      loginData?.user?.role === "business" &&
+      !loginData?.user?.business?.id
+    ) {
       dispatch(setFullName(loginData.user?.name || ""));
       resetToRoute(`/${MAIN_ROUTES.REGISTER_NEXT_STEPS}`);
     } else {
@@ -262,10 +268,12 @@ export default function Login() {
       const body = {
         email: email.trim(),
         password: password,
-        // Existing customer logging in from "I manage a Business": the server
-        // adds the business role and returns isNewCreated. Not sent for the
-        // customer side, so owners who tap it still land on business home.
-        ...(selectedRole === "business" ? { role: "business" } : {}),
+        // The chosen side becomes active_mode on the server (owners/staff).
+        // A customer-only account from "I manage a Business" gets the business
+        // role added + isNewCreated (→ onboarding). Staff never get business.
+        ...(selectedRole === "business" || selectedRole === "customer"
+          ? { role: selectedRole }
+          : {}),
         ...(expo_push_token ? { expo_push_token } : {}),
       };
 

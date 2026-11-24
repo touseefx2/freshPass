@@ -3,6 +3,7 @@ import { MAIN_ROUTES } from "@/src/constant/routes";
 import { openPendingBookingLink } from "@/src/services/pendingBookingLink";
 import { openPendingInviteNotice } from "@/src/services/pendingInviteCode";
 import { openPendingOfferLink } from "@/src/services/pendingOfferLink";
+import { openPendingOpenLink } from "@/src/services/pendingOpenLink";
 
 /**
  * Clears the auth/onboarding stack and navigates to a single destination.
@@ -24,6 +25,8 @@ export function resetToDashboardHome() {
   openPendingInviteNotice();
   // A shared offer link (/offers/{id}) waiting for home
   openPendingOfferLink();
+  // An email /open?type=… link (e.g. Buy More Credits) waiting for home
+  openPendingOpenLink();
 }
 
 /** Profile tab → a Business Management screen, so back returns to Profile. */

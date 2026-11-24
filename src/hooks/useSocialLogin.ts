@@ -177,7 +177,9 @@ export function useSocialLogin() {
               }),
             );
 
-            if (isNewCreated) {
+            // An account that already has a business never re-enters
+            // onboarding, even if the server says isNewCreated.
+            if (isNewCreated && !(user as any).business?.id) {
               // New business account: the invite code has been recorded
               void clearPendingInviteCode();
               dispatch(setFullName(user.name || ""));

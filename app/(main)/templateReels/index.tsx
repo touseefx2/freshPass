@@ -93,10 +93,15 @@ import {
 import { fontSize, fonts } from "@/src/theme/fonts";
 import type { MediaUploadSourceType, MediaVideo } from "@/src/types/media";
 import type {
+  AutoReelMusic,
   ReelTemplate,
   ReelTemplateMediaField,
 } from "@/src/types/reels";
-import { normalizeReelTemplateMediaFields } from "@/src/types/reels";
+import {
+  musicFieldError,
+  normalizeReelTemplateMediaFields,
+} from "@/src/types/reels";
+import DesignMusicField from "@/src/components/reelFlow/designMusicField";
 import { isLikelyVideoUri } from "@/src/utils/prepareImageForUpload";
 import {
   formatMusicName,
@@ -313,6 +318,15 @@ export default function ReelTemplatesScreen() {
   const [texts, setTexts] = useState<Record<string, string>>({});
   const [selectedMedia, setSelectedMedia] = useState<(SlotItem | null)[]>([]);
   const [caption, setCaption] = useState("");
+  /**
+   * Same choice as the video reel's step 2: the template's song (selected to
+   * start), a library track or "No music" (null). undefined = nothing picked
+   * on a template without its own song → the server's default.
+   */
+  const [music, setMusic] = useState<AutoReelMusic | null | undefined>(
+    undefined,
+  );
+  const [musicError, setMusicError] = useState<string | null>(null);
   /** Library-music credits from the editor, keyed by the exported file uri. */
   const [editorMusicCredits, setEditorMusicCredits] = useState<
     Record<string, string>
@@ -385,6 +399,8 @@ export default function ReelTemplatesScreen() {
         initialTexts[field] = field === "business_name" ? businessName : "";
       }
       setTexts(initialTexts);
+      setMusic(template.music ?? undefined);
+      setMusicError(null);
     },
     [businessName],
   );
@@ -1018,13 +1034,19 @@ export default function ReelTemplatesScreen() {
         if (value) textsPayload[field] = value;
       }
 
+      // Template's own song (or nothing picked) → left out, the server keeps
+      // it; a library track or "No music" (null) is sent. `music` and
+      // `music_asset_id` can't go together.
+      const keepsTemplateMusic =
+        music === undefined ||
+        (music != null && !!selected.music && music.url === selected.music.url);
       const result = await generateReelFromTemplate({
         template_id: selected.id,
         media_asset_ids: mediaIds,
         texts: textsPayload,
         category_id: categoryId,
         caption: captionWithMusicCredit(caption, musicCreditText),
-        music_asset_id: null,
+        ...(keepsTemplateMusic ? { music_asset_id: null } : { music }),
       });
 
       // Same success popup as Generate Post / Collage — notify when ready.
@@ -1047,6 +1069,8 @@ export default function ReelTemplatesScreen() {
           : null;
       };
       const reelLimitError = fieldError("reel");
+      const musicErr = musicFieldError(error);
+      setMusicError(musicErr);
       if (reelLimitError) void loadReelLimits();
       // Server refused the files — next tap uploads every slot again
       if (fieldError("media_asset_ids")) {
@@ -1056,6 +1080,7 @@ export default function ReelTemplatesScreen() {
       }
       const message =
         reelLimitError ||
+        musicErr ||
         fieldError("template_id") ||
         fieldError("media_asset_ids") ||
         fieldError("category_id") ||
@@ -1074,6 +1099,7 @@ export default function ReelTemplatesScreen() {
     musicCreditText,
     loadReelLimits,
     mediaFields.length,
+    music,
     selected,
     selectedMedia,
     showBanner,
@@ -1383,6 +1409,21 @@ export default function ReelTemplatesScreen() {
         </View>
         {mediaFields.some((f) => slotAcceptsVideo(f)) ? (
           <InfoNote icon="content-cut" text={t("flowTemplateVideoNote")} />
+        ) : null}
+        {/* Same music choice as the video reel's step 2 */}
+        {selected ? (
+          <DesignMusicField
+            value={music}
+            onChange={(next) => {
+              setMusic(next);
+              setMusicError(null);
+            }}
+            lengthSeconds={selected.length_seconds}
+            error={musicError}
+            disabled={submitting}
+            compact={!selected.music}
+            defaultMusic={selected.music ?? null}
+          />
         ) : null}
       </ScrollView>
       <FlowFooter

@@ -465,6 +465,8 @@ export type GenerateReelPayload = {
   category_id: number;
   caption: string;
   music_asset_id?: number | null;
+  /** Library track, or null = no music. Left out = the template's song. Not with music_asset_id. */
+  music?: AutoReelMusic | null;
 };
 
 export type GenerateReelResponse = {
