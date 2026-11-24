@@ -149,7 +149,7 @@ export function openPendingBusinessLink(): void {
       );
       const businessId = (response?.data ?? response)?.business_id;
       if (!businessId) {
-        showSitePage(url);
+        Logger.warn("resolve business slug: no business_id", slug);
         return;
       }
       InteractionManager.runAfterInteractions(() => {
@@ -161,9 +161,10 @@ export function openPendingBusinessLink(): void {
         }, OPEN_DELAY_MS);
       });
     } catch (error) {
-      // 404 = not a business (/pricing, /about…) → show the page itself
       Logger.warn("resolve business slug failed:", slug, error);
-      showSitePage(url);
+      // 404 = not a business (/pricing, /about…) → show the page itself.
+      // Offline / timeout / 5xx → stay where the user is (home)
+      if ((error as { status?: number })?.status === 404) showSitePage(url);
     }
   })();
 }
