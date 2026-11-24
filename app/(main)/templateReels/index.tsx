@@ -8,7 +8,9 @@ import {
   Text,
   TouchableOpacity,
   View,
+  useWindowDimensions,
 } from "react-native";
+import { Image } from "expo-image";
 import {
   useFocusEffect,
   useLocalSearchParams,
@@ -71,7 +73,6 @@ import FlowFooter from "@/src/components/reelFlow/flowFooter";
 import {
   FlowTitle,
   InfoNote,
-  SelectedMediaRow,
 } from "@/src/components/reelFlow/flowParts";
 import TemplateDropdown from "@/src/components/reelFlow/templateDropdown";
 import RequirementsCard, {
@@ -180,6 +181,8 @@ type SlotItem = {
   name: string | null;
 };
 
+const SLOT_GAP = moderateWidthScale(10);
+
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
     safeArea: {
@@ -193,58 +196,71 @@ const createStyles = (theme: Theme) =>
       paddingBottom: moderateHeightScale(28),
       gap: moderateHeightScale(18),
     },
+    // Three tiles per row so the music picker below stays in view
     slots: {
-      gap: moderateHeightScale(12),
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: SLOT_GAP,
     },
-    slotCard: {
-      backgroundColor: theme.white,
-      borderRadius: moderateWidthScale(18),
-      borderWidth: 1,
-      borderColor: theme.borderLight,
-      paddingHorizontal: moderateWidthScale(12),
-      shadowColor: theme.darkGreen,
-      shadowOffset: { width: 0, height: moderateHeightScale(3) },
-      shadowOpacity: 0.07,
-      shadowRadius: moderateWidthScale(8),
-      elevation: 2,
+    slotTile: {
+      borderRadius: moderateWidthScale(16),
+      overflow: "hidden",
     },
     slotEmpty: {
-      flexDirection: "row",
       alignItems: "center",
-      gap: moderateWidthScale(14),
-      minHeight: heightScale(96),
-      paddingHorizontal: moderateWidthScale(12),
-      paddingVertical: moderateHeightScale(10),
-      borderRadius: moderateWidthScale(18),
+      justifyContent: "center",
+      gap: moderateHeightScale(8),
+      paddingHorizontal: moderateWidthScale(6),
       borderWidth: 1.5,
       borderStyle: "dashed",
       borderColor: theme.borderDark,
       backgroundColor: theme.lightGreen05,
     },
-    slotEmptyIcon: {
-      width: widthScale(72),
-      height: widthScale(72),
-      borderRadius: moderateWidthScale(14),
-      backgroundColor: theme.white,
+    slotAdd: {
+      width: widthScale(40),
+      height: widthScale(40),
+      borderRadius: widthScale(20),
+      backgroundColor: theme.darkGreen,
       alignItems: "center",
       justifyContent: "center",
     },
-    slotText: { flex: 1, minWidth: 0, gap: moderateHeightScale(3) },
     slotTitle: {
-      fontSize: fontSize.size17,
+      fontSize: fontSize.size14,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
+      textAlign: "center",
     },
-    slotSub: {
-      fontSize: fontSize.size15,
-      fontFamily: fonts.fontRegular,
-      color: theme.lightGreen,
-    },
-    slotAdd: {
-      width: widthScale(46),
-      height: widthScale(46),
-      borderRadius: widthScale(23),
+    slotFilled: {
       backgroundColor: theme.darkGreen,
+      borderWidth: 1,
+      borderColor: theme.borderLight,
+    },
+    slotImage: { ...StyleSheet.absoluteFillObject },
+    slotBadge: {
+      position: "absolute",
+      left: moderateWidthScale(6),
+      bottom: moderateWidthScale(6),
+      maxWidth: "80%",
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(3),
+      paddingHorizontal: moderateWidthScale(7),
+      paddingVertical: moderateHeightScale(2),
+      borderRadius: moderateWidthScale(10),
+      backgroundColor: "rgba(0, 0, 0, 0.55)",
+    },
+    slotBadgeText: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontMedium,
+      color: theme.white,
+    },
+    slotIconBtn: {
+      position: "absolute",
+      top: moderateWidthScale(6),
+      width: widthScale(30),
+      height: widthScale(30),
+      borderRadius: widthScale(15),
+      backgroundColor: theme.white,
       alignItems: "center",
       justifyContent: "center",
     },
@@ -261,6 +277,10 @@ export default function ReelTemplatesScreen() {
   const { colors } = useTheme();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const { width: screenWidth } = useWindowDimensions();
+  const slotTileWidth = Math.floor(
+    (screenWidth - moderateWidthScale(20) * 2 - SLOT_GAP * 2) / 3,
+  );
   const { t } = useTranslation();
   const router = useRouter();
   const { showBanner } = useNotificationContext();
@@ -1329,6 +1349,11 @@ export default function ReelTemplatesScreen() {
           {selectedMedia.map((media, index) => {
             const field = mediaFields[index];
             const label = field?.label || t("mediaSlot", { number: index + 1 });
+            const tileStyle = [
+              styles.slotTile,
+              // Fixed size: aspectRatio inside a wrapping row leaves a gap below
+              { width: slotTileWidth, height: slotTileWidth },
+            ];
             if (!media) {
               const photoOnly =
                 slotAcceptsImage(field) && !slotAcceptsVideo(field);
@@ -1338,72 +1363,98 @@ export default function ReelTemplatesScreen() {
                 <TouchableOpacity
                   activeOpacity={0.8}
                   key={field?.key ?? `slot-${index}`}
-                  style={[
-                    styles.slotEmpty,
-                  ]}
+                  style={[tileStyle, styles.slotEmpty]}
                   onPress={() => openSourcePicker(index)}
                   disabled={submitting}
                   accessibilityRole="button"
                   accessibilityLabel={`${label}. ${field ? slotTypeHint(field, t) : t("tapToSelectMedia")}`}
                 >
-                  <View style={styles.slotEmptyIcon}>
+                  <View style={styles.slotAdd}>
                     <MaterialIcons
                       name={
                         videoOnly
                           ? "videocam"
                           : photoOnly
                             ? "add-photo-alternate"
-                            : "perm-media"
+                            : "add"
                       }
-                      size={moderateWidthScale(30)}
-                      color={theme.buttonBack}
-                    />
-                  </View>
-                  <View style={styles.slotText}>
-                    <Text style={styles.slotTitle} numberOfLines={1}>
-                      {label}
-                    </Text>
-                    <Text style={styles.slotSub} numberOfLines={2}>
-                      {field ? slotTypeHint(field, t) : t("tapToSelectMedia")}
-                    </Text>
-                  </View>
-                  <View style={styles.slotAdd}>
-                    <MaterialIcons
-                      name="add"
-                      size={moderateWidthScale(26)}
+                      size={moderateWidthScale(22)}
                       color={theme.white}
                     />
                   </View>
+                  <Text style={styles.slotTitle} numberOfLines={2}>
+                    {label}
+                  </Text>
                 </TouchableOpacity>
               );
             }
+            const isVideo = media.local.isVideo;
             return (
-              <View key={field?.key ?? `slot-${index}`} style={styles.slotCard}>
-                <SelectedMediaRow
-                  thumbUri={media.previewUri}
-                  isPhoto={!media.local.isVideo}
-                  title={label}
-                  subtitle={[
-                    media.name || t("mediaSelected"),
-                    media.local.isVideo && media.local.durationSeconds
+              <TouchableOpacity
+                activeOpacity={0.85}
+                key={field?.key ?? `slot-${index}`}
+                style={[tileStyle, styles.slotFilled]}
+                // Tap a filled tile to swap its file
+                onPress={() => openSourcePicker(index)}
+                disabled={submitting}
+                accessibilityRole="button"
+                accessibilityLabel={`${label}. ${media.name || t("mediaSelected")}`}
+              >
+                {media.previewUri ? (
+                  <Image
+                    source={{ uri: media.previewUri }}
+                    style={styles.slotImage}
+                    contentFit="cover"
+                    transition={120}
+                  />
+                ) : null}
+                <View style={styles.slotBadge}>
+                  {isVideo ? (
+                    <MaterialIcons
+                      name="videocam"
+                      size={moderateWidthScale(13)}
+                      color={theme.white}
+                    />
+                  ) : null}
+                  <Text style={styles.slotBadgeText} numberOfLines={1}>
+                    {isVideo && media.local.durationSeconds
                       ? formatVideoDuration(media.local.durationSeconds)
-                      : null,
-                  ]
-                    .filter(Boolean)
-                    .join(" · ")}
-                  secondaryAction={
-                    media.local.isVideo && !submitting
-                      ? {
-                          icon: "content-cut",
-                          label: t("autoReelEditVideo"),
-                          onPress: () => editSlotVideo(index),
-                        }
-                      : null
-                  }
-                  onAction={submitting ? null : () => removeSlotMedia(index)}
-                  actionLabel={t("remove")}
-                />
-              </View>
+                      : label}
+                  </Text>
+                </View>
+                {isVideo && !submitting ? (
+                  <TouchableOpacity
+                    activeOpacity={0.8}
+                    onPress={() => editSlotVideo(index)}
+                    hitSlop={6}
+                    style={[styles.slotIconBtn, { left: moderateWidthScale(6) }]}
+                    accessibilityRole="button"
+                    accessibilityLabel={t("autoReelEditVideo")}
+                  >
+                    <MaterialIcons
+                      name="content-cut"
+                      size={moderateWidthScale(16)}
+                      color={theme.darkGreen}
+                    />
+                  </TouchableOpacity>
+                ) : null}
+                {!submitting ? (
+                  <TouchableOpacity
+                    activeOpacity={0.8}
+                    onPress={() => removeSlotMedia(index)}
+                    hitSlop={6}
+                    style={[styles.slotIconBtn, { right: moderateWidthScale(6) }]}
+                    accessibilityRole="button"
+                    accessibilityLabel={t("remove")}
+                  >
+                    <MaterialIcons
+                      name="close"
+                      size={moderateWidthScale(18)}
+                      color={theme.darkGreen}
+                    />
+                  </TouchableOpacity>
+                ) : null}
+              </TouchableOpacity>
             );
           })}
         </View>
