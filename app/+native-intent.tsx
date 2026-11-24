@@ -7,6 +7,12 @@ import {
   setPendingBookingLink,
 } from "@/src/services/pendingBookingLink";
 import {
+  isSitePageLink,
+  openPendingBusinessLink,
+  parseBusinessSlug,
+  setPendingBusinessSlug,
+} from "@/src/services/pendingBusinessLink";
+import {
   holdInviteFromLink,
   isInviteLink,
   isInviteNoticeUserSignedIn,
@@ -101,18 +107,34 @@ export function redirectSystemPath({
       return "";
     }
 
-    if (!isBookingLink(path)) return path;
+    if (isBookingLink(path)) {
+      // Bad / missing businessId → just open the app
+      setPendingBookingLink(parseBookingLink(path));
 
-    // Bad / missing businessId → just open the app
-    setPendingBookingLink(parseBookingLink(path));
+      // Cold start: run the splash; it opens home and then booking
+      if (initial) return "/";
 
-    // Cold start: run the splash; it opens home and then booking
-    if (initial) return "/";
+      // App already running: open now if home is up, otherwise it waits for
+      // the splash / login. "" = stay on the current screen.
+      if (isAppShellReady()) openPendingBookingLink();
+      return "";
+    }
 
-    // App already running: open now if home is up, otherwise it waits for
-    // the splash / login. "" = stay on the current screen.
-    if (isAppShellReady()) openPendingBookingLink();
-    return "";
+    // Business page link (getfreshpass.com/{slug}): held until home is up,
+    // then the slug is resolved and Business Detail opens
+    const businessSlug = parseBusinessSlug(path);
+    if (businessSlug) {
+      setPendingBusinessSlug(businessSlug);
+      if (initial) return "/";
+      if (isAppShellReady()) openPendingBusinessLink();
+      return "";
+    }
+
+    // Other one-page website links Android sends us (/privacy, /terms,
+    // /register…): open the app as is instead of the not-found screen
+    if (isSitePageLink(path)) return initial ? "/" : "";
+
+    return path;
   } catch (error) {
     Logger.warn("redirectSystemPath failed:", error);
     return initial ? "/" : path;

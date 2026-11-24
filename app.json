@@ -15,7 +15,8 @@
       "buildNumber": "126",
       "googleServicesFile": "./GoogleService-Info.plist",
       "associatedDomains": [
-        "applinks:getfreshpass.com"
+        "applinks:getfreshpass.com",
+        "applinks:dev.getfreshpass.com"
       ],
       "config": {
         "googleMapsApiKey": "AIzaSyB7LtqIwza7DsCRvXvh43CTH1yzQoWvVRg"
@@ -126,6 +127,26 @@
               "scheme": "https",
               "host": "getfreshpass.com",
               "path": "/open"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        },
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "getfreshpass.com",
+              "pathAdvancedPattern": "/[a-zA-Z0-9_\\-]+"
+            },
+            {
+              "scheme": "https",
+              "host": "dev.getfreshpass.com",
+              "pathAdvancedPattern": "/[a-zA-Z0-9_\\-]+"
             }
           ],
           "category": [

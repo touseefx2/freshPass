@@ -1,6 +1,7 @@
 import { Href, router } from "expo-router";
 import { MAIN_ROUTES } from "@/src/constant/routes";
 import { openPendingBookingLink } from "@/src/services/pendingBookingLink";
+import { openPendingBusinessLink } from "@/src/services/pendingBusinessLink";
 import { openPendingInviteNotice } from "@/src/services/pendingInviteCode";
 import { openPendingOfferLink } from "@/src/services/pendingOfferLink";
 import { openPendingOpenLink } from "@/src/services/pendingOpenLink";
@@ -27,6 +28,8 @@ export function resetToDashboardHome() {
   openPendingOfferLink();
   // An email /open?type=… link (e.g. Buy More Credits) waiting for home
   openPendingOpenLink();
+  // A business page link (getfreshpass.com/{slug}) waiting for home
+  openPendingBusinessLink();
 }
 
 /** Profile tab → a Business Management screen, so back returns to Profile. */
