@@ -127,22 +127,12 @@ export default function MarketplaceCatalogScreen() {
   const [searchText, setSearchText] = useState("");
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState<string | null>(null);
-  // Opens on Featured (client sample). That default steps aside when nothing
-  // is featured yet, or once the customer searches / picks a category.
-  const [filter, setFilter] = useState<MarketplaceFilter | null>("featured");
-  const autoFeaturedRef = useRef(true);
+  // Opens with no pill selected (client 11-24) = all products, newest first.
+  const [filter, setFilter] = useState<MarketplaceFilter | null>(null);
   const chooseFilter = useCallback((next: MarketplaceFilter | null) => {
-    autoFeaturedRef.current = false;
     setFilter(next);
   }, []);
   const hasQuery = search.trim() !== "" || category != null || filter != null;
-
-  useEffect(() => {
-    if (autoFeaturedRef.current && (search !== "" || category != null)) {
-      autoFeaturedRef.current = false;
-      setFilter(null);
-    }
-  }, [search, category]);
 
   useEffect(() => {
     const next = searchText.trim();
@@ -203,16 +193,6 @@ export default function MarketplaceCatalogScreen() {
           perPage: PER_PAGE,
         });
         if (requestId !== requestIdRef.current) return;
-        if (
-          rows.length === 0 &&
-          autoFeaturedRef.current &&
-          filter === "featured"
-        ) {
-          // Nothing featured yet → show every product instead
-          autoFeaturedRef.current = false;
-          setFilter(null);
-          return;
-        }
         pageRef.current = 1;
         setProducts(rows);
         setHasMore(meta.has_more);
@@ -367,7 +347,6 @@ export default function MarketplaceCatalogScreen() {
     setSearchText("");
     setSearch("");
     setCategory(null);
-    autoFeaturedRef.current = false;
     setFilter(null);
   }, []);
 
