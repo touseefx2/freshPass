@@ -11,6 +11,8 @@ import {
   openPendingBusinessLink,
   parseBusinessSlug,
   setPendingBusinessSlug,
+  setPendingSitePage,
+  sitePageHref,
 } from "@/src/services/pendingBusinessLink";
 import {
   holdInviteFromLink,
@@ -124,15 +126,20 @@ export function redirectSystemPath({
     // then the slug is resolved and Business Detail opens
     const businessSlug = parseBusinessSlug(path);
     if (businessSlug) {
-      setPendingBusinessSlug(businessSlug);
+      setPendingBusinessSlug(businessSlug, path);
       if (initial) return "/";
       if (isAppShellReady()) openPendingBusinessLink();
       return "";
     }
 
     // Other one-page website links Android sends us (/privacy, /terms,
-    // /register…): open the app as is instead of the not-found screen
-    if (isSitePageLink(path)) return initial ? "/" : "";
+    // /register…): shown in the app's WebView (the browser would loop back
+    // here). Cold start: after the splash, once home is up.
+    if (isSitePageLink(path)) {
+      if (!initial) return sitePageHref(path);
+      setPendingSitePage(path);
+      return "/";
+    }
 
     return path;
   } catch (error) {

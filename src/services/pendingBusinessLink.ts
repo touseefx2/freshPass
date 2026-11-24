@@ -13,7 +13,7 @@ import { store } from "@/src/state/store";
  * Only https links on getfreshpass.com count — app scheme links
  * (com.freshpass://dashboard, dev client links…) are never treated as slugs.
  */
-let pendingSlug: string | undefined;
+let pendingSlug: { slug: string; url: string } | undefined;
 
 const OPEN_DELAY_MS = 100;
 
@@ -54,25 +54,54 @@ export function parseBusinessSlug(url: string): string | null {
  * Any one-segment website page (getfreshpass.com/privacy, /terms…). Android
  * claims all of them for business links, so the ones that are not a business
  * must not fall through to Expo Router (no such route → not-found screen).
- * The browser can't take them back: Linking.openURL would loop into the app.
+ * The browser can't take them back (Linking.openURL loops into the app), so
+ * they open in the app's WebView (sitePage).
  */
 export function isSitePageLink(url: string): boolean {
   return SITE_LINK.test(url.trim());
+}
+
+/** Route that shows a site page in the WebView. */
+export function sitePageHref(url: string): string {
+  return `/sitePage?url=${encodeURIComponent(url.trim())}`;
+}
+
+let pendingSitePage: string | undefined;
+
+/** Cold start: show the page once home is up (signed in or guest). */
+export function setPendingSitePage(url: string): void {
+  pendingSitePage = url.trim();
+}
+
+function openPendingSitePage(): void {
+  const url = pendingSitePage;
+  pendingSitePage = undefined;
+  showSitePage(url);
+}
+
+function showSitePage(url: string | undefined): void {
+  if (!url || !isSitePageLink(url)) return;
+  InteractionManager.runAfterInteractions(() => {
+    setTimeout(() => router.push(sitePageHref(url) as any), OPEN_DELAY_MS);
+  });
 }
 
 export function isBusinessProfileLink(url: string): boolean {
   return parseBusinessSlug(url) !== null;
 }
 
-export function setPendingBusinessSlug(slug: string | null): void {
-  pendingSlug = slug ?? undefined;
+/** `url` = the full link, shown in the WebView if the slug is not a business. */
+export function setPendingBusinessSlug(slug: string | null, url = ""): void {
+  pendingSlug = slug ? { slug, url: url.trim() } : undefined;
   Logger.log("------>setPendingBusinessSlug", slug);
 }
 
 /** Called once home is up (resetToDashboardHome) and for warm links. */
 export function openPendingBusinessLink(): void {
-  const slug = pendingSlug;
-  if (!slug) return;
+  openPendingSitePage();
+  const pending = pendingSlug;
+  if (!pending) return;
+  const { slug, url } = pending;
   const user = store.getState().user;
   // Signed out (sign-in screens): keep it for after login
   if (!user.isGuest && !user.accessToken) return;
@@ -84,7 +113,10 @@ export function openPendingBusinessLink(): void {
         businessEndpoints.resolveSlug(slug),
       );
       const businessId = (response?.data ?? response)?.business_id;
-      if (!businessId) return;
+      if (!businessId) {
+        showSitePage(url);
+        return;
+      }
       InteractionManager.runAfterInteractions(() => {
         setTimeout(() => {
           router.push({
@@ -94,8 +126,9 @@ export function openPendingBusinessLink(): void {
         }, OPEN_DELAY_MS);
       });
     } catch (error) {
-      // 404 = no such business → just stay on home
+      // 404 = not a business (/privacy-policy, /pricing…) → show the page
       Logger.warn("resolve business slug failed:", slug, error);
+      showSitePage(url);
     }
   })();
 }
