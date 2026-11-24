@@ -3946,7 +3946,7 @@ export default function CalendarScreen({ fullscreen = false }: CalendarScreenPro
                 >
                   <View style={styles.applyBoxHeaderRow}>
                     <Text style={styles.applyBoxDateText}>
-                      {applyBoxDate.format("DD/MM/YYYY")}
+                      {applyBoxDate.format("MM/DD/YYYY")}
                     </Text>
                     <TouchableOpacity
                       style={styles.applyBoxCloseBtn}

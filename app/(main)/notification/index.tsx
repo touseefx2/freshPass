@@ -384,11 +384,8 @@ export default function NotificationsScreen() {
     } else if (diffInDays < 7) {
       return `${diffInDays} day${diffInDays > 1 ? "s" : ""} ago`;
     } else {
-      // Format as date: DD/MM/YYYY
-      const day = `${created.date()}`.padStart(2, "0");
-      const month = `${created.month() + 1}`.padStart(2, "0");
-      const year = created.year();
-      return `${day}/${month}/${year}`;
+      // US format: MM/DD/YYYY
+      return created.format("MM/DD/YYYY");
     }
   };
 
@@ -654,10 +651,11 @@ export default function NotificationsScreen() {
         return "Yesterday";
       }
 
+      // US format: MM/DD/YYYY
       const day = `${date.getDate()}`.padStart(2, "0");
       const month = `${date.getMonth() + 1}`.padStart(2, "0");
       const year = date.getFullYear();
-      return `${day}/${month}/${year}`;
+      return `${month}/${day}/${year}`;
     };
 
     // Group notifications by calendar date derived from createdAt
@@ -678,7 +676,10 @@ export default function NotificationsScreen() {
     );
 
     return sortedDates.map((isoDate) => {
-      const dateObj = new Date(isoDate);
+      // new Date("YYYY-MM-DD") is UTC midnight = the previous day in US
+      // time zones, so build the local date from its parts.
+      const [y, m, d] = isoDate.split("-").map(Number);
+      const dateObj = new Date(y, m - 1, d);
       const items = [...(grouped.get(isoDate) ?? [])].sort(
         (a, b) =>
           new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),

@@ -380,7 +380,7 @@ export default function ApplyLeave() {
             activeOpacity={0.7}
           >
             <Text style={styles.timeInputText}>
-              {fromDate.format("DD/MM/YYYY")}
+              {fromDate.format("MM/DD/YYYY")}
             </Text>
             <Feather
               name="calendar"
@@ -397,7 +397,7 @@ export default function ApplyLeave() {
             activeOpacity={0.7}
           >
             <Text style={styles.timeInputText}>
-              {toDate.format("DD/MM/YYYY")}
+              {toDate.format("MM/DD/YYYY")}
             </Text>
             <Feather
               name="calendar"

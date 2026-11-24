@@ -252,7 +252,7 @@ function buildSections(contacts: ChatContactItem[]): ChatSection[] {
     const day = `${date.getDate()}`.padStart(2, "0");
     const month = `${date.getMonth() + 1}`.padStart(2, "0");
     const year = date.getFullYear();
-    return `${day}/${month}/${year}`;
+    return `${month}/${day}/${year}`;
   };
 
   const grouped = new Map<string, ChatContactItem[]>();
@@ -271,7 +271,10 @@ function buildSections(contacts: ChatContactItem[]): ChatSection[] {
   );
 
   return sortedDates.map((isoDate) => {
-    const dateObj = new Date(isoDate);
+    // new Date("YYYY-MM-DD") is UTC midnight = the previous day in US
+    // time zones, so build the local date from its parts.
+    const [y, m, d] = isoDate.split("-").map(Number);
+    const dateObj = new Date(y, m - 1, d);
     const items = [...(grouped.get(isoDate) ?? [])].sort(
       (a, b) =>
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
