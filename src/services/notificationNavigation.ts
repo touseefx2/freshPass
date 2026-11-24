@@ -581,16 +581,23 @@ const MODE_SWITCH_NAVIGATION_DELAY_MS = 150;
 export async function navigateFromPushNotification(
   router: Router,
   data: NotificationNavigationData | undefined,
-  options?: { onModeSwitched?: (mode: UserMode) => void },
+  options?: {
+    onModeSwitched?: (mode: UserMode) => void;
+    /** Unknown type → stay put instead of opening the notification list */
+    skipNotificationScreen?: boolean;
+  },
 ): Promise<void> {
   if (!data?.type) return;
+  const navOptions = options?.skipNotificationScreen
+    ? { skipNotificationScreen: true }
+    : undefined;
 
   // Already signed out by the server — no mode switch (it needs a token)
   if (
     getNotificationSubType(data) === "account_suspended" ||
     isStaffRemovedNotification(data)
   ) {
-    navigateFromNotificationData(router, data);
+    navigateFromNotificationData(router, data, navOptions);
     return;
   }
 
@@ -635,7 +642,7 @@ export async function navigateFromPushNotification(
       resetToDashboardHome();
       InteractionManager.runAfterInteractions(() => {
         setTimeout(() => {
-          navigateFromNotificationData(router, data);
+          navigateFromNotificationData(router, data, navOptions);
         }, MODE_SWITCH_NAVIGATION_DELAY_MS);
       });
       return;
@@ -655,7 +662,7 @@ export async function navigateFromPushNotification(
     }
   }
 
-  navigateFromNotificationData(router, data);
+  navigateFromNotificationData(router, data, navOptions);
 }
 
 export function navigateFromNotificationData(

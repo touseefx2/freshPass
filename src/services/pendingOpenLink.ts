@@ -70,11 +70,13 @@ export function openPendingOpenLink(): void {
 
   InteractionManager.runAfterInteractions(() => {
     setTimeout(() => {
+      // Unknown type → stay on home (no notification list), with or without mode
       if (data.mode) {
-        void navigateFromPushNotification(router, data as any);
+        void navigateFromPushNotification(router, data as any, {
+          skipNotificationScreen: true,
+        });
         return;
       }
-      // Unknown type → stay on home (no notification list)
       navigateFromNotificationData(router, data as any, {
         skipNotificationScreen: true,
       });
