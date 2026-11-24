@@ -7,9 +7,11 @@ import {
   setPendingBookingLink,
 } from "@/src/services/pendingBookingLink";
 import {
-  isSitePageLink,
+  isSiteHomeLink,
+  isSiteReelLink,
   openPendingBusinessLink,
   parseBusinessSlug,
+  safeSitePageUrl,
   setPendingBusinessSlug,
   setPendingSitePage,
   sitePageHref,
@@ -122,8 +124,8 @@ export function redirectSystemPath({
       return "";
     }
 
-    // Business page link (getfreshpass.com/{slug}): held until home is up,
-    // then the slug is resolved and Business Detail opens
+    // Business page link (getfreshpass.com/{slug} or /businesses/{slug}):
+    // held until home is up, then the slug is resolved and Business Detail opens
     const businessSlug = parseBusinessSlug(path);
     if (businessSlug) {
       setPendingBusinessSlug(businessSlug, path);
@@ -132,12 +134,19 @@ export function redirectSystemPath({
       return "";
     }
 
-    // Other one-page website links Android sends us (/privacy, /terms,
-    // /register…): shown in the app's WebView (the browser would loop back
-    // here). Cold start: after the splash, once home is up.
-    if (isSitePageLink(path)) {
-      if (!initial) return sitePageHref(path);
-      setPendingSitePage(path);
+    // getfreshpass.com/ itself → just open the app
+    if (isSiteHomeLink(path)) return initial ? "/" : "";
+
+    // Reel share link (/r/{id}) → its own route, unchanged
+    if (isSiteReelLink(path)) return path;
+
+    // Any other getfreshpass.com page (Android / iOS send most site links
+    // here now): shown in the app's WebView, since the browser would loop
+    // back. Cold start: after the splash, once home is up.
+    const sitePageUrl = safeSitePageUrl(path);
+    if (sitePageUrl) {
+      if (!initial) return sitePageHref(sitePageUrl);
+      setPendingSitePage(sitePageUrl);
       return "/";
     }
 
