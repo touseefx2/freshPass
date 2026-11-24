@@ -123,9 +123,10 @@ const createStyles = (theme: Theme) =>
       letterSpacing: 0.3,
     },
     avatarButton: {
+      // Same scale for all three so it stays a true circle on every screen
       width: widthScale(AVATAR_SIZE),
-      height: heightScale(AVATAR_SIZE),
-      borderRadius: moderateWidthScale(AVATAR_SIZE / 2),
+      height: widthScale(AVATAR_SIZE),
+      borderRadius: widthScale(AVATAR_SIZE) / 2,
       overflow: "hidden",
       borderWidth: 1.5,
       borderColor: theme.white50,
