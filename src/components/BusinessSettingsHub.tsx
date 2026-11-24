@@ -174,7 +174,7 @@ const createStyles = (theme: Theme) =>
     contentContainer: {
       paddingTop: moderateHeightScale(20),
       paddingHorizontal: moderateWidthScale(16),
-      paddingBottom: moderateHeightScale(32),
+      paddingBottom: moderateHeightScale(64),
     },
     headerBlock: {
       marginBottom: moderateHeightScale(16),

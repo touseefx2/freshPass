@@ -22,7 +22,11 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Skeleton } from "@/src/components/skeletons";
 import RetryButton from "@/src/components/retryButton";
-import { resolveTrialDays } from "@/src/services/remoteConfigService";
+import {
+  PlanIncludesSection,
+  PromotionAddOnBox,
+  formatPlanMoney,
+} from "@/src/components/planIncludes";
 
 const isUnlimitedPlan = (plan: SubscriptionPlan): boolean => {
   const planType = plan.planType?.toLowerCase() ?? "";
@@ -372,6 +376,8 @@ const createStyles = (theme: Theme) =>
       flex: 1,
     },
     addOnSection: {
+      marginTop: moderateHeightScale(18),
+      gap: moderateHeightScale(10),
       marginBottom: moderateHeightScale(8),
     },
     serviceCheckboxRow: {
@@ -441,22 +447,8 @@ function BusinessPlansPreviewModalContent({
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
   const insets = useSafeAreaInsets();
-  const [trialDays, setTrialDays] = useState("");
   const [activeTab, setActiveTab] = useState<PlanTab>("solo");
 
-  useEffect(() => {
-    let cancelled = false;
-    void resolveTrialDays()
-      .then((days) => {
-        if (!cancelled) setTrialDays(days);
-      })
-      .catch(() => {
-        if (!cancelled) setTrialDays("");
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   const standardPlans = useMemo(
     () => plans.filter((plan) => !isUnlimitedPlan(plan)),
@@ -490,20 +482,6 @@ function BusinessPlansPreviewModalContent({
     return activeTab === "solo" ? soloPlans : businessPlans;
   }, [usePlanTabs, activeTab, standardPlans, soloPlans, businessPlans]);
 
-  const showTrialBanner = Number.parseInt(trialDays, 10) > 0;
-
-  const featuredAddOnPrice = (() => {
-    const addOn = additionalServices.find((s) => s.active);
-    if (!addOn) return null;
-    const p = parseFloat(addOn.price);
-    return Number.isNaN(p) ? null : p.toFixed(2);
-  })();
-
-  const formatPlanPrice = (price: string): string => {
-    const parsed = parseFloat(price);
-    if (Number.isNaN(parsed)) return price;
-    return parsed.toFixed(2);
-  };
 
   const overlayStyle = embedded
     ? styles.modalContainer
@@ -554,64 +532,6 @@ function BusinessPlansPreviewModalContent({
             ]}
             scrollEnabled={!embedded}
           >
-            <View style={styles.introSection}>
-              <View style={styles.introSectionRow}>
-                <View style={styles.introIconWrap}>
-                  <Feather
-                    name="globe"
-                    size={iconScale(20)}
-                    color={theme.buttonBack}
-                  />
-                </View>
-                <View style={styles.introRow}>
-                  <Text style={styles.introText}>
-                    {t("businessPlansChoosePlanIntro")}
-                  </Text>
-                </View>
-              </View>
-              <View
-                style={[styles.introSectionRow, styles.introSectionRowSecond]}
-              >
-                <View style={styles.introIconWrap}>
-                  <Feather
-                    name="star"
-                    size={iconScale(20)}
-                    color={theme.buttonBack}
-                  />
-                </View>
-                <View style={styles.introRow}>
-                  <Text style={styles.introText}>
-                    {t("businessPlansFeaturedAddonIntro", {
-                      price:
-                        featuredAddOnPrice != null
-                          ? t("businessPlansFeaturedPricePerMonth", {
-                              price: featuredAddOnPrice,
-                            })
-                          : t("seeBelow"),
-                    })}
-                  </Text>
-                </View>
-              </View>
-              {showTrialBanner ? (
-                <View
-                  style={[styles.introSectionRow, styles.introSectionRowSecond]}
-                >
-                  <View style={styles.introIconWrap}>
-                    <Feather
-                      name="gift"
-                      size={iconScale(20)}
-                      color={theme.buttonBack}
-                    />
-                  </View>
-                  <View style={styles.introRow}>
-                    <Text style={styles.introText}>
-                      {t("firstTimeFreeTrialHint", { trialDays })}
-                    </Text>
-                  </View>
-                </View>
-              ) : null}
-            </View>
-
             {usePlanTabs ? (
               <View style={styles.planTabRow}>
                 <TouchableOpacity
@@ -652,7 +572,7 @@ function BusinessPlansPreviewModalContent({
             ) : null}
 
             {visiblePlans.map((plan) => {
-              const planPrice = formatPlanPrice(plan.price);
+              const activeAddOns = additionalServices.filter((s) => s.active);
               const isSelected = selectedPlanId === plan.id;
               return (
                 <View
@@ -666,7 +586,7 @@ function BusinessPlansPreviewModalContent({
                   <View style={styles.planHeader}>
                     <Text style={styles.planName}>{plan.name}</Text>
                     <View style={styles.planPriceContainer}>
-                      <Text style={styles.planPrice}>${planPrice}</Text>
+                      <Text style={styles.planPrice}>{formatPlanMoney(plan.price)}</Text>
                       <Text style={styles.planPricePeriod}>
                         {t("businessPlanPerMonth")}
                       </Text>
@@ -685,45 +605,25 @@ function BusinessPlansPreviewModalContent({
                     </Text>
                   </View>
 
-                  {plan.description ? (
-                    <Text style={styles.planDescription}>
-                      {plan.description}
-                    </Text>
+                  {/* Client 11-24 sample: same points + add-on box as the buy screen */}
+                  <Text style={styles.planDescription}>
+                    {isSoloPlan(plan) ? t("soloPlanIntro") : t("businessPlanIntro")}
+                  </Text>
+                  <PlanIncludesSection isSolo={isSoloPlan(plan)} />
+                  {!loadingAdditionalServices && activeAddOns.length > 0 ? (
+                    <View style={styles.addOnSection}>
+                      {activeAddOns.map((service) => (
+                        <PromotionAddOnBox
+                          key={service.id}
+                          price={formatPlanMoney(service.price)}
+                          title={
+                            activeAddOns.length === 1 ? undefined : service.name
+                          }
+                          showPoints={activeAddOns.length === 1}
+                        />
+                      ))}
+                    </View>
                   ) : null}
-                  {!loadingAdditionalServices &&
-                    additionalServices.length > 0 && (
-                      <View style={styles.addOnSection}>
-                        {additionalServices
-                          .filter((s) => s.active)
-                          .map((service) => (
-                            <View
-                              key={service.id}
-                              style={styles.serviceCheckboxRow}
-                            >
-                              <View style={styles.addOnIconWrap}>
-                                <Feather
-                                  name="star"
-                                  size={iconScale(14)}
-                                  color={theme.buttonBack}
-                                />
-                              </View>
-                              <View style={styles.serviceRowContent}>
-                                <Text
-                                  style={styles.serviceName}
-                                  numberOfLines={2}
-                                >
-                                  {service.name}
-                                </Text>
-                                <Text style={styles.servicePrice}>
-                                  {t("featuredAddOnPerMonth", {
-                                    price: service.price,
-                                  })}
-                                </Text>
-                              </View>
-                            </View>
-                          ))}
-                      </View>
-                    )}
                   {onSelectPlan ? (
                     isSelected ? (
                       <SelectedPlanStatus label={t("selected")} />

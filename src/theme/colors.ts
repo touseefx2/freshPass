@@ -127,6 +127,11 @@ export const themes = {
     goldBorder: "#C9A548",
     noticeCream: "#FCF5DE",
     tileGoldCream: "#F9EDCC",
+    // Promotion Add-on box (client 11-24 sample, colors read from the image)
+    addOnCream: "#FCF8E1",
+    addOnBorder: "#D9C373",
+    addOnBodyText: "#32312B",
+    addOnPointText: "#55554E",
     successCardBg: "#F4F7E6",
     successCardBorder: "#BAC6A6",
     successCheck: "#789C38",

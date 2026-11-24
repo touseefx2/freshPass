@@ -51,6 +51,11 @@ import {
   setSuppressBusinessPlansAutoOpen,
 } from "@/src/state/slices/generalSlice";
 import WebViewModal from "@/src/components/webViewModal";
+import {
+  PlanIncludesSection,
+  PromotionAddOnBox,
+  formatPlanMoney,
+} from "@/src/components/planIncludes";
 
 const TERMS_AND_CONDITIONS_URL = process.env.EXPO_PUBLIC_TERMS_URL || "";
 const PRIVACY_POLICY_URL = process.env.EXPO_PUBLIC_PRIVACY_URL || "";
@@ -348,11 +353,36 @@ const createStyles = (theme: Theme) =>
       marginTop: moderateHeightScale(8),
     },
     addOnSection: {
-      // marginTop: moderateHeightScale(16),
+      marginTop: moderateHeightScale(18),
+      gap: moderateHeightScale(10),
       marginBottom: moderateHeightScale(16),
       // paddingTop: moderateHeightScale(16),
       // borderTopWidth: 1,
       // borderTopColor: theme.borderLight,
+    },
+    priceRows: {
+      gap: moderateHeightScale(6),
+      marginBottom: moderateHeightScale(4),
+    },
+    priceRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+    },
+    priceRowText: {
+      fontSize: fontSize.size15,
+      fontFamily: fonts.fontRegular,
+      color: theme.darkGreen,
+    },
+    priceDivider: {
+      height: 1,
+      backgroundColor: theme.borderLight,
+      marginVertical: moderateHeightScale(6),
+    },
+    totalText: {
+      fontSize: fontSize.size18,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
     },
     addOnTitle: {
       fontSize: fontSize.size15,
@@ -781,12 +811,9 @@ function BusinessPlansModalContent({
   const isServiceSelectedForPlan = (planId: number, serviceId: number) =>
     (selectedServicesByPlanId[planId] ?? []).includes(serviceId);
 
-  const featuredAddOnPrice = (() => {
-    const addOn = additionalServices.find((s) => s.active);
-    if (!addOn) return null;
-    const p = parseFloat(addOn.price);
-    return Number.isNaN(p) ? null : p.toFixed(2);
-  })();
+  const activeAddOns = additionalServices.filter((s) => s.active);
+  const showTrialCopy =
+    !showSubscribeInsteadOfTrial && Number.parseInt(trialDays, 10) > 0;
 
   const getTotalPriceForPlan = (plan: SubscriptionPlan): string => {
     const planPriceNum = parseFloat(plan.price) || 0;
@@ -1044,63 +1071,6 @@ function BusinessPlansModalContent({
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.plansContainer}
           >
-            <View style={styles.introSection}>
-              <View style={styles.introSectionRow}>
-                <View style={styles.introIconWrap}>
-                  <Feather
-                    name="globe"
-                    size={iconScale(20)}
-                    color={theme.buttonBack}
-                  />
-                </View>
-                <View style={styles.introRow}>
-                  <Text style={styles.introText}>
-                    {t("businessPlansChoosePlanIntro")}
-                  </Text>
-                </View>
-              </View>
-              <View style={[styles.introSectionRow, styles.introSectionRowSecond]}>
-                <View style={styles.introIconWrap}>
-                  <Feather
-                    name="star"
-                    size={iconScale(20)}
-                    color={theme.buttonBack}
-                  />
-                </View>
-                <View style={styles.introRow}>
-                  <Text style={styles.introText}>
-                    {t("businessPlansFeaturedAddonIntro", {
-                      price:
-                        featuredAddOnPrice != null
-                          ? t("businessPlansFeaturedPricePerMonth", {
-                              price: featuredAddOnPrice,
-                            })
-                          : t("seeBelow"),
-                    })}
-                  </Text>
-                </View>
-              </View>
-              {!showSubscribeInsteadOfTrial &&
-              Number.parseInt(trialDays, 10) > 0 ? (
-                <View
-                  style={[styles.introSectionRow, styles.introSectionRowSecond]}
-                >
-                  <View style={styles.introIconWrap}>
-                    <Feather
-                      name="gift"
-                      size={iconScale(20)}
-                      color={theme.buttonBack}
-                    />
-                  </View>
-                  <View style={styles.introRow}>
-                    <Text style={styles.introText}>
-                      {t("firstTimeFreeTrialHint", { trialDays })}
-                    </Text>
-                  </View>
-                </View>
-              ) : null}
-            </View>
-
             {usePlanTabs ? (
               <View style={styles.planTabRow}>
                 <TouchableOpacity
@@ -1141,13 +1111,19 @@ function BusinessPlansModalContent({
             ) : null}
 
             {visiblePlans.map((plan) => {
-              const totalPrice = getTotalPriceForPlan(plan);
+              const totalText = formatPlanMoney(getTotalPriceForPlan(plan));
+              const planIsSolo = isSoloPlan(plan);
+              const selectedAddOns = activeAddOns.filter((service) =>
+                isServiceSelectedForPlan(plan.id, service.id),
+              );
               return (
               <View key={plan.id} style={[styles.planCard, styles.shadow]}>
                 <View style={styles.planHeader}>
                   <Text style={styles.planName}>{plan.name}</Text>
                   <View style={styles.planPriceContainer}>
-                    <Text style={styles.planPrice}>${totalPrice}</Text>
+                    <Text style={styles.planPrice}>
+                      {formatPlanMoney(plan.price)}
+                    </Text>
                     <Text style={styles.planPricePeriod}>
                       {t("businessPlanPerMonth")}
                     </Text>
@@ -1166,64 +1142,62 @@ function BusinessPlansModalContent({
                   </Text>
                 </View>
 
-                {plan.description && (
-                  <Text style={styles.planDescription}>{plan.description}</Text>
-                )}
-                {!loadingAdditionalServices &&
-                  additionalServices.length > 0 && (
-                    <View style={styles.addOnSection}>
-                      {additionalServices
-                        .filter((s) => s.active)
-                        .map((service) => {
-                          const isSelected = isServiceSelectedForPlan(
-                            plan.id,
-                            service.id,
-                          );
-                          return (
-                            <TouchableOpacity
-                              key={service.id}
-                              style={styles.serviceCheckboxRow}
-                              onPress={() =>
-                                toggleServiceForPlan(plan.id, service.id)
-                              }
-                              activeOpacity={0.7}
-                            >
-                              <View
-                                style={[
-                                  styles.checkbox,
-                                  isSelected
-                                    ? styles.checkboxChecked
-                                    : styles.checkboxUnchecked,
-                                ]}
-                              >
-                                {isSelected && (
-                                  <Feather
-                                    name="check"
-                                    size={iconScale(14)}
-                                    color={theme.white}
-                                  />
-                                )}
-                              </View>
-                              <View style={styles.serviceRowContent}>
-                                <Text
-                                  style={styles.serviceName}
-                                  numberOfLines={2}
-                                >
-                                  {service.name}
-                                </Text>
-                                <Text style={styles.servicePrice}>
-                                  {t("featuredAddOnPerMonth", {
-                                    price: service.price,
-                                  })}
-                                </Text>
-                              </View>
-                            </TouchableOpacity>
-                          );
-                        })}
+                {/* Client 11-24 sample: fixed intro + points, gold add-on box, price rows */}
+                <Text style={styles.planDescription}>
+                  {planIsSolo ? t("soloPlanIntro") : t("businessPlanIntro")}
+                </Text>
+                <PlanIncludesSection isSolo={planIsSolo} />
+                {!loadingAdditionalServices && activeAddOns.length > 0 ? (
+                  <View style={styles.addOnSection}>
+                    {activeAddOns.map((service) => (
+                      <PromotionAddOnBox
+                        key={service.id}
+                        price={formatPlanMoney(service.price)}
+                        title={
+                          activeAddOns.length === 1 ? undefined : service.name
+                        }
+                        showPoints={activeAddOns.length === 1}
+                        selected={isServiceSelectedForPlan(plan.id, service.id)}
+                        onToggle={() =>
+                          toggleServiceForPlan(plan.id, service.id)
+                        }
+                      />
+                    ))}
+                  </View>
+                ) : null}
+                <View style={styles.priceRows}>
+                  <View style={styles.priceRow}>
+                    <Text style={styles.priceRowText}>
+                      {planIsSolo ? t("soloPlanLabel") : t("businessPlanLabel")}
+                    </Text>
+                    <Text style={styles.priceRowText}>
+                      {formatPlanMoney(plan.price)}
+                    </Text>
+                  </View>
+                  {selectedAddOns.map((service) => (
+                    <View key={service.id} style={styles.priceRow}>
+                      <Text style={styles.priceRowText}>
+                        {activeAddOns.length === 1
+                          ? t("promotionAddOnTitle")
+                          : service.name}
+                      </Text>
+                      <Text style={styles.priceRowText}>
+                        {formatPlanMoney(service.price)}
+                      </Text>
                     </View>
-                  )}
+                  ))}
+                  <View style={styles.priceDivider} />
+                  <View style={styles.priceRow}>
+                    <Text style={styles.totalText}>
+                      {showTrialCopy ? t("totalAfterTrial") : t("totalLabel")}
+                    </Text>
+                    <Text style={styles.totalText}>
+                      {t("pricePerMonth", { price: totalText })}
+                    </Text>
+                  </View>
+                </View>
                 <Text style={styles.disclosureText}>
-                  {getTrialDisclosure(totalPrice)}
+                  {getTrialDisclosure(totalText)}
                 </Text>
                 {isIos && (
                   <Text style={styles.disclosureText}>

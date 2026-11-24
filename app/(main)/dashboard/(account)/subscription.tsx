@@ -37,6 +37,10 @@ import { Skeleton } from "@/src/components/skeletons";
 import RetryButton from "@/src/components/retryButton";
 import { LinearGradient } from "expo-linear-gradient";
 import BusinessPlansModal from "@/src/components/businessPlansModal";
+import {
+  getPlanPoints,
+  getPromotionAddOnPoints,
+} from "@/src/components/planIncludes";
 import CancelSubscriptionConfirmModal from "@/src/components/cancelSubscriptionConfirmModal";
 import RemovePromotionConfirmModal from "@/src/components/removePromotionConfirmModal";
 import { showAppleManageSubscriptions } from "@/src/services/iapService";
@@ -964,6 +968,20 @@ const createStyles = (theme: Theme) =>
       color: theme.white,
       lineHeight: fontSize.size20,
     },
+    addOnIncludes: {
+      gap: moderateHeightScale(8),
+      marginTop: moderateHeightScale(8),
+      paddingTop: moderateHeightScale(14),
+      borderTopWidth: 1,
+      borderTopColor: theme.goldenBuy,
+    },
+    addOnIncludesIntro: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontRegular,
+      color: theme.white,
+      lineHeight: fontSize.size20,
+      marginTop: -moderateHeightScale(4),
+    },
     // Subscription details card
     detailsCard: {
       backgroundColor: theme.white,
@@ -1090,6 +1108,26 @@ const createStyles = (theme: Theme) =>
       textAlign: "right",
     },
   });
+
+/** One gold-check line in the plan card's "includes" list */
+function IncludesRow({
+  text,
+  styles,
+  checkColor,
+}: {
+  text: string;
+  styles: ReturnType<typeof createStyles>;
+  checkColor: string;
+}) {
+  return (
+    <View style={styles.includesRow}>
+      <View style={styles.includesCheck}>
+        <Feather name="check" size={iconScale(12)} color={checkColor} />
+      </View>
+      <Text style={styles.includesText}>{text}</Text>
+    </View>
+  );
+}
 
 export default function SubscriptionScreen() {
   const { colors } = useTheme();
@@ -1554,31 +1592,9 @@ export default function SubscriptionScreen() {
   }, [subscription, isTrialing, isCancelled, paymentFailed, t]);
 
 
-  /**
-   * Plan description from the backend: "Designed for …\n\nIncludes:\nItem\nItem"
-   * → intro line + checklist for the green card. No "Includes:" line → intro only.
-   */
-  const planInfo = (() => {
-    const raw = subscription?.subscriptionPlanDescription?.trim();
-    if (!raw) return { intro: null as string | null, items: [] as string[] };
-    const lines = raw
-      .split(/\r?\n/)
-      .map((line) => line.trim())
-      .filter(Boolean);
-    const includesAt = lines.findIndex((line) =>
-      /^(includes|what'?s included)\s*:?$/i.test(line),
-    );
-    if (includesAt === -1) {
-      return { intro: capitalizeFirstLetter(raw), items: [] as string[] };
-    }
-    return {
-      intro: lines.slice(0, includesAt).join(" ") || null,
-      items: lines
-        .slice(includesAt + 1)
-        .map((line) => line.replace(/^[-•*✓✔]\s*/, ""))
-        .filter(Boolean),
-    };
-  })();
+  /** Client 11-24 samples: fixed Solo / Business points (not the backend text) */
+  const isSoloPlanName = /solo/i.test(subscription?.subscriptionPlan ?? "");
+  const planPoints = getPlanPoints(t, isSoloPlanName);
   /**
    * Details card = the CURRENT billing period (client 11-05): last payment
    * (or trial start) on the left, renewal / trial end / access-until on the
@@ -1796,7 +1812,9 @@ export default function SubscriptionScreen() {
         title: t("removePromotionAddOn"),
         text: isApplePayment
           ? t("appleRemovePromotionDesc")
-          : t("removePromotionAddOnDesc"),
+          : isSoloPlanName
+            ? t("removePromotionAddOnDescSolo")
+            : t("removePromotionAddOnDescBusiness"),
         onPress: isApplePayment
           ? () => void handleOpenAppleSheet()
           : () => setRemovePromotionVisible(true),
@@ -2034,11 +2052,11 @@ export default function SubscriptionScreen() {
               {breakdownAddOns.length > 0 ? (
                 <View style={styles.breakdown}>
                   <View style={styles.addOnRow}>
-                    {/* Client 11-05: "Pro plan" for Business, "Solo plan" for Solo */}
+                    {/* Client 11-24 sample: "Business plan" / "Solo plan" */}
                     <Text style={styles.addOnName}>
-                      {/solo/i.test(subscription.subscriptionPlan ?? "")
+                      {isSoloPlanName
                         ? t("soloPlanLabel")
-                        : t("proPlanLabel")}
+                        : t("businessPlanLabel")}
                     </Text>
                     {localCurrencyBilling ? null : (
                       <Text style={styles.addOnPrice}>
@@ -2052,7 +2070,7 @@ export default function SubscriptionScreen() {
                         {/* Business add-on = the Deals promotion (sample: "Promotion") */}
                         {subscription.hasFeaturedAddOn &&
                         breakdownAddOns.length === 1
-                          ? t("promotionLineLabel")
+                          ? t("promotionAddOnTitle")
                           : service.name}
                       </Text>
                       {localCurrencyBilling ? null : (
@@ -2111,7 +2129,8 @@ export default function SubscriptionScreen() {
 
               {/* Client 11-05: what the plan includes, inside the plan card */}
               {/* Closed by default; tap the heading row to open (client 11-05) */}
-              {planInfo.intro || planInfo.items.length > 0 ? (
+              {/* Client 11-24 sample: plan points, then Promotion Add-on points */}
+              {planPoints.length > 0 || hasPromotion ? (
                 <View style={styles.includesBlock}>
                   <TouchableOpacity
                     onPress={() => setIncludesExpanded((v) => !v)}
@@ -2121,7 +2140,9 @@ export default function SubscriptionScreen() {
                     accessibilityState={{ expanded: includesExpanded }}
                   >
                     <Text style={styles.includesTitle}>
-                      {t("whatsIncluded")}
+                      {isSoloPlanName
+                        ? t("yourSoloPlanIncludes")
+                        : t("yourBusinessPlanIncludes")}
                     </Text>
                     <Feather
                       name={includesExpanded ? "chevron-up" : "chevron-down"}
@@ -2131,26 +2152,36 @@ export default function SubscriptionScreen() {
                   </TouchableOpacity>
                   {includesExpanded ? (
                     <View style={styles.includesBody}>
-                      {planInfo.intro ? (
-                        <Text style={styles.includesIntro}>
-                          {planInfo.intro}
-                        </Text>
-                      ) : null}
-                      {planInfo.items.map((item, index) => (
-                        <View
+                      {planPoints.map((item, index) => (
+                        <IncludesRow
                           key={`${index}-${item}`}
-                          style={styles.includesRow}
-                        >
-                          <View style={styles.includesCheck}>
-                            <Feather
-                              name="check"
-                              size={iconScale(12)}
-                              color={theme.darkGreen}
-                            />
-                          </View>
-                          <Text style={styles.includesText}>{item}</Text>
-                        </View>
+                          text={item}
+                          styles={styles}
+                          checkColor={theme.darkGreen}
+                        />
                       ))}
+                      {hasPromotion ? (
+                        <View style={styles.addOnIncludes}>
+                          <Text style={styles.includesTitle}>
+                            {promotionPriceText && !localCurrencyBilling
+                              ? t("promotionAddOnTitleWithPrice", {
+                                  price: promotionPriceText,
+                                })
+                              : t("promotionAddOnTitle")}
+                          </Text>
+                          <Text style={styles.addOnIncludesIntro}>
+                            {t("promotionAddOnIntro")}
+                          </Text>
+                          {getPromotionAddOnPoints(t).map((item) => (
+                            <IncludesRow
+                              key={item}
+                              text={item}
+                              styles={styles}
+                              checkColor={theme.darkGreen}
+                            />
+                          ))}
+                        </View>
+                      ) : null}
                     </View>
                   ) : null}
                 </View>
