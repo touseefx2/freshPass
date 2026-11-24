@@ -7,6 +7,8 @@ import type {
 export interface ProductCategory {
   id: number;
   name: string;
+  /** Admin-uploaded icon; null = app falls back to its built-in icon. */
+  image_url: string | null;
 }
 
 /** Catalog filter chips. Leave out for all products, newest first. */

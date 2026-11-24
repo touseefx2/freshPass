@@ -141,7 +141,14 @@ export async function fetchProductCategories(options?: {
   return rows
     .map((row) => {
       const raw = asRecord(row) ?? {};
-      return { id: toNum(raw.id), name: toText(raw.name) ?? "" };
+      return {
+        id: toNum(raw.id),
+        name: toText(raw.name) ?? "",
+        image_url:
+          typeof raw.image_url === "string" && raw.image_url.trim() !== ""
+            ? raw.image_url
+            : null,
+      };
     })
     .filter((c) => c.name !== "");
 }

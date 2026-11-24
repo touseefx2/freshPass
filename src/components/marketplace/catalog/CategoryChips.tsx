@@ -1,5 +1,6 @@
-import React, { memo, useMemo } from "react";
+import React, { memo, useMemo, useState } from "react";
 import {
+  Image,
   ScrollView,
   StyleSheet,
   Text,
@@ -59,16 +60,45 @@ const CATEGORY_ICONS: Record<string, { icon: IconName; color: string }> = {
 };
 
 export function getCategoryIcon(name: string): IconName {
-  return getCategoryVisual(name).icon;
+  return CATEGORY_ICONS[name.trim().toLowerCase()]?.icon ?? "shape";
 }
 
-function getCategoryVisual(name: string) {
-  return (
-    CATEGORY_ICONS[name.trim().toLowerCase()] ?? {
-      icon: "shape" as IconName,
-      color: "#BC6C25",
-    }
-  );
+// Categories the app has no icon for (admin adds new ones any time, without
+// an image) show their first letter, each in its own colour, so they don't
+// all look the same.
+const LETTER_COLORS = [
+  "#1E8A80",
+  "#D4637A",
+  "#3E7B27",
+  "#8A5A9E",
+  "#C2415D",
+  "#8B5A2B",
+  "#BC6C25",
+  "#2F6F9F",
+];
+
+type CategoryVisual =
+  | { kind: "icon"; icon: IconName; color: string }
+  | { kind: "letter"; letter: string; color: string };
+
+function getCategoryVisual(name: string): CategoryVisual {
+  const known = CATEGORY_ICONS[name.trim().toLowerCase()];
+  if (known) return { kind: "icon", ...known };
+  const trimmed = name.trim();
+  const letter = (
+    trimmed.match(/[A-Za-z0-9]/)?.[0] ??
+    trimmed.charAt(0) ??
+    "?"
+  ).toUpperCase();
+  let hash = 0;
+  for (const ch of name.trim().toLowerCase()) {
+    hash = (hash * 31 + ch.charCodeAt(0)) >>> 0;
+  }
+  return {
+    kind: "letter",
+    letter,
+    color: LETTER_COLORS[hash % LETTER_COLORS.length],
+  };
 }
 
 const createStyles = (theme: Theme) =>
@@ -108,6 +138,27 @@ const createStyles = (theme: Theme) =>
       gap: moderateHeightScale(4),
       paddingHorizontal: moderateWidthScale(4),
     },
+    image: {
+      width: moderateWidthScale(28),
+      height: moderateWidthScale(28),
+      borderRadius: moderateWidthScale(14),
+    },
+    letter: {
+      fontSize: fontSize.size22,
+      fontFamily: fonts.fontBold,
+      includeFontPadding: false,
+    },
+    letterActive: {
+      fontSize: fontSize.size20,
+      fontFamily: fonts.fontBold,
+      color: theme.white,
+      includeFontPadding: false,
+    },
+    imageActive: {
+      width: moderateWidthScale(26),
+      height: moderateWidthScale(26),
+      borderRadius: moderateWidthScale(13),
+    },
     label: {
       marginTop: LABEL_GAP,
       height: LABEL_HEIGHT,
@@ -142,6 +193,8 @@ function Chip({
   label,
   icon,
   iconColor,
+  letter,
+  imageUrl,
   active,
   onPress,
   styles,
@@ -150,11 +203,17 @@ function Chip({
   label: string;
   icon: IconName;
   iconColor: string;
+  /** Shown instead of the icon when the app has no icon for this name. */
+  letter?: string;
+  /** Admin-uploaded image; falls back to the icon when missing or broken. */
+  imageUrl?: string | null;
   active: boolean;
   onPress: () => void;
   styles: ReturnType<typeof createStyles>;
   theme: Theme;
 }) {
+  const [imageFailed, setImageFailed] = useState(false);
+  const showImage = !!imageUrl && !imageFailed;
   return (
     <TouchableOpacity
       activeOpacity={0.75}
@@ -166,11 +225,22 @@ function Chip({
     >
       {active ? (
         <View style={styles.activePill}>
-          <MaterialCommunityIcons
-            name={icon}
-            size={moderateWidthScale(26)}
-            color={theme.white}
-          />
+          {showImage ? (
+            <Image
+              source={{ uri: imageUrl! }}
+              style={styles.imageActive}
+              resizeMode="cover"
+              onError={() => setImageFailed(true)}
+            />
+          ) : letter ? (
+            <Text style={styles.letterActive}>{letter}</Text>
+          ) : (
+            <MaterialCommunityIcons
+              name={icon}
+              size={moderateWidthScale(26)}
+              color={theme.white}
+            />
+          )}
           <Text style={styles.labelActive} numberOfLines={1}>
             {label}
           </Text>
@@ -178,11 +248,24 @@ function Chip({
       ) : (
         <>
           <View style={styles.circle}>
-            <MaterialCommunityIcons
-              name={icon}
-              size={moderateWidthScale(28)}
-              color={iconColor}
-            />
+            {showImage ? (
+              <Image
+                source={{ uri: imageUrl! }}
+                style={styles.image}
+                resizeMode="cover"
+                onError={() => setImageFailed(true)}
+              />
+            ) : letter ? (
+              <Text style={[styles.letter, { color: iconColor }]}>
+                {letter}
+              </Text>
+            ) : (
+              <MaterialCommunityIcons
+                name={icon}
+                size={moderateWidthScale(28)}
+                color={iconColor}
+              />
+            )}
           </View>
           <Text style={styles.label} numberOfLines={1}>
             {label}
@@ -205,7 +288,7 @@ function CategoryChips({ categories, selected, onSelect, loading }: Props) {
     if (!selected || categories.some((c) => c.name === selected)) {
       return categories;
     }
-    return [{ id: -1, name: selected }, ...categories];
+    return [{ id: -1, name: selected, image_url: null }, ...categories];
   }, [categories, selected]);
 
   return (
@@ -230,8 +313,10 @@ function CategoryChips({ categories, selected, onSelect, loading }: Props) {
           <Chip
             key={`${category.id}-${category.name}`}
             label={category.name}
-            icon={visual.icon}
+            icon={visual.kind === "icon" ? visual.icon : "shape"}
+            letter={visual.kind === "letter" ? visual.letter : undefined}
             iconColor={visual.color}
+            imageUrl={category.image_url}
             active={selected === category.name}
             onPress={() =>
               onSelect(selected === category.name ? null : category.name)
