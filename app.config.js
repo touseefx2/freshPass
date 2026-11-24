@@ -20,8 +20,8 @@ const facebookPlugin = facebookAppId
     ]
   : null;
 
-// Invite a Pro test links (https://dev.getfreshpass.com/invite/{code}): only
-// in builds that talk to the dev API, never in a release on the live API.
+// Dev website links (Invite a Pro /invite/{code}, business pages /{slug}):
+// only in builds that talk to the dev API, never in a release on the live API.
 const DEV_INVITE_HOST = "dev.getfreshpass.com";
 const usesDevApi = (process.env.EXPO_PUBLIC_API_BASE_URL || "").includes(
   `//${DEV_INVITE_HOST}`,
@@ -61,6 +61,18 @@ module.exports = {
                     scheme: "https",
                     host: DEV_INVITE_HOST,
                     pathPrefix: "/invite/",
+                  },
+                ],
+                category: ["BROWSABLE", "DEFAULT"],
+              },
+              {
+                action: "VIEW",
+                autoVerify: true,
+                data: [
+                  {
+                    scheme: "https",
+                    host: DEV_INVITE_HOST,
+                    pathAdvancedPattern: "/[a-zA-Z0-9_\\-]+",
                   },
                 ],
                 category: ["BROWSABLE", "DEFAULT"],
