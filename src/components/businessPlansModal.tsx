@@ -38,9 +38,7 @@ import {
   resolveIosBusinessPlanProductId,
   type AppleAddonProduct,
 } from "@/src/services/iapService";
-import {
-  resolveTrialDays,
-} from "@/src/services/remoteConfigService";
+import { resolveTrialDays } from "@/src/services/remoteConfigService";
 import { useAppSelector } from "@/src/hooks/hooks";
 import NotificationBanner from "@/src/components/notificationBanner";
 import { Skeleton } from "@/src/components/skeletons";
@@ -98,7 +96,8 @@ const extractSelectedBusinessPlanId = (payload: unknown): number | null => {
     if (Number.isFinite(parsed) && parsed > 0) return parsed;
   }
 
-  const nestedPlan = data.plan ?? data.selected_business_plan ?? data.subscription_plan;
+  const nestedPlan =
+    data.plan ?? data.selected_business_plan ?? data.subscription_plan;
   if (nestedPlan && typeof nestedPlan === "object") {
     const planObj = nestedPlan as Record<string, unknown>;
     const nestedId = planObj.id ?? planObj.plan_id ?? planObj.planId;
@@ -162,9 +161,15 @@ const createStyles = (theme: Theme) =>
       justifyContent: "space-between",
       paddingHorizontal: moderateWidthScale(20),
       paddingVertical: moderateHeightScale(16),
+    },
+    headerWrap: {
       backgroundColor: theme.background,
       borderBottomWidth: 1,
       borderBottomColor: theme.borderLight,
+    },
+    planTabBar: {
+      paddingHorizontal: moderateWidthScale(20),
+      paddingBottom: moderateHeightScale(14),
     },
     headerTitle: {
       fontSize: fontSize.size20,
@@ -523,6 +528,11 @@ function BusinessPlansModalContent({
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
   const insets = useSafeAreaInsets();
+  // Android 3-button nav bar is tall (~48dp) — give the plan list extra room at the bottom.
+  const extraBottomSpace =
+    Platform.OS === "android" && insets.bottom >= 40
+      ? moderateHeightScale(60)
+      : 0;
   const { showBanner } = useNotificationContext();
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
   const user = useAppSelector((state: any) => state.user);
@@ -608,6 +618,9 @@ function BusinessPlansModalContent({
 
   const usePlanTabs =
     !businessOnly && soloPlans.length > 0 && businessPlans.length > 0;
+  // Solo / Business switch sits fixed in the header (not in the scroll).
+  const showHeaderTabs =
+    usePlanTabs && !apiError && !(loading && plans.length === 0);
 
   const visiblePlans = useMemo(() => {
     if (businessOnly) return businessPlans;
@@ -850,7 +863,6 @@ function BusinessPlansModalContent({
     }
   }, [visible, t]);
 
-
   const finishSubscriptionSuccess = () => {
     onSuccess?.();
     dispatch(setSuppressBusinessPlansAutoOpen(true));
@@ -1037,41 +1049,19 @@ function BusinessPlansModalContent({
       ]}
     >
       <View style={styles.modalContainer}>
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>{t("businessPlans")}</Text>
-          <TouchableOpacity
-            onPress={onClose}
-            style={styles.closeButton}
-            activeOpacity={0.7}
-          >
-            <Feather
-              name="x"
-              size={iconScale(24)}
-              color={theme.darkGreen}
-            />
-          </TouchableOpacity>
-        </View>
-
-        {loading && plans.length === 0 ? (
-          <Skeleton screenType="BusinessPlans" styles={styles} />
-        ) : apiError ? (
-          <View style={styles.errorContainer}>
-            <Text style={styles.errorText}>{error}</Text>
-            <RetryButton onPress={fetchPlans} loading={loading} />
+        <View style={styles.headerWrap}>
+          <View style={styles.header}>
+            <Text style={styles.headerTitle}>{t("businessPlans")}</Text>
+            <TouchableOpacity
+              onPress={onClose}
+              style={styles.closeButton}
+              activeOpacity={0.7}
+            >
+              <Feather name="x" size={iconScale(24)} color={theme.darkGreen} />
+            </TouchableOpacity>
           </View>
-        ) : standardPlans.length === 0 ? (
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>
-              {t("noSubscriptionPlansAvailable")}
-            </Text>
-          </View>
-        ) : (
-          <ScrollView
-            style={styles.content}
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={styles.plansContainer}
-          >
-            {usePlanTabs ? (
+          {showHeaderTabs ? (
+            <View style={styles.planTabBar}>
               <View style={styles.planTabRow}>
                 <TouchableOpacity
                   style={[
@@ -1108,8 +1098,34 @@ function BusinessPlansModalContent({
                   </Text>
                 </TouchableOpacity>
               </View>
-            ) : null}
+            </View>
+          ) : null}
+        </View>
 
+        {loading && plans.length === 0 ? (
+          <Skeleton screenType="BusinessPlans" styles={styles} />
+        ) : apiError ? (
+          <View style={styles.errorContainer}>
+            <Text style={styles.errorText}>{error}</Text>
+            <RetryButton onPress={fetchPlans} loading={loading} />
+          </View>
+        ) : standardPlans.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyText}>
+              {t("noSubscriptionPlansAvailable")}
+            </Text>
+          </View>
+        ) : (
+          <ScrollView
+            style={styles.content}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={[
+              styles.plansContainer,
+              extraBottomSpace > 0 && {
+                paddingBottom: moderateHeightScale(30) + extraBottomSpace,
+              },
+            ]}
+          >
             {visiblePlans.map((plan) => {
               const totalText = formatPlanMoney(getTotalPriceForPlan(plan));
               const planIsSolo = isSoloPlan(plan);
@@ -1117,119 +1133,124 @@ function BusinessPlansModalContent({
                 isServiceSelectedForPlan(plan.id, service.id),
               );
               return (
-              <View key={plan.id} style={[styles.planCard, styles.shadow]}>
-                <View style={styles.planHeader}>
-                  <Text style={styles.planName}>{plan.name}</Text>
-                  <View style={styles.planPriceContainer}>
-                    <Text style={styles.planPrice}>
-                      {formatPlanMoney(plan.price)}
-                    </Text>
-                    <Text style={styles.planPricePeriod}>
-                      {t("businessPlanPerMonth")}
-                    </Text>
-                  </View>
-                </View>
-
-                <View style={styles.subscriptionPeriodRow}>
-                  <Feather
-                    name="refresh-cw"
-                    size={iconScale(14)}
-                    color={theme.darkGreen}
-                    style={styles.detailIcon}
-                  />
-                  <Text style={styles.subscriptionPeriodText}>
-                    {t("businessPlanMonthlySubscription")}
-                  </Text>
-                </View>
-
-                {/* Client 11-24 sample: fixed intro + points, gold add-on box, price rows */}
-                <Text style={styles.planDescription}>
-                  {planIsSolo ? t("soloPlanIntro") : t("businessPlanIntro")}
-                </Text>
-                <PlanIncludesSection isSolo={planIsSolo} />
-                {!loadingAdditionalServices && activeAddOns.length > 0 ? (
-                  <View style={styles.addOnSection}>
-                    {activeAddOns.map((service) => (
-                      <PromotionAddOnBox
-                        key={service.id}
-                        price={formatPlanMoney(service.price)}
-                        title={
-                          activeAddOns.length === 1 ? undefined : service.name
-                        }
-                        showPoints={activeAddOns.length === 1}
-                        selected={isServiceSelectedForPlan(plan.id, service.id)}
-                        onToggle={() =>
-                          toggleServiceForPlan(plan.id, service.id)
-                        }
-                      />
-                    ))}
-                  </View>
-                ) : null}
-                <View style={styles.priceRows}>
-                  <View style={styles.priceRow}>
-                    <Text style={styles.priceRowText}>
-                      {planIsSolo ? t("soloPlanLabel") : t("businessPlanLabel")}
-                    </Text>
-                    <Text style={styles.priceRowText}>
-                      {formatPlanMoney(plan.price)}
-                    </Text>
-                  </View>
-                  {selectedAddOns.map((service) => (
-                    <View key={service.id} style={styles.priceRow}>
-                      <Text style={styles.priceRowText}>
-                        {activeAddOns.length === 1
-                          ? t("promotionAddOnTitle")
-                          : service.name}
+                <View key={plan.id} style={[styles.planCard, styles.shadow]}>
+                  <View style={styles.planHeader}>
+                    <Text style={styles.planName}>{plan.name}</Text>
+                    <View style={styles.planPriceContainer}>
+                      <Text style={styles.planPrice}>
+                        {formatPlanMoney(plan.price)}
                       </Text>
-                      <Text style={styles.priceRowText}>
-                        {formatPlanMoney(service.price)}
+                      <Text style={styles.planPricePeriod}>
+                        {t("businessPlanPerMonth")}
                       </Text>
                     </View>
-                  ))}
-                  <View style={styles.priceDivider} />
-                  <View style={styles.priceRow}>
-                    <Text style={styles.totalText}>
-                      {showTrialCopy ? t("totalAfterTrial") : t("totalLabel")}
-                    </Text>
-                    <Text style={styles.totalText}>
-                      {t("pricePerMonth", { price: totalText })}
+                  </View>
+
+                  <View style={styles.subscriptionPeriodRow}>
+                    <Feather
+                      name="refresh-cw"
+                      size={iconScale(14)}
+                      color={theme.darkGreen}
+                      style={styles.detailIcon}
+                    />
+                    <Text style={styles.subscriptionPeriodText}>
+                      {t("businessPlanMonthlySubscription")}
                     </Text>
                   </View>
-                </View>
-                <Text style={styles.disclosureText}>
-                  {getTrialDisclosure(totalText)}
-                </Text>
-                {isIos && (
+
+                  {/* Client 11-24 sample: fixed intro + points, gold add-on box, price rows */}
+                  <Text style={styles.planDescription}>
+                    {planIsSolo ? t("soloPlanIntro") : t("businessPlanIntro")}
+                  </Text>
+                  <PlanIncludesSection isSolo={planIsSolo} />
+                  {!loadingAdditionalServices && activeAddOns.length > 0 ? (
+                    <View style={styles.addOnSection}>
+                      {activeAddOns.map((service) => (
+                        <PromotionAddOnBox
+                          key={service.id}
+                          price={formatPlanMoney(service.price)}
+                          title={
+                            activeAddOns.length === 1 ? undefined : service.name
+                          }
+                          showPoints={activeAddOns.length === 1}
+                          selected={isServiceSelectedForPlan(
+                            plan.id,
+                            service.id,
+                          )}
+                          onToggle={() =>
+                            toggleServiceForPlan(plan.id, service.id)
+                          }
+                        />
+                      ))}
+                    </View>
+                  ) : null}
+                  <View style={styles.priceRows}>
+                    <View style={styles.priceRow}>
+                      <Text style={styles.priceRowText}>
+                        {planIsSolo
+                          ? t("soloPlanLabel")
+                          : t("businessPlanLabel")}
+                      </Text>
+                      <Text style={styles.priceRowText}>
+                        {formatPlanMoney(plan.price)}
+                      </Text>
+                    </View>
+                    {selectedAddOns.map((service) => (
+                      <View key={service.id} style={styles.priceRow}>
+                        <Text style={styles.priceRowText}>
+                          {activeAddOns.length === 1
+                            ? t("promotionAddOnTitle")
+                            : service.name}
+                        </Text>
+                        <Text style={styles.priceRowText}>
+                          {formatPlanMoney(service.price)}
+                        </Text>
+                      </View>
+                    ))}
+                    <View style={styles.priceDivider} />
+                    <View style={styles.priceRow}>
+                      <Text style={styles.totalText}>
+                        {showTrialCopy ? t("totalAfterTrial") : t("totalLabel")}
+                      </Text>
+                      <Text style={styles.totalText}>
+                        {t("pricePerMonth", { price: totalText })}
+                      </Text>
+                    </View>
+                  </View>
                   <Text style={styles.disclosureText}>
-                    {t("businessPlanCancelInSettings")}
+                    {getTrialDisclosure(totalText)}
                   </Text>
-                )}
-                <Button
-                  title={
-                    showSubscribeInsteadOfTrial
-                      ? t("businessPlanSubscribe")
-                      : t("businessPlanStartTrial", {
-                          trialDays,
-                        })
-                  }
-                  onPress={() => handleTrialPress(plan.id)}
-                  loading={subscribingPlanId === plan.id}
-                  disabled={subscribingPlanId !== null || !trialDays.trim()}
-                  containerStyle={styles.subscribeButton}
-                />
-                <Text style={styles.legalText}>
-                  {t("businessPlanLegalPrefix")}{" "}
-                  <Text style={styles.legalLink} onPress={handleTermsPress}>
-                    {t("termsOfUse")}
-                  </Text>{" "}
-                  &{" "}
-                  <Text style={styles.legalLink} onPress={handlePrivacyPress}>
-                    {t("privacyPolicy")}
+                  {isIos && (
+                    <Text style={styles.disclosureText}>
+                      {t("businessPlanCancelInSettings")}
+                    </Text>
+                  )}
+                  <Button
+                    title={
+                      showSubscribeInsteadOfTrial
+                        ? t("businessPlanSubscribe")
+                        : t("businessPlanStartTrial", {
+                            trialDays,
+                          })
+                    }
+                    onPress={() => handleTrialPress(plan.id)}
+                    loading={subscribingPlanId === plan.id}
+                    disabled={subscribingPlanId !== null || !trialDays.trim()}
+                    containerStyle={styles.subscribeButton}
+                  />
+                  <Text style={styles.legalText}>
+                    {t("businessPlanLegalPrefix")}{" "}
+                    <Text style={styles.legalLink} onPress={handleTermsPress}>
+                      {t("termsOfUse")}
+                    </Text>{" "}
+                    &{" "}
+                    <Text style={styles.legalLink} onPress={handlePrivacyPress}>
+                      {t("privacyPolicy")}
+                    </Text>
+                    .
                   </Text>
-                  .
-                </Text>
-              </View>
-            );
+                </View>
+              );
             })}
           </ScrollView>
         )}
@@ -1263,7 +1284,6 @@ function BusinessPlansModalContent({
         title={webViewTitle}
         onClose={() => setWebViewVisible(false)}
       />
-
     </View>
   );
 }

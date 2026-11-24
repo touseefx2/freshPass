@@ -8,6 +8,7 @@ import {
   ScrollView,
   StatusBar,
   Animated,
+  Platform,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { useTheme } from "@/src/hooks/hooks";
@@ -141,9 +142,15 @@ const createStyles = (theme: Theme) =>
       justifyContent: "space-between",
       paddingHorizontal: moderateWidthScale(20),
       paddingVertical: moderateHeightScale(16),
+    },
+    headerWrap: {
       backgroundColor: theme.background,
       borderBottomWidth: 1,
       borderBottomColor: theme.borderLight,
+    },
+    planTabBar: {
+      paddingHorizontal: moderateWidthScale(20),
+      paddingBottom: moderateHeightScale(14),
     },
     headerTitle: {
       fontSize: fontSize.size20,
@@ -447,8 +454,12 @@ function BusinessPlansPreviewModalContent({
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
   const insets = useSafeAreaInsets();
+  // Android 3-button nav bar is tall (~48dp) — give the plan list extra room at the bottom.
+  const extraBottomSpace =
+    !embedded && Platform.OS === "android" && insets.bottom >= 40
+      ? moderateHeightScale(60)
+      : 0;
   const [activeTab, setActiveTab] = useState<PlanTab>("solo");
-
 
   const standardPlans = useMemo(
     () => plans.filter((plan) => !isUnlimitedPlan(plan)),
@@ -482,6 +493,44 @@ function BusinessPlansPreviewModalContent({
     return activeTab === "solo" ? soloPlans : businessPlans;
   }, [usePlanTabs, activeTab, standardPlans, soloPlans, businessPlans]);
 
+  // Solo / Business switch: fixed in the header (not in the scroll) unless embedded.
+  const planTabs = (
+    <View style={styles.planTabRow}>
+      <TouchableOpacity
+        style={[styles.planTab, activeTab === "solo" && styles.planTabActive]}
+        onPress={() => setActiveTab("solo")}
+        activeOpacity={0.8}
+      >
+        <Text
+          style={[
+            styles.planTabText,
+            activeTab === "solo" && styles.planTabTextActive,
+          ]}
+        >
+          {t("solo")}
+        </Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={[
+          styles.planTab,
+          activeTab === "business" && styles.planTabActive,
+        ]}
+        onPress={() => setActiveTab("business")}
+        activeOpacity={0.8}
+      >
+        <Text
+          style={[
+            styles.planTabText,
+            activeTab === "business" && styles.planTabTextActive,
+          ]}
+        >
+          {t("business")}
+        </Text>
+      </TouchableOpacity>
+    </View>
+  );
+  const showHeaderTabs =
+    usePlanTabs && !embedded && !apiError && !(loading && plans.length === 0);
 
   const overlayStyle = embedded
     ? styles.modalContainer
@@ -497,15 +546,24 @@ function BusinessPlansPreviewModalContent({
     <View style={overlayStyle}>
       <View style={styles.modalContainer}>
         {!embedded && (
-          <View style={styles.header}>
-            <Text style={styles.headerTitle}>{t("businessPlans")}</Text>
-            <TouchableOpacity
-              onPress={onClose}
-              style={styles.closeButton}
-              activeOpacity={0.7}
-            >
-              <Feather name="x" size={iconScale(24)} color={theme.darkGreen} />
-            </TouchableOpacity>
+          <View style={styles.headerWrap}>
+            <View style={styles.header}>
+              <Text style={styles.headerTitle}>{t("businessPlans")}</Text>
+              <TouchableOpacity
+                onPress={onClose}
+                style={styles.closeButton}
+                activeOpacity={0.7}
+              >
+                <Feather
+                  name="x"
+                  size={iconScale(24)}
+                  color={theme.darkGreen}
+                />
+              </TouchableOpacity>
+            </View>
+            {showHeaderTabs ? (
+              <View style={styles.planTabBar}>{planTabs}</View>
+            ) : null}
           </View>
         )}
 
@@ -529,47 +587,13 @@ function BusinessPlansPreviewModalContent({
             contentContainerStyle={[
               styles.plansContainer,
               embedded && styles.contentEmbedded,
+              extraBottomSpace > 0 && {
+                paddingBottom: moderateHeightScale(30) + extraBottomSpace,
+              },
             ]}
             scrollEnabled={!embedded}
           >
-            {usePlanTabs ? (
-              <View style={styles.planTabRow}>
-                <TouchableOpacity
-                  style={[
-                    styles.planTab,
-                    activeTab === "solo" && styles.planTabActive,
-                  ]}
-                  onPress={() => setActiveTab("solo")}
-                  activeOpacity={0.8}
-                >
-                  <Text
-                    style={[
-                      styles.planTabText,
-                      activeTab === "solo" && styles.planTabTextActive,
-                    ]}
-                  >
-                    {t("solo")}
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[
-                    styles.planTab,
-                    activeTab === "business" && styles.planTabActive,
-                  ]}
-                  onPress={() => setActiveTab("business")}
-                  activeOpacity={0.8}
-                >
-                  <Text
-                    style={[
-                      styles.planTabText,
-                      activeTab === "business" && styles.planTabTextActive,
-                    ]}
-                  >
-                    {t("business")}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            ) : null}
+            {usePlanTabs && embedded ? planTabs : null}
 
             {visiblePlans.map((plan) => {
               const activeAddOns = additionalServices.filter((s) => s.active);
@@ -586,7 +610,9 @@ function BusinessPlansPreviewModalContent({
                   <View style={styles.planHeader}>
                     <Text style={styles.planName}>{plan.name}</Text>
                     <View style={styles.planPriceContainer}>
-                      <Text style={styles.planPrice}>{formatPlanMoney(plan.price)}</Text>
+                      <Text style={styles.planPrice}>
+                        {formatPlanMoney(plan.price)}
+                      </Text>
                       <Text style={styles.planPricePeriod}>
                         {t("businessPlanPerMonth")}
                       </Text>
@@ -607,7 +633,9 @@ function BusinessPlansPreviewModalContent({
 
                   {/* Client 11-24 sample: same points + add-on box as the buy screen */}
                   <Text style={styles.planDescription}>
-                    {isSoloPlan(plan) ? t("soloPlanIntro") : t("businessPlanIntro")}
+                    {isSoloPlan(plan)
+                      ? t("soloPlanIntro")
+                      : t("businessPlanIntro")}
                   </Text>
                   <PlanIncludesSection isSolo={isSoloPlan(plan)} />
                   {!loadingAdditionalServices && activeAddOns.length > 0 ? (
