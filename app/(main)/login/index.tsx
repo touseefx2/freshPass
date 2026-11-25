@@ -39,7 +39,7 @@ import {
 } from "@/src/utils/navigation";
 import { ApiService, getAccountSuspendedMessage } from "@/src/services/api";
 import { businessEndpoints } from "@/src/services/endpoints";
-import { withSingleRole } from "@/src/utils/accountRole";
+import { hasExistingBusiness, withSingleRole } from "@/src/utils/accountRole";
 import {
   normalizeUserMode,
   setBusinessStatus,
@@ -250,7 +250,7 @@ export default function Login() {
     if (
       loginData?.isNewCreated &&
       loginData?.user?.role === "business" &&
-      !loginData?.user?.business?.id
+      !hasExistingBusiness(loginData?.user)
     ) {
       dispatch(setFullName(loginData.user?.name || ""));
       resetToRoute(`/${MAIN_ROUTES.REGISTER_NEXT_STEPS}`);

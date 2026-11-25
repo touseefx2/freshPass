@@ -33,3 +33,16 @@ export function withSingleRole<
     },
   };
 }
+
+/**
+ * True when the login / social-login user already set up a business, so it
+ * must never re-enter onboarding even if the server says isNewCreated.
+ * Social login does not send `user.business`, so check every field we get.
+ */
+export function hasExistingBusiness(user: any): boolean {
+  return Boolean(
+    user?.business?.id ||
+      user?.business_id ||
+      String(user?.business_name ?? "").trim(),
+  );
+}

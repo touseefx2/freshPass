@@ -41,7 +41,7 @@ import type {
   SocialLoginApiResponse,
 } from "@/src/types/socialLogin";
 import { getExpoPushToken } from "../services/notificationPermissionService";
-import { withSingleRole } from "@/src/utils/accountRole";
+import { hasExistingBusiness, withSingleRole } from "@/src/utils/accountRole";
 import {
   clearPendingInviteCode,
   getPendingInviteCode,
@@ -179,7 +179,7 @@ export function useSocialLogin() {
 
             // An account that already has a business never re-enters
             // onboarding, even if the server says isNewCreated.
-            if (isNewCreated && !(user as any).business?.id) {
+            if (isNewCreated && !hasExistingBusiness(user)) {
               // New business account: the invite code has been recorded
               void clearPendingInviteCode();
               dispatch(setFullName(user.name || ""));
