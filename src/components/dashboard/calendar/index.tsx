@@ -262,8 +262,15 @@ const getWeekDays = (date: dayjs.Dayjs) => {
 const formatHourLabel = (hour: number) =>
   dayjs().startOf("day").hour(hour % 24).format("h A");
 
+// Set clock fields (not add a duration) so DST-change days don't shift by 1h
+const minutesToClock = (minutes: number) =>
+  dayjs()
+    .startOf("day")
+    .hour(Math.floor(minutes / 60) % 24)
+    .minute(minutes % 60);
+
 const formatMinutesLabel = (minutes: number) =>
-  dayjs().startOf("day").add(minutes, "minute").format("h:mm A");
+  minutesToClock(minutes).format("h:mm A");
 
 const toTitleCase = (text: string) =>
   text.toLowerCase().replace(/(^|\s)\S/g, (c) => c.toUpperCase());
@@ -3038,9 +3045,7 @@ export default function CalendarScreen({ fullscreen = false }: CalendarScreenPro
   const renderListCard = (appointment: CalendarAppointment) => {
     const cancelled = isCancelled(appointment);
     const palette = cancelled ? cancelledPalette : getPalette(appointment.id);
-    const startTime = dayjs()
-      .startOf("day")
-      .add(appointment.start_minutes, "minute");
+    const startTime = minutesToClock(appointment.start_minutes);
     const period = startTime.format("A");
     const timeStr = startTime.format("h:mm");
     return (
@@ -4230,10 +4235,9 @@ export default function CalendarScreen({ fullscreen = false }: CalendarScreenPro
                     {overlapListItems.map((appt) => {
                       const apptCancelled = appt.originalAppointment?.status === "cancelled";
                       const apptPalette = apptCancelled ? cancelledPalette : getPalette(appt.id);
-                      const timeLabel = dayjs()
-                        .startOf("day")
-                        .add(appt.start_minutes, "minute")
-                        .format("h:mm A");
+                      const timeLabel = minutesToClock(
+                        appt.start_minutes,
+                      ).format("h:mm A");
                       return (
                         <TouchableOpacity
                           key={appt.id}
