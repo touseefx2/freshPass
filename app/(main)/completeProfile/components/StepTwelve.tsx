@@ -107,10 +107,7 @@ export default function StepTwelve() {
       }
     } catch (error) {
       Logger.error("Error selecting image from gallery:", error);
-      Alert.alert(
-        "Error",
-        "Failed to select image from gallery. Please try again.",
-      );
+      Alert.alert(t("error"), t("failedToSelectImageFromGallery"));
     }
   }, [dispatch, photoQueue]);
 
@@ -161,9 +158,9 @@ export default function StepTwelve() {
   return (
     <View style={styles.container}>
       <View style={styles.titleSec}>
-        <Text style={styles.title}>Build trust with photos</Text>
+        <Text style={styles.title}>{t("buildTrustWithPhotos")}</Text>
         <Text style={styles.subtitle}>
-          Clients book salon barbers with great portfolios first.
+          {t("clientsBookSalonBarbersFirst")}
         </Text>
       </View>
 
@@ -184,7 +181,7 @@ export default function StepTwelve() {
       {photos.length === 0 && (
         <View style={styles.emptyState}>
           <Text style={styles.emptyStateText}>
-            You didn't select anything yet
+            {t("youDidntSelectAnythingYet")}
           </Text>
         </View>
       )}

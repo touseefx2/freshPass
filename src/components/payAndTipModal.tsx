@@ -22,6 +22,7 @@ import {
   widthScale,
 } from "@/src/theme/dimensions";
 import Button from "@/src/components/button";
+import { useTranslation } from "react-i18next";
 import {
   fetchTipDetails,
   formatTipAmount,
@@ -356,6 +357,7 @@ export default function PayAndTipModal({
   onClose,
   onContinue,
 }: PayAndTipModalProps) {
+  const { t } = useTranslation();
   const { colors } = useTheme();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
@@ -385,12 +387,12 @@ export default function PayAndTipModal({
     } catch (err: any) {
       setTipDetails(null);
       setLoadError(
-        err?.message || "Could not load tip options. You can still pay without a tip.",
+        err?.message || t("tipUiLoadOptionsError"),
       );
     } finally {
       setLoading(false);
     }
-  }, [appointmentId]);
+  }, [appointmentId, t]);
 
   useEffect(() => {
     if (!visible) {
@@ -449,14 +451,14 @@ export default function PayAndTipModal({
     }
 
     if (activeAmount == null || Number.isNaN(activeAmount)) {
-      setValidationError("Enter a tip amount or select No tip, thanks.");
+      setValidationError(t("tipUiEnterAmountOrNoTip"));
       return;
     }
 
     // $0 (or negative) is not a tip — must tip above $0 or choose No tip
     if (activeAmount <= 0) {
       setValidationError(
-        "Enter a tip above $0, or select No tip, thanks.",
+        t("tipUiEnterAboveZero"),
       );
       return;
     }
@@ -464,18 +466,22 @@ export default function PayAndTipModal({
     if (tipDetails) {
       if (activeAmount < tipDetails.minAmount) {
         setValidationError(
-          `Minimum tip is ${formatTipAmount(tipDetails.minAmount, tipDetails.currency)}.`,
+          t("tipUiMinimumIs", {
+            amount: formatTipAmount(tipDetails.minAmount, tipDetails.currency),
+          }),
         );
         return;
       }
       if (activeAmount > tipDetails.maxAmount) {
         setValidationError(
-          `Maximum tip is ${formatTipAmount(tipDetails.maxAmount, tipDetails.currency)}.`,
+          t("tipUiMaximumIs", {
+            amount: formatTipAmount(tipDetails.maxAmount, tipDetails.currency),
+          }),
         );
         return;
       }
     } else if (activeAmount < 1) {
-      setValidationError("Minimum tip is $1.00.");
+      setValidationError(t("tipUiMinimumIs", { amount: "$1.00" }));
       return;
     }
 
@@ -485,8 +491,8 @@ export default function PayAndTipModal({
   const promptText = tipDetails?.recipient
     ? getTipPromptLabel(tipDetails.recipient)
     : recipientLabel
-      ? `Happy with your visit? Say thanks to ${recipientLabel} with a tip.`
-      : "Happy with your visit? Add an optional tip.";
+      ? t("tipUiPromptWithName", { name: recipientLabel })
+      : t("tipUiPromptNoName");
 
   const canContinue = noTip || activeAmount != null;
   const hasAmount = customAmount.trim().length > 0;
@@ -514,7 +520,7 @@ export default function PayAndTipModal({
               />
             </View>
             <View style={styles.headerTextWrap}>
-              <Text style={styles.title}>Pay for your visit</Text>
+              <Text style={styles.title}>{t("tipUiPayForVisit")}</Text>
               <Text style={styles.subtitle}>{promptText}</Text>
             </View>
           </View>
@@ -522,7 +528,7 @@ export default function PayAndTipModal({
           {loading ? (
             <View style={styles.loadingRow}>
               <ActivityIndicator size="small" color={theme.darkGreen} />
-              <Text style={styles.loadingText}>Loading tip options...</Text>
+              <Text style={styles.loadingText}>{t("tipUiLoadingOptions")}</Text>
             </View>
           ) : (
             <ScrollView
@@ -543,7 +549,7 @@ export default function PayAndTipModal({
                       </Text>
                     </View>
                     <View style={styles.recipientInfo}>
-                      <Text style={styles.recipientEyebrow}>Tipping</Text>
+                      <Text style={styles.recipientEyebrow}>{t("tipUiTipping")}</Text>
                       <Text style={styles.recipientName}>{recipientLabel}</Text>
                     </View>
                     <Ionicons
@@ -554,7 +560,7 @@ export default function PayAndTipModal({
                   </View>
                 ) : null}
 
-                <Text style={styles.amountSectionTitle}>Amount</Text>
+                <Text style={styles.amountSectionTitle}>{t("earningsAmount")}</Text>
 
                 {noTip ? (
                   <View style={styles.noTipSelectedPanel}>
@@ -563,14 +569,14 @@ export default function PayAndTipModal({
                       size={moderateWidthScale(22)}
                       color={theme.buttonBack}
                     />
-                    <Text style={styles.noTipSelectedTitle}>No tip, thanks</Text>
+                    <Text style={styles.noTipSelectedTitle}>{t("tipUiNoTipThanks")}</Text>
                     <TouchableOpacity
                       onPress={handleAddTipAgain}
                       activeOpacity={0.7}
                       hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                     >
                       <Text style={styles.addTipAgainText}>
-                        Changed your mind? Add a tip
+                        {t("tipUiChangedMind")}
                       </Text>
                     </TouchableOpacity>
                   </View>
@@ -587,7 +593,7 @@ export default function PayAndTipModal({
                           hasAmount && styles.amountDisplayActive,
                         ]}
                       >
-                        <Text style={styles.amountPlaceholderLabel}>Your tip</Text>
+                        <Text style={styles.amountPlaceholderLabel}>{t("tipUiYourTip")}</Text>
                         <View style={styles.amountInputRow}>
                           <Text style={styles.currencyPrefix}>$</Text>
                           <TextInput
@@ -614,7 +620,7 @@ export default function PayAndTipModal({
                         size={moderateWidthScale(18)}
                         color={theme.lightGreen}
                       />
-                      <Text style={styles.noTipText}>No tip, thanks</Text>
+                      <Text style={styles.noTipText}>{t("tipUiNoTipThanks")}</Text>
                     </TouchableOpacity>
                   </>
                 )}
@@ -630,19 +636,19 @@ export default function PayAndTipModal({
                       color={theme.lightGreen}
                     />
                     <Text style={styles.breakdownHeaderText}>
-                      Payment summary
+                      {t("tipUiPaymentSummary")}
                     </Text>
                   </View>
 
                   <View style={styles.breakdownRow}>
-                    <Text style={styles.breakdownLabel}>Service</Text>
+                    <Text style={styles.breakdownLabel}>{t("service")}</Text>
                     <Text style={styles.breakdownValue}>
                       {formatMoney(serviceAmount)}
                     </Text>
                   </View>
                   <View style={styles.breakdownRow}>
                     <Text style={styles.breakdownLabel}>
-                      {recipientLabel ? `Tip · ${recipientLabel}` : "Tip"}
+                      {recipientLabel ? t("tipUiTipWithName", { name: recipientLabel }) : t("ckTip")}
                     </Text>
                     <Text style={styles.breakdownValue}>
                       {formatMoney(tipDisplayAmount)}
@@ -652,7 +658,7 @@ export default function PayAndTipModal({
                   <View style={styles.breakdownDivider} />
 
                   <View style={[styles.breakdownRow, { marginBottom: 0 }]}>
-                    <Text style={styles.breakdownTotalLabel}>Total</Text>
+                    <Text style={styles.breakdownTotalLabel}>{t("total")}</Text>
                     <Text style={styles.breakdownTotalValue}>
                       {formatMoney(estimatedTotal)}
                     </Text>
@@ -666,7 +672,7 @@ export default function PayAndTipModal({
 
               <View style={styles.actions}>
                 <Button
-                  title="Continue to pay"
+                  title={t("tipUiContinueToPay")}
                   onPress={handleContinue}
                   disabled={!canContinue}
                 />
@@ -675,7 +681,7 @@ export default function PayAndTipModal({
                   onPress={onClose}
                   activeOpacity={0.7}
                 >
-                  <Text style={styles.secondaryButtonText}>Cancel</Text>
+                  <Text style={styles.secondaryButtonText}>{t("cancel")}</Text>
                 </TouchableOpacity>
               </View>
             </ScrollView>

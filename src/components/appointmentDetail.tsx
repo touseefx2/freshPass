@@ -480,15 +480,15 @@ export default function AppointmentDetail({
                   {appointment.status === "scheduled"
                     ? t("upcomingApt")
                     : appointment.status === "awaiting_outcome"
-                      ? "Awaiting outcome"
+                      ? t("statusAwaitingOutcome")
                       : appointment.status === "no_show"
-                        ? "No-show"
+                        ? t("statusNoShow")
                         : appointment.status}
                 </Text>
               </View>
             </View>
             <View style={styles.priceSection}>
-              <Text style={styles.priceLabel}>Total Amount</Text>
+              <Text style={styles.priceLabel}>{t("totalAmount")}</Text>
               <Text style={styles.priceText} numberOfLines={1}>
                 {formatPrice(appointment.paidAmount ?? appointment.totalPrice)}
               </Text>
@@ -506,7 +506,7 @@ export default function AppointmentDetail({
                 color={theme.darkGreen}
               />
             </View>
-            <Text style={styles.sectionTitle}>Appointment Information</Text>
+            <Text style={styles.sectionTitle}>{t("apptDetailAppointmentInfo")}</Text>
           </View>
 
           <View style={styles.infoRow}>
@@ -518,7 +518,7 @@ export default function AppointmentDetail({
               />
             </View>
             <View style={styles.infoContent}>
-              <Text style={styles.infoLabel}>Date & Time</Text>
+              <Text style={styles.infoLabel}>{t("apptDetailDateTime")}</Text>
               <Text style={styles.infoValue} numberOfLines={2}>
                 {formatDateTime(
                   appointment.appointmentDate,
@@ -537,11 +537,11 @@ export default function AppointmentDetail({
               />
             </View>
             <View style={styles.infoContent}>
-              <Text style={styles.infoLabel}>Appointment Type</Text>
+              <Text style={styles.infoLabel}>{t("apptDetailAppointmentType")}</Text>
               <Text style={styles.infoValueBold} numberOfLines={1}>
                 {appointment.appointmentType === "subscription"
-                  ? appointment.subscription || "Subscription"
-                  : "Service Base"}
+                  ? appointment.subscription || t("subscription")
+                  : t("apptDetailServiceBase")}
               </Text>
             </View>
           </View>
@@ -557,7 +557,7 @@ export default function AppointmentDetail({
                 color={theme.darkGreen}
               />
             </View>
-            <Text style={styles.sectionTitle}>People</Text>
+            <Text style={styles.sectionTitle}>{t("apptDetailPeople")}</Text>
           </View>
 
           <View style={styles.infoRow}>
@@ -568,7 +568,7 @@ export default function AppointmentDetail({
               />
             </View>
             <View style={styles.infoContent}>
-              <Text style={styles.infoLabel}>Customer</Text>
+              <Text style={styles.infoLabel}>{t("customer")}</Text>
               <Text style={styles.infoValueBold} numberOfLines={1}>
                 {appointment.user}
               </Text>
@@ -589,7 +589,7 @@ export default function AppointmentDetail({
               />
             </View>
             <View style={styles.infoContent}>
-              <Text style={styles.infoLabel}>Assigned Staff</Text>
+              <Text style={styles.infoLabel}>{t("apptDetailAssignedStaff")}</Text>
               <Text style={styles.infoValueBold} numberOfLines={1}>
                 {appointment.staffIsOwner
                   ? `${appointment.staffName} · ${t("owner")}`
@@ -615,8 +615,8 @@ export default function AppointmentDetail({
               </View>
               <Text style={styles.sectionTitle}>
                 {appointment.appointmentType === "subscription"
-                  ? "Subscription Services"
-                  : "Services"}
+                  ? t("apptDetailSubscriptionServices")
+                  : t("services")}
               </Text>
             </View>
             {services.map((service, index) => {
@@ -678,11 +678,11 @@ export default function AppointmentDetail({
                     color={theme.darkGreen}
                   />
                 </View>
-                <Text style={styles.sectionTitle}>Subscription Visits</Text>
+                <Text style={styles.sectionTitle}>{t("apptDetailSubscriptionVisits")}</Text>
               </View>
               <View style={styles.visitsContainer}>
                 <View style={styles.visitsInfo}>
-                  <Text style={styles.visitsLabel}>Visits Used</Text>
+                  <Text style={styles.visitsLabel}>{t("apptDetailVisitsUsed")}</Text>
                   <Text style={styles.visitsValue}>
                     {appointment.subscriptionVisits.used} /{" "}
                     {appointment.subscriptionVisits.total}
@@ -712,7 +712,7 @@ export default function AppointmentDetail({
                 color={theme.darkGreen}
               />
             </View>
-            <Text style={styles.sectionTitle}>Business Information</Text>
+            <Text style={styles.sectionTitle}>{t("businessInformation")}</Text>
           </View>
 
           <View style={styles.infoRow}>
@@ -724,7 +724,7 @@ export default function AppointmentDetail({
               />
             </View>
             <View style={styles.infoContent}>
-              <Text style={styles.infoLabel}>Business Name</Text>
+              <Text style={styles.infoLabel}>{t("apptDetailBusinessName")}</Text>
               <Text style={styles.infoValueBold} numberOfLines={2}>
                 {appointment.businessTitle}
               </Text>
@@ -740,7 +740,7 @@ export default function AppointmentDetail({
               />
             </View>
             <View style={styles.infoContent}>
-              <Text style={styles.infoLabel}>Address</Text>
+              <Text style={styles.infoLabel}>{t("mcFieldAddress")}</Text>
               <Text style={styles.infoValue} numberOfLines={3}>
                 {appointment.businessAddress}
               </Text>
@@ -758,7 +758,7 @@ export default function AppointmentDetail({
                 color={theme.darkGreen}
               />
             </View>
-            <Text style={styles.sectionTitle}>Notes</Text>
+            <Text style={styles.sectionTitle}>{t("notes")}</Text>
           </View>
           {appointment.notes ? (
             <View style={styles.notesContainer}>
@@ -767,7 +767,7 @@ export default function AppointmentDetail({
               </Text>
             </View>
           ) : (
-            <Text style={styles.emptyNotes}>No notes available</Text>
+            <Text style={styles.emptyNotes}>{t("apptDetailNoNotes")}</Text>
           )}
         </View>
       </ScrollView>

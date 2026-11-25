@@ -575,9 +575,8 @@ export default function ManageSubscriptionsScreen() {
     } catch (error: any) {
       Logger.error("Failed to fetch subscription plans module data:", error);
       showBanner(
-        "Error",
-        error?.message ||
-          "Failed to fetch subscription plans. Please try again.",
+        t("error"),
+        error?.message || t("subscriptionsScreenFetchFailed"),
         "error",
         3000,
       );
@@ -638,15 +637,15 @@ export default function ManageSubscriptionsScreen() {
     }
 
     Alert.alert(
-      "Delete membership",
-      `Are you sure you want to delete "${subscriptionName}"?`,
+      t("subscriptionsScreenDeleteTitle"),
+      t("subscriptionsScreenDeleteConfirm", { name: subscriptionName }),
       [
         {
-          text: "Cancel",
+          text: t("cancel"),
           style: "cancel",
         },
         {
-          text: "Delete",
+          text: t("delete"),
           style: "destructive",
           onPress: () => handleDeleteSubscription(subscriptionId),
         },
@@ -674,15 +673,15 @@ export default function ManageSubscriptionsScreen() {
             return updated;
           });
           showBanner(
-            "Success",
-            response.message || "Subscription plan deleted successfully.",
+            t("success"),
+            response.message || t("subscriptionsScreenDeleteSuccess"),
             "success",
             3000,
           );
         } else {
           showBanner(
-            "Error",
-            response.message || "Failed to delete subscription plan.",
+            t("error"),
+            response.message || t("subscriptionsScreenDeleteFailed"),
             "error",
             3000,
           );
@@ -690,9 +689,8 @@ export default function ManageSubscriptionsScreen() {
       } catch (error: any) {
         Logger.error("Failed to delete subscription plan:", error);
         showBanner(
-          "Error",
-          error?.message ||
-            "Failed to delete subscription plan. Please try again.",
+          t("error"),
+          error?.message || t("subscriptionsScreenDeleteFailedRetry"),
           "error",
           3000,
         );
@@ -818,16 +816,16 @@ export default function ManageSubscriptionsScreen() {
       if (response.success) {
         if (payload.length > 0) markGoldDone("membership");
         showBanner(
-          "Success",
-          response.message || "Subscription plans updated successfully",
+          t("success"),
+          response.message || t("subscriptionsScreenUpdateSuccess"),
           "success",
           3000,
         );
         router.back();
       } else {
         showBanner(
-          "Error",
-          response.message || "Failed to update subscription plans",
+          t("error"),
+          response.message || t("subscriptionsScreenUpdateFailed"),
           "error",
           3000,
         );
@@ -835,9 +833,8 @@ export default function ManageSubscriptionsScreen() {
     } catch (error: any) {
       Logger.error("Failed to update subscription plans:", error);
       showBanner(
-        "Error",
-        error?.message ||
-          "Failed to update subscription plans. Please try again.",
+        t("error"),
+        error?.message || t("subscriptionsScreenUpdateFailedRetry"),
         "error",
         3000,
       );
@@ -858,8 +855,8 @@ export default function ManageSubscriptionsScreen() {
     } else {
       if (!businessId) {
         showBanner(
-          "Error",
-          "Business ID not found. Please complete your business profile.",
+          t("error"),
+          t("businessIdNotFound"),
           "error",
           3000,
         );
@@ -867,7 +864,7 @@ export default function ManageSubscriptionsScreen() {
       }
 
       dispatch(setActionLoader(true));
-      dispatch(setActionLoaderTitle("Generating subscription plans"));
+      dispatch(setActionLoaderTitle(t("subscriptionsScreenGenerating")));
 
       try {
         const response = await AiToolsService.generateSubscription(
@@ -882,8 +879,8 @@ export default function ManageSubscriptionsScreen() {
           setModalVisible(true);
         } else {
           showBanner(
-            "Error",
-            "Failed to generate subscription plans. Please try again.",
+            t("error"),
+            t("subscriptionsScreenGenerateFailed"),
             "error",
             3000,
           );
@@ -891,9 +888,8 @@ export default function ManageSubscriptionsScreen() {
       } catch (error: any) {
         Logger.error("Failed to generate subscription plans:", error);
         showBanner(
-          "Error",
-          error?.message ||
-            "Failed to generate subscription plans. Please try again.",
+          t("error"),
+          error?.message || t("subscriptionsScreenGenerateFailed"),
           "error",
           3000,
         );
@@ -931,9 +927,11 @@ export default function ManageSubscriptionsScreen() {
             style={styles.editButton}
             onTap={() => handleEditSubscription(subscription.id)}
             accessibilityRole="button"
-            accessibilityLabel={`Edit ${subscription.packageName}`}
+            accessibilityLabel={t("subscriptionsScreenEditA11y", {
+              name: subscription.packageName,
+            })}
           >
-            <Text style={styles.editText}>Edit</Text>
+            <Text style={styles.editText}>{t("edit")}</Text>
           </Sortable.Touchable>
         </View>
         {showDescription ? (
@@ -948,13 +946,13 @@ export default function ManageSubscriptionsScreen() {
           <Text style={styles.priceText}>
             {formatPrice(subscription.price)}
           </Text>
-          <Text style={styles.perMonthText}>/month</Text>
+          <Text style={styles.perMonthText}>{t("perMonthCompact")}</Text>
         </View>
         <View style={styles.accentBar} />
         {serviceItems.length > 0 ? (
           <>
             <Text style={styles.includedLabel}>
-              Included each month
+              {t("subscriptionsScreenIncludedEachMonth")}
             </Text>
             <View style={styles.includedList}>
               {serviceItems.map((item) => (
@@ -986,8 +984,7 @@ export default function ManageSubscriptionsScreen() {
               color={theme.orangeBrownText}
             />
             <Text style={styles.visitsText}>
-              {totalUses} service{totalUses === 1 ? "" : "s"} to
-              use anytime this month
+              {t("subscriptionsScreenServicesToUse", { count: totalUses })}
             </Text>
           </View>
         ) : null}
@@ -1010,7 +1007,7 @@ export default function ManageSubscriptionsScreen() {
           <>
             <Text style={styles.sectionLabel}>
               {canCreatePlans
-                ? "Customer membership plans"
+                ? t("subscriptionsScreenSectionLabel")
                 : t("subscriptionPlansConnectStripeHint")}
             </Text>
 
@@ -1028,7 +1025,7 @@ export default function ManageSubscriptionsScreen() {
                     color={theme.white}
                   />
                   <Text style={styles.addMembershipText} numberOfLines={1}>
-                    Add Membership
+                    {t("subscriptionsScreenAddMembership")}
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -1043,7 +1040,7 @@ export default function ManageSubscriptionsScreen() {
                     color={theme.orangeBrown}
                   />
                   <Text style={styles.createAiText} numberOfLines={1}>
-                    Create with AI
+                    {t("aiToolsHeroTitleBusiness")}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -1073,7 +1070,7 @@ export default function ManageSubscriptionsScreen() {
               canCreatePlans ? (
                 <View style={styles.emptyState}>
                   <Text style={styles.emptyStateText}>
-                    You haven't added any subscription yet
+                    {t("subscriptionsScreenEmpty")}
                   </Text>
                 </View>
               ) : null
@@ -1118,7 +1115,7 @@ export default function ManageSubscriptionsScreen() {
             {canCreatePlans && unselectedSuggestions.length > 0 && (
               <View style={styles.popularSection}>
                 <Text style={styles.popularTitle}>
-                  Popular starting points:
+                  {t("popularStartingPoints")}
                 </Text>
 
               {unselectedSuggestions.length > 0 &&
@@ -1152,7 +1149,7 @@ export default function ManageSubscriptionsScreen() {
                               />
                             )}
                             <Text style={styles.selectButtonText}>
-                              {isSelected ? "Selected" : "Select"}
+                              {isSelected ? t("selected") : t("select")}
                             </Text>
                           </View>
                         </View>
@@ -1265,17 +1262,15 @@ export default function ManageSubscriptionsScreen() {
           // Show success message
           if (addedCount > 0) {
             showBanner(
-              "Success",
-              `${addedCount} subscription plan${
-                addedCount > 1 ? "s" : ""
-              } added successfully`,
+              t("success"),
+              t("subscriptionsScreenPlansAdded", { count: addedCount }),
               "success",
               3000,
             );
           } else if (selectedPlans.length > 0) {
             showBanner(
-              "Info",
-              "Selected plans are already in your subscription list",
+              t("staffDetailInfo"),
+              t("subscriptionsScreenPlansAlreadyAdded"),
               "info",
               3000,
             );

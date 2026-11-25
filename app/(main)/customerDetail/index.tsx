@@ -326,7 +326,7 @@ export default function CustomerDetail() {
 
   const fetchCustomerDetails = useCallback(async () => {
     if (!customerId) {
-      setError("Customer profile not found");
+      setError(t("customerDetailNotFound"));
       setLoading(false);
       return;
     }
@@ -342,7 +342,7 @@ export default function CustomerDetail() {
       }>(userEndpoints.detailsById(customerId));
 
       if (!response?.success || !response.data) {
-        setError(response?.message || "Customer profile not found");
+        setError(response?.message || t("customerDetailNotFound"));
         setData(null);
       } else {
         setData(response.data);
@@ -350,12 +350,12 @@ export default function CustomerDetail() {
       }
     } catch (err: any) {
       const apiMessage = err?.data?.message || err?.data?.error;
-      setError(apiMessage || err?.message || "Customer profile not found");
+      setError(apiMessage || err?.message || t("customerDetailNotFound"));
       setData(null);
     } finally {
       setLoading(false);
     }
-  }, [customerId]);
+  }, [customerId, t]);
 
   useFocusEffect(
     useCallback(() => {
@@ -394,7 +394,7 @@ export default function CustomerDetail() {
         <StatusBar barStyle="light-content" />
         <StackHeader title={t("cusDetail")} />
         <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>Customer profile not found</Text>
+          <Text style={styles.errorText}>{t("customerDetailNotFound")}</Text>
           <RetryButton onPress={fetchCustomerDetails} loading={loading} />
         </View>
       </View>
@@ -544,7 +544,7 @@ export default function CustomerDetail() {
           </View>
           <View style={styles.row}>
             <Text style={styles.label}>{t("status")}</Text>
-            <Text style={styles.value}>{isActive ? "Active" : "Inactive"}</Text>
+            <Text style={styles.value}>{isActive ? t("active") : t("inactive")}</Text>
           </View>
           {customerPhone ? (
             <View style={styles.phoneRow}>
@@ -577,7 +577,7 @@ export default function CustomerDetail() {
               color={theme.darkGreen}
             />
             <Text style={styles.messageRowText}>
-              {t("message") || "Message"}
+              {t("bcbMessage")}
             </Text>
           </TouchableOpacity>
         </View>

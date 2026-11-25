@@ -31,6 +31,7 @@ import {
   isOvernightRange,
   isWindowWithinBounds,
 } from "@/src/utils/businessHoursBounds";
+import { useTranslation } from "react-i18next";
 
 interface BusinessHoursBottomSheetProps {
   visible: boolean;
@@ -100,6 +101,17 @@ const DAYS = [
   "Friday",
   "Saturday",
 ];
+
+// Day values stay English (store keys); only the label is translated
+const DAY_LABEL_KEYS: Record<string, string> = {
+  Sunday: "bizHoursSheetSunday",
+  Monday: "bizHoursSheetMonday",
+  Tuesday: "bizHoursSheetTuesday",
+  Wednesday: "bizHoursSheetWednesday",
+  Thursday: "bizHoursSheetThursday",
+  Friday: "bizHoursSheetFriday",
+  Saturday: "bizHoursSheetSaturday",
+};
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -268,6 +280,7 @@ export default function BusinessHoursBottomSheet({
   businessBounds,
   allowedCopyDays,
 }: BusinessHoursBottomSheetProps) {
+  const { t } = useTranslation();
   const dispatch = useAppDispatch();
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors as Theme), [colors]);
@@ -439,10 +452,10 @@ export default function BusinessHoursBottomSheet({
       tillMinutes === 0;
 
     if (bothAreZero) {
-      setOpeningHoursError("Please select valid opening and closing times.");
+      setOpeningHoursError(t("bizHoursSheetSelectValidTimes"));
       hasError = true;
     } else if (!staffOvernight && fromTotalMinutes >= tillTotalMinutes) {
-      setOpeningHoursError("Opening time must be earlier than closing time.");
+      setOpeningHoursError(t("bizHoursSheetOpeningBeforeClosing"));
       hasError = true;
     } else if (
       constrainToBusiness &&
@@ -459,12 +472,14 @@ export default function BusinessHoursBottomSheet({
       )
     ) {
       setOpeningHoursError(
-        `Hours must stay within business open hours (${formatBoundsLabel(
-          businessBounds.fromHours,
-          businessBounds.fromMinutes,
-          businessBounds.tillHours,
-          businessBounds.tillMinutes,
-        )}).`,
+        t("bizHoursSheetWithinBusinessHours", {
+          hours: formatBoundsLabel(
+            businessBounds.fromHours,
+            businessBounds.fromMinutes,
+            businessBounds.tillHours,
+            businessBounds.tillMinutes,
+          ),
+        }),
       );
       hasError = true;
     }
@@ -498,9 +513,7 @@ export default function BusinessHoursBottomSheet({
           );
 
           if (break1From === break2From && break1Till === break2Till) {
-            setBreakTimeError(
-              "Break times cannot be the same. Please set different break times.",
-            );
+            setBreakTimeError(t("bizHoursSheetBreaksNotSame"));
             hasError = true;
             break;
           }
@@ -542,9 +555,7 @@ export default function BusinessHoursBottomSheet({
         });
 
         if (hasInvalidBreak) {
-          setBreakTimeError(
-            "Break times must be valid (from < till) and within opening hours.",
-          );
+          setBreakTimeError(t("bizHoursSheetBreaksInvalid"));
           hasError = true;
         }
       }
@@ -647,40 +658,44 @@ export default function BusinessHoursBottomSheet({
     return `${displayHours}:${displayMinutes} ${period}`;
   };
 
+  const dayLabel = (d: string) =>
+    DAY_LABEL_KEYS[d] ? t(DAY_LABEL_KEYS[d]) : d;
+
   return (
     <>
       <ModalizeBottomSheet
         visible={visible}
         onClose={onClose}
-        title={`${day} availability`}
-        footerButtonTitle="Save"
+        title={t("dayAvailability", { day: dayLabel(day) })}
+        footerButtonTitle={t("save")}
         onFooterButtonPress={handleSave}
       >
         <View style={{ gap: 3 }}>
-          <Text style={styles.sectionTitle}>Working hours</Text>
+          <Text style={styles.sectionTitle}>{t("workingHours")}</Text>
           <Text style={styles.sectionDescription}>
             {constrainToBusiness && businessBounds
-              ? `Set hours for ${day}s within the business open window.`
-              : `Set your business hours for ${day}s here. To edit hours for a specific date, use your calendar.`}
+              ? t("bizHoursSheetSetHoursWithin", { day: dayLabel(day) })
+              : t("bizHoursSheetSetHoursIntro", { day: dayLabel(day) })}
           </Text>
           {constrainToBusiness && businessBounds ? (
             <Text style={styles.sectionDescription}>
-              Business open{" "}
-              {formatBoundsLabel(
-                businessBounds.fromHours,
-                businessBounds.fromMinutes,
-                businessBounds.tillHours,
-                businessBounds.tillMinutes,
-              )}
+              {t("bizHoursSheetBusinessOpen", {
+                hours: formatBoundsLabel(
+                  businessBounds.fromHours,
+                  businessBounds.fromMinutes,
+                  businessBounds.tillHours,
+                  businessBounds.tillMinutes,
+                ),
+              })}
             </Text>
           ) : null}
         </View>
 
         <View style={{ gap: 5, marginTop: moderateHeightScale(12) }}>
-          <Text style={styles.sectionTitle2}>Opening hours</Text>
+          <Text style={styles.sectionTitle2}>{t("bizHoursSheetOpeningHours")}</Text>
           <View style={styles.inputRow}>
             <View style={styles.inputWrapper}>
-              <Text style={styles.inputLabel}>From</Text>
+              <Text style={styles.inputLabel}>{t("proFieldTimeFrom")}</Text>
               <TouchableOpacity
                 style={styles.dropdownButton}
                 onPress={() => setWheelTarget("from")}
@@ -690,7 +705,7 @@ export default function BusinessHoursBottomSheet({
                     {formatTime(fromHours, fromMinutes)}
                   </Text>
                 ) : (
-                  <Text style={styles.dropdownPlaceholder}>From</Text>
+                  <Text style={styles.dropdownPlaceholder}>{t("proFieldTimeFrom")}</Text>
                 )}
                 <Feather
                   name="chevron-down"
@@ -700,7 +715,7 @@ export default function BusinessHoursBottomSheet({
               </TouchableOpacity>
             </View>
             <View style={styles.inputWrapper}>
-              <Text style={styles.inputLabel}>Till</Text>
+              <Text style={styles.inputLabel}>{t("bizHoursSheetTill")}</Text>
               <TouchableOpacity
                 style={styles.dropdownButton}
                 onPress={() => setWheelTarget("till")}
@@ -710,7 +725,7 @@ export default function BusinessHoursBottomSheet({
                     {formatTime(tillHours, tillMinutes)}
                   </Text>
                 ) : (
-                  <Text style={styles.dropdownPlaceholder}>Till</Text>
+                  <Text style={styles.dropdownPlaceholder}>{t("bizHoursSheetTill")}</Text>
                 )}
                 <Feather
                   name="chevron-down"
@@ -727,12 +742,12 @@ export default function BusinessHoursBottomSheet({
 
         <View style={styles.breakTimeSection}>
           <View style={styles.breakTimeHeader}>
-            <Text style={styles.sectionTitle2}>Break time</Text>
+            <Text style={styles.sectionTitle2}>{t("bizHoursSheetBreakTime")}</Text>
             <TouchableOpacity
               onPress={handleAddBreak}
               style={styles.addBreakButton}
             >
-              <Text style={styles.addBreakButtonText}>Add new +</Text>
+              <Text style={styles.addBreakButtonText}>{t("bizHoursSheetAddNew")}</Text>
             </TouchableOpacity>
           </View>
           {breakTimeError ? (
@@ -744,7 +759,7 @@ export default function BusinessHoursBottomSheet({
           <View key={index} style={styles.breakTimeItem}>
             <View style={styles.breakTimeInputs}>
               <View style={styles.inputWrapper}>
-                <Text style={styles.inputLabel}>From</Text>
+                <Text style={styles.inputLabel}>{t("proFieldTimeFrom")}</Text>
                 <TouchableOpacity
                   style={styles.dropdownButton}
                   onPress={() => setWheelTarget(`breakFrom-${index}`)}
@@ -755,7 +770,7 @@ export default function BusinessHoursBottomSheet({
                       {formatTime(breakTime.fromHours, breakTime.fromMinutes)}
                     </Text>
                   ) : (
-                    <Text style={styles.dropdownPlaceholder}>From</Text>
+                    <Text style={styles.dropdownPlaceholder}>{t("proFieldTimeFrom")}</Text>
                   )}
                   <Feather
                     name="chevron-down"
@@ -765,7 +780,7 @@ export default function BusinessHoursBottomSheet({
                 </TouchableOpacity>
               </View>
               <View style={styles.inputWrapper}>
-                <Text style={styles.inputLabel}>Till</Text>
+                <Text style={styles.inputLabel}>{t("bizHoursSheetTill")}</Text>
                 <TouchableOpacity
                   style={styles.dropdownButton}
                   onPress={() => setWheelTarget(`breakTill-${index}`)}
@@ -776,7 +791,7 @@ export default function BusinessHoursBottomSheet({
                       {formatTime(breakTime.tillHours, breakTime.tillMinutes)}
                     </Text>
                   ) : (
-                    <Text style={styles.dropdownPlaceholder}>Till</Text>
+                    <Text style={styles.dropdownPlaceholder}>{t("bizHoursSheetTill")}</Text>
                   )}
                   <Feather
                     name="chevron-down"
@@ -825,10 +840,9 @@ export default function BusinessHoursBottomSheet({
                 </View>
               </TouchableOpacity>
               <View style={{ gap: 3, width: "90%" }}>
-                <Text style={styles.checkboxLabel}>Copy hours</Text>
+                <Text style={styles.checkboxLabel}>{t("bizHoursSheetCopyHours")}</Text>
                 <Text style={styles.sectionDescription}>
-                  Apply these hours to multiple days. Select the ones that match
-                  your schedule.
+                  {t("bizHoursSheetCopyHoursDesc")}
                 </Text>
               </View>
             </View>
@@ -859,7 +873,7 @@ export default function BusinessHoursBottomSheet({
                       style={{ marginRight: moderateWidthScale(4) }}
                     />
                   )}
-                <Text style={[styles.dayPillText]}>All</Text>
+                <Text style={[styles.dayPillText]}>{t("all")}</Text>
               </TouchableOpacity>
               {copyableDays.map((dayName) => {
                 const isSelected = selectedDays.includes(dayName);
@@ -880,7 +894,7 @@ export default function BusinessHoursBottomSheet({
                         style={{ marginRight: moderateWidthScale(4) }}
                       />
                     )}
-                    <Text style={[styles.dayPillText]}>{dayName}</Text>
+                    <Text style={[styles.dayPillText]}>{dayLabel(dayName)}</Text>
                   </TouchableOpacity>
                 );
               })}
@@ -919,8 +933,11 @@ export default function BusinessHoursBottomSheet({
               : totalSelected < openFrom || totalSelected > openTill;
             if (outOfRange) {
               Alert.alert(
-                "Invalid time",
-                `Break time must be within opening hours (${formatTime(fromHours, fromMinutes)} – ${formatTime(tillHours, tillMinutes)}).`,
+                t("bizHoursSheetInvalidTime"),
+                t("bizHoursSheetBreakWithinOpening", {
+                  from: formatTime(fromHours, fromMinutes),
+                  till: formatTime(tillHours, tillMinutes),
+                }),
               );
               return;
             }

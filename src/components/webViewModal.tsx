@@ -18,6 +18,7 @@ import {
 } from "@/src/theme/dimensions";
 import { Feather } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useTranslation } from "react-i18next";
 
 interface WebViewModalProps {
   visible: boolean;
@@ -125,8 +126,9 @@ export default function WebViewModal({
   visible,
   url,
   onClose,
-  title = "Loading...",
+  title,
 }: WebViewModalProps) {
+  const { t } = useTranslation();
   const { colors } = useTheme();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
@@ -162,7 +164,7 @@ export default function WebViewModal({
         <View style={styles.modalContainer}>
           <View style={styles.header}>
             <Text style={styles.headerTitle} numberOfLines={1}>
-              {title}
+              {title ?? t("loading")}
             </Text>
             <TouchableOpacity
               onPress={handleClose}
@@ -204,7 +206,7 @@ export default function WebViewModal({
                     { marginTop: moderateHeightScale(12), marginBottom: 0 },
                   ]}
                 >
-                  Loading...
+                  {t("loading")}
                 </Text>
               </View>
             )}
@@ -217,9 +219,9 @@ export default function WebViewModal({
                     color={theme.darkGreen}
                   />
                 </View>
-                <Text style={styles.errorTitle}>Unable to load page</Text>
+                <Text style={styles.errorTitle}>{t("webViewUnableToLoad")}</Text>
                 <Text style={styles.errorMessage}>
-                  Please check your internet connection and try again.
+                  {t("pleaseCheckInternetConnection")}
                 </Text>
                 <TouchableOpacity
                   onPress={handleRetry}
@@ -231,7 +233,7 @@ export default function WebViewModal({
                     size={iconScale(16)}
                     color={theme.white}
                   />
-                  <Text style={styles.retryText}>Try Again</Text>
+                  <Text style={styles.retryText}>{t("tryAgain")}</Text>
                 </TouchableOpacity>
               </View>
             )}

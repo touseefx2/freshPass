@@ -271,10 +271,10 @@ export default function TipYourProScreen() {
 
   const headerTitle = useMemo(() => {
     if (!tipDetails?.recipient) {
-      return "Tip Your Pro";
+      return t("tipProTitle");
     }
     return getTipHeaderTitle(tipDetails.recipient);
-  }, [tipDetails?.recipient]);
+  }, [tipDetails?.recipient, t]);
 
   const handleSelectSuggested = (amount: number) => {
     setSelectedAmount(amount);
@@ -288,15 +288,19 @@ export default function TipYourProScreen() {
   };
 
   const validateAmount = (): string | null => {
-    if (!tipDetails) return "Tip details are unavailable.";
+    if (!tipDetails) return t("tipProDetailsUnavailable");
     if (activeAmount == null || Number.isNaN(activeAmount)) {
-      return "Please choose or enter a tip amount.";
+      return t("tipProChooseAmountError");
     }
     if (activeAmount < tipDetails.minAmount) {
-      return `Minimum tip is ${formatTipAmount(tipDetails.minAmount, tipDetails.currency)}.`;
+      return t("tipProMinimum", {
+        amount: formatTipAmount(tipDetails.minAmount, tipDetails.currency),
+      });
     }
     if (activeAmount > tipDetails.maxAmount) {
-      return `Maximum tip is ${formatTipAmount(tipDetails.maxAmount, tipDetails.currency)}.`;
+      return t("tipProMaximum", {
+        amount: formatTipAmount(tipDetails.maxAmount, tipDetails.currency),
+      });
     }
     return null;
   };
@@ -308,7 +312,7 @@ export default function TipYourProScreen() {
 
     const validationError = validateAmount();
     if (validationError) {
-      showBanner("Tip", validationError, "error", 3000);
+      showBanner(t("avTipLabel"), validationError, "error", 3000);
       return;
     }
 
@@ -341,15 +345,15 @@ export default function TipYourProScreen() {
 
         const { error: initError } = await initPaymentSheet(paymentConfig as any);
         if (initError) {
-          throw new Error(initError.message || "Failed to initialize payment");
+          throw new Error(initError.message || t("tipProInitPaymentFailed"));
         }
 
         const { error: presentError } = await presentPaymentSheet();
         if (presentError) {
           if (!presentError.code?.includes("Canceled")) {
             showBanner(
-              "Payment Failed",
-              presentError.message || "Payment could not be completed",
+              t("tipProPaymentFailed"),
+              presentError.message || t("tipProPaymentNotCompleted"),
               "error",
               4000,
             );
@@ -358,7 +362,7 @@ export default function TipYourProScreen() {
         }
 
         setPaymentSuccess(true);
-        showBanner("Thank you!", "Your tip was sent successfully.", "success", 3000);
+        showBanner(t("avTipSentTitle"), t("avTipSentBody"), "success", 3000);
 
         const paidTip = await confirmTipPaid(appointmentId);
         if (paidTip) {
@@ -380,8 +384,8 @@ export default function TipYourProScreen() {
       }
     } catch (err: any) {
       const message =
-        err?.data?.message || err?.message || "Failed to process tip payment";
-      showBanner("Tip", message, "error", 4000);
+        err?.data?.message || err?.message || t("tipProProcessFailed");
+      showBanner(t("avTipLabel"), message, "error", 4000);
     } finally {
       setSubmitting(false);
       dispatch(setActionLoader(false));
@@ -405,7 +409,7 @@ export default function TipYourProScreen() {
         )}
         <Text style={styles.recipientName}>{tipDetails.recipient.name}</Text>
         <Text style={styles.subtitle}>
-          Happy with your visit? Say thanks with a tip.
+          {t("tipProSubtitle")}
         </Text>
       </View>
     );
@@ -417,7 +421,7 @@ export default function TipYourProScreen() {
     return (
       <>
         {renderRecipient()}
-        <Text style={styles.sectionTitle}>Choose an amount</Text>
+        <Text style={styles.sectionTitle}>{t("tipProChooseAmount")}</Text>
         <View style={styles.chipsRow}>
           {tipDetails.suggestedAmounts.map((amount) => {
             const isSelected =
@@ -443,7 +447,7 @@ export default function TipYourProScreen() {
           onPress={() => customAmountInputRef.current?.focus()}
         >
           <View style={styles.customAmountContainer}>
-            <Text style={styles.customAmountLabel}>Custom amount</Text>
+            <Text style={styles.customAmountLabel}>{t("tipProCustomAmount")}</Text>
             <View style={styles.customAmountInputRow}>
               <Text style={styles.currencyPrefix}>$</Text>
               <TextInput
@@ -457,8 +461,10 @@ export default function TipYourProScreen() {
               />
             </View>
             <Text style={styles.amountHint}>
-              Min {formatTipAmount(tipDetails.minAmount, tipDetails.currency)} · Max{" "}
-              {formatTipAmount(tipDetails.maxAmount, tipDetails.currency)}
+              {t("tipProMinMax", {
+                min: formatTipAmount(tipDetails.minAmount, tipDetails.currency),
+                max: formatTipAmount(tipDetails.maxAmount, tipDetails.currency),
+              })}
             </Text>
           </View>
         </TouchableWithoutFeedback>
@@ -471,10 +477,12 @@ export default function TipYourProScreen() {
 
     return (
       <View style={styles.receiptCard}>
-        <Text style={styles.receiptTitle}>Tip sent</Text>
+        <Text style={styles.receiptTitle}>{t("tipProTipSent")}</Text>
         <Text style={styles.receiptText}>
-          You tipped {formatTipAmount(tipDetails.tip.amount, tipDetails.tip.currency)}{" "}
-          to {tipDetails.tip.recipientName}.
+          {t("tipProYouTipped", {
+            amount: formatTipAmount(tipDetails.tip.amount, tipDetails.tip.currency),
+            name: tipDetails.tip.recipientName,
+          })}
         </Text>
       </View>
     );
@@ -493,7 +501,7 @@ export default function TipYourProScreen() {
       return (
         <View style={styles.centerContent}>
           <Text style={styles.reasonText}>
-            Unable to load tip details. Please try again.
+            {t("tipProLoadError")}
           </Text>
           <RetryButton onPress={loadTipDetails} loading={loading} />
         </View>
@@ -535,7 +543,7 @@ export default function TipYourProScreen() {
         >
           {renderRecipient()}
           <Text style={styles.reasonText}>
-            {tipDetails?.reason || "Tipping is not available for this appointment."}
+            {tipDetails?.reason || t("tipProNotAvailable")}
           </Text>
         </ScrollView>
       );
@@ -553,13 +561,13 @@ export default function TipYourProScreen() {
           {renderTipForm()}
           {paymentSuccess ? (
             <Text style={styles.successText}>
-              Processing your tip. This may take a moment.
+              {t("tipProProcessing")}
             </Text>
           ) : null}
         </KeyboardAwareScrollView>
         <View style={styles.bottomButton}>
           <Button
-            title="Send tip"
+            title={t("avSendTip")}
             onPress={handleConfirmTip}
             disabled={submitting || activeAmount == null}
           />

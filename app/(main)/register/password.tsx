@@ -482,7 +482,7 @@ export default function RegisterPassword() {
           >
             <View style={styles.content}>
               <View style={styles.titleSection}>
-                <Text style={styles.title}>Create your password</Text>
+                <Text style={styles.title}>{t("regCreateYourPassword")}</Text>
               </View>
 
               <FloatingInput

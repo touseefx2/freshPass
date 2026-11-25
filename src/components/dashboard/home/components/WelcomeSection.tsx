@@ -7,6 +7,7 @@ import {
   moderateHeightScale,
   moderateWidthScale,
 } from "@/src/theme/dimensions";
+import { useTranslation } from "react-i18next";
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -30,6 +31,7 @@ const createStyles = (theme: Theme) =>
   });
 
 export default function WelcomeSection() {
+  const { t } = useTranslation();
   const { colors } = useTheme();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
@@ -37,7 +39,7 @@ export default function WelcomeSection() {
 
   return (
     <View style={styles.container}>
-      <Text numberOfLines={1} style={styles.welcomeText}>Welcome, {userName}</Text>
+      <Text numberOfLines={1} style={styles.welcomeText}>{t("welcomeSectionGreeting", { name: userName })}</Text>
       {/* <Text style={styles.descriptionText}>
         Browse nearby barbers, nail salons, and spas. Book instantly or unlock
         savings with a membership.

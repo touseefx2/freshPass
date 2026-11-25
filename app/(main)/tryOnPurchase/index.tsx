@@ -472,7 +472,7 @@ export default function TryOnPurchase() {
       setLocalBanner({
         visible: true,
         title: t("error"),
-        message: "Failed to start payment.",
+        message: t("tryOnBuyFailedToStartPayment"),
         type: "error",
       });
       return;
@@ -487,7 +487,7 @@ export default function TryOnPurchase() {
       setLocalBanner({
         visible: true,
         title: t("error"),
-        message: initError.message ?? "Failed to initialize payment",
+        message: initError.message ?? t("tryOnBuyFailedToInitPayment"),
         type: "error",
       });
       return;
@@ -502,7 +502,7 @@ export default function TryOnPurchase() {
         setLocalBanner({
           visible: true,
           title: t("error"),
-          message: presentError.message ?? "Payment could not be completed",
+          message: presentError.message ?? t("tryOnBuyPaymentNotCompleted"),
           type: "error",
         });
       }
@@ -550,7 +550,7 @@ export default function TryOnPurchase() {
     } catch (err: unknown) {
       const ax = err as { message?: string; data?: { message?: string } };
       const message =
-        ax.data?.message ?? ax.message ?? "Failed to start payment.";
+        ax.data?.message ?? ax.message ?? t("tryOnBuyFailedToStartPayment");
       if (message.toLowerCase().includes("cancel")) {
         return;
       }

@@ -246,7 +246,7 @@ export default function LocationScreen() {
     if (!apiKey) {
       setPredictions([]);
       logPlacesApiFailure("Autocomplete", "MISSING_API_KEY");
-      setSuggestionError("Google Maps API key is not configured.");
+      setSuggestionError(t("exploreLocApiKeyMissing"));
       return;
     }
     try {
@@ -299,8 +299,8 @@ export default function LocationScreen() {
   ) => {
     if (!apiKey) {
       showBanner(
-        "Error",
-        "Unable to fetch place details. Please try again.",
+        t("error"),
+        t("unableToFetchPlaceDetails"),
         "error",
       );
       return;
@@ -368,7 +368,7 @@ export default function LocationScreen() {
         "EXCEPTION",
         error instanceof Error ? error.message : String(error),
       );
-      showBanner("Error", resolvePlaceDetailsError(error), "error");
+      showBanner(t("error"), resolvePlaceDetailsError(error), "error");
     } finally {
       setIsFetchingDetails(false);
       sessionTokenRef.current = generateSessionToken();
@@ -490,11 +490,11 @@ export default function LocationScreen() {
 
   const currentStatusText = enablingLocation
     ? locationLoading
-      ? "Getting location..."
+      ? t("exploreLocGettingLocation")
       : currentLocation.lat && currentLocation.long
         ? currentLocation?.locationName
-        : "Get location"
-    : "Location access disabled";
+        : t("exploreLocGetLocation")
+    : t("exploreLocAccessDisabled");
 
   return (
     <SafeAreaView style={styles.container} edges={["bottom"]}>
@@ -572,7 +572,7 @@ export default function LocationScreen() {
               !suggestionError &&
               predictions.length === 0 && (
                 <Text style={styles.infoText}>
-                  No results yet. Try refining your search.
+                  {t("noResultsRefineSearch")}
                 </Text>
               )}
           </View>
@@ -622,7 +622,7 @@ export default function LocationScreen() {
           )}
         </TouchableOpacity>
 
-        <Text style={styles.recentSectionTitle}>Recent locations</Text>
+        <Text style={styles.recentSectionTitle}>{t("recentLocations")}</Text>
         {recentLocations.length > 0 ? (
           recentLocations.map((item, i) => {
             const name = item.countryName;

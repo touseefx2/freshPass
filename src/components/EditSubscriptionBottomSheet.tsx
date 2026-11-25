@@ -29,6 +29,7 @@ import {
 import StackHeader from "@/src/components/StackHeader";
 import Button from "@/src/components/button";
 import ServicePickerBottomSheet from "@/src/components/ServicePickerBottomSheet";
+import { useTranslation } from "react-i18next";
 
 interface EditSubscriptionBottomSheetProps {
   visible: boolean;
@@ -264,6 +265,7 @@ export default function EditSubscriptionBottomSheet({
   onAddCustomSuggestion,
   onDelete,
 }: EditSubscriptionBottomSheetProps) {
+  const { t } = useTranslation();
   const dispatch = useAppDispatch();
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors as Theme), [colors]);
@@ -402,7 +404,7 @@ export default function EditSubscriptionBottomSheet({
     const newErrors: typeof errors = {};
 
     if (!packageName.trim()) {
-      newErrors.packageName = "Membership name is required";
+      newErrors.packageName = t("editMembershipNameRequired");
     } else {
       // Check if package name already exists (excluding current subscription if editing)
       const existingSubscription = subscriptions.find(
@@ -411,17 +413,17 @@ export default function EditSubscriptionBottomSheet({
             packageName.toLowerCase().trim() && sub.id !== subscriptionId,
       );
       if (existingSubscription) {
-        newErrors.packageName = "A membership with this name already exists";
+        newErrors.packageName = t("editMembershipNameExists");
       }
     }
 
     const priceValue = parseFloat(price);
     if (isNaN(priceValue) || priceValue <= 0) {
-      newErrors.price = "Price must be greater than 0";
+      newErrors.price = t("editServicePriceRequired");
     }
 
     if (selectedServiceIds.length === 0) {
-      newErrors.services = "Add at least one service";
+      newErrors.services = t("editMembershipAddOneService");
     }
 
     // Customers use the service counts in any mix of visits, so the plan's
@@ -482,11 +484,14 @@ export default function EditSubscriptionBottomSheet({
       .map((s) => `${selectedServiceCounts[s.id] ?? 1} ${s.name.toLowerCase()}`)
       .join(" + ");
     return [
-      `Every month they get ${included} (${serviceQtySum} in total).`,
-      "They can use them all in one visit, or come in on different days.",
-      "Each time they use one, it comes off their count. Counts reset when they pay for the next month.",
+      t("editMembershipHowEveryMonth", {
+        included,
+        total: serviceQtySum,
+      }),
+      t("editMembershipHowOneVisit"),
+      t("editMembershipHowCounts"),
     ];
-  }, [selectedServices, selectedServiceCounts, serviceQtySum]);
+  }, [selectedServices, selectedServiceCounts, serviceQtySum, t]);
 
   const handlePriceChange = (text: string) => {
     const cleaned = text.replace(/[^0-9.]/g, "");
@@ -509,7 +514,9 @@ export default function EditSubscriptionBottomSheet({
       >
         <StatusBar barStyle="light-content" />
         <StackHeader
-          title={subscriptionId ? "Edit Membership" : "Add Membership"}
+          title={
+            subscriptionId ? t("editSubscription") : t("editMembershipAddTitle")
+          }
           onBack={onClose}
         />
 
@@ -525,7 +532,7 @@ export default function EditSubscriptionBottomSheet({
           bottomOffset={moderateHeightScale(32)}
         >
           <View style={styles.field}>
-            <Text style={styles.label}>Membership name</Text>
+            <Text style={styles.label}>{t("editMembershipNameLabel")}</Text>
             <TextInput
               style={[styles.input, errors.packageName && styles.inputError]}
               value={packageName}
@@ -535,9 +542,9 @@ export default function EditSubscriptionBottomSheet({
                   setErrors((prev) => ({ ...prev, packageName: undefined }));
                 }
               }}
-              placeholder="e.g. Basic Plan"
+              placeholder={t("editMembershipNamePlaceholder")}
               placeholderTextColor={theme.lightGreen4}
-              accessibilityLabel="Membership name"
+              accessibilityLabel={t("editMembershipNameLabel")}
             />
             {errors.packageName ? (
               <Text style={styles.errorText}>{errors.packageName}</Text>
@@ -545,7 +552,7 @@ export default function EditSubscriptionBottomSheet({
           </View>
 
           <View style={styles.field}>
-            <Text style={styles.label}>Monthly price</Text>
+            <Text style={styles.label}>{t("editMembershipMonthlyPrice")}</Text>
             <View style={[styles.affixRow, errors.price && styles.inputError]}>
               <Text style={[styles.affixText, styles.prefixText]}>$</Text>
               <TextInput
@@ -559,9 +566,9 @@ export default function EditSubscriptionBottomSheet({
                 keyboardType="decimal-pad"
                 placeholder="0.00"
                 placeholderTextColor={theme.lightGreen4}
-                accessibilityLabel="Monthly price"
+                accessibilityLabel={t("editMembershipMonthlyPrice")}
               />
-              <Text style={styles.affixText}>/ month</Text>
+              <Text style={styles.affixText}>{t("perMonth")}</Text>
             </View>
             {errors.price ? (
               <Text style={styles.errorText}>{errors.price}</Text>
@@ -569,7 +576,9 @@ export default function EditSubscriptionBottomSheet({
           </View>
 
           <View style={styles.field}>
-            <Text style={styles.sectionTitle}>Included services</Text>
+            <Text style={styles.sectionTitle}>
+              {t("editMembershipIncludedServices")}
+            </Text>
             <View style={styles.serviceList}>
               {selectedServices.map((service) => {
                 const count = selectedServiceCounts[service.id] ?? 1;
@@ -584,13 +593,15 @@ export default function EditSubscriptionBottomSheet({
                         onPress={() => handleRemoveService(service.id)}
                         hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                         accessibilityRole="button"
-                        accessibilityLabel={`Remove ${service.name}`}
+                        accessibilityLabel={t("bkFlowRemoveService", { name: service.name })}
                       >
-                        <Text style={styles.removeText}>Remove</Text>
+                        <Text style={styles.removeText}>{t("remove")}</Text>
                       </TouchableOpacity>
                     </View>
                     <View style={styles.stepperWrap}>
-                      <Text style={styles.perMonth}>Uses per month</Text>
+                      <Text style={styles.perMonth}>
+                        {t("editMembershipUsesPerMonth")}
+                      </Text>
                       <View style={styles.stepper}>
                         <TouchableOpacity
                           style={[styles.stepButton, styles.stepMinus]}
@@ -600,7 +611,9 @@ export default function EditSubscriptionBottomSheet({
                               : handleDecrementServiceCount(service.id)
                           }
                           accessibilityRole="button"
-                          accessibilityLabel={`Fewer ${service.name}`}
+                          accessibilityLabel={t("editMembershipFewerA11y", {
+                            name: service.name,
+                          })}
                         >
                           <Feather
                             name="minus"
@@ -615,7 +628,9 @@ export default function EditSubscriptionBottomSheet({
                             handleIncrementServiceCount(service.id)
                           }
                           accessibilityRole="button"
-                          accessibilityLabel={`More ${service.name}`}
+                          accessibilityLabel={t("editMembershipMoreA11y", {
+                            name: service.name,
+                          })}
                         >
                           <Feather
                             name="plus"
@@ -640,7 +655,9 @@ export default function EditSubscriptionBottomSheet({
                   size={iconScale(20)}
                   color={theme.darkGreen}
                 />
-                <Text style={styles.addServiceText}>Add Service</Text>
+                <Text style={styles.addServiceText}>
+                  {t("editServiceAddTitle")}
+                </Text>
               </TouchableOpacity>
             </View>
             {errors.services ? (
@@ -650,7 +667,9 @@ export default function EditSubscriptionBottomSheet({
 
           {howItWorks ? (
             <View style={styles.howCard}>
-              <Text style={styles.howTitle}>How customers use this</Text>
+              <Text style={styles.howTitle}>
+                {t("editMembershipHowTitle")}
+              </Text>
               {howItWorks.map((line) => (
                 <Text key={line} style={styles.howText}>
                   {line}
@@ -661,7 +680,11 @@ export default function EditSubscriptionBottomSheet({
 
           <View style={styles.actions}>
             <Button
-              title={subscriptionId ? "Save Membership" : "Add Membership"}
+              title={
+                subscriptionId
+                  ? t("editMembershipSave")
+                  : t("editMembershipAddTitle")
+              }
               onPress={handleSave}
               backgroundColor={theme.darkGreen}
             />
@@ -671,7 +694,9 @@ export default function EditSubscriptionBottomSheet({
                 onPress={() => onDelete(subscriptionId)}
                 accessibilityRole="button"
               >
-                <Text style={styles.deleteText}>Delete Membership</Text>
+                <Text style={styles.deleteText}>
+                  {t("editMembershipDelete")}
+                </Text>
               </TouchableOpacity>
             ) : null}
           </View>

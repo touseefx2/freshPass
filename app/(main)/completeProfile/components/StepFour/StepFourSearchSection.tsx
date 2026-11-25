@@ -180,7 +180,7 @@ export default function StepFourSearchSection({
                 predictions.length === 0 && (
                   <View style={{ paddingVertical: moderateHeightScale(12) }}>
                     <Text style={styles.infoText}>
-                      No results yet. Try refining your search.
+                      {t("noResultsRefineSearch")}
                     </Text>
                   </View>
                 )}
@@ -202,7 +202,9 @@ export default function StepFourSearchSection({
             color={(colors as Theme).darkGreen}
           />
           <Text style={styles.locationButtonText}>
-            {isResolvingLocation ? "Locating..." : "Use current location"}
+            {isResolvingLocation
+              ? t("addrSearchLocating")
+              : t("addrSearchUseCurrentLocation")}
           </Text>
         </Pressable>
 

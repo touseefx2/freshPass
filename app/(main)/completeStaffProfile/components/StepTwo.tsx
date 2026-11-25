@@ -21,6 +21,7 @@ import {
 import BusinessHoursBottomSheet from "@/src/components/businessHoursBottomSheet";
 import CustomToggle from "@/src/components/customToggle";
 import { getDefaultHoursFromBounds } from "@/src/utils/businessHoursBounds";
+import { useTranslation } from "react-i18next";
 
 const DAYS = [
   "Sunday",
@@ -31,6 +32,16 @@ const DAYS = [
   "Friday",
   "Saturday",
 ];
+
+const DAY_LABEL_KEYS: Record<string, string> = {
+  Sunday: "staffStepTwoDaySunday",
+  Monday: "staffStepTwoDayMonday",
+  Tuesday: "staffStepTwoDayTuesday",
+  Wednesday: "staffStepTwoDayWednesday",
+  Thursday: "staffStepTwoDayThursday",
+  Friday: "staffStepTwoDayFriday",
+  Saturday: "staffStepTwoDaySaturday",
+};
 
 interface DayData {
   isOpen: boolean;
@@ -190,6 +201,7 @@ const createStyles = (theme: Theme) =>
 export default function StepTwo() {
   const dispatch = useAppDispatch();
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const styles = useMemo(() => createStyles(colors as Theme), [colors]);
   const theme = colors as Theme;
   const { businessHours, salonBusinessHours, businessName } = useAppSelector(
@@ -355,14 +367,14 @@ export default function StepTwo() {
 
   const getDayDisplayText = (day: string): string | React.ReactNode => {
     if (isBusinessDayClosed(day)) {
-      return "Business closed";
+      return t("staffStepTwoBusinessClosed");
     }
 
     const dayData = businessHours[day];
 
     // If day is closed, show "Closed"
     if (!dayData?.isOpen) {
-      return "Closed";
+      return t("closed");
     }
 
     // If day is open but no valid hours are set, show "---" to indicate hours need to be set
@@ -383,7 +395,7 @@ export default function StepTwo() {
           <Text style={styles.dayHoursLine}>{mainHours}</Text>
           {dayData.breaks.map((breakTime, index) => (
             <Text key={index} style={styles.dayHorsBreak}>
-              Break {index + 1}:{" "}
+              {t("staffStepTwoBreakNumber", { number: index + 1 })}{" "}
               {formatTimeRange(
                 breakTime.fromHours,
                 breakTime.fromMinutes,
@@ -402,9 +414,9 @@ export default function StepTwo() {
   return (
     <View style={styles.container}>
       <View style={styles.titleSec}>
-        <Text style={styles.title}>Availability hours</Text>
+        <Text style={styles.title}>{t("availabilityHours")}</Text>
         <Text style={styles.subtitle}>
-          When clients can book staff member service.
+          {t("whenClientsCanBook")}
         </Text>
       </View>
 
@@ -432,7 +444,9 @@ export default function StepTwo() {
                     onValueChange={(value) => handleToggleDay(day, value)}
                     disabled={businessClosed}
                   />
-                  <Text style={styles.dayName}>{day}</Text>
+                  <Text style={styles.dayName}>
+                    {DAY_LABEL_KEYS[day] ? t(DAY_LABEL_KEYS[day]) : day}
+                  </Text>
                   <View style={styles.dayHoursContainer}>
                     {typeof displayText === "string" ? (
                       <Text
@@ -491,11 +505,10 @@ export default function StepTwo() {
               </TouchableOpacity>
               <View style={{ gap: 3, width: "90%" }}>
                 <Text style={styles.checkboxLabel}>
-                  Copy {businessName} business hours
+                  {t("copyBusinessHours", { name: businessName })}
                 </Text>
                 <Text style={styles.sectionDescription}>
-                  This automatically sets their schedule to match the salon's
-                  open hours.
+                  {t("copyBusinessHoursDescription")}
                 </Text>
               </View>
             </View>

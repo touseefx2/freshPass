@@ -133,6 +133,17 @@ const ACTION_BUTTON_SIZE = moderateHeightScale(48);
 const SHEET_SURFACE = "rgba(255, 255, 255, 0.07)";
 const SHEET_BORDER = "rgba(255, 255, 255, 0.12)";
 
+// Translation keys for the English day names shown on the hours cards
+const BIZ_DET_DAY_LABEL_KEYS: Record<string, string> = {
+  Monday: "addStaffDayMonday",
+  Tuesday: "addStaffDayTuesday",
+  Wednesday: "addStaffDayWednesday",
+  Thursday: "addStaffDayThursday",
+  Friday: "addStaffDayFriday",
+  Saturday: "addStaffDaySaturday",
+  Sunday: "addStaffDaySunday",
+};
+
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
     container: {
@@ -1936,7 +1947,7 @@ export default function BusinessDetailScreen() {
   // Fetch business details
   const fetchBusinessDetails = async () => {
     if (!params.business_id) {
-      setError("Business ID is required");
+      setError(t("businessIdRequired"));
       setLoading(false);
       return;
     }
@@ -2006,11 +2017,11 @@ export default function BusinessDetailScreen() {
             : null,
         );
       } else {
-        setError("Failed to load business details");
+        setError(t("csubLoadBusinessFailed"));
         setOwnerWorkImages(null);
       }
     } catch (err: any) {
-      setError(err.message || "Failed to load business details");
+      setError(err.message || t("csubLoadBusinessFailed"));
       setOwnerWorkImages(null);
     } finally {
       setLoading(false);
@@ -2269,7 +2280,12 @@ export default function BusinessDetailScreen() {
   const handleShareBusiness = async () => {
     try {
       const shareUrl = `https://getfreshpass.com/businesses/${businessData?.slug ?? ""}`;
-      const message = `Discover ${businessName} on FreshPass.\n\nAddress: ${businessAddress}\n\nView details & book here:\n${shareUrl}\n\nImage preview:\n${currentHeroImage}`;
+      const message = t("bizDetShareMessage", {
+        name: businessName,
+        address: businessAddress,
+        url: shareUrl,
+        image: currentHeroImage,
+      });
 
       await Share.share({
         message,
@@ -2363,10 +2379,10 @@ export default function BusinessDetailScreen() {
         setReviewsTotal(response.meta?.total || 0);
         setReviewsAverageRating(response.averages?.overall_average_rating || 0);
       } else {
-        setReviewsError("Failed to load reviews");
+        setReviewsError(t("bizDetReviewsLoadFailed"));
       }
     } catch (err: any) {
-      setReviewsError(err.message || "Failed to load reviews");
+      setReviewsError(err.message || t("bizDetReviewsLoadFailed"));
     } finally {
       setReviewsLoading(false);
     }
@@ -2439,7 +2455,7 @@ export default function BusinessDetailScreen() {
   // Format travel time to readable format (days, hours, minutes)
   const formatTravelTime = (minutes: number): string => {
     if (minutes < 60) {
-      return `${minutes} min away`;
+      return t("bizDetMinAway", { count: minutes });
     }
 
     const days = Math.floor(minutes / (24 * 60));
@@ -2449,17 +2465,17 @@ export default function BusinessDetailScreen() {
     const parts: string[] = [];
 
     if (days > 0) {
-      parts.push(`${days} day${days > 1 ? "s" : ""}`);
+      parts.push(t("bizDetDays", { count: days }));
     }
     if (hours > 0) {
-      parts.push(`${hours} hour${hours > 1 ? "s" : ""}`);
+      parts.push(t("bizDetHours", { count: hours }));
     }
     if (mins > 0 && days === 0) {
       // Only show minutes if less than a day
-      parts.push(`${mins} min${mins > 1 ? "s" : ""}`);
+      parts.push(t("bizDetMins", { count: mins }));
     }
 
-    return parts.join(" ") + " away";
+    return t("bizDetAway", { time: parts.join(" ") });
   };
 
   // Calculate travel time in minutes
@@ -2828,7 +2844,7 @@ export default function BusinessDetailScreen() {
 
   // Map business hours from API
   const formatTime = (time: string | null) => {
-    if (!time) return "Closed";
+    if (!time) return t("closed");
     const [hours, minutes] = time.split(":");
     const hour = parseInt(hours);
     const ampm = hour >= 12 ? "PM" : "AM";
@@ -2905,7 +2921,7 @@ export default function BusinessDetailScreen() {
     return businessData.subscription_plans.map((plan: any) => ({
       id: plan.id,
       title: plan.name,
-      visits: `${plan.visits} visit${plan.visits !== 1 ? "s" : ""} per month`,
+      visits: t("bizDetVisitsPerMonth", { count: plan.visits }),
       price: parseFloat(plan.price),
       // Original/striked price should be higher than current price.
       originalPrice: parseFloat(plan.price) * 1.1,
@@ -2930,9 +2946,9 @@ export default function BusinessDetailScreen() {
       } else if (hours > 0) {
         duration = `${hours}h`;
       } else if (minutes > 0) {
-        duration = `${minutes} Mins`;
+        duration = t("bizDetDurationMins", { minutes });
       } else {
-        duration = "45 Mins";
+        duration = t("bizDetDurationMins", { minutes: 45 });
       }
 
       return {
@@ -3015,7 +3031,7 @@ export default function BusinessDetailScreen() {
 
         return {
           id: staff.id || staff.user_id || 0,
-          name: staff.name || "Staff Member",
+          name: staff.name || t("staffMemberFallback"),
           experience: staff?.description || null,
           image: image,
           active: staff.active,
@@ -3197,7 +3213,7 @@ export default function BusinessDetailScreen() {
           </View>
           <View style={styles.reviewUserInfo}>
             <Text style={styles.reviewNameText}>
-              {review.user?.name || "User"}
+              {review.user?.name || t("apptDetUser")}
             </Text>
             <Text style={styles.reviewDateText}>{review.created_at}</Text>
           </View>
@@ -3247,7 +3263,7 @@ export default function BusinessDetailScreen() {
                   setFullReviewModalVisible(true);
                 }}
               >
-                See more
+                {t("bizDetSeeMore")}
               </Text>
             )}
           </View>
@@ -3272,7 +3288,8 @@ export default function BusinessDetailScreen() {
   };
 
   const renderDetailsContent = () => {
-    const aboutText = businessData?.description ?? "No description found";
+    const aboutText =
+      businessData?.description ?? t("bizDetNoDescription");
     const shouldShowReadMore = aboutText.length > 220;
     const displayText = isAboutExpanded
       ? aboutText
@@ -3552,7 +3569,9 @@ export default function BusinessDetailScreen() {
             >
               {sortedBusinessHours.map((item: any, index: number) => {
                 const displayDay =
-                  item.day === currentDay ? t("today") : item.day;
+                  item.day === currentDay
+                    ? t("today")
+                    : t(BIZ_DET_DAY_LABEL_KEYS[item.day] ?? item.day);
                 const breakHours = item.breakHours || [];
                 const hasBreaks = breakHours.length > 0;
                 const hasMultipleBreaks = breakHours.length > 1;
@@ -3561,7 +3580,9 @@ export default function BusinessDetailScreen() {
                 return (
                   <View key={index} style={[styles.hoursCard, styles.shadow]}>
                     <Text style={styles.hoursDay}>{displayDay}</Text>
-                    <Text style={styles.hoursTime}>{item.time}</Text>
+                    <Text style={styles.hoursTime}>
+                      {isClosed ? t("bizDetHolidayClosed") : item.time}
+                    </Text>
                     {!isClosed && hasBreaks && !hasMultipleBreaks && (
                       <Text style={styles.hoursBreak}>
                         {t("breakLabel")} {breakHours[0].start} -{" "}
@@ -3945,7 +3966,7 @@ export default function BusinessDetailScreen() {
                     active && styles.filterButtonTextActive,
                   ]}
                 >
-                  {filter}
+                  {filter === "All" ? t("all") : filter}
                 </Text>
               </TouchableOpacity>
             );
@@ -5527,7 +5548,7 @@ export default function BusinessDetailScreen() {
         onClose={() => setBreaksModalVisible(false)}
         inclusions={selectedBreaks.map(
           (breakHour, index) =>
-            `${index + 1}. Break: ${breakHour.start} - ${breakHour.end}`,
+            `${index + 1}. ${t("breakLabel")} ${breakHour.start} - ${breakHour.end}`,
         )}
         title={t("breakHours")}
       />
@@ -5724,7 +5745,7 @@ export default function BusinessDetailScreen() {
                   </View>
                   <View style={styles.reviewUserInfo}>
                     <Text style={styles.reviewNameText}>
-                      {selectedReview.user?.name || "User"}
+                      {selectedReview.user?.name || t("apptDetUser")}
                     </Text>
                     <Text style={styles.reviewDateText}>
                       {formatDate(selectedReview.created_at)}
@@ -5766,7 +5787,7 @@ export default function BusinessDetailScreen() {
     <WebViewModal
       visible={privacyWebViewVisible}
       url={process.env.EXPO_PUBLIC_PRIVACY_URL || ""}
-      title="Privacy Policy"
+      title={t("privacyPolicy")}
       onClose={() => setPrivacyWebViewVisible(false)}
     />
   </>

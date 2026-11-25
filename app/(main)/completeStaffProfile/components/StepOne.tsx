@@ -32,6 +32,7 @@ import {
 } from "@/src/services/validationService";
 import Logger from "@/src/services/logger";
 import { openFullImageModal } from "@/src/state/slices/generalSlice";
+import { useTranslation } from "react-i18next";
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -149,6 +150,7 @@ const createStyles = (theme: Theme) =>
 
 export default function StepOne() {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
   const dispatch = useAppDispatch();
@@ -207,10 +209,9 @@ export default function StepOne() {
   return (
     <View style={styles.container}>
       <View style={styles.titleSec}>
-        <Text style={styles.title}>Create your personal profile</Text>
+        <Text style={styles.title}>{t("createYourPersonalProfile")}</Text>
         <Text style={styles.subtitle}>
-          Upload your photo and enter your details to get started with
-          FreshPass.
+          {t("staffStepOneSubtitle")}
         </Text>
       </View>
 
@@ -251,7 +252,7 @@ export default function StepOne() {
           )}
         </TouchableOpacity>
         <View style={styles.uploadSection}>
-          <Text style={styles.uploadText}>Add your image</Text>
+          <Text style={styles.uploadText}>{t("addYourImage")}</Text>
           <TouchableOpacity
             activeOpacity={0.7}
             onPress={handleUploadPhoto}
@@ -262,7 +263,7 @@ export default function StepOne() {
               size={moderateWidthScale(18)}
               color={theme.darkGreen}
             />
-            <Text style={styles.uploadButtonText}>Upload photo</Text>
+            <Text style={styles.uploadButtonText}>{t("uploadPhoto")}</Text>
           </TouchableOpacity>
           <TouchableOpacity
             disabled
@@ -278,10 +279,10 @@ export default function StepOne() {
 
       <View style={styles.inputContainer}>
         <FloatingInput
-          label="Full name"
+          label={t("fullName")}
           value={fullName}
           onChangeText={(text) => dispatch(setFullName(text))}
-          placeholder="Full name"
+          placeholder={t("fullName")}
           autoCapitalize="words"
         />
         {fullNameError && <Text style={styles.errorText}>{fullNameError}</Text>}
@@ -292,7 +293,7 @@ export default function StepOne() {
           style={styles.textArea}
           value={aboutYourself}
           onChangeText={handleAboutYourselfChange}
-          placeholder="Write about yourself"
+          placeholder={t("writeAboutYourself")}
           placeholderTextColor={theme.lightGreen2}
           multiline
           numberOfLines={6}

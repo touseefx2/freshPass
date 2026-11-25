@@ -157,35 +157,29 @@ export default function AcceptTerms() {
             {userRole === "business" ? (
               <>
                 <Text style={styles.headline}>
-                  Welcome to your new business command center
+                  {t("acceptTermsBusinessHeadline")}
                 </Text>
 
                 <Text style={styles.boldText}>
-                  FreshPass is designed to simplify your operations and grow
-                  your revenue.
+                  {t("acceptTermsBusinessIntro")}
                 </Text>
 
                 <Text style={styles.bodyText}>
-                  Easily manage team schedules, process payments, track
-                  subscriptions, and monitor staff performance—all from one
-                  powerful dashboard.
+                  {t("acceptTermsBusinessManage")}
                 </Text>
 
                 <Text style={styles.bodyText}>
-                  Stay connected on the go. Use the FreshPass mobile app to
-                  manage bookings, send reminders, and view real-time business
-                  insights from anywhere.
+                  {t("acceptTermsBusinessOnTheGo")}
                 </Text>
               </>
             ) : (
               <>
                 <Text style={styles.headline}>
-                  Welcome to the FreshPass service staff side
+                  {t("acceptTermsStaffHeadline")}
                 </Text>
 
                 <Text style={styles.bodyText}>
-                  You’ve successfully created your profile on FreshPass
-                  platform.
+                  {t("acceptTermsStaffProfileCreated")}
                 </Text>
               </>
             )}
@@ -198,7 +192,9 @@ export default function AcceptTerms() {
               activeOpacity={0.7}
             >
               <Text style={styles.buttonText}>
-                {userRole === "staff" ? "Go to dashboard" : "Get started"}
+                {userRole === "staff"
+                  ? t("modeSwitchedBusinessCta")
+                  : t("acceptTermsGetStarted")}
               </Text>
             </TouchableOpacity>
           </View>

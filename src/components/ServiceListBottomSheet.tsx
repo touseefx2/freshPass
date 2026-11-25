@@ -183,7 +183,7 @@ export default function ServiceListBottomSheet({
             />
           )}
           <Text style={[styles.selectButtonText]}>
-            {isSelected ? "Selected" : "+  Select"}
+            {isSelected ? t("selected") : `+  ${t("select")}`}
           </Text>
         </View>
       </TouchableOpacity>
@@ -198,7 +198,7 @@ export default function ServiceListBottomSheet({
       visible={visible}
       onClose={onClose}
       title={t("selectServices")}
-      footerButtonTitle="Select"
+      footerButtonTitle={t("select")}
       onFooterButtonPress={handleSelect}
     >
       {/* All over - always show at top if services exist */}
@@ -209,7 +209,7 @@ export default function ServiceListBottomSheet({
             style={[styles.serviceItem, { borderBottomWidth: 0 }]}
             onPress={handleToggleAllOver}
           >
-            <Text style={styles.serviceName}>All over</Text>
+            <Text style={styles.serviceName}>{t("svcSheetAllOver")}</Text>
             <View
               style={[
                 styles.selectButton,
@@ -224,7 +224,7 @@ export default function ServiceListBottomSheet({
                 />
               )}
               <Text style={[styles.selectButtonText]}>
-                {areAllServicesSelected ? "Selected" : "+  Select"}
+                {areAllServicesSelected ? t("selected") : `+  ${t("select")}`}
               </Text>
             </View>
           </TouchableOpacity>
@@ -235,7 +235,7 @@ export default function ServiceListBottomSheet({
       )}
 
       {/* Popular starting points section */}
-      <Text style={styles.sectionTitle}>Popular starting points:</Text>
+      <Text style={styles.sectionTitle}>{t("popularStartingPoints")}</Text>
       {suggestions
         .filter((service) => service.id !== "all-over")
         .map((service) => renderServiceItem(service))}

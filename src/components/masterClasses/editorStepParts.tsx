@@ -14,6 +14,8 @@ import {
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import dayjs from "dayjs";
 import isoWeek from "dayjs/plugin/isoWeek";
+import i18n from "i18next";
+import { useTranslation } from "react-i18next";
 import { useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
@@ -42,34 +44,40 @@ export const ALL_WEEKDAYS: Weekday[] = [1, 2, 3, 4, 5, 6, 7];
 
 // ── Lookup tables ─────────────────────────────────────────────────────
 
+const tr = (key: string, options?: Record<string, unknown>): string =>
+  i18n.isInitialized ? String(i18n.t(key, options as any)) : key;
+
+/** i18n keys for short weekday names. */
 const DAY_SHORT: Record<Weekday, string> = {
-  1: "Mon",
-  2: "Tue",
-  3: "Wed",
-  4: "Thu",
-  5: "Fri",
-  6: "Sat",
-  7: "Sun",
+  1: "mcStepDayMon",
+  2: "mcStepDayTue",
+  3: "mcStepDayWed",
+  4: "mcStepDayThu",
+  5: "mcStepDayFri",
+  6: "mcStepDaySat",
+  7: "mcStepDaySun",
 };
 
+/** i18n keys for plural weekday names. */
 const DAY_PLURAL: Record<Weekday, string> = {
-  1: "Mondays",
-  2: "Tuesdays",
-  3: "Wednesdays",
-  4: "Thursdays",
-  5: "Fridays",
-  6: "Saturdays",
-  7: "Sundays",
+  1: "mcStepDaysMon",
+  2: "mcStepDaysTue",
+  3: "mcStepDaysWed",
+  4: "mcStepDaysThu",
+  5: "mcStepDaysFri",
+  6: "mcStepDaysSat",
+  7: "mcStepDaysSun",
 };
 
+/** i18n keys for known US time zones. */
 const TZ_MAP: Record<string, string> = {
-  "America/New_York": "Eastern Time",
-  "America/Chicago": "Central Time",
-  "America/Denver": "Mountain Time",
-  "America/Los_Angeles": "Pacific Time",
-  "America/Anchorage": "Alaska Time",
-  "Pacific/Honolulu": "Hawaii Time",
-  "America/Phoenix": "Arizona Time",
+  "America/New_York": "mcStepTzEastern",
+  "America/Chicago": "mcStepTzCentral",
+  "America/Denver": "mcStepTzMountain",
+  "America/Los_Angeles": "mcStepTzPacific",
+  "America/Anchorage": "mcStepTzAlaska",
+  "Pacific/Honolulu": "mcStepTzHawaii",
+  "America/Phoenix": "mcStepTzArizona",
 };
 
 // ── Helper functions ──────────────────────────────────────────────────
@@ -78,18 +86,18 @@ const TZ_MAP: Record<string, string> = {
 export function getWeekdaysText(days: Weekday[]): string {
   const sorted = [...days].sort((a, b) => a - b);
   if (!sorted.length) return "";
-  if (sorted.length === 1) return DAY_PLURAL[sorted[0]];
+  if (sorted.length === 1) return tr(DAY_PLURAL[sorted[0]]);
   const last = sorted.pop()!;
-  return sorted.map((d) => DAY_PLURAL[d]).join(", ") + " & " + DAY_PLURAL[last];
+  return sorted.map((d) => tr(DAY_PLURAL[d])).join(", ") + " & " + tr(DAY_PLURAL[last]);
 }
 
 /** "Tue & Thu" */
 export function getWeekdaysShort(days: Weekday[]): string {
   const sorted = [...days].sort((a, b) => a - b);
   if (!sorted.length) return "";
-  if (sorted.length === 1) return DAY_SHORT[sorted[0]];
+  if (sorted.length === 1) return tr(DAY_SHORT[sorted[0]]);
   const last = sorted.pop()!;
-  return sorted.map((d) => DAY_SHORT[d]).join(", ") + " & " + DAY_SHORT[last];
+  return sorted.map((d) => tr(DAY_SHORT[d])).join(", ") + " & " + tr(DAY_SHORT[last]);
 }
 
 /** Count how many sessions fall on `meetingDays` between start and end (inclusive). */
@@ -114,7 +122,7 @@ export function calculateWeeklySessions(
 /** "America/New_York" → "Eastern Time"; unknown → strip prefix + spaces. */
 export function getTimezoneLabel(tz: string | null | undefined): string {
   if (!tz) return "";
-  return TZ_MAP[tz] || tz.replace(/^.*\//, "").replace(/_/g, " ");
+  return (TZ_MAP[tz] ? tr(TZ_MAP[tz]) : "") || tz.replace(/^.*\//, "").replace(/_/g, " ");
 }
 
 /** Given start "HH:mm" + duration in minutes → end time like "7:00 PM". */
@@ -130,7 +138,8 @@ export function endTimeText(
 
 // ── Step Indicator ────────────────────────────────────────────────────
 
-const STEP_LABELS = ["Schedule", "Enrollment", "Review & Publish"];
+/** i18n keys for the step labels. */
+const STEP_LABELS = ["jobSchedule", "mcStepEnrollment", "mcStepReviewPublish"];
 
 export function StepIndicator({
   current,
@@ -141,6 +150,7 @@ export function StepIndicator({
   onPress?: (step: EditorStep) => void;
   style?: StyleProp<ViewStyle>;
 }) {
+  const { t } = useTranslation();
   const { colors } = useTheme();
   const theme = colors as Theme;
   const s = useMemo(() => indicatorStyles(theme), [colors]);
@@ -153,7 +163,8 @@ export function StepIndicator({
       contentContainerStyle={s.row}
       keyboardShouldPersistTaps="handled"
     >
-      {STEP_LABELS.map((label, i) => {
+      {STEP_LABELS.map((labelKey, i) => {
+        const label = t(labelKey);
         const step = (i + 1) as EditorStep;
         const active = step === current;
         const past = step < current;
@@ -171,7 +182,7 @@ export function StepIndicator({
             ]}
             accessibilityRole="tab"
             accessibilityState={{ selected: active }}
-            accessibilityLabel={`Step ${step}, ${label}`}
+            accessibilityLabel={t("mcStepA11y", { step, label })}
           >
             {past ? (
               <Ionicons
@@ -253,6 +264,7 @@ export function WeekdayChips({
   onChange: (days: Weekday[]) => void;
   style?: StyleProp<ViewStyle>;
 }) {
+  const { t } = useTranslation();
   const { colors } = useTheme();
   const theme = colors as Theme;
   const s = useMemo(() => dayStyles(theme), [colors]);
@@ -269,7 +281,7 @@ export function WeekdayChips({
     <View
       style={[s.row, style]}
       accessibilityRole="radiogroup"
-      accessibilityLabel="Meeting days"
+      accessibilityLabel={t("mcStepMeetingDays")}
     >
       {ALL_WEEKDAYS.map((day) => {
         const on = selected.includes(day);
@@ -281,10 +293,10 @@ export function WeekdayChips({
             style={[s.chip, on && s.chipOn]}
             accessibilityRole="checkbox"
             accessibilityState={{ checked: on }}
-            accessibilityLabel={DAY_SHORT[day]}
+            accessibilityLabel={t(DAY_SHORT[day])}
           >
             <Text style={[s.chipText, on && s.chipTextOn]}>
-              {DAY_SHORT[day]}
+              {t(DAY_SHORT[day])}
             </Text>
           </TouchableOpacity>
         );
@@ -341,6 +353,7 @@ export function SessionSummaryCard({
   onReview?: () => void;
   style?: StyleProp<ViewStyle>;
 }) {
+  const { t } = useTranslation();
   const { colors } = useTheme();
   const theme = colors as Theme;
   const s = useMemo(() => sessionStyles(theme), [colors]);
@@ -356,7 +369,7 @@ export function SessionSummaryCard({
           color={theme.darkGreen}
         />
         <Text style={s.text}>
-          {sessions} session{sessions !== 1 ? "s" : ""} · {daysText}
+          {t("mcStepSessionsSummary", { count: sessions, days: daysText })}
           {timeText ? `\n${timeText}` : ""}
         </Text>
       </View>
@@ -365,9 +378,9 @@ export function SessionSummaryCard({
           activeOpacity={0.7}
           onPress={onReview}
           accessibilityRole="link"
-          accessibilityLabel="Review session dates"
+          accessibilityLabel={t("mcStepReviewSessionDates")}
         >
-          <Text style={s.link}>Review session dates</Text>
+          <Text style={s.link}>{t("mcStepReviewSessionDates")}</Text>
         </TouchableOpacity>
       ) : null}
     </View>
@@ -423,6 +436,7 @@ export function ReviewCourseCard({
   onEdit?: () => void;
   style?: StyleProp<ViewStyle>;
 }) {
+  const { t } = useTranslation();
   const { colors } = useTheme();
   const theme = colors as Theme;
   const s = useMemo(() => reviewStyles(theme), [colors]);
@@ -430,7 +444,7 @@ export function ReviewCourseCard({
   return (
     <View style={[s.card, style]}>
       <Text style={s.title} numberOfLines={2} accessibilityRole="header">
-        {title || "Untitled Class"}
+        {title || t("mcStepUntitledClass")}
       </Text>
       {meta.map((row, i) => (
         <View key={i} style={s.metaRow}>
@@ -450,10 +464,10 @@ export function ReviewCourseCard({
           activeOpacity={0.7}
           onPress={onEdit}
           accessibilityRole="link"
-          accessibilityLabel="Edit details"
+          accessibilityLabel={t("autoReelEditDetails")}
           style={s.editLink}
         >
-          <Text style={s.editText}>Edit details</Text>
+          <Text style={s.editText}>{t("autoReelEditDetails")}</Text>
         </TouchableOpacity>
       ) : null}
     </View>
@@ -514,6 +528,7 @@ export function DealPlacementCard({
   days: number;
   style?: StyleProp<ViewStyle>;
 }) {
+  const { t } = useTranslation();
   const { colors } = useTheme();
   const theme = colors as Theme;
   const s = useMemo(() => dealStyles(theme), [colors]);
@@ -526,13 +541,13 @@ export function DealPlacementCard({
           size={iconScale(18)}
           color={theme.orangeBrown}
         />
-        <Text style={s.headerText}>FreshPass Deals placement</Text>
+        <Text style={s.headerText}>{t("mcStepDealsPlacement")}</Text>
       </View>
       <Text style={s.price}>
-        {formatClassPrice(fee)} for {days} days
+        {t("mcStepDealPrice", { price: formatClassPrice(fee), count: days })}
       </Text>
       <Text style={s.note}>
-        Promotion duration is separate from your course schedule.
+        {t("mcStepPromotionSeparate")}
       </Text>
     </View>
   );
@@ -574,7 +589,7 @@ const dealStyles = (theme: Theme) =>
 // ── Multi-Date Calendar ──────────────────────────────────────────────
 
 const DATE_KEY = "YYYY-MM-DD";
-const WEEKDAY_LABELS_MON = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const WEEKDAY_LABELS_MON = ALL_WEEKDAYS.map((d) => DAY_SHORT[d]);
 
 export function MultiDateCalendar({
   selected,
@@ -591,6 +606,7 @@ export function MultiDateCalendar({
   timeZone?: string | null;
   style?: StyleProp<ViewStyle>;
 }) {
+  const { t } = useTranslation();
   const { colors } = useTheme();
   const theme = colors as Theme;
   const s = useMemo(() => calendarStyles(theme), [colors]);
@@ -659,7 +675,7 @@ export function MultiDateCalendar({
           activeOpacity={0.7}
           hitSlop={8}
           accessibilityRole="button"
-          accessibilityLabel="Previous month"
+          accessibilityLabel={t("bkFlowPrevMonth")}
         >
           <Ionicons name="chevron-back" size={iconScale(20)} color={theme.darkGreen} />
         </TouchableOpacity>
@@ -671,7 +687,7 @@ export function MultiDateCalendar({
           activeOpacity={0.7}
           hitSlop={8}
           accessibilityRole="button"
-          accessibilityLabel="Next month"
+          accessibilityLabel={t("bkFlowNextMonth")}
         >
           <Ionicons name="chevron-forward" size={iconScale(20)} color={theme.darkGreen} />
         </TouchableOpacity>
@@ -680,7 +696,7 @@ export function MultiDateCalendar({
       <View style={s.grid}>
         {WEEKDAY_LABELS_MON.map((name) => (
           <Text key={name} style={s.weekday}>
-            {name}
+            {t(name)}
           </Text>
         ))}
         {days.map((day, i) =>
@@ -813,6 +829,7 @@ export function SelectedDateChips({
   onRemove: (date: string) => void;
   style?: StyleProp<ViewStyle>;
 }) {
+  const { t } = useTranslation();
   const { colors } = useTheme();
   const theme = colors as Theme;
   const s = useMemo(() => chipStyles(theme), [colors]);
@@ -822,7 +839,7 @@ export function SelectedDateChips({
   return (
     <View style={[s.wrapper, style]}>
       <Text style={s.countText}>
-        {dates.length} date{dates.length !== 1 ? "s" : ""} selected
+        {t("mcDatesSelected", { count: dates.length })}
       </Text>
       <View style={s.chipsWrap}>
         {dates.map((date) => (
@@ -832,7 +849,7 @@ export function SelectedDateChips({
             activeOpacity={0.7}
             onPress={() => onRemove(date)}
             accessibilityRole="button"
-            accessibilityLabel={`Remove ${dayjs(date).format("MMM D")}`}
+            accessibilityLabel={t("mcStepRemoveDateA11y", { date: dayjs(date).format("MMM D") })}
           >
             <Text style={s.chipText}>{dayjs(date).format("MMM D")}</Text>
             <Ionicons
@@ -902,6 +919,7 @@ export function SessionTimesList({
   onAddRemoveDates?: () => void;
   style?: StyleProp<ViewStyle>;
 }) {
+  const { t } = useTranslation();
   const { colors } = useTheme();
   const theme = colors as Theme;
   const s = useMemo(() => sessionListStyles(theme), [colors]);
@@ -915,7 +933,7 @@ export function SessionTimesList({
 
   return (
     <View style={[s.wrapper, style]}>
-      <Text style={s.heading}>Your sessions</Text>
+      <Text style={s.heading}>{t("mcYourSessions")}</Text>
       <View style={s.list}>
         {dates.map((date) => {
           const over = overrides[date];
@@ -927,7 +945,7 @@ export function SessionTimesList({
                 activeOpacity: 0.7,
                 onPress: () => onEdit(date),
                 accessibilityRole: "button" as const,
-                accessibilityLabel: `Edit session ${dayjs(date).format("ddd, MMM D")}`,
+                accessibilityLabel: t("mcStepEditSessionA11y", { date: dayjs(date).format("ddd, MMM D") }),
               }
             : {};
           return (
@@ -961,9 +979,9 @@ export function SessionTimesList({
           onPress={onAddRemoveDates}
           style={s.addRemove}
           accessibilityRole="link"
-          accessibilityLabel="Add or remove dates"
+          accessibilityLabel={t("mcStepAddRemoveDatesA11y")}
         >
-          <Text style={s.addRemoveText}>+ Add or remove dates</Text>
+          <Text style={s.addRemoveText}>{t("mcAddOrRemoveDates")}</Text>
         </TouchableOpacity>
       ) : null}
     </View>

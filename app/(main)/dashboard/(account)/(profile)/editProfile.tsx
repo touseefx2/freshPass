@@ -707,18 +707,18 @@ const normalizeCountryCodeToDialCode = (raw: string | null | undefined): string 
 // Date, Month, Year options
 const DAYS = Array.from({ length: 31 }, (_, i) => (i + 1).toString());
 const MONTHS = [
-  { value: "Jan", label: "Jan" },
-  { value: "Feb", label: "Feb" },
-  { value: "Mar", label: "Mar" },
-  { value: "Apr", label: "Apr" },
-  { value: "May", label: "May" },
-  { value: "Jun", label: "Jun" },
-  { value: "Jul", label: "Jul" },
-  { value: "Aug", label: "Aug" },
-  { value: "Sep", label: "Sep" },
-  { value: "Oct", label: "Oct" },
-  { value: "Nov", label: "Nov" },
-  { value: "Dec", label: "Dec" },
+  { value: "Jan", labelKey: "editProfileMonthJan" },
+  { value: "Feb", labelKey: "editProfileMonthFeb" },
+  { value: "Mar", labelKey: "editProfileMonthMar" },
+  { value: "Apr", labelKey: "editProfileMonthApr" },
+  { value: "May", labelKey: "editProfileMonthMay" },
+  { value: "Jun", labelKey: "editProfileMonthJun" },
+  { value: "Jul", labelKey: "editProfileMonthJul" },
+  { value: "Aug", labelKey: "editProfileMonthAug" },
+  { value: "Sep", labelKey: "editProfileMonthSep" },
+  { value: "Oct", labelKey: "editProfileMonthOct" },
+  { value: "Nov", labelKey: "editProfileMonthNov" },
+  { value: "Dec", labelKey: "editProfileMonthDec" },
 ];
 const CURRENT_YEAR = new Date().getFullYear();
 const YEARS = Array.from({ length: 100 }, (_, i) =>
@@ -769,6 +769,10 @@ const parseDateOfBirth = (
 export default function EditProfileScreen() {
   const { colors } = useTheme();
   const { t } = useTranslation();
+  const getMonthLabel = (value: string) => {
+    const labelKey = MONTHS.find((m) => m.value === value)?.labelKey;
+    return labelKey ? t(labelKey) : value;
+  };
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
   const insets = useSafeAreaInsets();
@@ -1801,7 +1805,7 @@ export default function EditProfileScreen() {
                 onPress={() => setDateDropdownVisible("month")}
               >
                 <View style={styles.dateFieldContent}>
-                  <Text style={styles.dateFieldLabel}>Month</Text>
+                  <Text style={styles.dateFieldLabel}>{t("month")}</Text>
                   <Text
                     style={[
                       dateOfBirth?.month
@@ -1810,9 +1814,8 @@ export default function EditProfileScreen() {
                     ]}
                   >
                     {dateOfBirth?.month
-                      ? MONTHS.find((m) => m.value === dateOfBirth.month)
-                          ?.label || dateOfBirth.month
-                      : "Sep"}
+                      ? getMonthLabel(dateOfBirth.month)
+                      : t("editProfileMonthSep")}
                   </Text>
                 </View>
                 <Feather
@@ -1870,7 +1873,7 @@ export default function EditProfileScreen() {
             </View>
             {isDateOfBirthPartial && (
               <Text style={styles.errorText}>
-                Please complete all date fields or leave them empty
+                {t("completeAllDateFieldsOrEmpty")}
               </Text>
             )}
           </View>
@@ -2095,9 +2098,7 @@ export default function EditProfileScreen() {
             onSelect={(value) => handleDateSelect("month", value)}
             onClose={() => setDateDropdownVisible(null)}
             buttonRef={monthFieldRef}
-            displayValue={(value) =>
-              MONTHS.find((m) => m.value === value)?.label || value
-            }
+            displayValue={getMonthLabel}
           />
 
           <DatePickerDropdown

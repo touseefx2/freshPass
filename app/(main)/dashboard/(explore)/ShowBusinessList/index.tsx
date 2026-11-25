@@ -115,7 +115,10 @@ export function BusinessCard({
               color={theme.orangeBrown}
             />
             <Text style={styles.verifiedSalonRatingText}>
-              {salon.rating || 0}/ {salon.reviewCount || 0} reviews
+              {t("exploreListRatingReviews", {
+                rating: salon.rating || 0,
+                count: salon.reviewCount || 0,
+              })}
             </Text>
           </View>
           <PromotionPill visible={salon.hasPromotion} />
@@ -356,7 +359,9 @@ export function BusinessCardType({
                         }}
                       >
                         <Text style={styles.moreText}>
-                          and +{subscription.inclusions.length - 2} more
+                          {t("exploreListAndMore", {
+                            count: subscription.inclusions.length - 2,
+                          })}
                         </Text>
                       </TouchableOpacity>
                     </>
@@ -410,7 +415,7 @@ export function BusinessCardType({
 
       {!isIndividual && !hasSubscriptions && (
         <View style={styles.noListFoundContainer}>
-          <Text style={styles.noListFoundText}>No subscription list found</Text>
+          <Text style={styles.noListFoundText}>{t("noSubscriptionListFound")}</Text>
         </View>
       )}
 

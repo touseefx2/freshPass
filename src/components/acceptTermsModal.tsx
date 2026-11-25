@@ -25,6 +25,7 @@ import { useFocusEffect } from "expo-router";
 import Button from "@/src/components/button";
 import { LeafLogo } from "@/assets/icons";
 import WebViewModal from "@/src/components/webViewModal";
+import { Trans, useTranslation } from "react-i18next";
 
 const TERMS_AND_CONDITIONS_URL = process.env.EXPO_PUBLIC_TERMS_URL || "";
 const PRIVACY_POLICY_URL = process.env.EXPO_PUBLIC_PRIVACY_URL || "";
@@ -144,6 +145,7 @@ export default function AcceptTermsModal({
   onClose,
   onContinue,
 }: AcceptTermsModalProps) {
+  const { t } = useTranslation();
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors as Theme), [colors]);
   const theme = colors as Theme;
@@ -175,13 +177,13 @@ export default function AcceptTermsModal({
 
   const handleTermsPress = () => {
     setWebViewUrl(TERMS_AND_CONDITIONS_URL);
-    setWebViewTitle("Terms of Use");
+    setWebViewTitle(t("termsOfUse"));
     setWebViewVisible(true);
   };
 
   const handlePrivacyPress = () => {
     setWebViewUrl(PRIVACY_POLICY_URL);
-    setWebViewTitle("Privacy Notice");
+    setWebViewTitle(t("acceptTermsPrivacyNotice"));
     setWebViewVisible(true);
   };
 
@@ -234,19 +236,24 @@ export default function AcceptTermsModal({
         <View style={styles.container}>
           <View style={styles.content}>
             <Text style={styles.title}>
-              Accept FreshPass terms and review privacy notice.
+              {t("acceptTermsTitle")}
             </Text>
 
             <Text style={styles.bodyText}>
-              By clicking 'I Agree,' I confirm that I have read and accept the{" "}
-              <Text style={styles.linkText} onPress={handleTermsPress}>
-                Terms of Use
-              </Text>{" "}
-              and{" "}
-              <Text style={styles.linkText} onPress={handlePrivacyPress}>
-                Privacy Notice
-              </Text>
-              , and I am 18 years or older.
+              <Trans
+                i18nKey="acceptTermsBody"
+                components={{
+                  terms: (
+                    <Text style={styles.linkText} onPress={handleTermsPress} />
+                  ),
+                  privacy: (
+                    <Text
+                      style={styles.linkText}
+                      onPress={handlePrivacyPress}
+                    />
+                  ),
+                }}
+              />
             </Text>
           </View>
 
@@ -267,10 +274,10 @@ export default function AcceptTermsModal({
                   )}
                 </View>
               </View>
-              <Text style={styles.checkboxLabel}>I Agree</Text>
+              <Text style={styles.checkboxLabel}>{t("acceptTermsIAgree")}</Text>
             </TouchableOpacity>
             <Button
-              title="Continue"
+              title={t("continue")}
               onPress={handleContinue}
               disabled={!isAgreed}
               backgroundColor={theme.darkGreen}

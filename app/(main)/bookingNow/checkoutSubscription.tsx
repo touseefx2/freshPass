@@ -457,7 +457,7 @@ function CheckoutSubscriptionContent() {
   // Fetch business details and find matching subscription (only when coming from DashboardContent)
   const fetchBusinessDetails = async () => {
     if (!params.businessId || !params.subscriptionId) {
-      setError("Business ID or Subscription ID is missing");
+      setError(t("csubIdsMissing"));
       setLoading(false);
       return;
     }
@@ -506,13 +506,13 @@ function CheckoutSubscriptionContent() {
           };
           setSubscriptionData(mappedSubscription);
         } else {
-          setError("Subscription plan not found");
+          setError(t("csubPlanNotFound"));
         }
       } else {
-        setError("Failed to load business details");
+        setError(t("csubLoadBusinessFailed"));
       }
     } catch (err: any) {
-      setError(err.message || "Failed to load business details");
+      setError(err.message || t("csubLoadBusinessFailed"));
     } finally {
       setLoading(false);
     }
@@ -562,7 +562,7 @@ function CheckoutSubscriptionContent() {
       // Fallback: if screenName not provided but we have IDs, fetch from API
       fetchBusinessDetails();
     } else {
-      setError("Missing required parameters");
+      setError(t("csubMissingParams"));
       setLoading(false);
     }
   }, []);
@@ -600,8 +600,8 @@ function CheckoutSubscriptionContent() {
   const handleSubscribe = async () => {
     if (!subscriptionData?.id) {
       showBanner(
-        "Error",
-        "Subscription ID is missing. Please try again.",
+        t("error"),
+        t("csubSubscriptionIdMissing"),
         "error",
         4000,
       );
@@ -677,7 +677,7 @@ function CheckoutSubscriptionContent() {
         const { error: initError } = await initPaymentSheet(paymentConfig);
 
         if (initError) {
-          throw new Error(initError.message || "Failed to initialize payment");
+          throw new Error(initError.message || t("apptDetPaymentInitFailed"));
         }
 
         // Step 3: Present payment sheet to user
@@ -687,8 +687,8 @@ function CheckoutSubscriptionContent() {
           // Payment was cancelled or failed
           if (!presentError.code?.includes("Canceled")) {
             showBanner(
-              "Payment Failed",
-              presentError.message || "Payment could not be completed",
+              t("apptDetPaymentFailed"),
+              presentError.message || t("apptDetPaymentNotCompleted"),
               "error",
               4000,
             );
@@ -705,8 +705,8 @@ function CheckoutSubscriptionContent() {
           setProcessingPayment(false);
           setPaymentSuccess(true);
           showBanner(
-            "Success",
-            "Payment successful! Your membership will be activated.",
+            t("success"),
+            t("csubPaymentSuccess"),
             "success",
             4000,
           );
@@ -718,7 +718,7 @@ function CheckoutSubscriptionContent() {
       }
     } catch (err: any) {
       // Extract clean error message
-      let errorMessage = "Failed to process payment";
+      let errorMessage = t("apptDetPaymentProcessFailed");
 
       if (err.data?.message) {
         errorMessage = err.data.message;
@@ -728,7 +728,7 @@ function CheckoutSubscriptionContent() {
         errorMessage = err.message;
       }
 
-      showBanner("Payment Failed", errorMessage, "error", 4000);
+      showBanner(t("apptDetPaymentFailed"), errorMessage, "error", 4000);
     } finally {
       setIsSubscribing(false);
     }
@@ -770,20 +770,20 @@ function CheckoutSubscriptionContent() {
     <SafeAreaView edges={["bottom"]} style={styles.container}>
       <StatusBar barStyle="light-content" />
       {/* Header */}
-      <StackHeader title="Membership Plans" />
+      <StackHeader title={t("csubTitle")} />
 
       {loading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={theme.primary} />
           <Text style={styles.loadingText}>
-            Loading subscription details...
+            {t("csubLoading")}
           </Text>
         </View>
       ) : error ? (
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>{error}</Text>
           <Button
-            title="Retry"
+            title={t("retry")}
             onPress={fetchBusinessDetails}
             containerStyle={styles.subscribeButton}
           />
@@ -797,16 +797,18 @@ function CheckoutSubscriptionContent() {
               color={theme.darkGreen}
             />
           </View>
-          <Text style={styles.successTitle}>Congratulations!</Text>
+          <Text style={styles.successTitle}>{t("congratulations")}</Text>
           <Text style={styles.successMessage}>
-            You have successfully subscribed to{" "}
-            {subscriptionData?.title || "this plan"}.{"\n\n"}
-            Your membership is now active and ready to use.
+            {t("csubSuccessSubscribed", {
+              plan: subscriptionData?.title || t("csubThisPlan"),
+            })}
+            {"\n\n"}
+            {t("csubSuccessActive")}
           </Text>
 
           <View style={[styles.bottomContainer, { width: "60%" }]}>
             <Button
-              title={"View Memberships"}
+              title={t("csubViewMemberships")}
               onPress={handleViewSubscriptions}
               loading={isSubscribing}
               disabled={isSubscribing}
@@ -839,7 +841,7 @@ function CheckoutSubscriptionContent() {
                 style={styles.changeSubscriptionButton}
               >
                 <Text style={styles.changeSubscriptionText}>
-                  Change membership
+                  {t("changeSubscription")}
                 </Text>
                 <View style={styles.addServiceButton}>
                   <Octicons
@@ -868,7 +870,7 @@ function CheckoutSubscriptionContent() {
                   resizeMode="cover"
                 />
                 <Text style={styles.businessName}>
-                  {businessData.title || businessData.name || "Business"}
+                  {businessData.title || businessData.name || t("business")}
                 </Text>
               </View>
             )}
@@ -891,10 +893,10 @@ function CheckoutSubscriptionContent() {
                 </View>
                 <View style={styles.planTitleContainer}>
                   <Text style={styles.planTitle}>
-                    {subscriptionData.title || "Subscription Plan"}
+                    {subscriptionData.title || t("csubSubscriptionPlan")}
                   </Text>
                   <View style={styles.planSubtitle}>
-                    <Text style={styles.planSubtitle}>Premium Plan</Text>
+                    <Text style={styles.planSubtitle}>{t("premiumPlan")}</Text>
                     <Feather
                       name="star"
                       size={moderateWidthScale(12)}
@@ -914,15 +916,14 @@ function CheckoutSubscriptionContent() {
                   style={styles.monthlyTagIcon}
                 />
                 <Text style={styles.monthlyTagText}>
-                  Monthly Membership Available
+                  {t("csubMonthlyAvailable")}
                 </Text>
               </View>
 
               {/* Description */}
               {subscriptionData.title && (
                 <Text style={styles.planDescription}>
-                  {subscriptionData.title} - Premium subscription plan with
-                  exclusive benefits
+                  {t("csubPlanDescription", { title: subscriptionData.title })}
                 </Text>
               )}
 
@@ -946,7 +947,7 @@ function CheckoutSubscriptionContent() {
                           style={styles.featureIcon}
                         />
                         <Text style={styles.featureText}>
-                          Included Services
+                          {t("csubIncludedServices")}
                         </Text>
                       </View>
 
@@ -979,10 +980,12 @@ function CheckoutSubscriptionContent() {
                 {subscriptionData.price && (
                   <View style={styles.pricingBadge}>
                     <Text style={styles.pricingAmount}>
-                      ${subscriptionData.price.toFixed(2)} /mo
+                      {t("csubPricePerMonth", {
+                        price: subscriptionData.price.toFixed(2),
+                      })}
                     </Text>
                     <Text style={styles.pricingPeriod}>
-                      Monthly Membership
+                      {t("csubMonthlyMembership")}
                     </Text>
                   </View>
                 )}
@@ -998,7 +1001,9 @@ function CheckoutSubscriptionContent() {
                 </Text>
               ) : null}
               <Button
-                title={paymentSuccess ? "View Memberships" : "Join Now"}
+                title={
+                  paymentSuccess ? t("csubViewMemberships") : t("joinNow")
+                }
                 onPress={
                   paymentSuccess ? handleViewSubscriptions : handleSubscribe
                 }
@@ -1016,7 +1021,9 @@ function CheckoutSubscriptionContent() {
         <View style={styles.processingOverlay}>
           <View style={styles.processingContainer}>
             <ActivityIndicator size="large" color={theme.primary} />
-            <Text style={styles.processingText}>Processing payment...</Text>
+            <Text style={styles.processingText}>
+              {t("processingPayment")}
+            </Text>
           </View>
         </View>
       )}

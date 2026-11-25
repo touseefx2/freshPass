@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import NotificationScreen from "@/src/components/NotificationScreen";
 import { IMAGES } from "@/src/constant/images";
 import {
@@ -13,34 +14,32 @@ interface Screen1Props {
 }
 
 export default function Screen1({ onNext, onSkip }: Screen1Props) {
+  const { t } = useTranslation();
   const features = [
     {
       icon: EnvelopeIcon,
-      title: "Instant booking alerts",
-      description:
-        "Get notified immediately when a new appointment is booked, so you're always prepared.",
+      title: t("introBizAlertsTitle"),
+      description: t("introBizAlertsDesc"),
     },
     {
       icon: MegaphoneIcon,
-      title: "Modification & cancellations",
-      description:
-        "Receive instant updates if a client reschedules or cancels, allowing you to fill the slot.",
+      title: t("introBizChangesTitle"),
+      description: t("introBizChangesDesc"),
     },
     {
       icon: PersonScissorsIcon,
-      title: "Customer reminders",
-      description:
-        "See a summary of which customers need an automatic reminder before their appointment tomorrow.",
+      title: t("introBizRemindersTitle"),
+      description: t("introBizRemindersDesc"),
     },
   ];
 
   return (
     <NotificationScreen
-      headline="Never miss a customer"
+      headline={t("introBizNotifHeadline")}
       features={features}
-      buttonTitle="Turn on notifications"
+      buttonTitle={t("introTurnOnNotifications")}
       backgroundImage={IMAGES.introductionBack1B}
-      footerText="Stop notifications anytime if you change you mind."
+      footerText={t("introNotifFooter")}
       onNext={onNext}
       onSkip={onSkip}
     />

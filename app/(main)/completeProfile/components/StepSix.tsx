@@ -76,11 +76,11 @@ export default function StepSix() {
       if (response.success && response.data?.data) {
         setPlans(response.data.data);
       } else {
-        setError("Failed to load subscription plans");
+        setError(t("failedToLoadSubscriptionPlans"));
         setApiError(true);
       }
     } catch (err: any) {
-      setError(err.message || "Failed to load subscription plans");
+      setError(err.message || t("failedToLoadSubscriptionPlans"));
       setApiError(true);
       showBanner(
         t("error"),
@@ -122,7 +122,7 @@ export default function StepSix() {
       <View style={styles.titleSec}>
         <Text style={styles.title}>{t("businessPlans")}</Text>
         <Text style={styles.subtitle}>
-          Choose one plan to continue setting up your account.
+          {t("plansStepSubtitle")}
         </Text>
       </View>
 

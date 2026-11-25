@@ -23,6 +23,7 @@ import {
   widthScale,
 } from "@/src/theme/dimensions";
 import Logger from "@/src/services/logger";
+import { useTranslation } from "react-i18next";
 
 type ForceUpdateScreenProps = {
   message: string;
@@ -116,6 +117,7 @@ export default function ForceUpdateScreen({
   onRecheck,
   rechecking = false,
 }: ForceUpdateScreenProps) {
+  const { t } = useTranslation();
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors as Theme), [colors]);
   const theme = colors as Theme;
@@ -134,7 +136,9 @@ export default function ForceUpdateScreen({
   };
 
   const storeLabel =
-    Platform.OS === "ios" ? "Open App Store" : "Open Google Play";
+    Platform.OS === "ios"
+      ? t("forceUpdateOpenAppStore")
+      : t("forceUpdateOpenGooglePlay");
 
   return (
     <SafeAreaView style={styles.container}>
@@ -151,14 +155,14 @@ export default function ForceUpdateScreen({
           />
         </View>
 
-        <Text style={styles.title}>Update Required</Text>
+        <Text style={styles.title}>{t("forceUpdateTitle")}</Text>
         <Text style={styles.message}>{message}</Text>
 
         <View style={styles.versionCard}>
-          <Text style={styles.versionLabel}>Your version</Text>
+          <Text style={styles.versionLabel}>{t("forceUpdateYourVersion")}</Text>
           <Text style={styles.versionValue}>{currentVersion || "—"}</Text>
           <Text style={[styles.versionLabel, styles.versionLabelSpaced]}>
-            Required version
+            {t("forceUpdateRequiredVersion")}
           </Text>
           <Text style={styles.versionValue}>{minVersion || "—"}</Text>
         </View>
@@ -178,7 +182,9 @@ export default function ForceUpdateScreen({
           {rechecking ? (
             <ActivityIndicator color={theme.buttonBack} />
           ) : (
-            <Text style={styles.secondaryButtonText}>I already updated</Text>
+            <Text style={styles.secondaryButtonText}>
+              {t("forceUpdateAlreadyUpdated")}
+            </Text>
           )}
         </TouchableOpacity>
       </ScrollView>

@@ -21,6 +21,7 @@ import { LeafLogo } from "@/assets/icons";
 import { Ionicons } from "@expo/vector-icons";
 import Button from "@/src/components/button";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useTranslation } from "react-i18next";
 
 interface Feature {
   icon: React.ComponentType<{ width: number; height: number }>;
@@ -123,6 +124,7 @@ export default function CoreFeatureScreen({
   onNext,
   onSkip,
 }: CoreFeatureScreenProps) {
+  const { t } = useTranslation();
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors as Theme), [colors]);
   const theme = colors as Theme;
@@ -207,7 +209,7 @@ export default function CoreFeatureScreen({
                 onPress={onSkip}
                 activeOpacity={0.7}
               >
-                <Text style={styles.skipButtonText}>Not now</Text>
+                <Text style={styles.skipButtonText}>{t("notNow")}</Text>
                 <Ionicons
                   name="chevron-forward"
                   size={iconScale(16)}

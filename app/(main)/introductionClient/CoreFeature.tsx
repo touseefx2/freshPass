@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import CoreFeatureScreen from "@/src/components/CoreFeatureScreen";
 import { IMAGES } from "@/src/constant/images";
 import {
@@ -12,32 +13,30 @@ interface Screen2Props {
 }
 
 export default function Screen2({ onNext }: Screen2Props) {
+  const { t } = useTranslation();
   const features = [
     {
       icon: FindNearbySalonsIcon,
-      title: "Find nearby salons",
-      description:
-        "See top-rated barbers, nail salons, and spas closest to you.",
+      title: t("introClientNearbyTitle"),
+      description: t("introClientNearbyDesc"),
     },
     {
       icon: FlexiblePaymentOptionsIcon,
-      title: "Flexible payment options",
-      description:
-        "Choose to pay for individual services or unlock greater value with exclusive monthly subscriptions.",
+      title: t("introClientPaymentTitle"),
+      description: t("introClientPaymentDesc"),
     },
     {
       icon: CheckRealTimeAvailabilityIcon,
-      title: "Check real-time availability",
-      description:
-        "Instantly see who has an open slot and book your appointment in seconds.",
+      title: t("introClientAvailabilityTitle"),
+      description: t("introClientAvailabilityDesc"),
     },
   ];
 
   return (
     <CoreFeatureScreen
-      headline="Discover & book instantly."
+      headline={t("introClientCoreHeadline")}
       features={features}
-      buttonTitle="Continue"
+      buttonTitle={t("continue")}
       backgroundImage={IMAGES.introductionBack2C}
       onNext={onNext}
     />

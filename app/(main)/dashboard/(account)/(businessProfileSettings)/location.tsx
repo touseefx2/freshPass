@@ -63,6 +63,7 @@ import { resolveCurrentLocation } from "@/src/constant/functions";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import Button from "@/src/components/button";
 import NotificationBanner from "@/src/components/notificationBanner";
+import { Trans, useTranslation } from "react-i18next";
 
 interface LocationData {
   street_address: string;
@@ -279,6 +280,7 @@ const createStyles = (theme: Theme) =>
 
 export default function LocationScreen() {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
   const placeholderColor = theme.lightGreen2;
@@ -543,7 +545,7 @@ export default function LocationScreen() {
     if (!permissionResult.granted) {
       setLocationMessage(
         permissionResult.errorMessage ??
-          "Location permission is required to use your current location.",
+          t("locationScreenPermissionRequired"),
       );
       if (permissionResult.shouldOpenSettings) {
         await openLocationSettings();
@@ -679,16 +681,16 @@ export default function LocationScreen() {
 
       if (response.success) {
         showBanner(
-          "Success",
-          response.message || "Location updated successfully",
+          t("success"),
+          response.message || t("locationUpdatedSuccess"),
           "success",
           3000,
         );
         router.back();
       } else {
         showBanner(
-          "Error",
-          response.message || "Failed to update location",
+          t("error"),
+          response.message || t("locationScreenUpdateFailed"),
           "error",
           3000,
         );
@@ -696,8 +698,8 @@ export default function LocationScreen() {
     } catch (error: any) {
       Logger.error("Failed to update location:", error);
       showBanner(
-        "Error",
-        error?.message || "Failed to update location. Please try again.",
+        t("error"),
+        error?.message || t("locationScreenUpdateFailedRetry"),
         "error",
         3000,
       );
@@ -725,22 +727,22 @@ export default function LocationScreen() {
     zoneChoice && zoneChoice !== AUTO_ZONE
       ? timeZoneLabel(zoneChoice)
       : zoneChoice === AUTO_ZONE
-        ? "Automatic"
+        ? t("locationScreenZoneAutomatic")
         : savedZone
           ? timeZoneLabel(savedZone)
-          : "Automatic";
+          : t("locationScreenZoneAutomatic");
   const zoneHint =
     zoneChoice === AUTO_ZONE
-      ? "Set from your address when you update."
+      ? t("locationScreenZoneHintAutoPending")
       : zoneChoice
-        ? "Set by you. Saved when you update."
+        ? t("locationScreenZoneHintManualPending")
         : savedManual
-          ? "Set by you"
-          : "Set automatically from your address";
+          ? t("locationScreenZoneHintManual")
+          : t("locationScreenZoneHintAuto");
 
   return (
     <SafeAreaView edges={["bottom"]} style={styles.container}>
-      <StackHeader title="Your business location" />
+      <StackHeader title={t("yourBusinessLocation")} />
       <KeyboardAwareScrollView
         style={styles.content}
         contentContainerStyle={styles.contentContainer}
@@ -753,53 +755,52 @@ export default function LocationScreen() {
         ) : (
           <>
             <View style={styles.titleSec}>
-              <Text style={styles.title}>Your business address</Text>
+              <Text style={styles.title}>{t("yourBusinessAddress")}</Text>
               <Text style={styles.subtitle}>
-                Let us know the location you'll be operating from so the
-                customers can find and book you easily.
+                {t("locationScreenOperatingFrom")}
               </Text>
             </View>
 
             <View style={styles.labelRow}>
               <Text style={styles.label}></Text>
               <Pressable onPress={() => setSearchModalVisible(true)}>
-                <Text style={styles.changeButton}>Search Location</Text>
+                <Text style={styles.changeButton}>{t("searchLocation")}</Text>
               </Pressable>
             </View>
 
             <View style={styles.main}>
               <FloatingInput
-                label="Street address"
+                label={t("streetAddress")}
                 value={streetAddress}
                 onChangeText={setStreetAddress}
-                placeholder="Street address"
+                placeholder={t("streetAddress")}
                 placeholderTextColor={placeholderColor}
                 showClearButton={false}
               />
 
               <FloatingInput
-                label="Area / City"
+                label={t("areaCity")}
                 value={city}
                 onChangeText={setCity}
-                placeholder="Area / City"
+                placeholder={t("areaCity")}
                 placeholderTextColor={placeholderColor}
                 showClearButton={false}
               />
 
               <FloatingInput
-                label="State"
+                label={t("state")}
                 value={state}
                 onChangeText={setState}
-                placeholder="State"
+                placeholder={t("state")}
                 placeholderTextColor={placeholderColor}
                 showClearButton={false}
               />
 
               <FloatingInput
-                label="Zip code"
+                label={t("locationScreenZipCode")}
                 value={zipCode}
                 onChangeText={setZipCode}
-                placeholder="Zip code (Optional)"
+                placeholder={t("zipCodeOptional")}
                 placeholderTextColor={placeholderColor}
                 keyboardType="number-pad"
                 showClearButton={false}
@@ -810,14 +811,17 @@ export default function LocationScreen() {
                 onPress={() => setZoneSheetVisible(true)}
                 activeOpacity={0.7}
                 accessibilityRole="button"
-                accessibilityLabel={`Time zone: ${zoneValue}. ${zoneHint}`}
+                accessibilityLabel={t("locationScreenZoneA11y", {
+                  zone: zoneValue,
+                  hint: zoneHint,
+                })}
               >
                 <View style={styles.zoneText}>
-                  <Text style={styles.zoneLabel}>Time zone</Text>
+                  <Text style={styles.zoneLabel}>{t("locationScreenTimeZone")}</Text>
                   <Text style={styles.zoneValue}>{zoneValue}</Text>
                   <Text style={styles.zoneHint}>{zoneHint}</Text>
                 </View>
-                <Text style={styles.zoneChange}>Change</Text>
+                <Text style={styles.zoneChange}>{t("change")}</Text>
               </TouchableOpacity>
             </View>
           </>
@@ -849,13 +853,13 @@ export default function LocationScreen() {
                   size={moderateWidthScale(18)}
                   color={theme.darkGreen}
                 />
-                <Text style={styles.viewMapButtonText}>View map</Text>
+                <Text style={styles.viewMapButtonText}>{t("viewMap")}</Text>
               </TouchableOpacity>
             </View>
           )}
           <View style={styles.updateButtonContainer}>
             <Button
-              title="Update location"
+              title={t("updateLocation")}
               onPress={handleUpdateLocation}
               disabled={isUpdating}
             />
@@ -866,10 +870,10 @@ export default function LocationScreen() {
       <ModalizeBottomSheet
         visible={zoneSheetVisible}
         onClose={() => setZoneSheetVisible(false)}
-        title="Time zone"
+        title={t("locationScreenTimeZone")}
       >
         {[
-          { zone: AUTO_ZONE, label: "Automatic (from your address)" },
+          { zone: AUTO_ZONE, label: t("locationScreenZoneAutomaticOption") },
           ...US_TIME_ZONES,
         ].map((option, index, list) => {
           const isSelected = selectedZoneOption === option.zone;
@@ -969,10 +973,10 @@ export default function LocationScreen() {
               <Pressable onPress={Keyboard.dismiss}>
                 <View style={styles.modalTitleSec}>
                   <Text style={styles.modalTitle}>
-                    Enter your business address
+                    {t("enterYourBusinessAddress")}
                   </Text>
                   <Text style={styles.modalSubtitle}>
-                    This helps clients find and visit you.
+                    {t("locationScreenSearchSubtitle")}
                   </Text>
                 </View>
               </Pressable>
@@ -1037,21 +1041,20 @@ export default function LocationScreen() {
                 <View style={{ flex: 1 }} />
               </View>
               <Text style={styles.modalHeaderTitle}>
-                Is the pin placed correctly
                 {firstName ? (
-                  <>
-                    ,{" "}
-                    <Text style={styles.modalHeaderFirstName}>
-                      {firstName}?
-                    </Text>
-                  </>
+                  <Trans
+                    i18nKey="locationScreenPinQuestionWithName"
+                    values={{ name: firstName }}
+                    components={{
+                      name: <Text style={styles.modalHeaderFirstName} />,
+                    }}
+                  />
                 ) : (
-                  "?"
+                  t("locationScreenPinQuestion")
                 )}
               </Text>
               <Text style={styles.modalHeaderSubtitle}>
-                Let us know the location you'll be operating from so the
-                customers can find and book you easily.
+                {t("locationScreenOperatingFrom")}
               </Text>
             </View>
             <View style={styles.modalContent}>
@@ -1067,7 +1070,7 @@ export default function LocationScreen() {
               />
             </View>
             <View style={styles.modalFooter}>
-              <Button title="Save" onPress={handleSaveMapLocation} />
+              <Button title={t("save")} onPress={handleSaveMapLocation} />
             </View>
           </SafeAreaView>
         </Modal>

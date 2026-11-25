@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { IMAGES } from "@/src/constant/images";
 import {
   AiHairTryOnIcon,
@@ -12,32 +13,30 @@ interface Screen2Props {
 }
 
 export default function Screen3({ onNext }: Screen2Props) {
+  const { t } = useTranslation();
   const features = [
     {
       icon: AiHairTryOnIcon,
-      title: "Subscription Plan Generator",
-      description:
-        "Generate subscription plans for your business in seconds, using our AI assistant.",
+      title: t("introBizPlanGenTitle"),
+      description: t("introBizPlanGenDesc"),
     },
     {
       icon: AiReceptionistIcon,
-      title: "Social Media Post Generator",
-      description:
-        "Generate social media posts for your business in seconds, using our AI assistant.",
+      title: t("introBizPostGenTitle"),
+      description: t("introBizPostGenDesc"),
     },
     {
       icon: AiChatSupportIcon,
-      title: "AI Chat Support",
-      description:
-        "Get instant answers to your beauty and booking questions anytime.",
+      title: t("introBizAiChatTitle"),
+      description: t("introBizAiChatDesc"),
     },
   ];
 
   return (
     <AiFeatureScreen
-      headline="AI-Powered Experience"
+      headline={t("introBizAiHeadline")}
       features={features}
-      buttonTitle="Continue"
+      buttonTitle={t("continue")}
       backgroundImage={IMAGES.aiFeatureBackB}
       onNext={onNext}
     />

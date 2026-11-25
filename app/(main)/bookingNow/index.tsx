@@ -1606,10 +1606,10 @@ export default function BookingNow() {
       reduxBusinessId,
     );
     if (!businessId) {
-      setError("Business ID is missing. Please go back and try again.");
+      setError(t("bnowBusinessIdMissing"));
       showBanner(
         t("error"),
-        "Business ID is missing. Please go back and try again.",
+        t("bnowBusinessIdMissing"),
         "error",
         4000,
       );
@@ -1782,11 +1782,14 @@ export default function BookingNow() {
           const durationMinutes = s.duration_minutes || 0;
           let durationText = "";
           if (durationHours > 0 && durationMinutes > 0) {
-            durationText = `${durationHours} hr ${durationMinutes} min`;
+            durationText = t("bnowDurationHrMin", {
+              hours: durationHours,
+              minutes: durationMinutes,
+            });
           } else if (durationHours > 0) {
-            durationText = `${durationHours} hr`;
+            durationText = t("bnowDurationHr", { hours: durationHours });
           } else if (durationMinutes > 0) {
-            durationText = `${durationMinutes} min`;
+            durationText = t("mcDurationMinutes", { count: durationMinutes });
           } else {
             durationText = "N/A";
           }
@@ -1829,7 +1832,7 @@ export default function BookingNow() {
 
             return {
               id: staff.id || staff.user_id || 0,
-              name: staff.name || "Staff Member",
+              name: staff.name || t("staffMemberFallback"),
               experience: staff?.description ?? null,
               image: image,
               working_hours: staffWorkingHours,
@@ -1959,14 +1962,14 @@ export default function BookingNow() {
           }
         }
       } else {
-        setError("Failed to load business details");
+        setError(t("csubLoadBusinessFailed"));
         showBanner(t("error"), t("failedToLoadBusinessDetails"), "error", 4000);
       }
     } catch (err: any) {
-      setError(err.message || "Failed to load business details");
+      setError(err.message || t("csubLoadBusinessFailed"));
       showBanner(
-        "Error",
-        err.message || "Failed to load business details. Please try again.",
+        t("error"),
+        err.message || t("failedToLoadBusinessDetails"),
         "error",
         4000,
       );
@@ -2000,7 +2003,7 @@ export default function BookingNow() {
     ) {
       fetchBusinessDetails();
     } else {
-      setError("Business ID is missing. Please go back and try again.");
+      setError(t("bnowBusinessIdMissing"));
     }
 
     return () => {
@@ -2129,7 +2132,7 @@ export default function BookingNow() {
         if (requestId !== slotsRequest.current) return;
         if (res?.success === false) {
           setApiSlots([]);
-          setSlotsError(res.message || "Failed to load available slots.");
+          setSlotsError(res.message || t("bnowSlotsLoadFailed"));
           return;
         }
         const rawList = Array.isArray(res?.data)
@@ -2150,7 +2153,7 @@ export default function BookingNow() {
         setSlotsError(
           err?.response?.data?.message ||
             err?.message ||
-            "Failed to load available slots. Please try again.",
+            t("bnowSlotsLoadFailedRetry"),
         );
       })
       .finally(() => {
@@ -2323,7 +2326,7 @@ export default function BookingNow() {
       }`;
       return t("bkFlowTimezone", { zone: `${timezone} (${gmtOffset})` });
     } catch {
-      return "In your time zone, South Africa (GMT +1:00)";
+      return t("bkFlowTimezone", { zone: "South Africa (GMT +1:00)" });
     }
   };
 
@@ -2688,7 +2691,7 @@ export default function BookingNow() {
     if (!bookingId || !businessId) {
       showBanner(
         t("error"),
-        "Booking or business missing.",
+        t("bnowBookingOrBusinessMissing"),
         "error",
         4000,
       );
@@ -2696,8 +2699,8 @@ export default function BookingNow() {
     }
     if (!selectedTimeSlot) {
       showBanner(
-        "Select time",
-        "Please select a date and time slot.",
+        t("bnowSelectTime"),
+        t("bnowSelectDateTimeSlot"),
         "warning",
         4000,
       );
@@ -2736,7 +2739,7 @@ export default function BookingNow() {
         if (serviceIds.length === 0) {
           showBanner(
             t("error"),
-            "Services are required to assign staff.",
+            t("bnowServicesRequiredForStaff"),
             "error",
             4000,
           );
@@ -2821,7 +2824,7 @@ export default function BookingNow() {
       if (response.success) {
         showBanner(
           t("success"),
-          response.message || "Appointment rescheduled successfully.",
+          response.message || t("bnowRescheduledSuccess"),
           "success",
           3000,
         );
@@ -2829,7 +2832,7 @@ export default function BookingNow() {
       } else {
         showBanner(
           t("error"),
-          response.message || "Failed to reschedule.",
+          response.message || t("bnowRescheduleFailed"),
           "error",
           4000,
         );
@@ -2865,7 +2868,7 @@ export default function BookingNow() {
         t("error"),
         err?.message ||
           err?.data?.message ||
-          "Failed to reschedule. Please try again.",
+          t("bnowRescheduleFailedRetry"),
         "error",
         4000,
       );
@@ -2922,7 +2925,7 @@ export default function BookingNow() {
     if (!businessIdForCheckout) {
       showBanner(
         t("error"),
-        "Business ID is missing. Please go back and try again.",
+        t("bnowBusinessIdMissing"),
         "error",
         4000,
       );
@@ -2931,8 +2934,8 @@ export default function BookingNow() {
     if (isSubscriptionBooking) {
       if (selectedSubscriptionServiceIds.length === 0) {
         showBanner(
-          "No Service Selected",
-          "Please select at least one plan service before checkout.",
+          t("noServiceSelected"),
+          t("bnowSelectPlanServiceBeforeCheckout"),
           "warning",
           4000,
         );
@@ -2941,8 +2944,8 @@ export default function BookingNow() {
       }
       if (!selectedTimeSlot) {
         showBanner(
-          "Select time",
-          "Please select a date and time slot before checkout.",
+          t("bnowSelectTime"),
+          t("bnowSelectDateTimeBeforeCheckout"),
           "warning",
           4000,
         );
@@ -2965,7 +2968,7 @@ export default function BookingNow() {
             t("error"),
             err?.message ||
               err?.data?.message ||
-              "No staff available for this time slot.",
+              t("bnowNoStaffForSlot"),
             "error",
             4000,
           );
@@ -3025,8 +3028,8 @@ export default function BookingNow() {
     }
     if (!selectedTimeSlot) {
       showBanner(
-        "Select time",
-        "Please select a date and time slot before checkout.",
+        t("bnowSelectTime"),
+        t("bnowSelectDateTimeBeforeCheckout"),
         "warning",
         4000,
       );
@@ -3049,7 +3052,7 @@ export default function BookingNow() {
           t("error"),
           err?.message ||
             err?.data?.message ||
-            "No staff available for this time slot.",
+            t("bnowNoStaffForSlot"),
           "error",
           4000,
         );
@@ -4292,7 +4295,7 @@ export default function BookingNow() {
       <WebViewModal
         visible={privacyWebViewVisible}
         url={process.env.EXPO_PUBLIC_PRIVACY_URL || ""}
-        title="Privacy Policy"
+        title={t("privacyPolicy")}
         onClose={() => setPrivacyWebViewVisible(false)}
       />
     </View>

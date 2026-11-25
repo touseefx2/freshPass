@@ -11,6 +11,7 @@ import {
   widthScale,
 } from "@/src/theme/dimensions";
 import { LeafLogo } from "@/assets/icons";
+import { useTranslation } from "react-i18next";
 
 interface StaffProfileHeaderProps {
   currentStep: number;
@@ -71,6 +72,7 @@ export default function StaffProfileHeader({
   disableBack = false,
 }: StaffProfileHeaderProps) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const styles = useMemo(() => createStyles(colors as Theme), [colors]);
   const theme = colors as Theme;
 
@@ -114,7 +116,7 @@ export default function StaffProfileHeader({
         )}
 
         <View style={styles.centerContent}>
-          <Text style={styles.titleText}>Set availability</Text>
+          <Text style={styles.titleText}>{t("setAvailability")}</Text>
         </View>
 
         <View style={styles.spacer} />

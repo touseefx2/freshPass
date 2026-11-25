@@ -19,6 +19,7 @@ import {
   moderateWidthScale,
   widthScale,
 } from "@/src/theme/dimensions";
+import { useTranslation } from "react-i18next";
 
 type MaintenanceModeScreenProps = {
   message: string;
@@ -81,6 +82,7 @@ export default function MaintenanceModeScreen({
   onRecheck,
   rechecking = false,
 }: MaintenanceModeScreenProps) {
+  const { t } = useTranslation();
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors as Theme), [colors]);
   const theme = colors as Theme;
@@ -100,7 +102,7 @@ export default function MaintenanceModeScreen({
           />
         </View>
 
-        <Text style={styles.title}>Under Maintenance</Text>
+        <Text style={styles.title}>{t("maintenanceTitle")}</Text>
         <Text style={styles.message}>{message}</Text>
 
         <TouchableOpacity
@@ -112,7 +114,7 @@ export default function MaintenanceModeScreen({
           {rechecking ? (
             <ActivityIndicator color={theme.buttonBack} />
           ) : (
-            <Text style={styles.secondaryButtonText}>Try again</Text>
+            <Text style={styles.secondaryButtonText}>{t("orderRetry")}</Text>
           )}
         </TouchableOpacity>
       </ScrollView>

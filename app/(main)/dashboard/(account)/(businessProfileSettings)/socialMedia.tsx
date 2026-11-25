@@ -266,8 +266,8 @@ export default function SocialMediaScreen() {
 
       if (response.success) {
         showBanner(
-          "Success",
-          response.message || "Social media updated successfully",
+          t("success"),
+          response.message || t("socialMediaScreenUpdateSuccess"),
           "success",
           3000,
         );
@@ -275,8 +275,8 @@ export default function SocialMediaScreen() {
         router.back();
       } else {
         showBanner(
-          "Error",
-          response.message || "Failed to update social media",
+          t("error"),
+          response.message || t("socialMediaScreenUpdateFailed"),
           "error",
           3000,
         );
@@ -284,8 +284,8 @@ export default function SocialMediaScreen() {
     } catch (error: any) {
       Logger.error("Failed to update social media:", error);
       showBanner(
-        "Error",
-        error.message || "Failed to update social media. Please try again.",
+        t("error"),
+        error.message || t("socialMediaScreenUpdateFailedRetry"),
         "error",
         3000,
       );
@@ -325,8 +325,8 @@ export default function SocialMediaScreen() {
           <>
             <View style={styles.titleSection}>
               <Text style={styles.title}>
-                Link your social media account
-                <Text style={styles.subTitle}> (if any)</Text>
+                {t("socialMediaScreenTitle")}
+                <Text style={styles.subTitle}> {t("ifAny")}</Text>
               </Text>
             </View>
 

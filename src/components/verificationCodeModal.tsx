@@ -36,6 +36,7 @@ import { emailVerificationEndpoints } from "@/src/services/endpoints";
 import { validateEmail } from "@/src/services/validationService";
 import RetryButton from "@/src/components/retryButton";
 import NotificationBanner from "@/src/components/notificationBanner";
+import { useTranslation } from "react-i18next";
 
 // Seconds before "Didn't get a code?" can send another code
 const RESEND_COOLDOWN_SECONDS = 30;
@@ -274,6 +275,7 @@ export default function VerificationCodeModal({
   accessToken,
   screen,
 }: VerificationCodeModalProps) {
+  const { t } = useTranslation();
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors as Theme), [colors]);
   const theme = colors as Theme;
@@ -358,8 +360,8 @@ export default function VerificationCodeModal({
           }, 100);
         } else {
           showLocalBanner(
-            "Success",
-            response.message || "Verification email sent successfully.",
+            t("success"),
+            response.message || t("verifyCodeEmailSent"),
             "success",
             3000,
           );
@@ -370,8 +372,8 @@ export default function VerificationCodeModal({
           setInitialLoadError(true);
         } else {
           showLocalBanner(
-            "Error",
-            response.message || "Failed to send verification email.",
+            t("error"),
+            response.message || t("verifyCodeSendFailed"),
             "error",
             3000,
           );
@@ -384,9 +386,9 @@ export default function VerificationCodeModal({
         setInitialLoadError(true);
       } else {
         showLocalBanner(
-          "Error",
+          t("error"),
           error.message ||
-            "Failed to send verification email. Please try again.",
+            t("verifyCodeSendFailedRetry"),
           "error",
           3000,
         );
@@ -432,8 +434,8 @@ export default function VerificationCodeModal({
 
       if (response.success) {
         showLocalBanner(
-          "Success",
-          response.message || "Email verified successfully.",
+          t("success"),
+          response.message || t("verifyCodeEmailVerified"),
           "success",
           3000,
         );
@@ -441,8 +443,8 @@ export default function VerificationCodeModal({
         onCodeComplete?.();
       } else {
         showLocalBanner(
-          "Error",
-          response.message || "Invalid verification code.",
+          t("error"),
+          response.message || t("verifyCodeInvalid"),
           "error",
           3000,
         );
@@ -459,9 +461,9 @@ export default function VerificationCodeModal({
         error.data?.message ||
         error.response?.data?.message ||
         error.message ||
-        "Failed to verify email. Please try again.";
+        t("verifyCodeVerifyFailed");
 
-      showLocalBanner("Error", errorMessage, "error", 3000);
+      showLocalBanner(t("error"), errorMessage, "error", 3000);
       // Reset code on error
       setCode(["", "", "", "", ""]);
       setTimeout(() => {
@@ -513,13 +515,13 @@ export default function VerificationCodeModal({
         setIsEditingEmail(false);
         onEmailChanged?.(savedEmail);
         showLocalBanner(
-          "Success",
-          response.message || `A new code has been sent to ${savedEmail}.`,
+          t("success"),
+          response.message || t("verifyCodeNewCodeSent", { email: savedEmail }),
           "success",
           3000,
         );
       } else {
-        setNewEmailError(response.message || "Failed to change email.");
+        setNewEmailError(response.message || t("verifyCodeChangeEmailFailed"));
       }
     } catch (error: any) {
       Logger.error("Failed to change email:", error);
@@ -527,7 +529,7 @@ export default function VerificationCodeModal({
         error.data?.errors?.email?.[0] ||
           error.data?.message ||
           error.message ||
-          "Failed to change email. Please try again.",
+          t("verifyCodeChangeEmailFailedRetry"),
       );
     } finally {
       setIsChangingEmail(false);
@@ -645,11 +647,11 @@ export default function VerificationCodeModal({
 
           {/* Content */}
           <View style={styles.contentWrapper}>
-            <Text style={styles.title}>Verify account</Text>
+            <Text style={styles.title}>{t("verifyAccount")}</Text>
 
             <View style={styles.instructionContainer}>
               <Text style={styles.instructionText}>
-                Enter a one time code that we sent to
+                {t("verifyCodeEnterCodeSentTo")}
               </Text>
               <Text style={styles.emailText}>{currentEmail}</Text>
             </View>
@@ -666,7 +668,7 @@ export default function VerificationCodeModal({
                     setNewEmail(text);
                     setNewEmailError(null);
                   }}
-                  placeholder="Enter your email"
+                  placeholder={t("enterYourEmail")}
                   placeholderTextColor={theme.lightGreen}
                   keyboardType="email-address"
                   autoCapitalize="none"
@@ -686,7 +688,7 @@ export default function VerificationCodeModal({
                     onPress={() => setIsEditingEmail(false)}
                     disabled={isChangingEmail}
                   >
-                    <Text style={styles.changeEmailCancelText}>Cancel</Text>
+                    <Text style={styles.changeEmailCancelText}>{t("cancel")}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={[styles.changeEmailButton, styles.changeEmailSave]}
@@ -697,7 +699,7 @@ export default function VerificationCodeModal({
                       <ActivityIndicator size="small" color={theme.white} />
                     ) : (
                       <Text style={styles.changeEmailSaveText}>
-                        Send new code
+                        {t("verifyCodeSendNewCode")}
                       </Text>
                     )}
                   </TouchableOpacity>
@@ -720,7 +722,7 @@ export default function VerificationCodeModal({
             ) : initialLoadError ? (
               <View style={styles.errorContainer}>
                 <Text style={styles.errorText}>
-                  Failed to send verification email. Please try again.
+                  {t("verifyCodeSendFailedRetry")}
                 </Text>
                 <RetryButton
                   onPress={() => handleResendCode(true)}
@@ -777,10 +779,12 @@ export default function VerificationCodeModal({
                     ]}
                   >
                     {isResending
-                      ? "Sending..."
+                      ? t("verifyCodeSending")
                       : resendSeconds > 0
-                        ? `Resend code in 0:${String(resendSeconds).padStart(2, "0")}`
-                        : "Didn't get a code?"}
+                        ? t("verifyCodeResendIn", {
+                            time: `0:${String(resendSeconds).padStart(2, "0")}`,
+                          })
+                        : t("verifyCodeDidntGetCode")}
                   </Text>
                 </Pressable>
 
@@ -795,7 +799,7 @@ export default function VerificationCodeModal({
                       (isResending || isVerifying) && styles.disabledInput,
                     ]}
                   >
-                    Wrong email? Change it
+                    {t("verifyCodeWrongEmail")}
                   </Text>
                 </Pressable>
               </>

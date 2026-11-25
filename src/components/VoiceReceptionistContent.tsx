@@ -48,6 +48,7 @@ import {
 } from "@/src/services/anyoneStaffService";
 import { isPaymentsEnabled } from "@/src/utils/paymentsEnabled";
 import * as Location from "expo-location";
+import { useTranslation } from "react-i18next";
 
 type OpenBookingCheckoutPayload = {
   business_id: number;
@@ -129,6 +130,7 @@ export const VoiceReceptionistContent = forwardRef<
     },
     ref,
   ) => {
+  const { t } = useTranslation();
   const [isConnected, setIsConnected] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [isStarting, setIsStarting] = useState(false);
@@ -791,10 +793,11 @@ export const VoiceReceptionistContent = forwardRef<
           const originalPrice = s.originalPrice ? parseFloat(s.originalPrice) : parseFloat((price * 1.1).toFixed(2));
           const dh = s.duration_hours || 0;
           const dm = s.duration_minutes || 0;
-          let dur = "N/A";
-          if (dh > 0 && dm > 0) dur = `${dh} hr ${dm} min`;
-          else if (dh > 0) dur = `${dh} hr`;
-          else if (dm > 0) dur = `${dm} min`;
+          let dur = t("notAvailable");
+          if (dh > 0 && dm > 0)
+            dur = `${t("svcListHours", { count: dh })} ${t("mcDurationMinutes", { count: dm })}`;
+          else if (dh > 0) dur = t("svcListHours", { count: dh });
+          else if (dm > 0) dur = t("mcDurationMinutes", { count: dm });
           return { id: s.id, name: s.name, description: s.description || "", price, originalPrice, duration: dur, label: s.label || null };
         });
 
@@ -802,7 +805,7 @@ export const VoiceReceptionistContent = forwardRef<
           .filter((s: any) => s.invitation_status === "accepted")
           .map((s: any) => ({
             id: s.id || s.user_id || 0,
-            name: s.name || "Staff Member",
+            name: s.name || t("staffMemberFallback"),
             experience: s?.description ?? null,
             image: s.avatar
               ? (typeof s.avatar === "string" && (s.avatar.startsWith("http://") || s.avatar.startsWith("https://"))
@@ -873,7 +876,7 @@ export const VoiceReceptionistContent = forwardRef<
         Logger.error("[VoiceReceptionist] Checkout handoff error:", err);
       }
     },
-    [cleanup, dispatch, router],
+    [cleanup, dispatch, router, t],
   );
 
   /** Trigger handoff: wait for queued audio to finish, then navigate. */
@@ -1094,7 +1097,7 @@ export const VoiceReceptionistContent = forwardRef<
               const errorMsg =
                 parsed.description ||
                 parsed.message ||
-                "Unknown error from agent.";
+                t("voiceUnknownAgentError");
               const isTimeout = /timeout|did not receive audio/i.test(errorMsg);
               if (isTimeout) {
                 if (playAfterChunksStopRef.current) {
@@ -1148,12 +1151,12 @@ export const VoiceReceptionistContent = forwardRef<
         }
       }
     },
-    [enqueuePcmChunk, flushChunksToWavAndQueue, flushPendingAudio, initiateCheckoutHandoff],
+    [enqueuePcmChunk, flushChunksToWavAndQueue, flushPendingAudio, initiateCheckoutHandoff, t],
   );
 
   const connectWebSocket = useCallback(async () => {
     if (!websocketUrl) {
-      setError("Voice agent URL is not configured.");
+      setError(t("voiceUrlNotConfigured"));
       throw new Error("Voice agent URL is not configured.");
     }
     if (wsRef.current && isConnected) return;
@@ -1218,7 +1221,7 @@ export const VoiceReceptionistContent = forwardRef<
             "[VoiceReceptionist] WebSocket ERROR",
             event?.message ?? event,
           );
-          setError("Unable to connect to voice agent.");
+          setError(t("voiceUnableToConnect"));
           reject(event);
         };
         ws.onclose = (event: any) => {
@@ -1232,18 +1235,16 @@ export const VoiceReceptionistContent = forwardRef<
           );
           if (isClosedRef.current) return;
           if (event.code === 1008) {
-            setError("Voice agent authentication failed.");
+            setError(t("voiceAuthFailed"));
           } else if (event.code === 1001) {
-            setError(
-              "Connection ended unexpectedly. This may happen if audio stream was interrupted. Please try again.",
-            );
+            setError(t("voiceConnectionEndedUnexpectedly"));
           } else if (event.code === 1006) {
-            setError(
-              "Connection error. Voice agent disconnected. Please try again.",
-            );
+            setError(t("voiceConnectionDisconnected"));
           } else if (event.code !== 1000) {
             setError(
-              `Connection error (code: ${event.code ?? "unknown"}). Please try again.`,
+              t("voiceConnectionErrorCode", {
+                code: event.code ?? t("voiceCodeUnknown"),
+              }),
             );
           }
           disconnectDueToError();
@@ -1251,11 +1252,11 @@ export const VoiceReceptionistContent = forwardRef<
         ws.onmessage = handleServerMessage;
       } catch (err) {
         Logger.error("[VoiceReceptionist] WebSocket connect failed", err);
-        setError("Failed to open voice agent connection.");
+        setError(t("voiceOpenConnectionFailed"));
         reject(err);
       }
     });
-  }, [handleServerMessage, isConnected, websocketUrl]);
+  }, [handleServerMessage, isConnected, websocketUrl, t]);
 
   const startRecorder = useCallback(async () => {
     try {
@@ -1263,26 +1264,21 @@ export const VoiceReceptionistContent = forwardRef<
         const granted = await PermissionsAndroid.request(
           PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
           {
-            title: "Microphone Permission",
-            message:
-              "Fresh Pass needs access to your microphone so the AI Receptionist can talk with you.",
-            buttonPositive: "OK",
-            buttonNegative: "Cancel",
+            title: t("voiceMicPermissionTitle"),
+            message: t("voiceMicPermissionMessage"),
+            buttonPositive: t("ok"),
+            buttonNegative: t("cancel"),
           },
         );
         if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
-          setError(
-            "Microphone permission was denied. Please enable it in Settings to use the AI Receptionist.",
-          );
+          setError(t("voiceMicPermissionDenied"));
           return;
         }
       }
       if (Platform.OS === "ios") {
         const { status } = await Audio.requestPermissionsAsync();
         if (status !== "granted") {
-          setError(
-            "Microphone permission was denied. Please enable it in Settings to use the AI Receptionist.",
-          );
+          setError(t("voiceMicPermissionDenied"));
           return;
         }
       }
@@ -1347,12 +1343,10 @@ export const VoiceReceptionistContent = forwardRef<
       setError(null);
       AudioRecord.start();
     } catch (err) {
-      setError(
-        "Unable to access the microphone. Please check app microphone permissions in your device settings.",
-      );
+      setError(t("voiceMicAccessFailed"));
       cleanup("retry");
     }
-  }, [cleanup]);
+  }, [cleanup, t]);
 
   const handleStart = useCallback(async () => {
     if (isStarting || isListening) return;
@@ -1412,23 +1406,23 @@ export const VoiceReceptionistContent = forwardRef<
   ]);
 
   const statusText = (() => {
-    if (isStarting) return "Connecting...";
-    if (isConnected && !hasReceivedFirstAgentResponse) return "Connecting...";
-    if (isAgentSpeaking) return "Agent is speaking...";
+    if (isStarting) return t("voiceConnecting");
+    if (isConnected && !hasReceivedFirstAgentResponse) return t("voiceConnecting");
+    if (isAgentSpeaking) return t("voiceAgentSpeaking");
     switch (agentStatus) {
       case "connecting":
-        return "Connecting...";
+        return t("voiceConnecting");
       case "listening":
-        return "Now you can speak";
+        return t("voiceNowYouCanSpeak");
       case "thinking":
-        return "Processing...";
+        return t("processingText");
       case "speaking":
-        return "Agent is speaking...";
+        return t("voiceAgentSpeaking");
       case "idle":
       default:
-        if (isListening) return "Now you can speak";
-        if (isConnected) return "Tap the button to speak";
-        return "Tap the button to start";
+        if (isListening) return t("voiceNowYouCanSpeak");
+        if (isConnected) return t("voiceTapToSpeak");
+        return t("voiceTapToStart");
     }
   })();
 
@@ -1497,7 +1491,7 @@ export const VoiceReceptionistContent = forwardRef<
                 activeOpacity={0.8}
                 style={styles.receptionistRetryTouchable}
               >
-                <Text style={styles.receptionistRetryText}>Retry</Text>
+                <Text style={styles.receptionistRetryText}>{t("retry")}</Text>
               </TouchableOpacity>
             </View>
           ) : null}
@@ -1521,7 +1515,7 @@ export const VoiceReceptionistContent = forwardRef<
                       styles.receptionistCurrentStatementTextMargin,
                   ]}
                 >
-                  {msg.role === "user" ? "You: " : "Agent: "}
+                  {msg.role === "user" ? t("voiceMsgYouLabel") : t("voiceMsgAgentLabel")}{" "}
                   {msg.content}
                 </Text>
               ))}

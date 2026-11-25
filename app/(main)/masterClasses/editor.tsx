@@ -518,7 +518,7 @@ function validate(
     e.meetingDays = t("mcErrorMeetingDaysRequired");
   }
   if (f.classType === "multi_session" && f.scheduleType === "specific_dates" && f.specificDates.length < 2) {
-    e.specificDates = "Select at least 2 dates";
+    e.specificDates = t("mcEdErrorMinDates");
   }
 
   if (kind === "publish" || kind === "reschedule") {
@@ -1225,13 +1225,13 @@ export default function MasterClassEditorScreen() {
         timeRanges.add(`${formatClassTime(ovTime)}–${endTimeText(ovTime, ovDur)}`);
       }
       if (timeRanges.size > 1) {
-        return `${globalRange} (varies)`;
+        return t("mcEdTimeVaries", { range: globalRange });
       }
     }
     const start = formatClassTime(form.time);
     const end = endTimeText(form.time, form.duration);
     return end ? `${start} – ${end}` : start;
-  }, [form.time, form.duration, form.sessionOverrides, form.scheduleType, form.specificDates]);
+  }, [form.time, form.duration, form.sessionOverrides, form.scheduleType, form.specificDates, t]);
 
   const reviewMeta = useMemo(() => {
     const meta: { icon: string; text: string }[] = [];
@@ -1243,11 +1243,11 @@ export default function MasterClassEditorScreen() {
     }
     if (form.classType === "multi_session" && sessionCount > 0) {
       const scheduleLabel = form.scheduleType === "specific_dates"
-        ? "Specific dates"
+        ? t("mcEdSpecificDates")
         : getWeekdaysShort(form.meetingDays);
       meta.push({
         icon: "calendar-outline",
-        text: `${sessionCount} session${sessionCount !== 1 ? "s" : ""} · ${scheduleLabel}`,
+        text: t("mcEdSessionsSchedule", { count: sessionCount, schedule: scheduleLabel }),
       });
     }
     if (form.time) {
@@ -1255,14 +1255,14 @@ export default function MasterClassEditorScreen() {
       meta.push({ icon: "time-outline", text: `${sessionTimeRange}${tz ? ` · ${tz}` : ""}` });
     }
     if (form.price) {
-      meta.push({ icon: "pricetag-outline", text: `$${form.price} per student · Entire course` });
+      meta.push({ icon: "pricetag-outline", text: t("mcEdPricePerStudent", { price: form.price }) });
     }
     if (form.capacity) {
-      const fmtLabel = form.format === "online" ? "Online" : "In person";
-      meta.push({ icon: "people-outline", text: `${form.capacity} seats · ${fmtLabel}` });
+      const fmtLabel = form.format === "online" ? t("mcFormatOnline") : t("mcFormatInPerson");
+      meta.push({ icon: "people-outline", text: t("mcEdSeatsFormat", { count: Number(form.capacity), format: fmtLabel }) });
     }
     return meta;
-  }, [form, sessionCount, sessionTimeRange, serverClass?.timezone]);
+  }, [form, sessionCount, sessionTimeRange, serverClass?.timezone, t]);
 
   const savedMedia =
     serverClass?.media && serverClass.media.id === form.mediaAssetId
@@ -1286,8 +1286,8 @@ export default function MasterClassEditorScreen() {
 
   const STEP_TITLES: Record<EditorStep, string> = {
     1: paramId ? t("mcEditClass") : t("mcCreateClass"),
-    2: "Enrollment & Location",
-    3: "Review Your Course",
+    2: t("mcEdStepEnrollment"),
+    3: t("mcEdStepReview"),
   };
   const stepTitle = reschedule ? t("mcRescheduleClass") : STEP_TITLES[step];
 
@@ -1597,14 +1597,14 @@ export default function MasterClassEditorScreen() {
               <>
                 {/* Class type toggle — FIRST field per client sample */}
                 <View style={styles.section}>
-                  <EditorLabel label="Class type" required />
+                  <EditorLabel label={t("mcEdClassType")} required />
                   <EditorSegmented
                     options={[
-                      { value: "one_time" as const, label: "One-time class" },
-                      { value: "multi_session" as const, label: "Multi-session course" },
+                      { value: "one_time" as const, label: t("mcEdOneTimeClass") },
+                      { value: "multi_session" as const, label: t("mcEdMultiSessionCourse") },
                     ]}
                     value={form.classType}
-                    accessibilityLabel="Class type"
+                    accessibilityLabel={t("mcEdClassType")}
                     onChange={(v) => {
                       if (v === "one_time") {
                         setForm((prev) => ({
@@ -1717,14 +1717,14 @@ export default function MasterClassEditorScreen() {
 
                     {/* Schedule type toggle */}
                     <View style={styles.section}>
-                      <EditorLabel label="Schedule" required />
+                      <EditorLabel label={t("jobSchedule")} required />
                       <EditorSegmented
                         options={[
-                          { value: "weekly" as const, label: "Weekly" },
-                          { value: "specific_dates" as const, label: "Specific dates" },
+                          { value: "weekly" as const, label: t("mcEdWeekly") },
+                          { value: "specific_dates" as const, label: t("mcEdSpecificDates") },
                         ]}
                         value={form.scheduleType}
-                        accessibilityLabel="Schedule type"
+                        accessibilityLabel={t("mcEdScheduleType")}
                         onChange={(v) =>
                           setForm((prev) => ({
                             ...prev,
@@ -1739,7 +1739,7 @@ export default function MasterClassEditorScreen() {
                       <>
                         {/* Meeting days */}
                         <View style={styles.section} onLayout={recordY(["meetingDays"])}>
-                          <EditorLabel label="Meeting days" required />
+                          <EditorLabel label={t("mcEdMeetingDays")} required />
                           <WeekdayChips
                             selected={form.meetingDays}
                             onChange={(days) => {
@@ -1789,11 +1789,11 @@ export default function MasterClassEditorScreen() {
                         {/* Timezone */}
                         {serverClass?.timezone ? (
                           <View style={styles.section}>
-                            <EditorLabel label="Time zone" />
+                            <EditorLabel label={t("mcEdTimeZone")} />
                             <EditorPickerBox
                               icon="globe-outline"
                               value={getTimezoneLabel(serverClass.timezone)}
-                              placeholder="Detecting..."
+                              placeholder={t("mcEdDetecting")}
                               onPress={() => {}}
                             />
                           </View>
@@ -1904,11 +1904,11 @@ export default function MasterClassEditorScreen() {
                         {/* Timezone */}
                         {serverClass?.timezone ? (
                           <View style={styles.section}>
-                            <EditorLabel label="Time zone" />
+                            <EditorLabel label={t("mcEdTimeZone")} />
                             <EditorPickerBox
                               icon="globe-outline"
                               value={getTimezoneLabel(serverClass.timezone)}
-                              placeholder="Detecting..."
+                              placeholder={t("mcEdDetecting")}
                               onPress={() => {}}
                             />
                           </View>
@@ -2037,7 +2037,7 @@ export default function MasterClassEditorScreen() {
 
                 <View style={styles.actions}>
                   <PrimaryButton
-                    label="Next"
+                    label={t("next")}
                     loading={false}
                     disabled={false}
                     onPress={nextStep}
@@ -2062,13 +2062,13 @@ export default function MasterClassEditorScreen() {
                     }
                     placeholder={t("mcFieldPricePlaceholder")}
                     keyboardType="decimal-pad"
-                    accessibilityLabel={`${t("mcFieldPrice")}, required`}
+                    accessibilityLabel={t("mcEdRequiredA11y", { label: t("mcFieldPrice") })}
                     error={errors.price}
                   />
                   {form.price && sessionCount > 0 ? (
                     <EditorHelper
                       icon="information-circle-outline"
-                      text={`Per student · Includes all ${sessionCount} sessions`}
+                      text={t("mcEdPerStudentIncludes", { count: sessionCount })}
                     />
                   ) : null}
                 </View>
@@ -2099,12 +2099,12 @@ export default function MasterClassEditorScreen() {
                     placeholder={t("mcFieldSeatsPlaceholder")}
                     keyboardType="number-pad"
                     maxLength={4}
-                    accessibilityLabel={`${t("mcFieldSeats")}, required`}
+                    accessibilityLabel={t("mcEdRequiredA11y", { label: t("mcFieldSeats") })}
                     error={errors.capacity}
                   />
                   <EditorHelper
                     icon="information-circle-outline"
-                    text="Each enrollment reserves all sessions."
+                    text={t("mcEdEnrollmentReservesAll")}
                   />
                 </View>
 
@@ -2201,7 +2201,7 @@ export default function MasterClassEditorScreen() {
 
                 <View style={styles.actions}>
                   <PrimaryButton
-                    label="Next"
+                    label={t("next")}
                     loading={false}
                     disabled={false}
                     onPress={nextStep}
@@ -2217,7 +2217,7 @@ export default function MasterClassEditorScreen() {
               <>
 
                 <ReviewCourseCard
-                  title={form.title || "Untitled Class"}
+                  title={form.title || t("mcEdUntitledClass")}
                   meta={reviewMeta}
                   onEdit={() => setStep(1)}
                 />
@@ -2239,7 +2239,7 @@ export default function MasterClassEditorScreen() {
                 ) : (
                   <View style={styles.actions}>
                     <PrimaryButton
-                      label={`Continue to Payment — ${formatClassPrice(fee)}`}
+                      label={t("mcEdContinueToPayment", { price: formatClassPrice(fee) })}
                       loading={busy === "publish"}
                       disabled={busy !== null}
                       onPress={() => void onPublish()}

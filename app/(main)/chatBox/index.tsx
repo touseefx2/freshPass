@@ -1627,6 +1627,7 @@ const ChatContent = ({
   onMessageCopied,
   onVideoPress,
 }: ChatContentProps) => {
+  const { t } = useTranslation();
   const canSend = hasInputValue || selectedAttachments.length > 0;
   const sendDisabled = !canSend || sending;
   return (
@@ -1940,7 +1941,7 @@ const ChatContent = ({
             <TextInput
               ref={inputRef}
               style={styles.textInput}
-              placeholder="Enter message"
+              placeholder={t("enterMessage")}
               placeholderTextColor={theme.lightGreen4}
               onChangeText={onInputChange}
             />
@@ -2010,7 +2011,7 @@ export default function ChatBoxScreen() {
   const actingSide = useAppSelector((state) => getActingSide(state.user));
   const actingSideRef = useRef(actingSide);
   actingSideRef.current = actingSide;
-  const currentUserName = user?.name ?? "Me";
+  const currentUserName = user?.name ?? t("chatBoxMe");
   const accessToken = user?.accessToken ?? null;
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const [messages, setMessages] = useState<MessageItem[]>([]);
@@ -2559,7 +2560,7 @@ export default function ChatBoxScreen() {
               setSelectedAttachments((prev) => prev.filter((_, i) => i !== idx))
             }
             onMessageCopied={() =>
-              showBanner(t("copied") || "Copied", "", "success", 1500)
+              showBanner(t("chatBoxCopied"), "", "success", 1500)
             }
             inputRef={inputRef}
             hasInputValue={hasInputText}
@@ -2610,7 +2611,7 @@ export default function ChatBoxScreen() {
               setSelectedAttachments((prev) => prev.filter((_, i) => i !== idx))
             }
             onMessageCopied={() =>
-              showBanner(t("copied") || "Copied", "", "success", 1500)
+              showBanner(t("chatBoxCopied"), "", "success", 1500)
             }
             inputRef={inputRef}
             hasInputValue={hasInputText}

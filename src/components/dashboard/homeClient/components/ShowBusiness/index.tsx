@@ -130,7 +130,7 @@ export default function ShowBusiness({
             height={heightScale(10)}
           />
           <Text style={styles.platformVerifiedText}>
-            Platform verified
+            {t("platformVerified")}
           </Text>
         </View>
         <View style={styles.businessInfoContainer}>
@@ -157,7 +157,10 @@ export default function ShowBusiness({
               color={theme.orangeBrown}
             />
             <Text style={styles.verifiedSalonRatingText}>
-              {salon.rating || 0}/ {salon.reviewCount || 0} reviews
+              {t("showBusinessRatingReviews", {
+                rating: salon.rating || 0,
+                count: salon.reviewCount || 0,
+              })}
             </Text>
           </View>
           <PromotionPill visible={salon.hasPromotion} />
@@ -198,7 +201,7 @@ export default function ShowBusiness({
             },
           ]}
         >
-          <Text style={styles.errorText}>Failed to load businesses</Text>
+          <Text style={styles.errorText}>{t("failedToLoadBusinesses")}</Text>
           <RetryButton onPress={onRetry} loading={businessesLoading} />
         </View>
       ) : hasClasses ? (
@@ -228,7 +231,7 @@ export default function ShowBusiness({
             },
           ]}
         >
-          <Text style={styles.emptyText}>No businesses found</Text>
+          <Text style={styles.emptyText}>{t("noBusinessesFound")}</Text>
         </View>
       )}
     </ScrollView>

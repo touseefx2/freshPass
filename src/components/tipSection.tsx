@@ -21,6 +21,7 @@ import {
   widthScale,
 } from "@/src/theme/dimensions";
 import Button from "@/src/components/button";
+import { useTranslation } from "react-i18next";
 import { useStripeAccount } from "@/src/services/stripeService";
 import {
   confirmTipPaid,
@@ -406,6 +407,7 @@ export default function TipSection({
   fallbackRecipientImage,
   onTipComplete,
 }: TipSectionProps) {
+  const { t } = useTranslation();
   const { colors } = useTheme();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
@@ -495,15 +497,19 @@ export default function TipSection({
   };
 
   const validateAmount = (): string | null => {
-    if (!tipDetails) return "Tip details are unavailable.";
+    if (!tipDetails) return t("tipUiDetailsUnavailable");
     if (activeAmount == null || Number.isNaN(activeAmount)) {
-      return "Please enter a tip amount.";
+      return t("tipUiPleaseEnterAmount");
     }
     if (activeAmount < tipDetails.minAmount) {
-      return `Minimum tip is ${formatTipAmount(tipDetails.minAmount, tipDetails.currency)}.`;
+      return t("tipUiMinimumIs", {
+        amount: formatTipAmount(tipDetails.minAmount, tipDetails.currency),
+      });
     }
     if (activeAmount > tipDetails.maxAmount) {
-      return `Maximum tip is ${formatTipAmount(tipDetails.maxAmount, tipDetails.currency)}.`;
+      return t("tipUiMaximumIs", {
+        amount: formatTipAmount(tipDetails.maxAmount, tipDetails.currency),
+      });
     }
     return null;
   };
@@ -515,7 +521,7 @@ export default function TipSection({
 
     const validationError = validateAmount();
     if (validationError) {
-      showBanner("Tip", validationError, "error", 3000);
+      showBanner(t("ckTip"), validationError, "error", 3000);
       return;
     }
 
@@ -548,15 +554,15 @@ export default function TipSection({
 
         const { error: initError } = await initPaymentSheet(paymentConfig as any);
         if (initError) {
-          throw new Error(initError.message || "Failed to initialize payment");
+          throw new Error(initError.message || t("tipUiInitPaymentFailed"));
         }
 
         const { error: presentError } = await presentPaymentSheet();
         if (presentError) {
           if (!presentError.code?.includes("Canceled")) {
             showBanner(
-              "Payment Failed",
-              presentError.message || "Payment could not be completed",
+              t("tipUiPaymentFailedTitle"),
+              presentError.message || t("tipUiPaymentNotCompleted"),
               "error",
               4000,
             );
@@ -564,7 +570,7 @@ export default function TipSection({
           return;
         }
 
-        showBanner("Thank you!", "Your tip was sent successfully.", "success", 3000);
+        showBanner(t("avTipSentTitle"), t("avTipSentBody"), "success", 3000);
 
         const confirmedTip = await confirmTipPaid(appointmentId);
         if (confirmedTip) {
@@ -582,8 +588,8 @@ export default function TipSection({
       }
     } catch (err: any) {
       const message =
-        err?.data?.message || err?.message || "Failed to process tip payment";
-      showBanner("Tip", message, "error", 4000);
+        err?.data?.message || err?.message || t("tipUiProcessFailed");
+      showBanner(t("ckTip"), message, "error", 4000);
     } finally {
       setSubmitting(false);
       dispatch(setActionLoader(false));
@@ -610,7 +616,7 @@ export default function TipSection({
           styles={styles}
         />
         <View style={styles.recipientInfo}>
-          <Text style={styles.recipientLabel}>Tip for</Text>
+          <Text style={styles.recipientLabel}>{t("tipUiTipFor")}</Text>
           <Text style={styles.recipientName}>{recipient.name}</Text>
           {canTip ? (
             <Text style={styles.subtitle}>{getTipPromptLabel(recipient)}</Text>
@@ -642,10 +648,10 @@ export default function TipSection({
           </View>
 
           <View style={styles.receiptInfo}>
-            <Text style={styles.receiptEyebrow}>Thank you</Text>
+            <Text style={styles.receiptEyebrow}>{t("tipUiThankYou")}</Text>
             <Text style={styles.receiptName}>{recipient.name}</Text>
             <Text style={styles.receiptSubtitle}>
-              Received your appreciation
+              {t("tipUiReceivedAppreciation")}
             </Text>
           </View>
 
@@ -663,8 +669,9 @@ export default function TipSection({
             color={theme.buttonBack}
           />
           <Text style={styles.receiptFooterText}>
-            Your tip of {formatTipAmount(paidTip.amount, paidTip.currency)} was
-            shared successfully
+            {t("tipUiSharedSuccessfully", {
+              amount: formatTipAmount(paidTip.amount, paidTip.currency),
+            })}
           </Text>
         </View>
       </View>
@@ -678,7 +685,7 @@ export default function TipSection({
 
     return (
       <View style={styles.tipFormPanel}>
-        <Text style={styles.amountSectionTitle}>Amount</Text>
+        <Text style={styles.amountSectionTitle}>{t("earningsAmount")}</Text>
 
         <TouchableWithoutFeedback
           accessible={false}
@@ -691,7 +698,7 @@ export default function TipSection({
               hasAmount && styles.amountDisplayActive,
             ]}
           >
-            <Text style={styles.amountPlaceholderLabel}>Your tip</Text>
+            <Text style={styles.amountPlaceholderLabel}>{t("tipUiYourTip")}</Text>
             <View style={styles.amountInputRow}>
               <Text style={styles.currencyPrefix}>$</Text>
               <TextInput
@@ -710,7 +717,7 @@ export default function TipSection({
 
         <View style={styles.sendButtonWrap}>
           <Button
-            title="Send tip"
+            title={t("avSendTip")}
             onPress={handleConfirmTip}
             disabled={submitting || activeAmount == null}
           />
@@ -731,9 +738,9 @@ export default function TipSection({
             />
           </View>
           <View style={styles.headerTextWrap}>
-            <Text style={styles.sectionTitle}>Tip Your Pro</Text>
+            <Text style={styles.sectionTitle}>{t("tipUiTipYourPro")}</Text>
             <Text style={styles.sectionSubtitle}>
-              Show appreciation for great service
+              {t("tipUiShowAppreciation")}
             </Text>
           </View>
         </View>
@@ -742,7 +749,7 @@ export default function TipSection({
           {loading ? (
             <View style={styles.loadingRow}>
               <ActivityIndicator size="small" color={theme.darkGreen} />
-              <Text style={styles.loadingText}>Loading tip options...</Text>
+              <Text style={styles.loadingText}>{t("tipUiLoadingOptions")}</Text>
             </View>
           ) : (
             <>

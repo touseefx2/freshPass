@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
+import { useTranslation } from "react-i18next";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import {
@@ -24,6 +25,17 @@ const DAYS = [
   "Friday",
   "Saturday",
 ];
+
+// Translation keys for the day names shown on screen (DAYS stay English ids)
+const DAY_LABEL_KEYS: Record<string, string> = {
+  Monday: "addStaffDayMonday",
+  Tuesday: "addStaffDayTuesday",
+  Wednesday: "addStaffDayWednesday",
+  Thursday: "addStaffDayThursday",
+  Friday: "addStaffDayFriday",
+  Saturday: "addStaffDaySaturday",
+  Sunday: "addStaffDaySunday",
+};
 
 const formatTime = (hours: number, minutes: number): string => {
   const period = hours >= 12 ? "PM" : "AM";
@@ -122,6 +134,7 @@ const createStyles = (theme: Theme) =>
   });
 
 export default function StepEight() {
+  const { t } = useTranslation();
   const dispatch = useAppDispatch();
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors as Theme), [colors]);
@@ -215,7 +228,7 @@ export default function StepEight() {
 
     // If day is closed, show "Closed"
     if (!dayData?.isOpen) {
-      return "Closed";
+      return t("closed");
     }
 
     // If day is open but no valid hours are set, show "---" to indicate hours need to be set
@@ -236,7 +249,7 @@ export default function StepEight() {
           <Text style={styles.dayHoursLine}>{mainHours}</Text>
           {dayData.breaks.map((breakTime, index) => (
             <Text key={index} style={styles.dayHorsBreak}>
-              Break:{" "}
+              {t("breakLabel")}{" "}
               {formatTimeRange(
                 breakTime.fromHours,
                 breakTime.fromMinutes,
@@ -255,8 +268,10 @@ export default function StepEight() {
   return (
     <View style={styles.container}>
       <View style={styles.titleSec}>
-        <Text style={styles.title}>Business hours</Text>
-        <Text style={styles.subtitle}>When clients can book your services</Text>
+        <Text style={styles.title}>{t("businessHours")}</Text>
+        <Text style={styles.subtitle}>
+          {t("bizHoursStepSubtitle")}
+        </Text>
       </View>
 
       <View style={styles.daysContainer}>
@@ -280,7 +295,9 @@ export default function StepEight() {
                     value={isOpen}
                     onValueChange={(value) => handleToggleDay(day, value)}
                   />
-                  <Text style={styles.dayName}>{day}</Text>
+                  <Text style={styles.dayName}>
+                    {t(DAY_LABEL_KEYS[day] ?? day)}
+                  </Text>
                   <View style={styles.dayHoursContainer}>
                     {typeof displayText === "string" ? (
                       <Text style={styles.dayHours}>{displayText}</Text>

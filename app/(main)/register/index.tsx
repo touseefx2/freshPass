@@ -31,6 +31,7 @@ import { MAIN_ROUTES } from "@/src/constant/routes";
 import { ApiService } from "@/src/services/api";
 import { generalEndpoints } from "@/src/services/endpoints";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
+import { useTranslation } from "react-i18next";
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -135,6 +136,7 @@ const DEFAULT_EMAIL = "";
 
 export default function Register() {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const styles = useMemo(() => createStyles(colors as Theme), [colors]);
   const router = useRouter();
   const { showBanner } = useNotificationContext();
@@ -188,10 +190,10 @@ export default function Register() {
         // Business side: logging in with the existing password adds the
         // business role to that account (server) and opens business setup.
         showBanner(
-          "User already exists",
+          t("regUserAlreadyExists"),
           userRole === "business"
-            ? "You already have a FreshPass account with this email. Sign in with your password to add your business."
-            : "An account with this email address already exists. Please sign in or use a different email.",
+            ? t("regBusinessEmailExists")
+            : t("regEmailExists"),
           "error",
           userRole === "business" ? 7000 : 5000,
         );
@@ -206,12 +208,12 @@ export default function Register() {
       const message =
         err?.response?.data?.message ||
         err?.message ||
-        "Unable to check email. Please try again.";
-      showBanner("Error", message, "error", 5000);
+        t("regUnableToCheckEmail");
+      showBanner(t("error"), message, "error", 5000);
     } finally {
       setIsCheckingEmail(false);
     }
-  }, [email, isSubscribed, router, showBanner, userRole]);
+  }, [email, isSubscribed, router, showBanner, userRole, t]);
 
   const handleLogin = useCallback(() => {
     router.back();
@@ -244,19 +246,21 @@ export default function Register() {
               <View style={styles.content}>
                 <View style={styles.titleSection}>
                   <Text style={styles.title}>
-                    Create your {userRole} profile
+                    {t("regCreateProfile", {
+                      context: userRole ?? undefined,
+                      role: userRole,
+                    })}
                   </Text>
                   <Text style={styles.description}>
-                    Upload your photo and enter your details to get started with
-                    FreshPass.
+                    {t("regUploadPhotoDescription")}
                   </Text>
                 </View>
 
                 <FloatingInput
-                  label="Email"
+                  label={t("email")}
                   value={email}
                   onChangeText={setEmail}
-                  placeholder="Enter your email"
+                  placeholder={t("enterYourEmail")}
                   keyboardType="email-address"
                   autoCapitalize="none"
                   autoCorrect={false}
@@ -284,13 +288,12 @@ export default function Register() {
                     </View>
                   </View>
                   <Text style={styles.newsletterText}>
-                    I would like to receive newsletter and promotion on email by
-                    FreshPass
+                    {t("regNewsletterOptIn")}
                   </Text>
                 </Pressable>
 
                 <Button
-                  title="Continue"
+                  title={t("continue")}
                   onPress={handleContinue}
                   disabled={!isFormValid}
                   loading={isCheckingEmail}
@@ -308,9 +311,9 @@ export default function Register() {
 
                 <View style={styles.footer}>
                   <Text style={styles.footerText}>
-                    Already have an account?{" "}
+                    {t("regAlreadyHaveAccount")}{" "}
                     <Text style={styles.loginLink} onPress={handleLogin}>
-                      Login
+                      {t("regLogin")}
                     </Text>
                   </Text>
                 </View>

@@ -378,11 +378,11 @@ export default function NotificationsScreen() {
     const diffInDays = now.diff(created, "day");
 
     if (diffInMinutes < 60) {
-      return `${diffInMinutes} min ago`;
+      return t("notifListMinAgo", { count: diffInMinutes });
     } else if (diffInHours < 24) {
-      return `${diffInHours} hr ago`;
+      return t("notifListHrAgo", { count: diffInHours });
     } else if (diffInDays < 7) {
-      return `${diffInDays} day${diffInDays > 1 ? "s" : ""} ago`;
+      return t("jobDaysAgo", { count: diffInDays });
     } else {
       // US format: MM/DD/YYYY
       return created.format("MM/DD/YYYY");
@@ -644,11 +644,11 @@ export default function NotificationsScreen() {
       );
 
       if (isSameDay(date, today)) {
-        return "Today";
+        return t("today");
       }
 
       if (isSameDay(date, yesterday)) {
-        return "Yesterday";
+        return t("yesterday");
       }
 
       // US format: MM/DD/YYYY
@@ -690,7 +690,7 @@ export default function NotificationsScreen() {
         data: items,
       };
     });
-  }, [notifications]);
+  }, [notifications, t]);
 
   const renderIcon = (icon: NotificationIconType) => {
     switch (icon) {
@@ -796,7 +796,7 @@ export default function NotificationsScreen() {
     <View style={styles.container}>
       <StatusBar barStyle="light-content" />
       {userRole === "customer" || isGuest ? (
-        <StackHeader title={t("Notifications")} />
+        <StackHeader title={t("notificationsTitle")} />
       ) : (
         <DashboardHeader />
       )}
@@ -864,7 +864,7 @@ export default function NotificationsScreen() {
                         />
                       )}
                       <Text style={styles.markAllAsReadText}>
-                        Mark all as read
+                        {t("notifListMarkAllRead")}
                       </Text>
                     </View>
                   </TouchableOpacity>

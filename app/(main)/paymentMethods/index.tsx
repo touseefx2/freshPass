@@ -18,6 +18,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { CardForm, useStripe } from "@stripe/stripe-react-native";
 import { useTranslation } from "react-i18next";
+import i18n from "i18next";
 import { useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
@@ -150,7 +151,7 @@ function getServerMessage(err: any, fallback: string): string {
 
 function getBrandDisplay(brand: string): string {
   const key = (brand ?? "").toLowerCase().replace(/[\s_-]/g, "");
-  return BRAND_DISPLAY[key] ?? brand ?? "Card";
+  return BRAND_DISPLAY[key] ?? brand ?? i18n.t("bhPayCard");
 }
 
 const LIGHT_BRANDS = new Set(["discover", "jcb", "diners", "dinersclub"]);
@@ -474,7 +475,7 @@ function EmptyState({ onAdd, theme }: { onAdd: () => void; theme: Theme }) {
       </View>
 
       <Text style={[emptyStyles.subtitle, { color: theme.textMuted }]}>
-        Save your cards for faster{"\n"}and easier checkout
+        {t("pmEmptySaveCards")}
       </Text>
 
       <TouchableOpacity
@@ -1475,7 +1476,9 @@ export default function PaymentMethodsScreen() {
           const inUse = (res as any).data?.in_use_by as InUseBy[] | undefined;
           const names = inUse
             ?.map((u: InUseBy) =>
-              u.business_name ? `${u.name} at ${u.business_name}` : u.name,
+              u.business_name
+                ? t("pmCardInUseAt", { name: u.name, business: u.business_name })
+                : u.name,
             )
             .join(", ");
           showBanner(
@@ -1496,7 +1499,9 @@ export default function PaymentMethodsScreen() {
         const inUse = body.data.in_use_by as InUseBy[] | undefined;
         const names = inUse
           ?.map((u: InUseBy) =>
-            u.business_name ? `${u.name} at ${u.business_name}` : u.name,
+            u.business_name
+              ? t("pmCardInUseAt", { name: u.name, business: u.business_name })
+              : u.name,
           )
           .join(", ");
         showBanner(
@@ -1665,7 +1670,7 @@ export default function PaymentMethodsScreen() {
 
             {/* We Accept */}
             <View style={styles.weAcceptSection}>
-              <Text style={styles.weAcceptTitle}>We Accept</Text>
+              <Text style={styles.weAcceptTitle}>{t("pmWeAccept")}</Text>
               <View style={styles.weAcceptLogos}>
                 <View style={[styles.brandBadge, { backgroundColor: "#1A1F71" }]}>
                   <Text style={styles.visaBadgeText}>VISA</Text>
@@ -1714,7 +1719,10 @@ export default function PaymentMethodsScreen() {
             <Text style={styles.modalTitle}>{t("walletDeleteConfirmTitle")}</Text>
             <Text style={styles.modalMessage}>
               {deleteTarget
-                ? `${(deleteTarget.brand ?? "Card").charAt(0).toUpperCase()}${(deleteTarget.brand ?? "card").slice(1)} •••• ${deleteTarget.last4} will be permanently removed.`
+                ? t("pmRemoveCardMessage", {
+                    card: `${(deleteTarget.brand ?? t("bhPayCard")).charAt(0).toUpperCase()}${(deleteTarget.brand ?? t("bhPayCard")).slice(1)}`,
+                    last4: deleteTarget.last4,
+                  })
                 : ""}
             </Text>
             <View style={styles.modalButtons}>
@@ -1736,7 +1744,7 @@ export default function PaymentMethodsScreen() {
                   color="#fff"
                   style={{ marginRight: moderateWidthScale(6) }}
                 />
-                <Text style={styles.modalRemoveText}>Remove Card</Text>
+                <Text style={styles.modalRemoveText}>{t("walletDeleteCard")}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -1759,10 +1767,13 @@ export default function PaymentMethodsScreen() {
                 color={theme.darkGreen}
               />
             </View>
-            <Text style={styles.modalTitle}>Set as default?</Text>
+            <Text style={styles.modalTitle}>{t("pmSetDefaultTitle")}</Text>
             <Text style={styles.modalMessage}>
               {defaultTarget
-                ? `${(defaultTarget.brand ?? "Card").charAt(0).toUpperCase()}${(defaultTarget.brand ?? "card").slice(1)} •••• ${defaultTarget.last4} will be used for all future payments.`
+                ? t("pmSetDefaultMessage", {
+                    card: `${(defaultTarget.brand ?? t("bhPayCard")).charAt(0).toUpperCase()}${(defaultTarget.brand ?? t("bhPayCard")).slice(1)}`,
+                    last4: defaultTarget.last4,
+                  })
                 : ""}
             </Text>
             <View style={styles.modalButtons}>
@@ -1784,7 +1795,7 @@ export default function PaymentMethodsScreen() {
                   color="#fff"
                   style={{ marginRight: moderateWidthScale(6) }}
                 />
-                <Text style={styles.modalRemoveText}>Set Default</Text>
+                <Text style={styles.modalRemoveText}>{t("pmSetDefaultButton")}</Text>
               </TouchableOpacity>
             </View>
           </View>

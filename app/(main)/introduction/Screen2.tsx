@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import CoreFeatureScreen from "@/src/components/CoreFeatureScreen";
 import { IMAGES } from "@/src/constant/images";
 import { DashboardIcon, CRMIcon, RevenueReportingIcon } from "@/assets/icons";
@@ -8,32 +9,30 @@ interface Screen2Props {
 }
 
 export default function Screen2({ onNext }: Screen2Props) {
+  const { t } = useTranslation();
   const features = [
     {
       icon: DashboardIcon,
-      title: "All-in-one dashboard",
-      description:
-        "Get a real-time view of your daily appointments, staff performance, and revenue—all from a single screen.",
+      title: t("introBizDashboardTitle"),
+      description: t("introBizDashboardDesc"),
     },
     {
       icon: CRMIcon,
-      title: "Smart customer CRM",
-      description:
-        "Track client history, preferences, and membership status to provide personalized service and boost retention.",
+      title: t("introBizCrmTitle"),
+      description: t("introBizCrmDesc"),
     },
     {
       icon: RevenueReportingIcon,
-      title: "Automated revenue & reporting",
-      description:
-        "Effortlessly track your income from subscriptions, single services, and product sales with detailed, exportable reports.",
+      title: t("introBizRevenueTitle"),
+      description: t("introBizRevenueDesc"),
     },
   ];
 
   return (
     <CoreFeatureScreen
-      headline="Discover & book instantly"
+      headline={t("introBizCoreHeadline")}
       features={features}
-      buttonTitle="Next"
+      buttonTitle={t("next")}
       backgroundImage={IMAGES.introductionBack2B}
       onNext={onNext}
     />

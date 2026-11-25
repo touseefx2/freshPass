@@ -25,6 +25,7 @@ import { generalEndpoints } from "@/src/services/endpoints";
 import AppImage from "@/src/components/AppImage";
 import RetryButton from "@/src/components/retryButton";
 import StackHeader from "@/src/components/StackHeader";
+import { useTranslation } from "react-i18next";
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -75,6 +76,7 @@ const createStyles = (theme: Theme) =>
 
 export default function TipDetail() {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
   const dispatch = useDispatch();
@@ -91,7 +93,7 @@ export default function TipDetail() {
     slug?: string;
   }>();
 
-  const title = params.title ?? "Pro Tip";
+  const title = params.title ?? t("tipDetailProTip");
   const slug = params.slug;
 
   const fetchTipDetail = async () => {
@@ -197,7 +199,7 @@ export default function TipDetail() {
           }}
         >
           <Text style={styles.label}>
-            Failed to load pro tip. Please try again.
+            {t("tipDetailLoadError")}
           </Text>
           <RetryButton onPress={fetchTipDetail} loading={loading} />
         </View>
@@ -219,19 +221,19 @@ export default function TipDetail() {
           <View style={styles.content}>
             {action ? (
               <View style={styles.section}>
-                <Text style={styles.label}>Action</Text>
+                <Text style={styles.label}>{t("tipDetailAction")}</Text>
                 <Text style={styles.value}>{action}</Text>
               </View>
             ) : null}
             {benefit ? (
               <View style={styles.section}>
-                <Text style={styles.label}>Benefit</Text>
+                <Text style={styles.label}>{t("tipDetailBenefit")}</Text>
                 <Text style={styles.value}>{benefit}</Text>
               </View>
             ) : null}
             {standard ? (
               <View style={styles.section}>
-                <Text style={styles.label}>Standard</Text>
+                <Text style={styles.label}>{t("tipDetailStandard")}</Text>
                 <Text style={styles.value}>{standard}</Text>
               </View>
             ) : null}

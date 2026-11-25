@@ -14,6 +14,7 @@ import {
 import { Portal } from "@gorhom/portal";
 import { Feather, MaterialIcons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
+import i18n from "i18next";
 import Animated, { ReduceMotion, SlideInDown } from "react-native-reanimated";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -59,10 +60,12 @@ const DEFAULT_MINUTES = 30;
 const MAX_MINUTES = 12 * 60 + 59;
 
 const formatDuration = (total: number) => {
-  if (total < 60) return `${total} min`;
+  if (total < 60) return i18n.t("mcDurationMinutes", { count: total });
   const h = Math.floor(total / 60);
   const m = total % 60;
-  return m ? `${h} hr ${m} min` : `${h} hr`;
+  return m
+    ? i18n.t("editServiceDurationHrMin", { hours: h, minutes: m })
+    : i18n.t("editServiceDurationHr", { hours: h });
 };
 
 const createStyles = (theme: Theme) =>
@@ -368,17 +371,17 @@ export default function EditServiceBottomSheet({
     if (isNameEditable) {
       const trimmedName = serviceName.trim();
       if (!trimmedName) {
-        newErrors.name = "Service name is required";
+        newErrors.name = t("editServiceNameRequired");
       }
     }
 
     if (totalMinutes <= 0) {
-      newErrors.duration = "Enter how many minutes this service takes";
+      newErrors.duration = t("editServiceDurationRequired");
     }
 
     const priceValue = parseFloat(price);
     if (isNaN(priceValue) || priceValue <= 0) {
-      newErrors.price = "Price must be greater than 0";
+      newErrors.price = t("editServicePriceRequired");
     }
 
     if (Object.keys(newErrors).length > 0) {
@@ -418,12 +421,14 @@ export default function EditServiceBottomSheet({
   const confirmDelete = () => {
     if (!serviceId || !onDelete || deleting) return;
     Alert.alert(
-      "Delete service",
-      `Are you sure you want to delete "${service?.name ?? "this service"}"?`,
+      t("editServiceDeleteTitle"),
+      t("editServiceDeleteConfirm", {
+        name: service?.name ?? t("editServiceThisService"),
+      }),
       [
-        { text: "Cancel", style: "cancel" },
+        { text: t("cancel"), style: "cancel" },
         {
-          text: "Delete",
+          text: t("delete"),
           style: "destructive",
           onPress: () => onDelete(serviceId),
         },
@@ -433,7 +438,10 @@ export default function EditServiceBottomSheet({
 
   if (!visible) return null;
 
-  const priceLabel = currency === "USD" ? "Price ($)" : `Price (${currency})`;
+  const priceLabel =
+    currency === "USD"
+      ? t("editServicePriceUsd")
+      : t("editServicePriceCurrency", { currency });
 
   return (
     <Portal>
@@ -443,7 +451,7 @@ export default function EditServiceBottomSheet({
       >
         <StatusBar barStyle="light-content" />
         <StackHeader
-          title={serviceId ? "Edit Service" : "Add Service"}
+          title={serviceId ? t("editServiceEditTitle") : t("editServiceAddTitle")}
           onBack={onClose}
         />
 
@@ -459,7 +467,7 @@ export default function EditServiceBottomSheet({
           bottomOffset={moderateHeightScale(32)}
         >
           <View style={styles.field}>
-            <Text style={styles.label}>Service name</Text>
+            <Text style={styles.label}>{t("serviceNameField")}</Text>
             <TextInput
               style={[
                 styles.input,
@@ -472,10 +480,10 @@ export default function EditServiceBottomSheet({
                 setErrors((e) => ({ ...e, name: undefined }));
               }}
               editable={isNameEditable}
-              placeholder="e.g. Adult Haircut"
+              placeholder={t("editServiceNamePlaceholder")}
               placeholderTextColor={theme.lightGreen4}
               returnKeyType="next"
-              accessibilityLabel="Service name"
+              accessibilityLabel={t("serviceNameField")}
             />
             {errors.name ? (
               <Text style={styles.errorText}>{errors.name}</Text>
@@ -484,22 +492,23 @@ export default function EditServiceBottomSheet({
 
           <View style={styles.field}>
             <Text style={styles.label}>
-              Description <Text style={styles.labelHint}>(optional)</Text>
+              {t("description")}{" "}
+              <Text style={styles.labelHint}>{t("editServiceOptionalHint")}</Text>
             </Text>
             <TextInput
               style={[styles.input, styles.multiline]}
               value={serviceDescription}
               onChangeText={setServiceDescription}
-              placeholder="e.g. Classic haircut and finish"
+              placeholder={t("editServiceDescriptionPlaceholder")}
               placeholderTextColor={theme.lightGreen4}
               multiline
-              accessibilityLabel="Description"
+              accessibilityLabel={t("description")}
             />
           </View>
 
           <View style={styles.field}>
             <View style={styles.durationHeader}>
-              <Text style={styles.label}>Duration</Text>
+              <Text style={styles.label}>{t("duration")}</Text>
               <TouchableOpacity
                 ref={intervalLinkRef}
                 style={styles.intervalLink}
@@ -531,7 +540,7 @@ export default function EditServiceBottomSheet({
                 ]}
                 hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
                 accessibilityRole="button"
-                accessibilityLabel={`Decrease duration by ${step} minutes`}
+                accessibilityLabel={t("editServiceDecreaseDurationA11y", { count: step })}
               >
                 <Feather name="minus" size={22} color={theme.darkGreen} />
               </TouchableOpacity>
@@ -554,7 +563,7 @@ export default function EditServiceBottomSheet({
                 ]}
                 hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
                 accessibilityRole="button"
-                accessibilityLabel={`Increase duration by ${step} minutes`}
+                accessibilityLabel={t("editServiceIncreaseDurationA11y", { count: step })}
               >
                 <Feather name="plus" size={22} color={theme.darkGreen} />
               </TouchableOpacity>
@@ -589,7 +598,7 @@ export default function EditServiceBottomSheet({
 
           <View style={styles.actions}>
             <Button
-              title={serviceId ? "Save Changes" : "Add Service"}
+              title={serviceId ? t("mcSaveChanges") : t("editServiceAddTitle")}
               onPress={handleSave}
               loading={saving}
               disabled={deleting}
@@ -605,7 +614,7 @@ export default function EditServiceBottomSheet({
                 {deleting ? (
                   <ActivityIndicator size="small" color={theme.red} />
                 ) : (
-                  <Text style={styles.deleteText}>Delete Service</Text>
+                  <Text style={styles.deleteText}>{t("editServiceDeleteButton")}</Text>
                 )}
               </TouchableOpacity>
             ) : null}

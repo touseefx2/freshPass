@@ -18,6 +18,7 @@ import {
   heightScale,
 } from "@/src/theme/dimensions";
 import { SvgXml } from "react-native-svg";
+import { useTranslation } from "react-i18next";
 
 // Close Icon SVG
 const closeIconSvg = `
@@ -91,8 +92,9 @@ export default function InclusionsModal({
   visible,
   onClose,
   inclusions,
-  title = "All Inclusions",
+  title,
 }: InclusionsModalProps) {
+  const { t } = useTranslation();
   const { colors } = useTheme();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
@@ -110,7 +112,9 @@ export default function InclusionsModal({
           onPress={(e) => e.stopPropagation()}
         >
           <View style={styles.header}>
-            <Text style={styles.title}>{title}</Text>
+            <Text style={styles.title}>
+              {title ?? t("inclusionsModalAllInclusions")}
+            </Text>
             <TouchableOpacity style={styles.closeButton} onPress={onClose}>
               <CloseIcon
                 width={widthScale(20)}

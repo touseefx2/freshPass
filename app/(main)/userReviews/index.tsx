@@ -281,7 +281,7 @@ export default function UserReviewsScreen() {
   };
 
   const getUserName = (user: Review["user"]) => {
-    return user?.name || user?.email?.split("@")[0] || "User";
+    return user?.name || user?.email?.split("@")[0] || t("userReviewsFallbackName");
   };
 
   const renderReviewItem = ({ item }: { item: Review }) => {
@@ -352,7 +352,7 @@ export default function UserReviewsScreen() {
                   }))
                 }
               >
-                See more
+                {t("userReviewsSeeMore")}
               </Text>
             )}
           </>
@@ -408,10 +408,10 @@ export default function UserReviewsScreen() {
     return (
       <View style={styles.headerSection}>
         <Text style={styles.averageText}>
-          {averageRating.toFixed(1)} Average
+          {t("userReviewsAverage", { rating: averageRating.toFixed(1) })}
         </Text>
         <Text style={styles.countLabel}>
-          {totalReviews} {totalReviews === 1 ? "rating" : "ratings"}
+          {t("userReviewsRatingsCount", { count: totalReviews })}
         </Text>
       </View>
     );

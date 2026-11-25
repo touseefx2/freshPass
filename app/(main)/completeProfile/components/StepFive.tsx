@@ -1,6 +1,7 @@
 import React, { useMemo } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
+import { useTranslation } from "react-i18next";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import {
@@ -11,30 +12,36 @@ import { setTeamSize } from "@/src/state/slices/completeProfileSlice";
 
 interface TeamSizeOption {
   id: string;
+  // English title is sent to the backend (team_member_range); keys are for display
   title: string;
-  description: string;
+  titleKey: string;
+  descriptionKey: string;
 }
 
 const TEAM_SIZE_OPTIONS: TeamSizeOption[] = [
   {
     id: "just_me",
     title: "Just me",
-    description: "I am the sole stylist/owner",
+    titleKey: "teamSizeJustMe",
+    descriptionKey: "teamSizeJustMeDesc",
   },
   {
     id: "2_to_5",
     title: "2 - 5 team members",
-    description: "A small team",
+    titleKey: "teamSize2to5",
+    descriptionKey: "teamSize2to5Desc",
   },
   {
     id: "6_to_10",
     title: "6 - 10 team members",
-    description: "A growing team",
+    titleKey: "teamSize6to10",
+    descriptionKey: "teamSize6to10Desc",
   },
   {
     id: "10_plus",
     title: "10+ team members",
-    description: "A large salon or multiple locations",
+    titleKey: "teamSize10Plus",
+    descriptionKey: "teamSize10PlusDesc",
   },
 ];
 
@@ -109,6 +116,7 @@ const createStyles = (theme: Theme) =>
   });
 
 export default function StepFive() {
+  const { t } = useTranslation();
   const dispatch = useAppDispatch();
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors as Theme), [colors]);
@@ -117,9 +125,9 @@ export default function StepFive() {
   return (
     <View style={styles.container}>
       <View style={styles.titleSec}>
-        <Text style={styles.title}>How many people are on your team?</Text>
+        <Text style={styles.title}>{t("teamSizeStepTitle")}</Text>
         <Text style={styles.subtitle}>
-          This helps us set up your account with the right features.
+          {t("teamSizeStepSubtitle")}
         </Text>
       </View>
 
@@ -146,9 +154,9 @@ export default function StepFive() {
                     {isSelected && <View style={styles.radioInner} />}
                   </View>
                   <View style={styles.optionTextWrapper}>
-                    <Text style={styles.optionTitle}>{option.title}</Text>
+                    <Text style={styles.optionTitle}>{t(option.titleKey)}</Text>
                     <Text style={styles.optionDescription}>
-                      {option.description}
+                      {t(option.descriptionKey)}
                     </Text>
                   </View>
                 </View>

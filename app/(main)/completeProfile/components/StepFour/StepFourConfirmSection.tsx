@@ -1,6 +1,7 @@
 import React, { useMemo } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useTheme } from "@/src/hooks/hooks";
+import { useTranslation } from "react-i18next";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import {
@@ -71,6 +72,7 @@ export default function StepFourConfirmSection({
   isFetchingDetails,
   notice,
 }: StepFourConfirmSectionProps) {
+  const { t } = useTranslation();
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors as Theme), [colors]);
   const theme = colors as Theme;
@@ -97,43 +99,43 @@ export default function StepFourConfirmSection({
       <View style={styles.labelRow}>
         <Text style={styles.label}></Text>
         <Pressable onPress={onEditAddress}>
-          <Text style={styles.changeButton}>Search Location</Text>
+          <Text style={styles.changeButton}>{t("searchLocation")}</Text>
         </Pressable>
       </View>
 
       <View style={styles.main}>
         <FloatingInput
-          label="Street address"
+          label={t("streetAddress")}
           value={streetAddress}
           onChangeText={onChangeStreet}
-          placeholder="Street address"
+          placeholder={t("streetAddress")}
           placeholderTextColor={placeholderColor}
           onClear={handleClearStreet}
         />
 
         <FloatingInput
-          label="Area / City"
+          label={t("areaCity")}
           value={area}
           onChangeText={onChangeArea}
-          placeholder="Area / City"
+          placeholder={t("areaCity")}
           placeholderTextColor={placeholderColor}
           onClear={handleClearArea}
         />
 
         <FloatingInput
-          label="State"
+          label={t("state")}
           value={state}
           onChangeText={onChangeState}
-          placeholder="State"
+          placeholder={t("state")}
           placeholderTextColor={placeholderColor}
           onClear={handleClearState}
         />
 
         <FloatingInput
-          label="Zip code"
+          label={t("custProfileZipCode")}
           value={zipCode}
           onChangeText={onChangeZip}
-          placeholder="Zip code (Optional)"
+          placeholder={t("zipCodeOptional")}
           placeholderTextColor={placeholderColor}
           keyboardType="number-pad"
           onClear={handleClearZip}
@@ -141,7 +143,7 @@ export default function StepFourConfirmSection({
 
         {(isFetchingDetails || notice) && (
           <Text style={styles.infoText}>
-            {notice ?? "Loading selected address…"}
+            {notice ?? t("addrConfirmLoadingAddress")}
           </Text>
         )}
       </View>

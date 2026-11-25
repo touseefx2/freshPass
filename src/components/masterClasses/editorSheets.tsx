@@ -603,6 +603,7 @@ export function WheelTimePickerSheet({
   onConfirm: (time: string) => void;
   onClose: () => void;
 }) {
+  const { t } = useTranslation();
   const { colors } = useTheme();
   const theme = colors as Theme;
   const ws = useMemo(() => createWheelStyles(theme), [colors]);
@@ -633,19 +634,19 @@ export function WheelTimePickerSheet({
   return (
     <EditorSheet
       visible={visible}
-      title="Select Time"
+      title={t("mcSelectTime")}
       onClose={onClose}
       footer={
         <SheetPrimaryButton
-          label={`Done · ${formatClassTime(result)}`}
+          label={`${t("done")} · ${formatClassTime(result)}`}
           onPress={() => onConfirm(result)}
         />
       }
     >
       <View style={ws.headers}>
-        <Text style={ws.headerText}>Hour</Text>
-        <Text style={ws.headerText}>Minute</Text>
-        <Text style={ws.headerText}>AM/PM</Text>
+        <Text style={ws.headerText}>{t("mcSheetHour")}</Text>
+        <Text style={ws.headerText}>{t("mcSheetMinute")}</Text>
+        <Text style={ws.headerText}>{t("mcSheetAmPm")}</Text>
       </View>
       <View style={ws.pickerArea}>
         <View style={ws.highlightBand} pointerEvents="none">
@@ -701,6 +702,7 @@ export function EditSessionSheet({
   onPickTime: () => void;
   onPickDuration: () => void;
 }) {
+  const { t } = useTranslation();
   const { colors } = useTheme();
   const theme = colors as Theme;
   const es = useMemo(() => createEditSessionStyles(theme), [colors]);
@@ -710,21 +712,21 @@ export function EditSessionSheet({
   const tzLabel = getTimezoneLabel(timeZone);
   const helperText =
     endLabel && tzLabel
-      ? `Ends at ${endLabel} • ${tzLabel}`
+      ? t("mcEndsAt", { time: endLabel, timezone: tzLabel })
       : endLabel
-        ? `Ends at ${endLabel}`
+        ? t("mcSheetEndsAtOnly", { time: endLabel })
         : tzLabel || "";
 
   return (
     <EditorSheet
       visible={visible}
-      title="Edit session"
+      title={t("mcEditSession")}
       onClose={onClose}
       scroll
       footer={
         <View style={es.footer}>
           <SheetPrimaryButton
-            label="Save Changes"
+            label={t("mcSaveChanges")}
             onPress={() => onSave(time, duration)}
           />
           <TouchableOpacity
@@ -732,9 +734,9 @@ export function EditSessionSheet({
             style={es.removeBtn}
             activeOpacity={0.7}
             accessibilityRole="button"
-            accessibilityLabel="Remove session"
+            accessibilityLabel={t("mcRemoveSession")}
           >
-            <Text style={es.removeText}>Remove session</Text>
+            <Text style={es.removeText}>{t("mcRemoveSession")}</Text>
           </TouchableOpacity>
         </View>
       }
@@ -742,7 +744,7 @@ export function EditSessionSheet({
       <View style={es.body}>
         <View style={es.field}>
           <Text style={es.label}>
-            Date<Text style={es.required}> *</Text>
+            {t("mcFieldDate")}<Text style={es.required}> *</Text>
           </Text>
           <View style={es.readOnlyBox}>
             <Ionicons
@@ -757,14 +759,14 @@ export function EditSessionSheet({
         <View style={es.row}>
           <View style={es.rowCol}>
             <Text style={es.label}>
-              Start time<Text style={es.required}> *</Text>
+              {t("mcFieldStartTime")}<Text style={es.required}> *</Text>
             </Text>
             <TouchableOpacity
               style={es.pickerBox}
               activeOpacity={0.75}
               onPress={onPickTime}
               accessibilityRole="button"
-              accessibilityLabel="Start time"
+              accessibilityLabel={t("mcFieldStartTime")}
             >
               <Ionicons
                 name="time-outline"
@@ -775,26 +777,26 @@ export function EditSessionSheet({
                 style={[es.pickerText, !time && es.placeholder]}
                 numberOfLines={1}
               >
-                {time ? formatClassTime(time) : "Select"}
+                {time ? formatClassTime(time) : t("select")}
               </Text>
             </TouchableOpacity>
           </View>
           <View style={es.rowCol}>
             <Text style={es.label}>
-              Session duration<Text style={es.required}> *</Text>
+              {t("mcSessionDuration")}<Text style={es.required}> *</Text>
             </Text>
             <TouchableOpacity
               style={es.pickerBox}
               activeOpacity={0.75}
               onPress={onPickDuration}
               accessibilityRole="button"
-              accessibilityLabel="Session duration"
+              accessibilityLabel={t("mcSessionDuration")}
             >
               <Text
                 style={[es.pickerText, !duration && es.placeholder]}
                 numberOfLines={1}
               >
-                {duration ? formatDuration(duration) : "Select"}
+                {duration ? formatDuration(duration) : t("select")}
               </Text>
               <Ionicons
                 name="chevron-down"
@@ -816,7 +818,7 @@ export function EditSessionSheet({
             color={theme.goldTextDark}
           />
           <Text style={es.noticeText}>
-            Changes apply only to this session.
+            {t("mcChangesApplyOnly")}
           </Text>
         </View>
       </View>

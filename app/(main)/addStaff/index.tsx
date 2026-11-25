@@ -89,6 +89,17 @@ const DAYS = [
   "Sunday",
 ];
 
+// Translation keys for the day names shown on screen (DAYS stay English ids)
+const DAY_LABEL_KEYS: Record<string, string> = {
+  Monday: "addStaffDayMonday",
+  Tuesday: "addStaffDayTuesday",
+  Wednesday: "addStaffDayWednesday",
+  Thursday: "addStaffDayThursday",
+  Friday: "addStaffDayFriday",
+  Saturday: "addStaffDaySaturday",
+  Sunday: "addStaffDaySunday",
+};
+
 interface DayData {
   isOpen: boolean;
   fromHours: number;
@@ -678,7 +689,9 @@ export default function AddStaffScreen() {
   const isSoloPlan = isSoloSubscription(businessStatus);
 
   const isEditMode = !!params.id;
-  const headerTitle = isEditMode ? "Edit Staff" : "New Staff Member";
+  const headerTitle = isEditMode
+    ? t("addStaffEditTitle")
+    : t("addStaffNewTitle");
 
   const rawCountryCode = params.country_code;
   const editCountryCode =
@@ -811,8 +824,8 @@ export default function AddStaffScreen() {
     } catch (error: any) {
       Logger.error("Failed to fetch availability:", error);
       showBanner(
-        "Error",
-        error.message || "Failed to fetch business hours. Please try again.",
+        t("error"),
+        error.message || t("addStaffFetchHoursFailed"),
         "error",
         3000,
       );
@@ -1122,9 +1135,9 @@ export default function AddStaffScreen() {
   };
 
   const getDayDisplayText = (day: string): string | React.ReactNode => {
-    if (isBusinessDayClosed(day)) return "Business closed";
+    if (isBusinessDayClosed(day)) return t("addStaffBusinessClosed");
     const dayData = businessHours[day];
-    if (!dayData?.isOpen) return "Closed";
+    if (!dayData?.isOpen) return t("closed");
     if (!dayData.fromHours && !dayData.tillHours) return "---";
     const mainHours = formatTimeRange(
       dayData.fromHours,
@@ -1138,7 +1151,7 @@ export default function AddStaffScreen() {
           <Text style={styles.dayHoursLine}>{mainHours}</Text>
           {dayData.breaks.map((breakTime, index) => (
             <Text key={index} style={styles.dayHorsBreak}>
-              Break:{" "}
+              {t("breakLabel")}{" "}
               {formatTimeRange(
                 breakTime.fromHours,
                 breakTime.fromMinutes,
@@ -1255,7 +1268,7 @@ export default function AddStaffScreen() {
     } = {};
     const emailRes = validateEmail(staffEmail.trim());
     if (!staffEmail.trim()) {
-      e.email = "Staff email is required";
+      e.email = t("addStaffEmailRequired");
     } else if (emailRes.error) {
       e.email = emailRes.error;
     }
@@ -1264,14 +1277,14 @@ export default function AddStaffScreen() {
       if (nameRes.error) e.name = nameRes.error;
     }
     if (phoneNumber.length > 0 && !phoneIsValid) {
-      e.phone = "Enter a valid phone number";
+      e.phone = t("enterValidPhoneNumber");
     }
     if (description.trim().length > 0) {
       const descRes = validateDescription(description);
       if (descRes.error) e.description = descRes.error;
     }
     return e;
-  }, [staffEmail, name, phoneNumber, phoneIsValid, description]);
+  }, [staffEmail, name, phoneNumber, phoneIsValid, description, t]);
 
   const isFormValid =
     !formErrors.email &&
@@ -1381,18 +1394,17 @@ export default function AddStaffScreen() {
         });
         if (response?.success) {
           showBanner(
-            "Success",
-            "Staff details updated successfully.",
+            t("success"),
+            t("addStaffUpdatedSuccess"),
             "success",
             3000,
           );
           router.back();
         } else {
           showBanner(
-            "Error",
+            t("error"),
             withReelNote(
-              (response as any)?.message ||
-                "Failed to update staff. Please try again.",
+              (response as any)?.message || t("addStaffUpdateFailed"),
             ),
             "error",
             4000,
@@ -1426,17 +1438,16 @@ export default function AddStaffScreen() {
         });
         if (response?.success) {
           showBanner(
-            "Success",
-            "Staff invitation sent successfully.",
+            t("success"),
+            t("addStaffInviteSuccess"),
             "success",
             3000,
           );
           router.back();
         } else {
           showBanner(
-            "Error",
-            (response as any)?.message ||
-              "Failed to invite staff. Please try again.",
+            t("error"),
+            (response as any)?.message || t("addStaffInviteFailed"),
             "error",
             3000,
           );
@@ -1448,12 +1459,12 @@ export default function AddStaffScreen() {
         error,
       );
       showBanner(
-        "Error",
+        t("error"),
         withReelNote(
           error?.message ||
             (isEditMode
-              ? "Failed to update staff. Please try again."
-              : "Failed to invite staff. Please try again."),
+              ? t("addStaffUpdateFailed")
+              : t("addStaffInviteFailed")),
         ),
         "error",
         4000,
@@ -1499,21 +1510,21 @@ export default function AddStaffScreen() {
       >
         {!isEditMode && (
           <View style={styles.titleSec}>
-            <Text style={styles.title}>New Staff Member</Text>
+            <Text style={styles.title}>{t("addStaffNewTitle")}</Text>
             <Text style={styles.subtitle}>
-              Add a new staff member to your business
+              {t("addStaffSubtitle")}
               {businessName ? (
                 <Text style={styles.subtitleBold}> {businessName}. </Text>
               ) : (
                 ". "
               )}
-              They will receive an invitation to join.
+              {t("addStaffInviteNote")}
             </Text>
           </View>
         )}
 
         <View style={styles.inputSection}>
-          <Text style={styles.label}>Profile picture</Text>
+          <Text style={styles.label}>{t("addStaffProfilePicture")}</Text>
           <View style={styles.profileSection}>
             <View style={styles.profileImageContainer}>
               {profileImageUri ? (
@@ -1554,7 +1565,9 @@ export default function AddStaffScreen() {
                 size={moderateWidthScale(18)}
                 color={theme.darkGreen}
               />
-              <Text style={styles.uploadButtonText}>Choose file</Text>
+              <Text style={styles.uploadButtonText}>
+                {t("addStaffChooseFile")}
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -1563,15 +1576,15 @@ export default function AddStaffScreen() {
           <View style={styles.inputSection}>
             <FloatingInput
               editable={!isEditMode}
-              label="Staff Email"
+              label={t("addStaffEmailLabel")}
               value={staffEmail}
               onChangeText={setStaffEmail}
-              placeholder="Enter staff member email"
+              placeholder={t("addStaffEmailPlaceholder")}
               keyboardType="email-address"
               autoCapitalize="none"
             />
             <Text style={styles.hint}>
-              A user account will be created with the staff role for this email.
+              {t("addStaffEmailHint")}
             </Text>
             {formErrors.email ? (
               <Text style={styles.errorText}>{formErrors.email}</Text>
@@ -1581,10 +1594,10 @@ export default function AddStaffScreen() {
 
         <View style={styles.inputSection}>
           <FloatingInput
-            label="Name"
+            label={t("feedbackName")}
             value={name}
             onChangeText={setName}
-            placeholder="Staff member name"
+            placeholder={t("addStaffNamePlaceholder")}
             autoCapitalize="words"
           />
           {formErrors.name ? (
@@ -1599,7 +1612,7 @@ export default function AddStaffScreen() {
             onPress={() => phoneInputRef.current?.focus()}
           >
             <View style={styles.phoneFieldContainer}>
-              <Text style={styles.inputLabel}>Phone number</Text>
+              <Text style={styles.inputLabel}>{t("phoneNumber")}</Text>
               <View style={styles.phoneInputContainer}>
                 <Pressable
                   onPress={() => setPickerVisible(true)}
@@ -1659,9 +1672,9 @@ export default function AddStaffScreen() {
             pickerButtonOnPress={handleCountrySelect}
             onBackdropPress={() => setPickerVisible(false)}
             onRequestClose={() => setPickerVisible(false)}
-            inputPlaceholder="Search country"
+            inputPlaceholder={t("searchCountry")}
             inputPlaceholderTextColor={theme.lightGreen2}
-            searchMessage="No country found"
+            searchMessage={t("noCountryFound")}
             style={pickerStyles}
             popularCountries={["US", "NG", "GB", "CA", "PK", "IN"]}
             enableModalAvoiding
@@ -1671,12 +1684,12 @@ export default function AddStaffScreen() {
         </View>
 
         <View style={styles.inputSection}>
-          <Text style={styles.label}>Description</Text>
+          <Text style={styles.label}>{t("description")}</Text>
           <TextInput
             style={styles.textArea}
             value={description}
             onChangeText={setDescription}
-            placeholder="Enter a description for the staff member"
+            placeholder={t("addStaffDescriptionPlaceholder")}
             placeholderTextColor={theme.lightGreen2}
             multiline
             numberOfLines={4}
@@ -1716,7 +1729,7 @@ export default function AddStaffScreen() {
           </View>
         ) : null}
 
-        <Text style={styles.sectionTitle}>Working hours</Text>
+        <Text style={styles.sectionTitle}>{t("workingHours")}</Text>
 
         <View style={styles.daysContainer}>
           {DAYS.map((day, index) => {
@@ -1742,7 +1755,9 @@ export default function AddStaffScreen() {
                       onValueChange={(value) => handleToggleDay(day, value)}
                       disabled={businessClosed}
                     />
-                    <Text style={styles.dayName}>{day}</Text>
+                    <Text style={styles.dayName}>
+                      {t(DAY_LABEL_KEYS[day] ?? day)}
+                    </Text>
                     <View style={styles.dayHoursContainer}>
                       {typeof displayText === "string" ? (
                         <Text
@@ -1804,12 +1819,11 @@ export default function AddStaffScreen() {
                 </TouchableOpacity>
                 <View style={{ gap: 3, width: "90%" }}>
                   <Text style={styles.checkboxLabel}>
-                    Copy business hours
+                    {t("addStaffCopyBusinessHours")}
                     {businessName ? ` (${businessName})` : ""}
                   </Text>
                   <Text style={styles.sectionDescription}>
-                    Use the same working hours as your business for this staff
-                    member.
+                    {t("addStaffCopyBusinessHoursHint")}
                   </Text>
                 </View>
               </View>
@@ -1829,11 +1843,11 @@ export default function AddStaffScreen() {
           title={
             isSubmitting
               ? isEditMode
-                ? "Updating…"
-                : "Creating…"
+                ? t("addStaffUpdating")
+                : t("addStaffCreating")
               : isEditMode
-                ? "Update"
-                : "Create"
+                ? t("update")
+                : t("create")
           }
           onPress={handleCreate}
           disabled={!isFormValid || isSubmitting}

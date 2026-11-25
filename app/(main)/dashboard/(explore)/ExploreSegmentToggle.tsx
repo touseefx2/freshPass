@@ -152,7 +152,7 @@ export default function ExploreSegmentToggle({
               : styles.segmentOptionTextInactive,
           ]}
         >
-          Individual services
+          {t("individualServices")}
         </Text>
       </Pressable>
       <Pressable
@@ -172,7 +172,7 @@ export default function ExploreSegmentToggle({
               : styles.segmentOptionTextInactive,
           ]}
         >
-          Subscriptions list
+          {t("subscriptionsList")}
         </Text>
       </Pressable>
     </View>

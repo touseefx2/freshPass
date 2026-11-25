@@ -841,6 +841,17 @@ export interface StaffDetailData {
   createdAt: string;
 }
 
+/** i18n keys for API day names ("monday" …) */
+const DAY_LABEL_KEYS: Record<string, string> = {
+  monday: "staffDetailMonday",
+  tuesday: "staffDetailTuesday",
+  wednesday: "staffDetailWednesday",
+  thursday: "staffDetailThursday",
+  friday: "staffDetailFriday",
+  saturday: "staffDetailSaturday",
+  sunday: "staffDetailSunday",
+};
+
 function capitalizeDay(day: string): string {
   return day.charAt(0).toUpperCase() + day.slice(1);
 }
@@ -1580,7 +1591,7 @@ export default function StaffDetail() {
             <View style={[styles.actionsRow, isViewMode && { opacity: 0.45 }]}>
               {!hideSelfStaffMessage && data?.user?.id != null ? (
                 <Staff3DActionButton
-                  label={t("message") || "Message"}
+                  label={t("bcbMessage")}
                   icon="message"
                   onPress={handleChatPress}
                   disabled={isViewMode}
@@ -1656,7 +1667,7 @@ export default function StaffDetail() {
 
         <View style={styles.sectionContainer}>
           <View style={styles.sectionHeaderRow}>
-            <Text style={styles.sectionTitle}>Contact info</Text>
+            <Text style={styles.sectionTitle}>{t("contactInfo")}</Text>
           </View>
           {contactRows.length > 0 ? (
             <View style={styles.contactPanel}>
@@ -1777,7 +1788,10 @@ export default function StaffDetail() {
             >
               <Text style={styles.sectionTitle}>{t("workingHours")}</Text>
               <Text style={styles.sectionHint}>
-                {openDaysCount}/{sortedHours.length} open
+                {t("staffDetailOpenDays", {
+                  open: openDaysCount,
+                  total: sortedHours.length,
+                })}
               </Text>
             </View>
             <ScrollView
@@ -1807,11 +1821,13 @@ export default function StaffDetail() {
                       ]}
                     >
                       <Text style={styles.hoursDay} numberOfLines={1}>
-                        {capitalizeDay(wh.day)}
+                        {DAY_LABEL_KEYS[wh.day.toLowerCase()]
+                          ? t(DAY_LABEL_KEYS[wh.day.toLowerCase()])
+                          : capitalizeDay(wh.day)}
                       </Text>
                       {isToday ? (
                         <View style={styles.hoursTodayTag}>
-                          <Text style={styles.hoursTodayTagText}>Today</Text>
+                          <Text style={styles.hoursTodayTagText}>{t("today")}</Text>
                         </View>
                       ) : null}
                     </View>

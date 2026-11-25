@@ -165,11 +165,11 @@ export default function LocationEnableModal({
         // iOS can't switch it on for the user — tell them where it lives
         const errorMsg =
           Platform.OS === "ios"
-            ? "Please turn on Location Services in Settings → Privacy & Security → Location Services"
-            : "Please turn on your phone location";
+            ? t("locationModalTurnOnIos")
+            : t("locationModalTurnOnAndroid");
         setModalBanner({
           visible: true,
-          title: "Location Error",
+          title: t("locationError"),
           message: errorMsg,
           type: "error",
         });
@@ -185,10 +185,10 @@ export default function LocationEnableModal({
       const errorMsg =
         error instanceof Error
           ? error.message
-          : "Unable to get your location. Please make sure location services are enabled and try again.";
+          : t("locationModalUnableToGet");
       setModalBanner({
         visible: true,
-        title: "Location Error",
+        title: t("locationError"),
         message: errorMsg,
         type: "error",
       });
@@ -230,38 +230,36 @@ export default function LocationEnableModal({
             {screenName === "setLocation" ? (
               <>
                 <Text style={styles.descriptionText} maxFontSizeMultiplier={1.2}>
-                  To select your location on the map, we need to access your
-                  current location. This will help you see your position and
-                  choose the right location.
+                  {t("selectLocationMapDescription")}
                 </Text>
                 <View style={styles.bulletPoint}>
                   <View style={styles.bulletDot} />
                   <Text style={styles.bulletText} maxFontSizeMultiplier={1.2}>
-                    Get your current location to show on the map
+                    {t("getCurrentLocationShowMap")}
                   </Text>
                 </View>
                 <View style={styles.bulletPoint}>
                   <View style={styles.bulletDot} />
                   <Text style={styles.bulletText} maxFontSizeMultiplier={1.2}>
-                    Easily select and confirm your location
+                    {t("easilySelectConfirmLocation")}
                   </Text>
                 </View>
               </>
             ) : (
               <>
                 <Text style={styles.descriptionText} maxFontSizeMultiplier={1.2}>
-                  Businesses are shown based on your current location
+                  {t("businessesShownByLocation")}
                 </Text>
                 <View style={styles.bulletPoint}>
                   <View style={styles.bulletDot} />
                   <Text style={styles.bulletText} maxFontSizeMultiplier={1.2}>
-                    Find salons and services closest to you
+                    {t("findSalonsClosestToYou")}
                   </Text>
                 </View>
                 <View style={styles.bulletPoint}>
                   <View style={styles.bulletDot} />
                   <Text style={styles.bulletText} maxFontSizeMultiplier={1.2}>
-                    Without location, businesses will appear randomly
+                    {t("withoutLocationRandom")}
                   </Text>
                 </View>
               </>

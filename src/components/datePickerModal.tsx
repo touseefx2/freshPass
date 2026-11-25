@@ -24,6 +24,7 @@ import dayjs from "dayjs";
 import weekOfYear from "dayjs/plugin/weekOfYear";
 import isoWeek from "dayjs/plugin/isoWeek";
 import { clearSelectedDate } from "@/src/state/slices/generalSlice";
+import { useTranslation } from "react-i18next";
 
 dayjs.extend(weekOfYear);
 dayjs.extend(isoWeek);
@@ -199,6 +200,7 @@ export default function DatePickerModal({
   selectedDate,
   onDateSelect,
 }: DatePickerModalProps) {
+  const { t } = useTranslation();
   const { colors } = useTheme();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
@@ -259,9 +261,20 @@ export default function DatePickerModal({
   const timezoneInfo = getTimezoneInfo();
   // const locationName = location?.locationName || "Miami-Dade County, FL, USA";
   // const timezoneText = `In your time zone, ${locationName} (${timezoneInfo.gmtOffset})`;
-  const timezoneText = `In your time zone, ${timezoneInfo.timezone} (${timezoneInfo.gmtOffset})`;
+  const timezoneText = t("datePickerTimezone", {
+    timezone: timezoneInfo.timezone,
+    offset: timezoneInfo.gmtOffset,
+  });
 
-  const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const dayNames = [
+    t("datePickerSun"),
+    t("datePickerMon"),
+    t("datePickerTue"),
+    t("datePickerWed"),
+    t("datePickerThu"),
+    t("datePickerFri"),
+    t("datePickerSat"),
+  ];
 
   const translateY = slideAnim.interpolate({
     inputRange: [0, 1],
@@ -299,7 +312,7 @@ export default function DatePickerModal({
             >
               <View style={styles.modalHeader}>
                 <View style={{ width: moderateWidthScale(32) }} />
-                <Text style={styles.modalHeaderTitle}>Select date</Text>
+                <Text style={styles.modalHeaderTitle}>{t("selectDate")}</Text>
                 <TouchableOpacity
                   onPress={onClose}
                   style={styles.modalCloseButton}
@@ -412,7 +425,7 @@ export default function DatePickerModal({
                   }}
                 >
                   <Text style={[styles.timezoneText, { marginBottom: 0 }]}>
-                    To view businesses on a specific date, select a date above
+                    {t("datePickerViewBusinessesHint")}
                   </Text>
 
                   {/* Clear Date Button */}
@@ -421,7 +434,7 @@ export default function DatePickerModal({
                       onPress={handleClearDate}
                       style={styles.clearButtonText}
                     >
-                      Clear date
+                      {t("bcuClearDate")}
                     </Text>
                   )}
                 </View>

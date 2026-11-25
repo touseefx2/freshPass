@@ -20,6 +20,7 @@ import {
 import Button from "@/src/components/button";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { GeneratedSubscriptionPlanNormalized } from "@/src/services/aiToolsService";
+import { useTranslation } from "react-i18next";
 
 const formatMonthlyPrice = (price: number, currency: string): string => {
   const code = (currency || "USD").toUpperCase();
@@ -251,6 +252,7 @@ export default function GeneratedSubscriptionPlansModal({
   plans,
   onSelectedPlans,
 }: GeneratedSubscriptionPlansModalProps) {
+  const { t } = useTranslation();
   const { colors } = useTheme();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
@@ -287,8 +289,8 @@ export default function GeneratedSubscriptionPlansModal({
   const selectedCount = selectedPlanIndices.length;
   const continueTitle =
     selectedCount === 0
-      ? "Select a plan to add"
-      : `Add ${selectedCount} plan${selectedCount === 1 ? "" : "s"}`;
+      ? t("aiPlansSelectToAdd")
+      : t("aiPlansAddCount", { count: selectedCount });
 
   return (
     <Modal
@@ -304,7 +306,7 @@ export default function GeneratedSubscriptionPlansModal({
           activeOpacity={1}
           onPress={onClose}
           accessibilityRole="button"
-          accessibilityLabel="Close AI suggested plans"
+          accessibilityLabel={t("aiPlansCloseA11y")}
         />
         <Animated.View
           entering={SlideInDown.duration(260).reduceMotion(ReduceMotion.System)}
@@ -327,9 +329,9 @@ export default function GeneratedSubscriptionPlansModal({
               />
             </View>
             <View style={styles.headerText}>
-              <Text style={styles.headerTitle}>AI suggested plans</Text>
+              <Text style={styles.headerTitle}>{t("aiPlansTitle")}</Text>
               <Text style={styles.headerSubtitle}>
-                Pick the plans you want to add. You can edit them anytime.
+                {t("aiPlansSubtitle")}
               </Text>
             </View>
             <TouchableOpacity
@@ -337,7 +339,7 @@ export default function GeneratedSubscriptionPlansModal({
               onPress={onClose}
               hitSlop={8}
               accessibilityRole="button"
-              accessibilityLabel="Close"
+              accessibilityLabel={t("close")}
             >
               <Feather
                 name="x"
@@ -375,7 +377,10 @@ export default function GeneratedSubscriptionPlansModal({
                       onPress={() => togglePlanSelection(index)}
                       accessibilityRole="checkbox"
                       accessibilityState={{ checked: isSelected }}
-                      accessibilityLabel={`${plan.name}, ${price} per month`}
+                      accessibilityLabel={t("aiPlansCardA11y", {
+                        name: plan.name,
+                        price,
+                      })}
                     >
                       <View style={styles.cardHeader}>
                         <Text style={styles.planName}>{plan.name}</Text>
@@ -403,14 +408,16 @@ export default function GeneratedSubscriptionPlansModal({
 
                       <View style={styles.priceRow}>
                         <Text style={styles.priceText}>{price}</Text>
-                        <Text style={styles.perMonthText}>/month</Text>
+                        <Text style={styles.perMonthText}>
+                          {t("perMonthCompact")}
+                        </Text>
                       </View>
                       <View style={styles.accentBar} />
 
                       {plan.services_included.length > 0 ? (
                         <>
                           <Text style={styles.includedLabel}>
-                            Included each month
+                            {t("aiPlansIncludedEachMonth")}
                           </Text>
                           <View style={styles.includedList}>
                             {plan.services_included.map((service, sIdx) => (
@@ -450,8 +457,7 @@ export default function GeneratedSubscriptionPlansModal({
                             color={theme.orangeBrownText}
                           />
                           <Text style={styles.visitsText}>
-                            {totalUses} service{totalUses === 1 ? "" : "s"} to
-                            use anytime this month
+                            {t("aiPlansServicesToUse", { count: totalUses })}
                           </Text>
                         </View>
                       ) : null}

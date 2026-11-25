@@ -275,7 +275,7 @@ export default function ApplyLeave() {
         if (response.success) {
           showBanner(
             t("success") || "Success",
-            response.message || "Leave applied.",
+            response.message || t("applyLeaveLeaveApplied"),
             "success",
             2500,
           );
@@ -284,7 +284,7 @@ export default function ApplyLeave() {
           showBanner(
             t("apiFailed") || "Error",
             (response as { message?: string }).message ||
-              "Failed to apply leave.",
+              t("applyLeaveLeaveFailed"),
             "error",
             2500,
           );
@@ -319,7 +319,7 @@ export default function ApplyLeave() {
         if (response.success) {
           showBanner(
             t("success") || "Success",
-            response.message || "Break applied.",
+            response.message || t("breakApplied"),
             "success",
             2500,
           );
@@ -328,7 +328,7 @@ export default function ApplyLeave() {
           showBanner(
             t("apiFailed") || "Error",
             (response as { message?: string }).message ||
-              "Failed to apply break.",
+              t("applyLeaveBreakFailed"),
             "error",
             2500,
           );
@@ -337,7 +337,8 @@ export default function ApplyLeave() {
     } catch (error: unknown) {
       showBanner(
         t("apiFailed") || "Error",
-        (error as { message?: string })?.message || "Something went wrong.",
+        (error as { message?: string })?.message ||
+          t("applyLeaveSomethingWrong"),
         "error",
         2500,
       );
@@ -349,7 +350,7 @@ export default function ApplyLeave() {
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" />
-      <StackHeader title="Apply for Leave / Break" />
+      <StackHeader title={t("applyLeaveTitle")} />
       <KeyboardAwareScrollView
         style={styles.container}
         contentContainerStyle={styles.scrollContent}
@@ -357,7 +358,7 @@ export default function ApplyLeave() {
         keyboardShouldPersistTaps="handled"
       >
         <Text style={styles.subtitle}>
-          Select dates and times for your leave or break.
+          {t("applyLeaveSubtitle")}
         </Text>
 
         <View
@@ -367,8 +368,12 @@ export default function ApplyLeave() {
             marginBottom: moderateHeightScale(8),
           }}
         >
-          <Text style={[styles.fieldLabel, { flex: 1 }]}>From Date</Text>
-          <Text style={[styles.fieldLabel, { flex: 1 }]}>To Date</Text>
+          <Text style={[styles.fieldLabel, { flex: 1 }]}>
+            {t("applyLeaveFromDate")}
+          </Text>
+          <Text style={[styles.fieldLabel, { flex: 1 }]}>
+            {t("applyLeaveToDate")}
+          </Text>
         </View>
         <View style={styles.timeRow}>
           <TouchableOpacity
@@ -407,14 +412,16 @@ export default function ApplyLeave() {
           </TouchableOpacity>
         </View>
 
-        <Text style={styles.fieldLabel}>Type</Text>
+        <Text style={styles.fieldLabel}>{t("type")}</Text>
         <TouchableOpacity
           style={styles.dropdownInput}
           onPress={() => setTypeDropdownOpen(!typeDropdownOpen)}
           activeOpacity={0.7}
         >
           <Text style={styles.dropdownInputText}>
-            {leaveBreakType === "leave" ? "Leave" : "Break"}
+            {leaveBreakType === "leave"
+              ? t("applyLeaveTypeLeave")
+              : t("break")}
           </Text>
           <MaterialIcons
             name="keyboard-arrow-down"
@@ -432,7 +439,9 @@ export default function ApplyLeave() {
               }}
               activeOpacity={0.7}
             >
-              <Text style={styles.dropdownInputText}>Leave</Text>
+              <Text style={styles.dropdownInputText}>
+                {t("applyLeaveTypeLeave")}
+              </Text>
               {leaveBreakType === "leave" && (
                 <Feather
                   name="check"
@@ -449,7 +458,7 @@ export default function ApplyLeave() {
               }}
               activeOpacity={0.7}
             >
-              <Text style={styles.dropdownInputText}>Break</Text>
+              <Text style={styles.dropdownInputText}>{t("break")}</Text>
               {leaveBreakType === "break" && (
                 <Feather
                   name="check"
@@ -470,8 +479,12 @@ export default function ApplyLeave() {
                 marginBottom: moderateHeightScale(8),
               }}
             >
-              <Text style={[styles.fieldLabel, { flex: 1 }]}>Start Time</Text>
-              <Text style={[styles.fieldLabel, { flex: 1 }]}>End Time</Text>
+              <Text style={[styles.fieldLabel, { flex: 1 }]}>
+                {t("applyLeaveStartTime")}
+              </Text>
+              <Text style={[styles.fieldLabel, { flex: 1 }]}>
+                {t("applyLeaveEndTime")}
+              </Text>
             </View>
             <View style={styles.timeRow}>
               <TouchableOpacity
@@ -540,10 +553,10 @@ export default function ApplyLeave() {
           </>
         )}
 
-        <Text style={styles.fieldLabel}>Reason (Optional)</Text>
+        <Text style={styles.fieldLabel}>{t("applyLeaveReasonOptional")}</Text>
         <TextInput
           style={styles.reasonInput}
-          placeholder="e.g. Doctor appointment, Vacation"
+          placeholder={t("applyLeaveReasonPlaceholder")}
           placeholderTextColor={theme.lightGreen}
           value={reason}
           onChangeText={setReason}
@@ -552,7 +565,7 @@ export default function ApplyLeave() {
         />
 
         <Button
-          title="Apply"
+          title={t("apply")}
           onPress={applyLeaveBreak}
           loading={applyLoading}
           containerStyle={styles.applyButton}

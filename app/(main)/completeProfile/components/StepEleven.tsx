@@ -8,6 +8,7 @@ import {
   TouchableWithoutFeedback,
 } from "react-native";
 import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
+import { useTranslation } from "react-i18next";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import {
@@ -102,6 +103,7 @@ const buildFullUrl = (username: string, prefix: string): string => {
 };
 
 export default function StepEleven() {
+  const { t } = useTranslation();
   const dispatch = useAppDispatch();
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors as Theme), [colors]);
@@ -180,8 +182,8 @@ export default function StepEleven() {
     <View style={styles.container}>
       <View style={styles.titleSec}>
         <Text style={styles.title}>
-          Link your social media account
-          <Text style={styles.subTitle}> (if any)</Text>
+          {t("socialStepTitle")}
+          <Text style={styles.subTitle}> {t("ifAny")}</Text>
         </Text>
       </View>
 
@@ -200,7 +202,7 @@ export default function StepEleven() {
                 style={styles.input}
                 value={tiktokUsername}
                 onChangeText={handleTiktokChange}
-                placeholder="username"
+                placeholder={t("username")}
                 placeholderTextColor={theme.lightGreen2}
               />
               {tiktokUsername && tiktokUsername.trim() !== "" && (
@@ -230,7 +232,7 @@ export default function StepEleven() {
                 style={styles.input}
                 value={instagramUsername}
                 onChangeText={handleInstagramChange}
-                placeholder="username"
+                placeholder={t("username")}
                 placeholderTextColor={theme.lightGreen2}
               />
               {instagramUsername && instagramUsername.trim() !== "" && (
@@ -260,7 +262,7 @@ export default function StepEleven() {
                 style={styles.input}
                 value={facebookUsername}
                 onChangeText={handleFacebookChange}
-                placeholder="username"
+                placeholder={t("username")}
                 placeholderTextColor={theme.lightGreen2}
               />
               {facebookUsername && facebookUsername.trim() !== "" && (

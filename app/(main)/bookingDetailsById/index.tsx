@@ -631,8 +631,13 @@ export default function BookingDetailsById() {
         ? `${base} · ${t("owner")}`
         : base;
   } else {
-    staffClientname = booking?.user ?? "User";
+    staffClientname = booking?.user ?? t("apptDetUser");
   }
+  // "Anyone" stays the English sentinel for checks; show it translated.
+  const staffClientDisplayName =
+    staffClientname.toLowerCase() === "anyone"
+      ? t("bkFlowAnyone")
+      : staffClientname;
 
   const handlePersonPress = useCallback(() => {
     if (!booking) {
@@ -849,9 +854,12 @@ export default function BookingDetailsById() {
       hours12 = hours12 ? hours12 : 12;
       const minutesStr = dateObj.getMinutes().toString().padStart(2, "0");
 
-      return `${dayName}, ${monthName} ${day} at ${hours12}:${minutesStr} ${ampm}`;
+      return t("apptDetDateAtTime", {
+        date: `${dayName}, ${monthName} ${day}`,
+        time: `${hours12}:${minutesStr} ${ampm}`,
+      });
     } catch (error) {
-      return `${date} at ${time}`;
+      return t("apptDetDateAtTime", { date, time });
     }
   };
 
@@ -926,10 +934,10 @@ export default function BookingDetailsById() {
       serviceImageUrl: resolvedServiceImage,
       membershipType: apiData.subscriptionPlanType || "---",
       staffName: apiData.staffName || "Anyone",
-      location: apiData.businessAddress || "Business address",
+      location: apiData.businessAddress || t("mcLocationBusiness"),
       dateTime: dateTime,
       duration: duration,
-      user: apiData.user ?? "User",
+      user: apiData.user ?? t("apptDetUser"),
       price: formatPrice(price),
       serviceTotal:
         typeof price === "number"
@@ -940,7 +948,7 @@ export default function BookingDetailsById() {
       status: mapApiStatusToBookingStatus(apiData.status),
       businessId: apiData.businessId,
       businessName: apiData.businessTitle || "---",
-      businessAddress: apiData.businessAddress || "Business address",
+      businessAddress: apiData.businessAddress || t("mcLocationBusiness"),
       businessLatitude: apiData.businessLatitude || undefined,
       businessLongitude: apiData.businessLongitude || undefined,
       businessTimezone: apiData.businessTimezone ?? null,
@@ -1025,7 +1033,7 @@ export default function BookingDetailsById() {
 
   const fetchBookingDetails = async () => {
     if (!bookingId) {
-      setError("Booking ID is required");
+      setError(t("bookingIdRequired"));
       setLoading(false);
       return;
     }
@@ -1044,10 +1052,10 @@ export default function BookingDetailsById() {
         const mappedBooking = mapApiResponseToBookingItem(response.data);
         setBooking(mappedBooking);
       } else {
-        setError(response.message || "Failed to fetch booking details");
+        setError(response.message || t("apptDetFetchFailed"));
       }
     } catch (err: any) {
-      setError(err?.message || "Failed to fetch booking details");
+      setError(err?.message || t("apptDetFetchFailed"));
     } finally {
       setLoading(false);
     }
@@ -1150,22 +1158,22 @@ export default function BookingDetailsById() {
       case "ongoing":
         return t("upcomingApt");
       case "active":
-        return "Active";
+        return t("active");
       case "complete":
-        return "Complete";
+        return t("apptDetStatusComplete");
       case "awaiting_outcome":
         return t("statusAwaitingOutcome");
       case "no_show":
         return t("statusNoShow");
       case "cancelled":
         if (userRole === "staff" || userRole === "business") {
-          return `${customerName || "Customer"} canceled`;
+          return t("apptDetNameCanceled", { name: customerName || t("customer") });
         }
-        return "You canceled";
+        return t("apptDetYouCanceled");
       case "expired":
-        return "Expired";
+        return t("expired");
       default:
-        return "Active";
+        return t("active");
     }
   };
 
@@ -1362,7 +1370,9 @@ export default function BookingDetailsById() {
         d = new Date(year, month - 1, day);
       }
       if (Number.isNaN(d.getTime())) return null;
-      return `Booked on ${monthsShort[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
+      return t("apptDetBookedOn", {
+        date: `${monthsShort[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`,
+      });
     } catch {
       return null;
     }
@@ -1434,20 +1444,22 @@ export default function BookingDetailsById() {
   const paymentHeadline = (() => {
     if (!booking) return "";
     if (isSubscription) {
-      return booking.planName || "Plan";
+      return booking.planName || t("apptDetPlan");
     }
     if (isCashPaid || (!booking.owesPayment && booking.paidAmount != null)) {
-      return userRole === "customer" ? "You paid" : `${staffClientname} paid`;
+      return userRole === "customer"
+        ? t("apptDetYouPaid")
+        : t("apptDetNamePaid", { name: staffClientDisplayName });
     }
-    return userRole === "customer" ? "I will pay" : "Customer will pay";
+    return userRole === "customer" ? t("apptDetIWillPay") : t("apptDetCustomerWillPay");
   })();
 
   const paymentSubline = (() => {
     if (!booking || isSubscription) return null;
     if (isCashPaid) {
       return shopMethod === "card_terminal"
-        ? "Paid by card at the business"
-        : "Paid in cash at the business";
+        ? t("apptDetPaidCardAtBusiness")
+        : t("apptDetPaidCashAtBusiness");
     }
     if (receipt?.status === "unpaid") {
       return receipt.method === "freshpass"
@@ -1455,9 +1467,9 @@ export default function BookingDetailsById() {
         : t("ckMethodUnpaid");
     }
     if (booking.paymentMethod === "pay_now" && !booking.owesPayment) {
-      return "Paid online";
+      return t("bkDonePaidOnline");
     }
-    return "In-person at the business";
+    return t("apptDetInPersonAtBusiness");
   })();
 
   // A salon claim is never a payment: it stays "waiting" until the pro confirms.
@@ -2000,7 +2012,7 @@ export default function BookingDetailsById() {
       } else {
         showBanner(
           t("error"),
-          response.message || "Could not load correction preview.",
+          response.message || t("apptDetCorrectionPreviewFailed"),
           "error",
           2500,
         );
@@ -2011,7 +2023,7 @@ export default function BookingDetailsById() {
         t("error"),
         error?.response?.data?.message ||
           error?.message ||
-          "Could not load correction preview.",
+          t("apptDetCorrectionPreviewFailed"),
         "error",
         2500,
       );
@@ -2035,7 +2047,7 @@ export default function BookingDetailsById() {
       if (response.success) {
         showBanner(
           t("success"),
-          response.message || "Appointment corrected to completed.",
+          response.message || t("apptDetCorrectedToCompleted"),
           "success",
           2500,
         );
@@ -2043,7 +2055,7 @@ export default function BookingDetailsById() {
         setCorrectionPreview(null);
         await fetchBookingDetails();
       } else {
-        setCorrectionError(response.message || "Unable to correct outcome.");
+        setCorrectionError(response.message || t("apptDetCorrectOutcomeFailed"));
       }
     } catch (error: any) {
       Logger.error("Correct outcome error:", error);
@@ -2051,7 +2063,7 @@ export default function BookingDetailsById() {
         error?.data?.message ||
           error?.response?.data?.message ||
           error?.message ||
-          "Unable to correct outcome.",
+          t("apptDetCorrectOutcomeFailed"),
       );
     } finally {
       setCorrectionConfirming(false);
@@ -2150,7 +2162,7 @@ export default function BookingDetailsById() {
     if (!booking?.id) {
       showBanner(
         t("error"),
-        "Appointment ID is missing. Please try again.",
+        t("apptDetAppointmentIdMissing"),
         "error",
         4000,
       );
@@ -2159,7 +2171,7 @@ export default function BookingDetailsById() {
 
     const appointmentId = Number(booking.id);
     if (Number.isNaN(appointmentId)) {
-      showBanner(t("error"), "Invalid appointment ID.", "error", 4000);
+      showBanner(t("error"), t("apptDetInvalidAppointmentId"), "error", 4000);
       return;
     }
 
@@ -2224,15 +2236,15 @@ export default function BookingDetailsById() {
 
         const { error: initError } = await initPaymentSheet(paymentConfig);
         if (initError) {
-          throw new Error(initError.message || "Failed to initialize payment");
+          throw new Error(initError.message || t("apptDetPaymentInitFailed"));
         }
 
         const { error: presentError } = await presentPaymentSheet();
         if (presentError) {
           if (!presentError.code?.includes("Canceled")) {
             showBanner(
-              "Payment Failed",
-              presentError.message || "Payment could not be completed",
+              t("apptDetPaymentFailed"),
+              presentError.message || t("apptDetPaymentNotCompleted"),
               "error",
               4000,
             );
@@ -2243,7 +2255,7 @@ export default function BookingDetailsById() {
         paymentCompleted = true;
         showBanner(
           t("success"),
-          "Payment successful! Your booking is confirmed.",
+          t("apptDetPaymentSuccessConfirmed"),
           "success",
           3000,
         );
@@ -2254,7 +2266,7 @@ export default function BookingDetailsById() {
         await setStripeAccount(null);
       }
     } catch (err: any) {
-      let errorMessage = "Failed to process payment";
+      let errorMessage = t("apptDetPaymentProcessFailed");
       if (err.data?.message) {
         errorMessage = err.data.message;
       } else if (err.data?.error) {
@@ -2262,7 +2274,7 @@ export default function BookingDetailsById() {
       } else if (err.message) {
         errorMessage = err.message;
       }
-      showBanner("Payment Failed", errorMessage, "error", 4000);
+      showBanner(t("apptDetPaymentFailed"), errorMessage, "error", 4000);
     } finally {
       dispatch(setActionLoader(false));
       // A new sheet gave back the earlier hold first.
@@ -2556,7 +2568,7 @@ export default function BookingDetailsById() {
                   numberOfLines={1}
                 >
                   {t("messageName", {
-                    name: isCustomerView ? businessName : staffClientname,
+                    name: isCustomerView ? businessName : staffClientDisplayName,
                   })}
                 </Text>
               </View>
@@ -2663,7 +2675,7 @@ export default function BookingDetailsById() {
                         size={moderateWidthScale(12)}
                         color={theme.darkGreen}
                       />
-                      <Text style={styles.tagText}>Plan</Text>
+                      <Text style={styles.tagText}>{t("apptDetPlan")}</Text>
                     </View>
                   ) : null}
                 </View>
@@ -2736,7 +2748,7 @@ export default function BookingDetailsById() {
                   style={[styles.infoListValue, styles.infoListValueName]}
                   numberOfLines={2}
                 >
-                  {staffClientname}
+                  {staffClientDisplayName}
                 </Text>
                 {/* Guest booked by the owner: no app, confirmations by email (if any) */}
                 {!isCustomerView && booking.customerHasAppAccount === false ? (
@@ -3239,7 +3251,9 @@ export default function BookingDetailsById() {
                     (!booking.owesPayment && booking.paidAmount != null))) ? (
                   <View style={styles.paymentBreakdownCard}>
                     <View style={styles.paymentBreakdownRow}>
-                      <Text style={styles.paymentBreakdownLabel}>Service</Text>
+                      <Text style={styles.paymentBreakdownLabel}>
+                        {t("service")}
+                      </Text>
                       <Text style={styles.paymentBreakdownValue}>
                         {formatPrice(
                           rewardPaidBreakdown?.serviceAmount ??
@@ -3271,7 +3285,9 @@ export default function BookingDetailsById() {
                     {paidTipBreakdown ? (
                       <View style={styles.paymentBreakdownRow}>
                         <Text style={styles.paymentBreakdownLabel}>
-                          Tip for {paidTipBreakdown.recipientName}
+                          {t("avTipFor", {
+                            name: paidTipBreakdown.recipientName,
+                          })}
                           {receipt?.tipMethod === "card_terminal"
                             ? ` · ${t("ckMethodCardShort")}`
                             : booking.tip?.paymentChannel === "in_person"
@@ -3289,7 +3305,7 @@ export default function BookingDetailsById() {
                     <View style={styles.paymentBreakdownDivider} />
                     <View style={styles.paymentBreakdownRow}>
                       <Text style={styles.paymentBreakdownTotalLabel}>
-                        Total paid
+                        {t("ckTotalPaid")}
                       </Text>
                       <Text style={styles.paymentBreakdownTotalValue}>
                         {formatPrice(
@@ -3316,7 +3332,12 @@ export default function BookingDetailsById() {
               ) : (
                 <Text style={styles.paymentAmount}>
                   {booking.subscriptionVisits
-                    ? `${booking.subscriptionVisits.bookable ?? booking.subscriptionVisits.remaining}/${booking.subscriptionVisits.total} left`
+                    ? t("apptDetVisitsLeft", {
+                        remaining:
+                          booking.subscriptionVisits.bookable ??
+                          booking.subscriptionVisits.remaining,
+                        total: booking.subscriptionVisits.total,
+                      })
                     : booking.price}
                 </Text>
               )}
@@ -3453,7 +3474,7 @@ export default function BookingDetailsById() {
                 />
               </View>
               <View style={styles.notesTextCol}>
-                <Text style={styles.notesLabel}>Customer Notes</Text>
+                <Text style={styles.notesLabel}>{t("apptDetCustomerNotes")}</Text>
                 <Text style={styles.notesText}>{booking.notes}</Text>
               </View>
             </View>
@@ -3478,7 +3499,7 @@ export default function BookingDetailsById() {
                 ]}
                 numberOfLines={1}
               >
-                FreshPass Support
+                {t("apptDetFreshPassSupport")}
               </Text>
             </View>
             <Ionicons
@@ -3520,14 +3541,16 @@ export default function BookingDetailsById() {
                   </View>
 
                   <View style={styles.tipReceiptInfo}>
-                    <Text style={styles.tipReceiptEyebrow}>Thank you</Text>
+                    <Text style={styles.tipReceiptEyebrow}>
+                      {t("apptDetThankYou")}
+                    </Text>
                     <Text style={styles.tipReceiptTitle}>
                       {paidTipBreakdown.recipientName}
                     </Text>
                     <Text style={styles.tipReceiptSubtitle}>
                       {booking.tip?.paymentChannel === "in_person"
                         ? t("avTipCashChannel")
-                        : "Received your appreciation"}
+                        : t("apptDetReceivedAppreciation")}
                     </Text>
                   </View>
 
@@ -3548,12 +3571,12 @@ export default function BookingDetailsById() {
                     color={theme.buttonBack}
                   />
                   <Text style={styles.tipReceiptFooterText}>
-                    Your tip of{" "}
-                    {formatTipAmount(
-                      paidTipBreakdown.tipAmount,
-                      paidTipBreakdown.currency,
-                    )}{" "}
-                    was shared successfully
+                    {t("apptDetTipSharedSuccess", {
+                      amount: formatTipAmount(
+                        paidTipBreakdown.tipAmount,
+                        paidTipBreakdown.currency,
+                      ),
+                    })}
                   </Text>
                 </View>
               </View>

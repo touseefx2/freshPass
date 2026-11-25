@@ -16,6 +16,7 @@ import {
   moderateWidthScale,
 } from "@/src/theme/dimensions";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useTranslation } from "react-i18next";
 
 interface TimePickerModalProps {
   visible: boolean;
@@ -87,6 +88,7 @@ export default function TimePickerModal({
   onClose,
   isOptionAvailable,
 }: TimePickerModalProps) {
+  const { t } = useTranslation();
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors as Theme), [colors]);
   const theme = colors as Theme;
@@ -155,7 +157,7 @@ export default function TimePickerModal({
                 </TouchableOpacity>
               ))
             ) : (
-              <Text style={styles.emptyStateText}>No available times</Text>
+              <Text style={styles.emptyStateText}>{t("timePickerNoAvailableTimes")}</Text>
             )}
           </ScrollView>
         </View>

@@ -1,6 +1,7 @@
 import React, { useMemo } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
+import { useTranslation } from "react-i18next";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import {
@@ -11,30 +12,36 @@ import { setAppointmentVolume } from "@/src/state/slices/completeProfileSlice";
 
 interface AppointmentOption {
   id: string;
+  // English title is sent to the backend (weekly_appointment_range); keys are for display
   title: string;
-  description: string;
+  titleKey: string;
+  descriptionKey: string;
 }
 
 const APPOINTMENT_OPTIONS: AppointmentOption[] = [
   {
     id: "just_starting",
     title: "Just starting",
-    description: "I’m building my client base",
+    titleKey: "apptVolumeJustStarting",
+    descriptionKey: "apptVolumeJustStartingDesc",
   },
   {
     id: "one_to_nine",
     title: "1 - 9 appointments",
-    description: "Steady flow of clients",
+    titleKey: "apptVolume1to9",
+    descriptionKey: "apptVolume1to9Desc",
   },
   {
     id: "ten_to_nineteen",
     title: "10 - 19 appointments",
-    description: "Busy and growing",
+    titleKey: "apptVolume10to19",
+    descriptionKey: "apptVolume10to19Desc",
   },
   {
     id: "twenty_plus",
     title: "20+ appointments",
-    description: "High-volume business",
+    titleKey: "apptVolume20Plus",
+    descriptionKey: "apptVolume20PlusDesc",
   },
 ];
 
@@ -113,6 +120,7 @@ const createStyles = (theme: Theme) =>
   });
 
 export default function StepThree() {
+  const { t } = useTranslation();
   const dispatch = useAppDispatch();
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors as Theme), [colors]);
@@ -124,10 +132,10 @@ export default function StepThree() {
     <View style={styles.container}>
       <View style={styles.titleSec}>
         <Text style={styles.title}>
-          How many appointments do you typically have per week?
+          {t("apptVolumeStepTitle")}
         </Text>
         <Text style={styles.subtitle}>
-          This helps us tailor the app to your business volume.
+          {t("apptVolumeStepSubtitle")}
         </Text>
       </View>
 
@@ -156,9 +164,9 @@ export default function StepThree() {
                     {isSelected && <View style={styles.radioInner} />}
                   </View>
                   <View style={styles.optionTextWrapper}>
-                    <Text style={styles.optionTitle}>{option.title}</Text>
+                    <Text style={styles.optionTitle}>{t(option.titleKey)}</Text>
                     <Text style={styles.optionDescription}>
-                      {option.description}
+                      {t(option.descriptionKey)}
                     </Text>
                   </View>
                 </View>

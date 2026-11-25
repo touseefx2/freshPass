@@ -294,7 +294,7 @@ export default function RegisterTermsModal({
                   )}
                 </View>
               </View>
-              <Text style={styles.checkboxLabel}>Find salons near me</Text>
+              <Text style={styles.checkboxLabel}>{t("findSalonsNearMe")}</Text>
             </TouchableOpacity>
 
             <Button

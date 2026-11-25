@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
 } from "react-native";
 import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
+import { useTranslation } from "react-i18next";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import {
@@ -454,6 +455,7 @@ const createStyles = (theme: Theme) =>
   });
 
 export default function StepTwo() {
+  const { t } = useTranslation();
   const dispatch = useAppDispatch();
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors as Theme), [colors]);
@@ -498,9 +500,9 @@ export default function StepTwo() {
   return (
     <View style={styles.container}>
       <View style={styles.titleSec}>
-        <Text style={styles.title}>What&apos;s your country?</Text>
+        <Text style={styles.title}>{t("whatsYourCountry")}</Text>
         <Text style={styles.subtitle}>
-          Get the accurate information of services in your area.
+          {t("getAccurateInfoInArea")}
         </Text>
       </View>
 
@@ -533,10 +535,10 @@ export default function StepTwo() {
               {isSelected && (
                 <View style={styles.zipCodeContainer}>
                   <FloatingInput
-                    label="Zip code"
+                    label={t("custProfileZipCode")}
                     value={countryZipCode}
                     onChangeText={handleZipCodeChange}
-                    placeholder={"Zip code" + ` ( ${country.zipCode} )`}
+                    placeholder={t("custProfileZipCode") + ` ( ${country.zipCode} )`}
                     keyboardType="number-pad"
                     onClear={() => {
                       dispatch(setCountryZipCode(""));

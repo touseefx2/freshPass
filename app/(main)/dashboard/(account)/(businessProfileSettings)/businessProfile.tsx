@@ -28,6 +28,7 @@ import SkeletonPlaceholder from "react-native-skeleton-placeholder";
 import { resolveApiImageUrl } from "@/src/utils/media";
 import { useDispatch } from "react-redux";
 import { openFullImageModal } from "@/src/state/slices/generalSlice";
+import { useTranslation } from "react-i18next";
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -264,6 +265,7 @@ interface BusinessProfileData {
 
 export default function BusinessProfileScreen() {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
   const router = useRouter();
@@ -354,7 +356,12 @@ export default function BusinessProfileScreen() {
         Platform.OS === "ios"
           ? { message: publicUrl, url: publicUrl }
           : {
-              message: `Check out ${profileData?.title || "us"} on FreshPass: ${publicUrl}`,
+              message: profileData?.title
+                ? t("businessProfileShareMessage", {
+                    name: profileData.title,
+                    url: publicUrl,
+                  })
+                : t("businessProfileShareMessageNoName", { url: publicUrl }),
             },
       );
     } catch (error) {
@@ -381,7 +388,7 @@ export default function BusinessProfileScreen() {
 
   return (
     <View style={styles.container}>
-      <StackHeader title="Business profile" />
+      <StackHeader title={t("businessProfile")} />
       <ScrollView
         style={styles.content}
         contentContainerStyle={styles.contentContainer}
@@ -428,13 +435,12 @@ export default function BusinessProfileScreen() {
                   size={moderateWidthScale(18)}
                   color={theme.buttonText}
                 />
-                <Text style={styles.editButtonText}>Edit</Text>
+                <Text style={styles.editButtonText}>{t("edit")}</Text>
               </TouchableOpacity>
             </View>
 
             <Text style={styles.privacyNote}>
-              This photo is seen by others when they view your profile, messages
-              and reviews.
+              {t("businessProfilePhotoPrivacyNote")}
             </Text>
 
             {hasCategory && (
@@ -448,7 +454,7 @@ export default function BusinessProfileScreen() {
                     />
                   </View>
                   <View style={styles.detailTextCol}>
-                    <Text style={styles.detailLabel}>Category</Text>
+                    <Text style={styles.detailLabel}>{t("category")}</Text>
                     <Text style={styles.detailValue} numberOfLines={1}>
                       {businessCategoryName}
                     </Text>
@@ -459,10 +465,11 @@ export default function BusinessProfileScreen() {
 
             {!!publicUrl && (
               <View style={styles.shareLinkSection}>
-                <Text style={styles.shareLinkTitle}>Your Page Link</Text>
+                <Text style={styles.shareLinkTitle}>
+                  {t("businessProfilePageLinkTitle")}
+                </Text>
                 <Text style={styles.shareLinkDesc}>
-                  Add this to your Instagram bio, Facebook page, or TikTok to
-                  help clients find you.
+                  {t("businessProfilePageLinkDesc")}
                 </Text>
                 <View style={styles.shareLinkUrlRow}>
                   <Text style={styles.shareLinkUrl} numberOfLines={1}>
@@ -481,7 +488,9 @@ export default function BusinessProfileScreen() {
                       color={theme.buttonText}
                     />
                     <Text style={styles.copyLinkButtonText}>
-                      {linkCopied ? "Copied!" : "Copy link"}
+                      {linkCopied
+                        ? t("businessProfileLinkCopied")
+                        : t("businessProfileCopyLink")}
                     </Text>
                   </TouchableOpacity>
                   <TouchableOpacity
@@ -494,7 +503,7 @@ export default function BusinessProfileScreen() {
                       size={moderateWidthScale(18)}
                       color={theme.selectCard}
                     />
-                    <Text style={styles.shareLinkButtonText}>Share</Text>
+                    <Text style={styles.shareLinkButtonText}>{t("share")}</Text>
                   </TouchableOpacity>
                 </View>
               </View>

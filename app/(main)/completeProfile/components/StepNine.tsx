@@ -1,6 +1,7 @@
 import React, { useMemo, useState, useEffect } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
+import { useTranslation } from "react-i18next";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import {
@@ -250,6 +251,7 @@ const createStyles = (theme: Theme) =>
   });
 
 export default function StepNine() {
+  const { t } = useTranslation();
   const dispatch = useAppDispatch();
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors as Theme), [colors]);
@@ -307,8 +309,8 @@ export default function StepNine() {
       Logger.error("Failed to fetch service templates:", error);
       setApiError(true);
       showBanner(
-        "API Failed",
-        "API failed to fetch service templates",
+        t("apiFailed"),
+        t("servicesStepTemplatesFailed"),
         "error",
         2500,
       );
@@ -466,10 +468,9 @@ export default function StepNine() {
       ) : (
         <>
           <View style={styles.titleSec}>
-            <Text style={styles.title}>Your Services</Text>
+            <Text style={styles.title}>{t("servicesStepTitle")}</Text>
             <Text style={styles.subtitle}>
-              This is how clients will book and pay for your work. You can
-              always add more later.
+              {t("servicesStepSubtitle")}
             </Text>
           </View>
 
@@ -485,7 +486,9 @@ export default function StepNine() {
 
           <View style={styles.popularSection}>
             <View style={styles.popularTitleRow}>
-              <Text style={styles.popularTitle}>Popular starting points:</Text>
+              <Text style={styles.popularTitle}>
+                {t("popularStartingPoints")}
+              </Text>
             </View>
             {popularSuggestions
               .filter((s) => !services.some((service) => service.id === s.id))
@@ -500,7 +503,9 @@ export default function StepNine() {
                     <View style={styles.selectButtonWrapper}>
                       <View style={styles.selectButtonShadow} />
                       <View style={styles.selectButton}>
-                        <Text style={styles.selectButtonText}>Select</Text>
+                        <Text style={styles.selectButtonText}>
+                          {t("select")}
+                        </Text>
                       </View>
                     </View>
                   </TouchableOpacity>
@@ -515,7 +520,7 @@ export default function StepNine() {
               onPress={handleViewMore}
             >
               <Text style={styles.viewMoreButtonText}>
-                + View more suggestion
+                {t("servicesStepViewMore")}
               </Text>
             </TouchableOpacity>
           )}

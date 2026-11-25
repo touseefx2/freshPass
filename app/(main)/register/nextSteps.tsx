@@ -14,29 +14,30 @@ import Button from "@/src/components/button";
 import RegisterHeader from "@/src/components/registerHeader";
 import { useRouter, useFocusEffect } from "expo-router";
 import { MAIN_ROUTES } from "@/src/constant/routes";
+import { useTranslation } from "react-i18next";
 
 type StepStatus = "completed" | "active" | "pending";
 
 interface StepItem {
   id: number;
-  label: string;
+  labelKey: string;
   status: StepStatus;
 }
 
 const steps: StepItem[] = [
-  { id: 1, label: "Your business account", status: "completed" },
-  { id: 2, label: "Your business profile", status: "active" },
-  { id: 3, label: "Select business category", status: "pending" },
-  { id: 4, label: "About your business", status: "pending" },
-  { id: 5, label: "Appointments per week", status: "pending" },
-  { id: 6, label: "Business location", status: "pending" },
-  { id: 7, label: "People in your team", status: "pending" },
-  { id: 8, label: "Add staff members", status: "pending" },
-  { id: 9, label: "Business hours", status: "pending" },
-  { id: 10, label: "Add your services", status: "pending" },
-  { id: 11, label: "Create Membership", status: "pending" },
-  { id: 12, label: "Add social media (if any)", status: "pending" },
-  { id: 13, label: "Add business photos", status: "pending" },
+  { id: 1, labelKey: "regStepBusinessAccount", status: "completed" },
+  { id: 2, labelKey: "regStepBusinessProfile", status: "active" },
+  { id: 3, labelKey: "regStepBusinessCategory", status: "pending" },
+  { id: 4, labelKey: "regStepAboutBusiness", status: "pending" },
+  { id: 5, labelKey: "regStepAppointmentsPerWeek", status: "pending" },
+  { id: 6, labelKey: "regStepBusinessLocation", status: "pending" },
+  { id: 7, labelKey: "regStepPeopleInTeam", status: "pending" },
+  { id: 8, labelKey: "addStaffMembers", status: "pending" },
+  { id: 9, labelKey: "businessHours", status: "pending" },
+  { id: 10, labelKey: "regStepAddServices", status: "pending" },
+  { id: 11, labelKey: "createSubscriptionPlans", status: "pending" },
+  { id: 12, labelKey: "regStepSocialMedia", status: "pending" },
+  { id: 13, labelKey: "regStepBusinessPhotos", status: "pending" },
 ];
 
 const createStyles = (theme: Theme) =>
@@ -149,6 +150,7 @@ const createStyles = (theme: Theme) =>
 
 export default function RegisterNextSteps() {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const styles = useMemo(() => createStyles(colors as Theme), [colors]);
   const router = useRouter();
 
@@ -193,11 +195,10 @@ export default function RegisterNextSteps() {
               />
             </View>
             <Text style={styles.welcomeTitle}>
-              Welcome! Let's set up your profile.
+              {t("regNextWelcomeTitle")}
             </Text>
             <Text style={styles.subtitle}>
-              Personalize your experience to get the most out of FreshPass. It
-              only takes few minutes.
+              {t("regNextWelcomeSubtitle")}
             </Text>
           </View>
 
@@ -206,9 +207,7 @@ export default function RegisterNextSteps() {
               {steps.map((step, index) => {
                 const isCompleted = step.status === "completed";
                 const isActive = step.status === "active";
-                const isOptional = step.label
-                  .toLowerCase()
-                  .includes("(if any)");
+                const isOptional = step.labelKey === "regStepSocialMedia";
                 const stepStatusStyle = isCompleted
                   ? styles.stepTextCompleted
                   : isActive
@@ -240,7 +239,7 @@ export default function RegisterNextSteps() {
                       )}
                     </View>
                     <Text style={[styles.stepText, stepStatusStyle]}>
-                      {step.label}
+                      {t(step.labelKey)}
                     </Text>
                   </View>
                 );
@@ -248,7 +247,7 @@ export default function RegisterNextSteps() {
             </View>
           </View>
         </View>
-        <Button title="Lets go" onPress={handleLetsGo} />
+        <Button title={t("regNextLetsGo")} onPress={handleLetsGo} />
       </View>
     </SafeAreaView>
   );

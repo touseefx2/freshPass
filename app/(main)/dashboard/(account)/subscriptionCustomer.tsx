@@ -52,7 +52,7 @@ import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import RetryButton from "@/src/components/retryButton";
 import FlowButton from "@/src/components/reelFlow/flowButton";
 import { Dropdown } from "react-native-element-dropdown";
-import { useTranslation } from "react-i18next";
+import { Trans, useTranslation } from "react-i18next";
 import {
   canBookCustomerSubscription,
   canCancelCustomerSubscription,
@@ -866,7 +866,7 @@ export default function subscriptionCustomer() {
     if (!businessId) {
       showBanner(
         t("error"),
-        "Business ID is missing for this membership. Please try again later.",
+        t("subCustBusinessIdMissing"),
         "error",
         4000,
       );
@@ -936,16 +936,16 @@ export default function subscriptionCustomer() {
     (kind: ReturnType<typeof getCustomerSubscriptionDateDisplay>["kind"]) => {
       switch (kind) {
         case "accessUntil":
-          return "Access until";
+          return t("accessUntil");
         case "endedOn":
-          return "Ended on";
+          return t("endedOn");
         case "trialEnds":
-          return "Trial ends";
+          return t("trialEnds");
         default:
-          return "Renewal";
+          return t("renewal");
       }
     },
-    [],
+    [t],
   );
 
   const renderItem = useCallback(
@@ -983,7 +983,12 @@ export default function subscriptionCustomer() {
       const services = item.subscriptionPlanServices ?? [];
       const expanded = expandedIds.has(item.id);
       const summary = [
-        visits ? `${visitsLeft} of ${visits.total} visits left` : null,
+        visits
+          ? t("subCustVisitsSummary", {
+              left: visitsLeft,
+              total: visits.total,
+            })
+          : null,
         scheduleDate
           ? `${getScheduleDateLabel(dateDisplay.kind)} ${scheduleDate}`
           : null,
@@ -1027,7 +1032,9 @@ export default function subscriptionCustomer() {
             accessibilityRole="button"
             accessibilityLabel={`${item.subscriptionPlan}, ${pill.label}, ${item.business}`}
             accessibilityHint={
-              expanded ? "Hides membership details" : "Shows membership details"
+              expanded
+                ? t("subCustHidesDetailsHint")
+                : t("subCustShowsDetailsHint")
             }
             accessibilityState={{ expanded }}
           >
@@ -1058,7 +1065,7 @@ export default function subscriptionCustomer() {
                       color={theme.orangeBrown}
                     />
                   </View>
-                  <Text style={styles.passEyebrow}>Membership</Text>
+                  <Text style={styles.passEyebrow}>{t("bhMembership")}</Text>
                 </View>
                 <View style={styles.statusPill}>
                   <View
@@ -1093,7 +1100,7 @@ export default function subscriptionCustomer() {
                 <View style={styles.passBottomText}>
                   <View style={styles.passPriceRow}>
                     <Text style={styles.passPrice}>${displayPrice}</Text>
-                    <Text style={styles.passPer}>/ month</Text>
+                    <Text style={styles.passPer}>{t("perMonth")}</Text>
                   </View>
                   {summary ? (
                     <Text style={styles.passSummary} numberOfLines={1}>
@@ -1124,10 +1131,15 @@ export default function subscriptionCustomer() {
                 <Animated.View entering={detailEnter(1)}>
                   <View
                     accessible
-                    accessibilityLabel={`Visits left: ${visitsLeft} of ${visits.total}`}
+                    accessibilityLabel={t("subCustVisitsLeftA11y", {
+                      left: visitsLeft,
+                      total: visits.total,
+                    })}
                   >
                     <View style={styles.visitsHead}>
-                      <Text style={styles.sectionLabel}>Visits left</Text>
+                      <Text style={styles.sectionLabel}>
+                        {t("subCustVisitsLeft")}
+                      </Text>
                       <Text style={styles.visitsCount}>
                         {visitsLeft}
                         <Text style={styles.visitsTotal}>
@@ -1154,7 +1166,7 @@ export default function subscriptionCustomer() {
                     {item.paymentDate
                       ? dateTile(
                           "credit-card",
-                          "Last payment",
+                          t("lastPaymentLabel"),
                           item.paymentDate,
                         )
                       : null}
@@ -1172,7 +1184,9 @@ export default function subscriptionCustomer() {
               {services.length > 0 ? (
                 <Animated.View entering={detailEnter(3)}>
                   <View>
-                    <Text style={styles.sectionLabel}>Included services</Text>
+                    <Text style={styles.sectionLabel}>
+                      {t("subCustIncludedServices")}
+                    </Text>
                     <View style={styles.services}>
                       {services.map((svc, index) => {
                         const qty = svc.quantity ?? 1;
@@ -1223,7 +1237,7 @@ export default function subscriptionCustomer() {
                                 qty <= 0 && styles.qtyChipEmpty,
                               ]}
                               accessible
-                              accessibilityLabel={`${qty} left`}
+                              accessibilityLabel={t("bkFlowPlanLeft", { count: qty })}
                             >
                               <Text
                                 style={[
@@ -1252,13 +1266,18 @@ export default function subscriptionCustomer() {
                     />
                     <View style={{ flex: 1 }}>
                       <Text style={styles.cancelledTitle}>
-                        Membership Cancelled
+                        {t("subCustMembershipCancelled")}
                       </Text>
                       <Text style={styles.cancelledSub}>
-                        You can still use this membership until{" "}
-                        <Text style={{ fontFamily: fonts.fontBold }}>
-                          {formatCustomerSubscriptionDate(item.endsAt)}
-                        </Text>
+                        <Trans
+                          i18nKey="subCustUsableUntil"
+                          values={{
+                            date: formatCustomerSubscriptionDate(item.endsAt),
+                          }}
+                          components={{
+                            bold: <Text style={{ fontFamily: fonts.fontBold }} />,
+                          }}
+                        />
                       </Text>
                     </View>
                   </View>
@@ -1269,7 +1288,7 @@ export default function subscriptionCustomer() {
                 <Animated.View entering={detailEnter(5)}>
                   <View style={styles.actions}>
                     <FlowButton
-                      label="Book Appointment"
+                      label={t("subCustBookAppointment")}
                       icon="event"
                       onPress={() => handleBookAppointment(item)}
                       disabled={!hasBookableService}
@@ -1277,12 +1296,12 @@ export default function subscriptionCustomer() {
                     {!hasBookableService ? (
                       <Text style={[styles.helper, styles.helperWarning]}>
                         {canCancel
-                          ? "All services for this billing period have been used. Booking will unlock again after your next auto-charge when counts reset."
-                          : "All services for this billing period have been used. No more bookings are available on this membership."}
+                          ? t("subCustAllUsedWillReset")
+                          : t("subCustAllUsedNoMore")}
                       </Text>
                     ) : canCancel ? (
                       <Text style={styles.helper}>
-                        Visits reset after each monthly payment.
+                        {t("subCustVisitsResetNote")}
                       </Text>
                     ) : null}
                   </View>
@@ -1302,7 +1321,9 @@ export default function subscriptionCustomer() {
                       size={moderateWidthScale(16)}
                       color={theme.red}
                     />
-                    <Text style={styles.cancelLinkText}>Cancel Membership</Text>
+                    <Text style={styles.cancelLinkText}>
+                      {t("subCustCancelMembership")}
+                    </Text>
                   </TouchableOpacity>
                 </Animated.View>
               ) : null}
@@ -1321,6 +1342,7 @@ export default function subscriptionCustomer() {
       expandedIds,
       toggleExpanded,
       resolveVisits,
+      t,
     ],
   );
 
@@ -1336,10 +1358,10 @@ export default function subscriptionCustomer() {
   const statusOptions = [
     // { label: "All", value: "all" },
     // { label: "Pending", value: "pending" },
-    { label: "Active", value: "active" },
+    { label: t("active"), value: "active" },
     // { label: "Paused", value: "paused" },
-    { label: "Expired", value: "expired" },
-    { label: "Cancelled", value: "cancelled" },
+    { label: t("expired"), value: "expired" },
+    { label: t("cancelled"), value: "cancelled" },
   ];
 
   const renderFilterItem = useCallback(
@@ -1366,7 +1388,7 @@ export default function subscriptionCustomer() {
       <View style={styles.headerRow}>
         <View style={styles.headerDescriptionRow}>
           <Text style={styles.headerDescription}>
-            Manage your active memberships and billing information here.
+            {t("subCustManageDescription")}
           </Text>
         </View>
         <Dropdown
@@ -1381,7 +1403,7 @@ export default function subscriptionCustomer() {
           maxHeight={moderateHeightScale(200)}
           labelField="label"
           valueField="value"
-          placeholder="Status"
+          placeholder={t("status")}
           value={statusFilter}
           onChange={(item) => handleStatusFilterChange(item.value)}
           renderItem={renderFilterItem}
@@ -1406,15 +1428,15 @@ export default function subscriptionCustomer() {
 
   const getEmptyText = useCallback((filter: string) => {
     const filterLabels: { [key: string]: string } = {
-      all: "No memberships",
-      active: "No active memberships",
-      pending: "No pending memberships",
-      paused: "No paused memberships",
-      expired: "No expired memberships",
-      cancelled: "No cancelled memberships",
+      all: t("subCustEmptyAll"),
+      active: t("subCustEmptyActive"),
+      pending: t("subCustEmptyPending"),
+      paused: t("subCustEmptyPaused"),
+      expired: t("subCustEmptyExpired"),
+      cancelled: t("subCustEmptyCancelled"),
     };
-    return filterLabels[filter] || "No memberships";
-  }, []);
+    return filterLabels[filter] || t("subCustEmptyAll");
+  }, [t]);
 
   const renderEmpty = useCallback(() => {
     if (loading) {
@@ -1434,7 +1456,7 @@ export default function subscriptionCustomer() {
         />
         <Text style={styles.emptyText}>{getEmptyText(statusFilter)}</Text>
         <Text style={styles.emptySubtext}>
-          Manage your active memberships and billing information here.
+          {t("subCustManageDescription")}
         </Text>
       </View>
     );
@@ -1496,7 +1518,7 @@ export default function subscriptionCustomer() {
           >
             {/* Header */}
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Cancel Membership</Text>
+              <Text style={styles.modalTitle}>{t("subCustCancelMembership")}</Text>
               <TouchableOpacity
                 style={styles.modalCloseButton}
                 onPress={() => setCancelModalVisible(false)}
@@ -1512,11 +1534,11 @@ export default function subscriptionCustomer() {
 
             {/* Question */}
             <Text style={styles.modalQuestion}>
-              Are you sure you want to cancel your{" "}
-              <Text style={styles.modalQuestionBold}>
-                {selectedSubscription?.subscriptionPlan}
-              </Text>
-              ?
+              <Trans
+                i18nKey="subCustCancelQuestion"
+                values={{ plan: selectedSubscription?.subscriptionPlan ?? "" }}
+                components={{ bold: <Text style={styles.modalQuestionBold} /> }}
+              />
             </Text>
 
             {/* Consequences Box */}
@@ -1524,20 +1546,19 @@ export default function subscriptionCustomer() {
               <View style={styles.consequenceItem}>
                 <Text style={styles.consequenceBullet}>•</Text>
                 <Text style={styles.consequenceText}>
-                  You will lose access to the benefits at the end of the current
-                  billing cycle.
+                  {t("subCustCancelConsequenceAccess")}
                 </Text>
               </View>
               <View style={styles.consequenceItem}>
                 <Text style={styles.consequenceBullet}>•</Text>
                 <Text style={styles.consequenceText}>
-                  This action cannot be undone automatically.
+                  {t("subCustCancelConsequenceUndo")}
                 </Text>
               </View>
               <View style={styles.consequenceItem}>
                 <Text style={styles.consequenceBullet}>•</Text>
                 <Text style={styles.consequenceText}>
-                  You can join again at any time.
+                  {t("subCustCancelConsequenceRejoin")}
                 </Text>
               </View>
             </View>
@@ -1563,7 +1584,7 @@ export default function subscriptionCustomer() {
                 )}
               </View>
               <Text style={styles.checkboxText}>
-                I understand that my membership will be cancelled.
+                {t("subCustCancelUnderstand")}
               </Text>
             </TouchableOpacity>
 
@@ -1582,7 +1603,7 @@ export default function subscriptionCustomer() {
                 <ActivityIndicator size="small" color={theme.white} />
               ) : (
                 <Text style={styles.confirmButtonText}>
-                  Confirm Cancellation
+                  {t("confirmCancellation")}
                 </Text>
               )}
             </TouchableOpacity>

@@ -4,6 +4,7 @@ import { Feather, MaterialIcons } from "@expo/vector-icons";
 import Sortable, { type SortableGridRenderItem } from "react-native-sortables";
 import type { AnimatedRef } from "react-native-reanimated";
 import { useTranslation } from "react-i18next";
+import i18n from "i18next";
 import { useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
@@ -33,9 +34,9 @@ interface ServiceListProps<S extends ServiceListItem> {
 
 const formatDuration = (hours: number, minutes: number): string => {
   const parts: string[] = [];
-  if (hours > 0) parts.push(`${hours} hr`);
-  if (minutes > 0) parts.push(`${minutes} min`);
-  return parts.join(" ") || "0 min";
+  if (hours > 0) parts.push(i18n.t("svcListHours", { count: hours }));
+  if (minutes > 0) parts.push(i18n.t("mcDurationMinutes", { count: minutes }));
+  return parts.join(" ") || i18n.t("mcDurationMinutes", { count: 0 });
 };
 
 const formatPrice = (price: number | string): string => {
@@ -182,11 +183,11 @@ export default function ServiceList<S extends ServiceListItem>({
         accessibilityRole="button"
       >
         <Feather name="plus" size={moderateWidthScale(20)} color={theme.white} />
-        <Text style={styles.addButtonText}>Add Service</Text>
+        <Text style={styles.addButtonText}>{t("svcListAddService")}</Text>
       </TouchableOpacity>
 
       {services.length === 0 ? (
-        <Text style={styles.empty}>You haven't added any service yet</Text>
+        <Text style={styles.empty}>{t("svcListEmpty")}</Text>
       ) : onReorder ? (
         <>
           {services.length > 1 && (
@@ -225,7 +226,7 @@ export default function ServiceList<S extends ServiceListItem>({
               activeOpacity={0.7}
               accessibilityRole="button"
               accessibilityLabel={`${service.name}, ${duration}, ${price}`}
-              accessibilityHint="Opens the service editor"
+              accessibilityHint={t("svcListOpensEditorHint")}
             >
               {renderCardContent(service)}
             </TouchableOpacity>

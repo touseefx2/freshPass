@@ -26,6 +26,7 @@ import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { useRouter, useFocusEffect } from "expo-router";
 import SkeletonPlaceholder from "react-native-skeleton-placeholder";
 import { CloseIcon } from "@/assets/icons";
+import { useTranslation } from "react-i18next";
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -115,6 +116,7 @@ interface DescriptionData {
 
 export default function DescriptionScreen() {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
   const router = useRouter();
@@ -199,8 +201,8 @@ export default function DescriptionScreen() {
 
       if (response.success) {
         showBanner(
-          "Success",
-          response.message || "Description updated successfully",
+          t("success"),
+          response.message || t("descriptionScreenUpdateSuccess"),
           "success",
           3000
         );
@@ -208,8 +210,8 @@ export default function DescriptionScreen() {
         router.back();
       } else {
         showBanner(
-          "Error",
-          response.message || "Failed to update description",
+          t("error"),
+          response.message || t("descriptionScreenUpdateFailed"),
           "error",
           3000
         );
@@ -217,8 +219,8 @@ export default function DescriptionScreen() {
     } catch (error: any) {
       Logger.error("Failed to update description:", error);
       showBanner(
-        "Error",
-        error.message || "Failed to update description. Please try again.",
+        t("error"),
+        error.message || t("descriptionScreenUpdateFailedRetry"),
         "error",
         3000
       );
@@ -239,7 +241,7 @@ export default function DescriptionScreen() {
 
   return (
     <SafeAreaView edges={["bottom"]} style={styles.container}>
-      <StackHeader title="Description" />
+      <StackHeader title={t("description")} />
       <KeyboardAwareScrollView
         style={styles.content}
         contentContainerStyle={styles.contentContainer}
@@ -253,9 +255,9 @@ export default function DescriptionScreen() {
         ) : (
           <>
             <View style={styles.titleSection}>
-              <Text style={styles.title}>Describe about yourself</Text>
+              <Text style={styles.title}>{t("descriptionScreenTitle")}</Text>
               <Text style={styles.subtitle}>
-                Introduce yourself in your own words.
+                {t("descriptionScreenSubtitle")}
               </Text>
             </View>
 
@@ -264,7 +266,7 @@ export default function DescriptionScreen() {
                 style={styles.textInput}
                 value={description}
                 onChangeText={setDescription}
-                placeholder="If you have a ready-to-go description, you can paste it here."
+                placeholder={t("descriptionPlaceholder")}
                 placeholderTextColor={theme.lightGreen2}
                 multiline
                 textAlignVertical="top"
@@ -291,7 +293,7 @@ export default function DescriptionScreen() {
       {!loading && (
         <View style={styles.continueButtonContainer}>
           <Button
-            title="Update"
+            title={t("update")}
             onPress={handleContinue}
             disabled={isUpdating}
           />

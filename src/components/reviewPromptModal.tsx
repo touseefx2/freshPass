@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { Trans, useTranslation } from "react-i18next";
 import { useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
@@ -91,6 +92,7 @@ export default function ReviewPromptModal({
   onWriteReview,
   businessName,
 }: ReviewPromptModalProps) {
+  const { t } = useTranslation();
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors as Theme), [colors]);
 
@@ -104,11 +106,14 @@ export default function ReviewPromptModal({
       <Pressable style={styles.modalOverlay} onPress={onClose}>
         <Pressable style={styles.modalBox} onPress={(e) => e.stopPropagation()}>
           <Text style={styles.modalTitle}>
-            How was your visit to{" "}
-            <Text style={styles.modalTitleAccent}>{businessName}?</Text>
+            <Trans
+              i18nKey="reviewPromptTitle"
+              values={{ name: businessName }}
+              components={{ accent: <Text style={styles.modalTitleAccent} /> }}
+            />
           </Text>
           <Text style={styles.modalBody}>
-            Your feedback helps other customers find the best service.
+            {t("reviewPromptBody")}
           </Text>
           <View style={styles.modalButtonsRow}>
             <TouchableOpacity
@@ -116,14 +121,14 @@ export default function ReviewPromptModal({
               onPress={onClose}
               activeOpacity={0.7}
             >
-              <Text style={styles.buttonLaterText}>Maybe Later</Text>
+              <Text style={styles.buttonLaterText}>{t("reviewPromptMaybeLater")}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.modalButtonReview}
               onPress={onWriteReview}
               activeOpacity={0.7}
             >
-              <Text style={styles.buttonReviewText}>Write a Review</Text>
+              <Text style={styles.buttonReviewText}>{t("reviewPromptWriteReview")}</Text>
             </TouchableOpacity>
           </View>
         </Pressable>

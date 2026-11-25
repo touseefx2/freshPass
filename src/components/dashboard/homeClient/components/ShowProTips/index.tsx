@@ -60,7 +60,7 @@ export default function ShowProTips({
       ) : error && cards.length <= 0 ? (
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>
-            Failed to load pro tips. Please try again.
+            {t("showProTipsLoadFailed")}
           </Text>
           <RetryButton onPress={onRetry} loading={loading} />
         </View>
