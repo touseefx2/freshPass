@@ -82,12 +82,12 @@ const createStyles = (theme: Theme) =>
   });
 
 const languages = [
-  { code: "en", name: "English", nativeName: "English" },
-  { code: "fr", name: "French", nativeName: "Français" },
-  { code: "es", name: "Spanish", nativeName: "Español" },
-  { code: "de", name: "German", nativeName: "Deutsch" },
-  { code: "ja", name: "Japanese", nativeName: "日本語" },
-  { code: "ar", name: "Arabic", nativeName: "العربية" },
+  { code: "en", nameKey: "langNameEnglish", nativeName: "English" },
+  { code: "fr", nameKey: "langNameFrench", nativeName: "Français" },
+  { code: "es", nameKey: "langNameSpanish", nativeName: "Español" },
+  { code: "de", nameKey: "langNameGerman", nativeName: "Deutsch" },
+  { code: "ja", nameKey: "langNameJapanese", nativeName: "日本語" },
+  { code: "ar", nameKey: "langNameArabic", nativeName: "العربية" },
 ];
 
 export default function LanguageChangeScreen() {
@@ -168,7 +168,7 @@ export default function LanguageChangeScreen() {
                 >
                   <View style={styles.rowLeft}>
                     <View style={styles.languageInfo}>
-                      <Text style={styles.rowTitle}>{language.name}</Text>
+                      <Text style={styles.rowTitle}>{t(language.nameKey)}</Text>
                       <Text style={styles.rowSubtitle}>
                         {language.nativeName}
                       </Text>

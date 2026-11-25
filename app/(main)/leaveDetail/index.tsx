@@ -115,16 +115,16 @@ export default function LeaveDetail() {
         : undefined;
 
   const detailTitle =
-    leaveType === "break" ? "Break Detail" : "Closed Day Detail";
+    leaveType === "break" ? t("leaveDetailBreakTitle") : t("leaveDetailClosedDayTitle");
 
   const cancelButtonTitle =
     leaveType === "break"
       ? cancelling
-        ? "Cancelling break..."
-        : "Cancel Break"
+        ? t("leaveDetailCancellingBreak")
+        : t("cancelBreak")
       : cancelling
-        ? "Cancelling closed day..."
-        : "Cancel Closed Day";
+        ? t("leaveDetailCancellingClosedDay")
+        : t("cancelClosedDay");
 
   const formatStartEnd = (dateStr: string, timeStr: string | null) => {
     if (!dateStr) return "—";
@@ -142,7 +142,7 @@ export default function LeaveDetail() {
       );
       showBanner(
         t("success") || "Success",
-        "Leave cancelled successfully",
+        t("leaveCancelledSuccessfully"),
         "success",
         2500,
       );
@@ -150,7 +150,7 @@ export default function LeaveDetail() {
     } catch (error: any) {
       showBanner(
         t("apiFailed") || "Error",
-        error?.message ?? "Failed to cancel leave",
+        error?.message ?? t("leaveDetailCancelFailed"),
         "error",
         2500,
       );
@@ -171,7 +171,7 @@ export default function LeaveDetail() {
       >
         <View style={styles.card}>
           <View style={styles.row}>
-            <Text style={styles.label}>Type</Text>
+            <Text style={styles.label}>{t("type")}</Text>
             <View style={styles.typeBadge}>
               <Text style={styles.typeBadgeText}>
                 {t(
@@ -184,25 +184,25 @@ export default function LeaveDetail() {
             </View>
           </View>
           <View style={styles.row}>
-            <Text style={styles.label}>Start</Text>
+            <Text style={styles.label}>{t("start")}</Text>
             <Text style={styles.value}>
               {formatStartEnd(startDate, startTime)}
             </Text>
           </View>
           <View style={styles.row}>
-            <Text style={styles.label}>End</Text>
+            <Text style={styles.label}>{t("end")}</Text>
             <Text style={styles.value}>
               {formatStartEnd(endDate, endTime)}
             </Text>
           </View>
           {reason ? (
             <View style={styles.row}>
-              <Text style={styles.label}>Reason</Text>
+              <Text style={styles.label}>{t("reason")}</Text>
               <Text style={styles.value}>{reason}</Text>
             </View>
           ) : null}
           <View style={[styles.row, styles.rowLast]}>
-            <Text style={styles.label}>Created</Text>
+            <Text style={styles.label}>{t("leaveDetailCreated")}</Text>
             <Text style={styles.value}>
               {formatLeaveDateDisplay(createdAt.slice(0, 10), true)}
             </Text>

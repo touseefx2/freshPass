@@ -88,8 +88,8 @@ export default function LeaveReview() {
   const reviewTitleInputRef = useRef<View>(null);
 
   // Get business data from params
-  const businessName = params.business_name || "Business Name";
-  const businessAddress = params.business_address || "Business Address";
+  const businessName = params.business_name || t("apptDetailBusinessName");
+  const businessAddress = params.business_address || t("leaveReviewBusinessAddress");
   const rawLogo = params.business_logo_url?.trim() || "";
   const defaultLogo = getDefaultBusinessLogo();
   const baseUrl = process.env.EXPO_PUBLIC_API_BASE_URL || "";

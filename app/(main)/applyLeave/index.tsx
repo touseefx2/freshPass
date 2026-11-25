@@ -223,12 +223,8 @@ export default function ApplyLeave() {
     setBreakEndHours(endH);
   }, [params.type, params.date, params.slotStartHour, params.slotEndHour]);
 
-  const formatTimeDisplay = (hours: number, minutes: number) => {
-    const period = hours >= 12 ? "pm" : "am";
-    const displayHours = hours % 12 || 12;
-    const displayMinutes = minutes.toString().padStart(2, "0");
-    return `${displayHours}:${displayMinutes} ${period}`;
-  };
+  const formatTimeDisplay = (hours: number, minutes: number) =>
+    dayjs().hour(hours).minute(minutes).format("h:mm a");
 
   const handleDateSelect = (date: dayjs.Dayjs) => {
     if (datePickerTarget === "from") {

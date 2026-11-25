@@ -1,4 +1,5 @@
 import React, { useMemo } from "react";
+import dayjs from "dayjs";
 import {
   StyleSheet,
   Text,
@@ -48,26 +49,8 @@ export function formatVisitMoney(
   }
 }
 
-const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-const MONTHS = [
-  "Jan",
-  "Feb",
-  "Mar",
-  "Apr",
-  "May",
-  "Jun",
-  "Jul",
-  "Aug",
-  "Sep",
-  "Oct",
-  "Nov",
-  "Dec",
-];
-
 function to12h(date: Date): string {
-  const h = date.getHours() % 12 || 12;
-  const m = date.getMinutes().toString().padStart(2, "0");
-  return `${h}:${m} ${date.getHours() >= 12 ? "PM" : "AM"}`;
+  return dayjs(date).format("h:mm A");
 }
 
 /** API date "MM/DD/YYYY" + "HH:mm" → Date (null when malformed). */
@@ -87,7 +70,7 @@ export function formatVisitDateTime(
 ): string {
   const d = parseVisitDate(date, time);
   if (!d) return [date, time].filter(Boolean).join(" ");
-  const dayPart = `${DAYS[d.getDay()]}, ${MONTHS[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
+  const dayPart = dayjs(d).format("ddd, MMM D, YYYY");
   return time ? `${dayPart} · ${to12h(d)}` : dayPart;
 }
 
@@ -96,7 +79,7 @@ export function formatIsoDateTime(iso?: string | null): string | null {
   if (!iso) return null;
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return null;
-  return `${DAYS[d.getDay()]}, ${MONTHS[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()} · ${to12h(d)}`;
+  return `${dayjs(d).format("ddd, MMM D, YYYY")} · ${to12h(d)}`;
 }
 
 /** Parse a typed amount ("12", "12.5"); null when empty or not a number. */

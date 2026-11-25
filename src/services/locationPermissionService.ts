@@ -1,6 +1,7 @@
 import * as Location from "expo-location";
 import { Platform, Alert, Linking } from "react-native";
 import Logger from "./logger";
+import i18n from "i18next";
 
 export interface LocationPermissionResult {
   granted: boolean;
@@ -15,12 +16,10 @@ export interface HandleLocationPermissionResult {
   shouldOpenSettings?: boolean; // Whether to open settings
 }
 
-const PERMISSION_DENIED_MESSAGE =
-  "Location permission is required to use your current location.";
-const PERMISSION_SETTINGS_MESSAGE =
-  "Location permission was denied. Please enable location access in your device settings.";
-const SERVICES_DISABLED_MESSAGE =
-  "Please enable location services on your phone first";
+// i18n keys, translated when used
+const PERMISSION_DENIED_MESSAGE_KEY = "locationScreenPermissionRequired";
+const PERMISSION_SETTINGS_MESSAGE_KEY = "locPermSvcDeniedSettings";
+const SERVICES_DISABLED_MESSAGE_KEY = "locPermSvcServicesOffFirst";
 
 /**
  * Android: shows Google's in-app "Turn on device location" popup (like Uber /
@@ -59,8 +58,7 @@ export const requestLocationPermission =
           granted: false,
           canRequestAgain: true,
           servicesEnabled: false,
-          message:
-            "Location services are turned off. Please enable location services in your device settings.",
+          message: i18n.t("locPermSvcServicesOff"),
         };
       }
 
@@ -106,8 +104,7 @@ export const requestLocationPermission =
           granted: false,
           canRequestAgain: true,
           servicesEnabled: servicesEnabled,
-          message:
-            "Location permission is required to use your current location.",
+          message: i18n.t(PERMISSION_DENIED_MESSAGE_KEY),
         };
       }
 
@@ -116,8 +113,7 @@ export const requestLocationPermission =
         granted: false,
         canRequestAgain: false,
         servicesEnabled: servicesEnabled,
-        message:
-          "Location permission was denied. Please enable location access in your device settings.",
+        message: i18n.t(PERMISSION_SETTINGS_MESSAGE_KEY),
       };
     } catch (error) {
       Logger.error("Error requesting location permission:", error);
@@ -125,7 +121,7 @@ export const requestLocationPermission =
         granted: false,
         canRequestAgain: true,
         servicesEnabled: true, // Assume enabled if we can't check due to error
-        message: "Unable to request location permission. Please try again.",
+        message: i18n.t("locPermSvcRequestFailed"),
       };
     }
   };
@@ -138,15 +134,15 @@ export const showLocationPermissionAlert = (
   onOpenSettings: () => void
 ) => {
   Alert.alert(
-    "Location Permission Required",
+    i18n.t("locPermSvcAlertTitle"),
     message,
     [
       {
-        text: "Cancel",
+        text: i18n.t("cancel"),
         style: "cancel",
       },
       {
-        text: "Open Settings",
+        text: i18n.t("locPermSvcOpenSettings"),
         onPress: onOpenSettings,
       },
     ],
@@ -181,8 +177,8 @@ export const openLocationSettings = async (): Promise<void> => {
     } catch (fallbackError) {
       Logger.error("Error opening fallback settings:", fallbackError);
       Alert.alert(
-        "Unable to open settings",
-        "Please manually enable location for Fresh Pass:\n\nSettings → Fresh Pass → Location → While Using the App",
+        i18n.t("locPermSvcOpenSettingsFailedTitle"),
+        i18n.t("locPermSvcOpenSettingsFailedMsg"),
       );
     }
   }
@@ -202,7 +198,7 @@ export const handleLocationPermission = async (): Promise<HandleLocationPermissi
   if (!servicesEnabled) {
     return {
       granted: false,
-      errorMessage: SERVICES_DISABLED_MESSAGE,
+      errorMessage: i18n.t(SERVICES_DISABLED_MESSAGE_KEY),
       shouldOpenSettings: true,
     };
   }
@@ -219,15 +215,14 @@ export const handleLocationPermission = async (): Promise<HandleLocationPermissi
     existing.status === Location.PermissionStatus.DENIED
   ) {
     showLocationPermissionAlert(
-      "Location access is turned off. Enable it in Settings to use your current location.",
+      i18n.t("locPermSvcAccessOffIos"),
       () => {
         void openLocationSettings();
       },
     );
     return {
       granted: false,
-      errorMessage:
-        "Location permission is required. Please enable it in Settings.",
+      errorMessage: i18n.t("locPermSvcRequiredSettings"),
     };
   }
 
@@ -254,19 +249,19 @@ export const handleLocationPermission = async (): Promise<HandleLocationPermissi
   if (!result.canRequestAgain) {
     const noDialogShown = wasBlocked && Date.now() - askedAt < 600;
     if (noDialogShown) {
-      showLocationPermissionAlert(PERMISSION_SETTINGS_MESSAGE, () => {
+      showLocationPermissionAlert(i18n.t(PERMISSION_SETTINGS_MESSAGE_KEY), () => {
         void openLocationSettings();
       });
     }
     // Otherwise the user just tapped "Don't allow" — respect it, no alert.
     return {
       granted: false,
-      errorMessage: PERMISSION_SETTINGS_MESSAGE,
+      errorMessage: i18n.t(PERMISSION_SETTINGS_MESSAGE_KEY),
     };
   }
 
   return {
     granted: false,
-    errorMessage: result.message || PERMISSION_DENIED_MESSAGE,
+    errorMessage: result.message || i18n.t(PERMISSION_DENIED_MESSAGE_KEY),
   };
 };

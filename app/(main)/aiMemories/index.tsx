@@ -10,6 +10,7 @@ import {
 import { MaterialIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useTranslation } from "react-i18next";
+import dayjs from "dayjs";
 import { useRouter } from "expo-router";
 import { useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
@@ -59,21 +60,6 @@ type MemoriesResponse = {
   total: number;
 };
 
-const MONTH_SHORT = [
-  "Jan",
-  "Feb",
-  "Mar",
-  "Apr",
-  "May",
-  "Jun",
-  "Jul",
-  "Aug",
-  "Sep",
-  "Oct",
-  "Nov",
-  "Dec",
-];
-
 function parseMemoryDate(dateStr: string): Date {
   return new Date(dateStr + "T12:00:00");
 }
@@ -87,18 +73,16 @@ function getSevenDayEnd(start: Date): Date {
 function formatWeekRange(dateStr: string): string {
   const start = parseMemoryDate(dateStr);
   const end = getSevenDayEnd(start);
-  const startDay = start.getDate();
-  const startMonth = MONTH_SHORT[start.getMonth()];
-  const endDay = end.getDate();
-  const endMonth = MONTH_SHORT[end.getMonth()];
+  const s = dayjs(start);
+  const e = dayjs(end);
 
   if (start.getFullYear() !== end.getFullYear()) {
-    return `${startDay} ${startMonth} ${start.getFullYear()} – ${endDay} ${endMonth} ${end.getFullYear()}`;
+    return `${s.format("D MMM YYYY")} – ${e.format("D MMM YYYY")}`;
   }
   if (start.getMonth() === end.getMonth()) {
-    return `${startDay} – ${endDay} ${endMonth} ${end.getFullYear()}`;
+    return `${s.format("D")} – ${e.format("D MMM YYYY")}`;
   }
-  return `${startDay} ${startMonth} – ${endDay} ${endMonth} ${end.getFullYear()}`;
+  return `${s.format("D MMM")} – ${e.format("D MMM YYYY")}`;
 }
 
 function formatDateLabel(dateStr: string): string {

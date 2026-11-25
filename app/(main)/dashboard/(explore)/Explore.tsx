@@ -244,16 +244,16 @@ export default function ExploreScreen() {
   const subscriptionFilters = useMemo(
     () =>
       [
-        { id: null, name: "Subscriptions" },
+        { id: null, name: t("subscriptions") },
         ...SUBSCRIPTION_TEMPLATES,
       ] as Array<{ id: number | null; name: string }>,
-    [],
+    [t],
   );
 
   const serviceFilters = useMemo(() => {
     const baseList =
       serviceTemplates.length > 0
-        ? ([{ id: null, name: "Services" }, ...serviceTemplates] as Array<{
+        ? ([{ id: null, name: t("services") }, ...serviceTemplates] as Array<{
             id: number | null;
             name: string;
           }>)
@@ -271,7 +271,7 @@ export default function ExploreScreen() {
       return [baseList[0], searchFilter, ...baseList.slice(1)];
     }
     return baseList;
-  }, [serviceTemplates, hasSearchId, search.serviceName, search.search]);
+  }, [serviceTemplates, hasSearchId, search.serviceName, search.search, t]);
 
   useEffect(() => {
     if (hasSearchId == null) return;
@@ -518,10 +518,12 @@ export default function ExploreScreen() {
               const h = s.duration_hours ?? 0;
               const m = s.duration_minutes ?? 0;
               let duration = "";
-              if (h > 0 && m > 0) duration = `${h}h ${m}m`;
-              else if (h > 0) duration = `${h}h`;
-              else if (m > 0) duration = `${m} Mins`;
-              else duration = "45 Mins";
+              if (h > 0 && m > 0)
+                duration = t("durShortHM", { hours: h, minutes: m });
+              else if (h > 0) duration = t("durShortH", { hours: h });
+              else if (m > 0)
+                duration = t("bizDetDurationMins", { minutes: m });
+              else duration = t("bizDetDurationMins", { minutes: 45 });
               const price =
                 typeof s.price === "string" ? parseFloat(s.price) : s.price;
 
@@ -547,7 +549,8 @@ export default function ExploreScreen() {
                 title: p.name,
                 price,
                 originalPrice: orig,
-                offer: p.offer ?? `${p.visits ?? 0} visits/month`,
+                offer:
+                  p.offer ?? t("exploreVisitsPerMonth", { count: p.visits ?? 0 }),
                 offer2: p.offer2,
                 inclusions: p.services?.map((s) => s.name) ?? [],
                 image: p.image_url ?? p.image ?? null,

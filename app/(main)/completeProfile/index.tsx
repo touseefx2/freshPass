@@ -358,8 +358,8 @@ export default function CompleteProfile() {
 
         if (preparedPhotos.length === 0 && photos.length > 0) {
           showBanner(
-            "Error",
-            "Could not prepare photos for upload. Please try again.",
+            t("error"),
+            t("failedToPrepareWorkImages"),
             "error",
             3000,
           );
@@ -412,8 +412,8 @@ export default function CompleteProfile() {
         }
       } else {
         showBanner(
-          "Error",
-          response.message || "Failed to save step data",
+          t("error"),
+          response.message || t("cpSaveStepFailed"),
           "error",
           3000
         );
@@ -421,8 +421,8 @@ export default function CompleteProfile() {
     } catch (error: any) {
       Logger.error("Failed to submit onboarding step:", error);
       showBanner(
-        "Error",
-        error.message || "Failed to save step data. Please try again.",
+        t("error"),
+        error.message || t("cpSaveStepFailedTryAgain"),
         "error",
         3000
       );
@@ -486,8 +486,8 @@ export default function CompleteProfile() {
         }
       } else {
         showBanner(
-          "Error",
-          response.message || "Failed to save step data",
+          t("error"),
+          response.message || t("cpSaveStepFailed"),
           "error",
           3000
         );
@@ -495,8 +495,8 @@ export default function CompleteProfile() {
     } catch (error: any) {
       Logger.error("Failed to submit onboarding step:", error);
       showBanner(
-        "Error",
-        error.message || "Failed to save step data. Please try again.",
+        t("error"),
+        error.message || t("cpSaveStepFailedTryAgain"),
         "error",
         3000
       );
@@ -702,13 +702,13 @@ export default function CompleteProfile() {
 
   const continueLabel = useMemo(() => {
     if (currentStep === totalSteps) {
-      return "You're almost there";
+      return t("cpAlmostThere");
     }
     if (currentStep === 4 && addressStage === "map") {
-      return "Next";
+      return t("next");
     }
-    return "Continue";
-  }, [addressStage, currentStep, totalSteps]);
+    return t("continue");
+  }, [addressStage, currentStep, totalSteps, t]);
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -755,7 +755,7 @@ export default function CompleteProfile() {
                     color={(colors as Theme).darkGreen}
                   />
                 ) : (
-                  <Text style={styles.skipButtonText}>Skip</Text>
+                  <Text style={styles.skipButtonText}>{t("skip")}</Text>
                 )}
               </TouchableOpacity>
             </>

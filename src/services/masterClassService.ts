@@ -1,6 +1,7 @@
 import { ApiService } from "./api";
 import { classEnrollmentEndpoints, masterClassEndpoints } from "./endpoints";
 import { getStripeModeHeaders } from "./stripeService";
+import i18n from "i18next";
 import type {
   ClassEnrollment,
   ClassEnrollmentCancelResult,
@@ -322,7 +323,7 @@ export async function listMine(
   const res = await ApiService.get(masterClassEndpoints.mine({ tab, page }), {
     timeout: LIST_TIMEOUT,
   });
-  unwrapData(res, "Failed to load classes");
+  unwrapData(res, i18n.t("mcSvcLoadClassesFailed"));
   const { rows, meta, counts } = unwrapList(res);
   return {
     items: rows.map(normalizeMasterClass),
@@ -339,7 +340,7 @@ export async function listMine(
 export async function create(payload: MasterClassPayload): Promise<MasterClass> {
   const res = await ApiService.post(masterClassEndpoints.create, payload);
   const masterClass = normalizeMasterClass(
-    unwrapData(res, "Failed to save class"),
+    unwrapData(res, i18n.t("mcSvcSaveClassFailed")),
   );
   emit({ type: "saved", masterClass });
   return masterClass;
@@ -352,7 +353,7 @@ export async function update(
 ): Promise<MasterClass> {
   const res = await ApiService.patch(masterClassEndpoints.byId(id), payload);
   const masterClass = normalizeMasterClass(
-    unwrapData(res, "Failed to save class"),
+    unwrapData(res, i18n.t("mcSvcSaveClassFailed")),
   );
   emit({ type: "saved", masterClass });
   return masterClass;
@@ -361,7 +362,7 @@ export async function update(
 /** DELETE /master-classes/{id} — drafts only. */
 export async function remove(id: number | string): Promise<void> {
   const res = await ApiService.delete(masterClassEndpoints.byId(id));
-  unwrapData(res, "Failed to delete class");
+  unwrapData(res, i18n.t("mcSvcDeleteClassFailed"));
   emit({ type: "deleted", id: Number(id) });
 }
 
@@ -369,7 +370,7 @@ export async function remove(id: number | string): Promise<void> {
 export async function duplicate(id: number | string): Promise<MasterClass> {
   const res = await ApiService.post(masterClassEndpoints.duplicate(id));
   const masterClass = normalizeMasterClass(
-    unwrapData(res, "Failed to duplicate class"),
+    unwrapData(res, i18n.t("mcSvcDuplicateClassFailed")),
   );
   emit({ type: "saved", masterClass });
   return masterClass;
@@ -378,7 +379,7 @@ export async function duplicate(id: number | string): Promise<MasterClass> {
 /** POST /master-classes/{id}/cancel — published only; every student refunded. */
 export async function cancel(id: number | string): Promise<MasterClass | null> {
   const res = await ApiService.post(masterClassEndpoints.cancel(id));
-  const data = unwrapData(res, "Failed to cancel class");
+  const data = unwrapData(res, i18n.t("mcSvcCancelClassFailed"));
   if (!asRecord(data)?.id) return null;
   const masterClass = normalizeMasterClass(data);
   emit({ type: "saved", masterClass });
@@ -394,7 +395,7 @@ export async function enrollments(
     masterClassEndpoints.enrollments(id, { page }),
     { timeout: LIST_TIMEOUT },
   );
-  unwrapData(res, "Failed to load students");
+  unwrapData(res, i18n.t("mcSvcLoadStudentsFailed"));
   const { rows, meta } = unwrapList(res);
   return { items: rows.map(normalizeStudent), meta };
 }
@@ -408,7 +409,7 @@ export async function listingPaymentSheet(
     { master_class_id: Number(id) },
     { headers: await getStripeModeHeaders() },
   );
-  const d = asRecord(unwrapData(res, "Failed to start payment")) ?? {};
+  const d = asRecord(unwrapData(res, i18n.t("mcSvcStartPaymentFailed"))) ?? {};
   return {
     paymentIntentClientSecret: readSecret(d.paymentIntent ?? d.paymentIntentClientSecret),
     customerId: toStr(d.customerId ?? d.customer) ?? "",
@@ -425,7 +426,7 @@ export async function listingPaymentSheet(
 /** GET /master-classes/{id} — public; 404 once no longer listed (unless the viewer holds a seat). */
 export async function getClass(id: number | string): Promise<MasterClass> {
   const res = await ApiService.get(masterClassEndpoints.byId(id));
-  return normalizeMasterClass(unwrapData(res, "Failed to load class"));
+  return normalizeMasterClass(unwrapData(res, i18n.t("mcSvcLoadClassFailed")));
 }
 
 /** GET /master-classes — classes listed in Deals right now, soonest first. */
@@ -435,7 +436,7 @@ export async function listPublic(
   const res = await ApiService.get(masterClassEndpoints.list(params), {
     timeout: LIST_TIMEOUT,
   });
-  unwrapData(res, "Failed to load classes");
+  unwrapData(res, i18n.t("mcSvcLoadClassesFailed"));
   const { rows, meta } = unwrapList(res);
   return { items: rows.map(normalizeMasterClass), meta: meta ?? EMPTY_META };
 }
@@ -449,7 +450,7 @@ export async function enrollmentPaymentSheet(
     { master_class_id: Number(id) },
     { headers: await getStripeModeHeaders() },
   );
-  const d = asRecord(unwrapData(res, "Failed to start payment")) ?? {};
+  const d = asRecord(unwrapData(res, i18n.t("mcSvcStartPaymentFailed"))) ?? {};
   return {
     paymentIntentClientSecret: readSecret(d.paymentIntent ?? d.paymentIntentClientSecret),
     customerId: toStr(d.customerId ?? d.customer) ?? "",
@@ -478,7 +479,7 @@ export async function myEnrollments(
     classEnrollmentEndpoints.list({ status, page }),
     { timeout: LIST_TIMEOUT },
   );
-  unwrapData(res, "Failed to load classes");
+  unwrapData(res, i18n.t("mcSvcLoadClassesFailed"));
   const { rows, meta } = unwrapList(res);
   return {
     items: rows.map(normalizeClassEnrollment),
@@ -491,7 +492,7 @@ export async function getEnrollment(
   id: number | string,
 ): Promise<ClassEnrollment> {
   const res = await ApiService.get(classEnrollmentEndpoints.byId(id));
-  return normalizeClassEnrollment(unwrapData(res, "Failed to load enrollment"));
+  return normalizeClassEnrollment(unwrapData(res, i18n.t("mcSvcLoadEnrollmentFailed")));
 }
 
 /** POST /class-enrollments/{id}/cancel — `refunded` or `cancelled` (no refund). */
@@ -499,7 +500,7 @@ export async function cancelEnrollment(
   id: number | string,
 ): Promise<ClassEnrollmentCancelResult> {
   const res = await ApiService.post(classEnrollmentEndpoints.cancel(id));
-  const data = asRecord(unwrapData(res, "Failed to cancel")) ?? {};
+  const data = asRecord(unwrapData(res, i18n.t("mcSvcCancelFailed"))) ?? {};
   const enrollment = data.id ? normalizeClassEnrollment(data) : null;
   const status =
     (toStr(data.status) ?? enrollment?.status) === "refunded"
@@ -520,7 +521,7 @@ export async function cancelEnrollment(
  */
 export function parseApiError(
   err: unknown,
-  fallback = "Something went wrong. Please try again.",
+  fallback: string = i18n.t("mcSomethingWrong"),
 ): MasterClassApiError {
   const e = asRecord(err) ?? {};
   const response = asRecord(e.response);

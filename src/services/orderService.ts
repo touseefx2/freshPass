@@ -1,3 +1,4 @@
+import i18n from "i18next";
 import { ApiService } from "./api";
 import { orderEndpoints } from "./endpoints";
 import type {
@@ -84,7 +85,7 @@ export async function fetchBusinessOrders(params: {
       per_page: params.per_page,
     }),
   );
-  const data = unwrap(response, "Failed to fetch orders");
+  const data = unwrap(response, i18n.t("orderSvcFetchOrdersFailed"));
   return {
     orders: Array.isArray(data.data)
       ? data.data.map(normalizeBusinessOrder)
@@ -100,14 +101,14 @@ export async function fetchBusinessOrder(
   const response = await ApiService.get<ApiEnvelope<unknown>>(
     orderEndpoints.businessById(id),
   );
-  return normalizeBusinessOrder(unwrap(response, "Failed to fetch order"));
+  return normalizeBusinessOrder(unwrap(response, i18n.t("orderSvcFetchOrderFailed")));
 }
 
 export async function fetchBusinessOrderStats(): Promise<ShopOrderStats> {
   const response = await ApiService.get<ApiEnvelope<unknown>>(
     orderEndpoints.businessStats,
   );
-  return normalizeOrderStats(unwrap(response, "Failed to fetch order stats"));
+  return normalizeOrderStats(unwrap(response, i18n.t("orderSvcFetchStatsFailed")));
 }
 
 /**
@@ -139,7 +140,7 @@ export async function updateOrderStatus(
     body,
   );
   const order = normalizeBusinessOrder(
-    unwrap(response, "Failed to update order status"),
+    unwrap(response, i18n.t("orderSvcUpdateStatusFailed")),
   );
   publishBusinessOrder(order);
   return order;
@@ -164,7 +165,7 @@ export async function respondToRefundRequest(
     payload,
   );
   const order = normalizeBusinessOrder(
-    unwrap(response, "Failed to answer the request"),
+    unwrap(response, i18n.t("orderSvcAnswerRequestFailed")),
   );
   publishBusinessOrder(order);
   return order;
@@ -178,7 +179,7 @@ export async function refundBusinessOrder(
     orderEndpoints.businessRefund(id),
   );
   const order = normalizeBusinessOrder(
-    unwrap(response, "Failed to refund order"),
+    unwrap(response, i18n.t("orderSvcRefundFailed")),
   );
   publishBusinessOrder(order);
   return order;
@@ -195,7 +196,7 @@ export async function confirmReturnReceipt(
     orderEndpoints.businessConfirmReceipt(id),
   );
   const order = normalizeBusinessOrder(
-    unwrap(response, "Failed to confirm receipt"),
+    unwrap(response, i18n.t("orderSvcConfirmReceiptFailed")),
   );
   publishBusinessOrder(order);
   return order;
@@ -211,7 +212,7 @@ export async function saveOrderShippingDetails(
     { shipping_details: shippingDetails },
   );
   const order = normalizeBusinessOrder(
-    unwrap(response, "Failed to save shipping details"),
+    unwrap(response, i18n.t("orderSvcSaveShippingFailed")),
   );
   publishBusinessOrder(order);
   return order;
@@ -227,7 +228,7 @@ export async function fetchCustomerOrders(params: {
   const response = await ApiService.get<
     ApiEnvelope<{ data: unknown[]; meta?: ShopOrderListMeta } | unknown[]>
   >(orderEndpoints.list({ page: params.page, per_page: params.per_page }));
-  const data = unwrap(response, "Failed to fetch orders");
+  const data = unwrap(response, i18n.t("orderSvcFetchOrdersFailed"));
   // Paginated like the owner list; a plain array is accepted too
   if (Array.isArray(data)) {
     return { orders: data.map(normalizeShopOrder), meta: null };
@@ -245,7 +246,7 @@ export async function fetchCustomerOrder(
   const response = await ApiService.get<ApiEnvelope<unknown>>(
     orderEndpoints.getById(id),
   );
-  return normalizeShopOrder(unwrap(response, "Failed to fetch order"));
+  return normalizeShopOrder(unwrap(response, i18n.t("orderSvcFetchOrderFailed")));
 }
 
 export type RefundPhoto = { uri: string; name: string; type: string };
@@ -304,7 +305,7 @@ export async function requestOrderCancellation(
     body,
     config,
   );
-  return normalizeShopOrder(unwrap(response, "Failed to send the request"));
+  return normalizeShopOrder(unwrap(response, i18n.t("orderSvcSendRequestFailed")));
 }
 
 /**
@@ -336,7 +337,7 @@ export async function requestOrderReturn(
     body,
     config,
   );
-  return normalizeShopOrder(unwrap(response, "Failed to send the request"));
+  return normalizeShopOrder(unwrap(response, i18n.t("orderSvcSendRequestFailed")));
 }
 
 /**
@@ -368,7 +369,7 @@ export async function reportOrderProblem(
     body,
     config,
   );
-  return normalizeShopOrder(unwrap(response, "Failed to send the report"));
+  return normalizeShopOrder(unwrap(response, i18n.t("orderSvcSendReportFailed")));
 }
 
 /** POST /api/orders/{order}/tracking — JSON → refundState "return_shipped". */
@@ -380,7 +381,7 @@ export async function addReturnTracking(
     orderEndpoints.tracking(orderId),
     { tracking_number: trackingNumber.trim() },
   );
-  return normalizeShopOrder(unwrap(response, "Failed to save tracking number"));
+  return normalizeShopOrder(unwrap(response, i18n.t("orderSvcSaveTrackingFailed")));
 }
 
 /** POST /api/orders/{order}/refund-request/escalate — "Ask FreshPass to review" (once). */
@@ -398,5 +399,5 @@ export async function escalateOrderRefund(
     body,
     config,
   );
-  return normalizeShopOrder(unwrap(response, "Failed to send the request"));
+  return normalizeShopOrder(unwrap(response, i18n.t("orderSvcSendRequestFailed")));
 }

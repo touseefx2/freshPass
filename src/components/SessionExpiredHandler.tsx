@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { useRouter } from "expo-router";
+import i18n from "i18next";
 import { setSessionExpiredHandler, setToastHandler } from "@/src/services/api";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { MAIN_ROUTES } from "@/src/constant/routes";
@@ -13,8 +14,8 @@ export default function SessionExpiredHandler() {
     setSessionExpiredHandler(() => {
       // Show toast notification
       showBanner(
-        "Session Expired",
-        "Your session has expired. Please login again.",
+        i18n.t("sessionExpiredTitle"),
+        i18n.t("sessionExpiredMessage"),
         "error",
         4000
       );

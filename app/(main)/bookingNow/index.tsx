@@ -195,10 +195,7 @@ const isValidTimeSlot = (slot: unknown): slot is string =>
 const convertTo12Hour = (time24: string): string => {
   if (!isValidTimeSlot(time24)) return "";
   const [hours, minutes] = time24.split(":").map(Number);
-  const hour12 =
-    hours === 0 ? 12 : hours > 12 ? hours - 12 : hours === 12 ? 12 : hours;
-  const ampm = hours < 12 ? "AM" : "PM";
-  return `${hour12}:${minutes.toString().padStart(2, "0")} ${ampm}`;
+  return dayjs().hour(hours).minute(minutes).format("h:mm A");
 };
 
 type TimeSlotCategory = "morning" | "afternoon" | "evening" | "night";
@@ -1414,12 +1411,12 @@ export default function BookingNow() {
 
   const formatServiceDuration = useCallback(
     (hours: number, minutes: number): string => {
-      if (hours > 0 && minutes > 0) return `${hours}h ${minutes}m`;
-      if (hours > 0) return `${hours}h`;
-      if (minutes > 0) return `${minutes}m`;
+      if (hours > 0 && minutes > 0) return t("durShortHM", { hours, minutes });
+      if (hours > 0) return t("durShortH", { hours });
+      if (minutes > 0) return t("durShortM", { minutes });
       return "";
     },
-    [],
+    [t],
   );
 
   // Get data from Redux
@@ -2360,10 +2357,12 @@ export default function BookingNow() {
       !query ||
       "anyone".includes(query) ||
       "anyone who's available".includes(query) ||
-      "any available staff".includes(query);
+      "any available staff".includes(query) ||
+      t("bkFlowAnyone").toLowerCase().includes(query) ||
+      t("bkFlowAnyoneSub").toLowerCase().includes(query);
 
     return showAnyone ? [anyoneItem, ...filteredStaff] : filteredStaff;
-  }, [staffMembers, staffSearchQuery]);
+  }, [staffMembers, staffSearchQuery, t]);
 
   const totalPrice = selectedServices.reduce(
     (sum, service) => sum + shownPrice(service).price,

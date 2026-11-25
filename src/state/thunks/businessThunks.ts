@@ -1,4 +1,5 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
+import i18n from "i18next";
 import { AppDispatch, RootState } from "../store";
 import {
   setActiveMode,
@@ -191,7 +192,7 @@ export const fetchUserStatus = createAsyncThunk<
     if (showError) {
       // Error will be handled by the component using the thunk
       return rejectWithValue(
-        error.message || "Failed to fetch business status",
+        error.message || i18n.t("failedToFetchBusinessStatus"),
       );
     }
     throw error;

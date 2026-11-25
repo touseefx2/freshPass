@@ -17,11 +17,12 @@ import {
 import { ApiService } from "@/src/services/api";
 import { iapEndpoints } from "@/src/services/endpoints";
 import Logger from "@/src/services/logger";
+import i18n from "i18next";
 import { LocalStorageService } from "@/src/services/storage";
 import type { UserMode } from "@/src/state/slices/userSlice";
 
-export const APP_STORE_CONFIG_NOT_SET_ERROR =
-  "App Store configuration is not set for this plan. Please try again later.";
+/** i18n key — translate when thrown. */
+export const APP_STORE_CONFIG_NOT_SET_ERROR_KEY = "appStoreConfigNotSet";
 
 export type AppleAddonProduct = {
   productId: string;
@@ -152,7 +153,7 @@ export const showAppleManageSubscriptions = async () => {
 
 export const ensureIapConnection = async () => {
   if (Platform.OS !== "ios") {
-    throw new Error("In-App Purchase is only available on iOS.");
+    throw new Error(i18n.t("iapSvcIosOnly"));
   }
 
   if (connectionInitialized) {
@@ -161,7 +162,7 @@ export const ensureIapConnection = async () => {
 
   const result = await initConnection();
   if (!result) {
-    throw new Error("Failed to initialize In-App Purchase connection.");
+    throw new Error(i18n.t("iapSvcInitFailed"));
   }
 
   connectionInitialized = true;
@@ -197,7 +198,7 @@ export const resolveIosBusinessPlanProductId = (
   if (selectedAddOnIds.length === 0) {
     const productId = plan.appleProductId?.trim();
     if (!productId) {
-      throw new Error(APP_STORE_CONFIG_NOT_SET_ERROR);
+      throw new Error(i18n.t(APP_STORE_CONFIG_NOT_SET_ERROR_KEY));
     }
     return productId;
   }
@@ -210,7 +211,7 @@ export const resolveIosBusinessPlanProductId = (
   )?.productId?.trim();
 
   if (!addonProductId) {
-    throw new Error(APP_STORE_CONFIG_NOT_SET_ERROR);
+    throw new Error(i18n.t(APP_STORE_CONFIG_NOT_SET_ERROR_KEY));
   }
 
   return addonProductId;
@@ -221,7 +222,7 @@ export const resolveIosAppleProductId = (
 ): string => {
   const productId = appleProductId?.trim();
   if (!productId) {
-    throw new Error(APP_STORE_CONFIG_NOT_SET_ERROR);
+    throw new Error(i18n.t(APP_STORE_CONFIG_NOT_SET_ERROR_KEY));
   }
   return productId;
 };
@@ -355,11 +356,13 @@ const requestIosPurchase = (
         settleReject(new Error("Purchase cancelled"));
         return;
       }
-      settleReject(new Error(error.message || "Purchase failed"));
+      settleReject(
+        new Error(error.message || i18n.t("iapSvcPurchaseFailed")),
+      );
     });
 
     timeoutId = setTimeout(() => {
-      settleReject(new Error("Purchase timed out. Please try again."));
+      settleReject(new Error(i18n.t("iapSvcPurchaseTimedOut")));
     }, PURCHASE_TIMEOUT_MS);
 
     const purchaseType = kind === "business_subscription" ? "subs" : "in-app";
@@ -376,7 +379,9 @@ const requestIosPurchase = (
         return;
       }
       const message =
-        error instanceof Error ? error.message : "Failed to start purchase";
+        error instanceof Error
+          ? error.message
+          : i18n.t("iapSvcStartPurchaseFailed");
       settleReject(new Error(message));
     });
   });
@@ -411,7 +416,9 @@ const recoverPurchase = async (purchase: Purchase): Promise<boolean> => {
       );
 
       if (!verifyResponse.success) {
-        throw new Error(verifyResponse.message || "IAP verification failed.");
+        throw new Error(
+          verifyResponse.message || i18n.t("iapSvcVerifyFailed"),
+        );
       }
 
       await finishTransaction({ purchase, isConsumable: false });
@@ -422,7 +429,9 @@ const recoverPurchase = async (purchase: Purchase): Promise<boolean> => {
       );
 
       if (!verifyResponse.success) {
-        throw new Error(verifyResponse.message || "IAP verification failed.");
+        throw new Error(
+          verifyResponse.message || i18n.t("iapSvcVerifyFailed"),
+        );
       }
 
       await finishTransaction({ purchase, isConsumable: true });
@@ -537,7 +546,9 @@ export const purchaseAndVerifyIosIap = async (params: {
   );
 
   if (!verifyResponse.success) {
-    throw new Error(verifyResponse.message || "IAP verification failed.");
+    throw new Error(
+      verifyResponse.message || i18n.t("iapSvcVerifyFailed"),
+    );
   }
 
   await finishTransaction({
@@ -571,7 +582,9 @@ export const purchaseAndVerifyBusinessPlanIosIap = async (params: {
   );
 
   if (!verifyResponse.success) {
-    throw new Error(verifyResponse.message || "IAP verification failed.");
+    throw new Error(
+      verifyResponse.message || i18n.t("iapSvcVerifyFailed"),
+    );
   }
 
   await finishTransaction({

@@ -150,7 +150,7 @@ export default function ChangePasswordScreen() {
 
     // Check old password is not empty
     if (oldPassword.trim().length === 0) {
-      setOldPasswordError("Old password is required");
+      setOldPasswordError(t("chPwOldRequired"));
       return;
     } else {
       setOldPasswordError(null);
@@ -207,8 +207,7 @@ export default function ChangePasswordScreen() {
       if (error.status === 400 || error.status === 422) {
         // Validation error - might be wrong current password
         const errorMessage =
-          error.message ||
-          "Invalid password. Please check your current password.";
+          error.message || t("chPwInvalidCurrent");
         setOldPasswordError(errorMessage);
         showBanner(t("error"), errorMessage, "error", 3000);
       } else {

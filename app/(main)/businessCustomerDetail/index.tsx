@@ -13,6 +13,7 @@ import {
 } from "react-native";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
+import i18n from "i18next";
 import { MaterialIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useTheme } from "@/src/hooks/hooks";
@@ -699,16 +700,16 @@ function mapSubscriptionToPillFields(sub: BusinessCustomerSubscription) {
 function getPurchaseStatusPill(status?: string | null) {
   const normalized = status?.trim().toLowerCase() ?? "";
   if (normalized === "completed" || normalized === "paid") {
-    return { label: status || "Completed", tone: "success" as const };
+    return { label: status || i18n.t("completed"), tone: "success" as const };
   }
   if (normalized === "cancelled" || normalized === "canceled") {
-    return { label: "Cancelled", tone: "warning" as const };
+    return { label: i18n.t("cancelled"), tone: "warning" as const };
   }
   if (normalized === "scheduled" || normalized === "pending") {
-    return { label: status || "Scheduled", tone: "info" as const };
+    return { label: status || i18n.t("bcbStatusScheduled"), tone: "info" as const };
   }
   return {
-    label: status?.trim() || "Unknown",
+    label: status?.trim() || i18n.t("bcuUnknown"),
     tone: "neutral" as const,
   };
 }
@@ -1330,7 +1331,7 @@ export default function BusinessCustomerDetail() {
             />
             <View style={styles.heroInfo}>
               <Text style={styles.profileName}>
-                {data.name?.trim() || "Unknown"}
+                {data.name?.trim() || t("bcuUnknown")}
               </Text>
               {data.customerSince ? (
                 <Text style={styles.profileMeta}>

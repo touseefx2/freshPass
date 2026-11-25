@@ -1,5 +1,6 @@
 import { ApiService } from "./api";
 import { marketplaceEndpoints } from "./endpoints";
+import i18n from "i18next";
 import type { ShopProduct } from "@/src/types/shopProduct";
 import type {
   MarketplaceFilter,
@@ -118,7 +119,7 @@ export async function fetchMarketplaceProducts(params: {
       per_page: params.perPage,
     }),
   );
-  return parseProductPage(unwrap(response, "Failed to load products"));
+  return parseProductPage(unwrap(response, i18n.t("mktSvcLoadProductsFailed")));
 }
 
 /**
@@ -132,7 +133,7 @@ export async function fetchProductCategories(options?: {
   const response = await ApiService.get<ApiEnvelope<unknown>>(
     marketplaceEndpoints.categories(options?.inMarketplace),
   );
-  const data = unwrap(response, "Failed to load categories");
+  const data = unwrap(response, i18n.t("failedToLoadCategories"));
   const rows: unknown[] = Array.isArray(data)
     ? data
     : Array.isArray(asRecord(data)?.data)
@@ -168,7 +169,7 @@ export async function setProductFavorite(
     ? await ApiService.post<ApiEnvelope<unknown>>(url)
     : await ApiService.delete<ApiEnvelope<unknown>>(url);
   if (response && response.success === false) {
-    throw new Error(response.message || "Failed to update favourite");
+    throw new Error(response.message || i18n.t("mktSvcFavouriteFailed"));
   }
   publishFavoriteChange(String(id), favorite);
   const data = asRecord(response?.data);
@@ -186,7 +187,7 @@ export async function fetchFavoriteProducts(params?: {
       per_page: params?.perPage,
     }),
   );
-  const page = parseProductPage(unwrap(response, "Failed to load saved products"));
+  const page = parseProductPage(unwrap(response, i18n.t("mktSvcLoadSavedFailed")));
   // Everything here is saved, even if the payload leaves isFavorite out
   return {
     ...page,
@@ -250,7 +251,7 @@ export async function fetchProductReviews(
       per_page: params?.perPage,
     }),
   );
-  const data = asRecord(unwrap(response, "Failed to load reviews")) ?? {};
+  const data = asRecord(unwrap(response, i18n.t("bizDetReviewsLoadFailed"))) ?? {};
   const rows: unknown[] = Array.isArray(data.data) ? data.data : [];
   const reviews = rows.map(normalizeProductReview);
   return {
@@ -295,7 +296,7 @@ export async function submitProductReview(
     { headers: { "Content-Type": "multipart/form-data" } },
   );
   if (response && response.success === false) {
-    throw new Error(response.message || "Failed to save review");
+    throw new Error(response.message || i18n.t("mktSvcSaveReviewFailed"));
   }
   const data = asRecord(response?.data);
   if (!data) return null;
@@ -312,6 +313,6 @@ export async function deleteProductReview(
     marketplaceEndpoints.review(productId),
   );
   if (response && response.success === false) {
-    throw new Error(response.message || "Failed to delete review");
+    throw new Error(response.message || i18n.t("mktSvcDeleteReviewFailed"));
   }
 }

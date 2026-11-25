@@ -1,4 +1,5 @@
 import * as FileSystem from "expo-file-system/legacy";
+import i18n from "i18next";
 import { ApiService, checkInternetConnection } from "@/src/services/api";
 import { mediaEndpoints } from "@/src/services/endpoints";
 import Logger from "@/src/services/logger";
@@ -75,7 +76,7 @@ export async function getVideo(id: number | string): Promise<MediaVideo> {
     mediaEndpoints.getById(id),
   );
   if (!response?.data) {
-    throw new Error(response?.message || "Video not found");
+    throw new Error(response?.message || i18n.t("mediaLibVideoNotFound"));
   }
   return response.data;
 }
@@ -90,7 +91,7 @@ export async function importVideoFromAi(jobId: string): Promise<MediaVideo> {
     { job_id: jobId },
   );
   if (!response?.data) {
-    throw new Error(response?.message || "Failed to save reel to library");
+    throw new Error(response?.message || i18n.t("mediaLibSaveToLibraryFailed"));
   }
   return response.data;
 }
@@ -116,7 +117,7 @@ export async function getMediaLimits(
       mediaEndpoints.limits,
     );
     if (!response?.data) {
-      throw new Error(response?.message || "Media limits not found");
+      throw new Error(response?.message || i18n.t("mediaLibLimitsNotFound"));
     }
     cachedMediaLimits = response.data;
     return response.data;
@@ -153,9 +154,7 @@ export async function waitForMediaReady(
 
   while (latest.status === "processing") {
     if (Date.now() - startedAt > timeoutMs) {
-      const error = new Error(
-        "This video is still processing. Try publishing once it is ready.",
-      );
+      const error = new Error(i18n.t("mediaLibStillProcessing"));
       (error as any).isProcessingTimeout = true;
       throw error;
     }
@@ -165,7 +164,7 @@ export async function waitForMediaReady(
   }
 
   if (latest.status === "failed") {
-    throw new Error("Video processing failed. Please upload again.");
+    throw new Error(i18n.t("mediaLibProcessingFailed"));
   }
 
   return latest;
@@ -202,7 +201,7 @@ export const MAX_VIDEO_UPLOAD_BYTES = 200 * 1024 * 1024;
 export class VideoTooLargeError extends Error {
   isTooLarge = true;
   constructor() {
-    super("This video is larger than 200 MB. Trim it or record a shorter one.");
+    super(i18n.t("autoReelVideoTooLarge"));
   }
 }
 
@@ -284,7 +283,7 @@ export function uploadVideo(
     try {
       const hasInternet = await checkInternetConnection();
       if (!hasInternet) {
-        const error = new Error("No internet connection");
+        const error = new Error(i18n.t("mediaLibNoInternet"));
         (error as any).isNoInternet = true;
         reject(error);
         return;
@@ -292,7 +291,7 @@ export function uploadVideo(
 
       const accessToken = getAccessToken();
       if (!accessToken) {
-        reject(new Error("Not authenticated"));
+        reject(new Error(i18n.t("mediaLibNotAuthenticated")));
         return;
       }
 
@@ -381,8 +380,10 @@ export function uploadVideo(
             json?.message ||
             (json as any)?.errors?.file?.[0] ||
             (json as any)?.errors?.video?.[0] ||
-            `Upload failed (${xhr.status})`;
+            i18n.t("mediaLibUploadFailedStatus", { status: xhr.status });
           const error = new Error(message);
+          (error as any).isGenericUploadFailure =
+            message === i18n.t("mediaLibUploadFailedStatus", { status: xhr.status });
           (error as any).status = xhr.status;
           (error as any).response = json;
           reject(error);
@@ -393,16 +394,16 @@ export function uploadVideo(
             reject(new VideoTooLargeError());
             return;
           }
-          reject(new Error(`Upload failed (${xhr.status})`));
+          reject(Object.assign(new Error(i18n.t("mediaLibUploadFailedStatus", { status: xhr.status })), { isGenericUploadFailure: true }));
         }
       };
 
       xhr.onerror = () => {
-        reject(new Error("Network error during upload"));
+        reject(new Error(i18n.t("mediaLibUploadNetworkError")));
       };
 
       xhr.ontimeout = () => {
-        reject(new Error("Upload timed out"));
+        reject(new Error(i18n.t("mediaLibUploadTimedOut")));
       };
 
       // Large videos — allow up to 10 minutes; auto reel sources (up to 5 min,
@@ -448,7 +449,7 @@ export function uploadImage(
     try {
       const hasInternet = await checkInternetConnection();
       if (!hasInternet) {
-        const error = new Error("No internet connection");
+        const error = new Error(i18n.t("mediaLibNoInternet"));
         (error as any).isNoInternet = true;
         reject(error);
         return;
@@ -456,7 +457,7 @@ export function uploadImage(
 
       const accessToken = getAccessToken();
       if (!accessToken) {
-        reject(new Error("Not authenticated"));
+        reject(new Error(i18n.t("mediaLibNotAuthenticated")));
         return;
       }
 
@@ -517,23 +518,25 @@ export function uploadImage(
             (json as any)?.errors?.file?.[0] ||
             (json as any)?.errors?.image?.[0] ||
             (json as any)?.errors?.video?.[0] ||
-            `Upload failed (${xhr.status})`;
+            i18n.t("mediaLibUploadFailedStatus", { status: xhr.status });
           const error = new Error(message);
+          (error as any).isGenericUploadFailure =
+            message === i18n.t("mediaLibUploadFailedStatus", { status: xhr.status });
           (error as any).status = xhr.status;
           (error as any).response = json;
           reject(error);
         } catch (parseError) {
           Logger.error("Failed to parse image upload response:", parseError);
-          reject(new Error(`Upload failed (${xhr.status})`));
+          reject(Object.assign(new Error(i18n.t("mediaLibUploadFailedStatus", { status: xhr.status })), { isGenericUploadFailure: true }));
         }
       };
 
       xhr.onerror = () => {
-        reject(new Error("Network error during upload"));
+        reject(new Error(i18n.t("mediaLibUploadNetworkError")));
       };
 
       xhr.ontimeout = () => {
-        reject(new Error("Upload timed out"));
+        reject(new Error(i18n.t("mediaLibUploadTimedOut")));
       };
 
       xhr.timeout = 5 * 60 * 1000;

@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { IMAGES } from "@/src/constant/images";
 import {
   AiHairTryOnIcon,
@@ -12,32 +13,30 @@ interface AiScreenProps {
 }
 
 export default function AiScreen({ onNext }: AiScreenProps) {
+  const { t } = useTranslation();
   const features = [
     {
       icon: AiHairTryOnIcon,
-      title: "FRESHY TRY-ON",
-      description:
-        "Visualize new hairstyles on yourself before booking, using our AI virtual mirror.",
+      title: t("hairTryon"),
+      description: t("introClientAiTryOnDesc"),
     },
     {
       icon: AiReceptionistIcon,
-      title: "AI Receptionist",
-      description:
-        "Let our smart assistant find and book the perfect appointment for you, 24/7.",
+      title: t("aiReceptionist"),
+      description: t("introClientAiReceptionistDesc"),
     },
     {
       icon: AiChatSupportIcon,
-      title: "AI Chat Support",
-      description:
-        "Get instant answers to your beauty and booking questions anytime.",
+      title: t("introBizAiChatTitle"),
+      description: t("introBizAiChatDesc"),
     },
   ];
 
   return (
     <AiFeatureScreen
-      headline="AI-Powered Experience"
+      headline={t("introBizAiHeadline")}
       features={features}
-      buttonTitle="Continue"
+      buttonTitle={t("continue")}
       backgroundImage={IMAGES.aiFeatureBackC}
       onNext={onNext}
     />

@@ -196,10 +196,7 @@ export default function ImagePickerModal({
       }
     } catch (error) {
       Logger.error("Error selecting image from gallery:", error);
-      Alert.alert(
-        "Error",
-        "Failed to select image from gallery. Please try again.",
-      );
+      Alert.alert(t("error"), t("failedToSelectImageFromGallery"));
     }
   }, [
     onClose,
@@ -211,6 +208,7 @@ export default function ImagePickerModal({
     enableEditor,
     openEditor,
     photoQueue,
+    t,
   ]);
 
   const handleTakePhoto = useCallback(async () => {

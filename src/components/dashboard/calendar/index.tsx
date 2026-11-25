@@ -259,20 +259,11 @@ const getWeekDays = (date: dayjs.Dayjs) => {
   return Array.from({ length: 7 }).map((_, i) => startOfWeek.add(i, "day"));
 };
 
-const formatHourLabel = (hour: number) => {
-  const normalized = hour % 24;
-  const suffix = normalized < 12 ? "AM" : "PM";
-  const displayHour = normalized % 12 || 12;
-  return `${displayHour} ${suffix}`;
-};
+const formatHourLabel = (hour: number) =>
+  dayjs().startOf("day").hour(hour % 24).format("h A");
 
-const formatMinutesLabel = (minutes: number) => {
-  const hour = Math.floor(minutes / 60);
-  const minute = minutes % 60;
-  const suffix = hour < 12 ? "AM" : "PM";
-  const displayHour = hour % 12 || 12;
-  return `${displayHour}:${minute.toString().padStart(2, "0")} ${suffix}`;
-};
+const formatMinutesLabel = (minutes: number) =>
+  dayjs().startOf("day").add(minutes, "minute").format("h:mm A");
 
 const toTitleCase = (text: string) =>
   text.toLowerCase().replace(/(^|\s)\S/g, (c) => c.toUpperCase());
@@ -1953,7 +1944,7 @@ export default function CalendarScreen({ fullscreen = false }: CalendarScreenPro
         ) {
           return appointment.services.map((s) => s.name).join(", ");
         }
-        return "Service";
+        return t("service");
       };
 
       // Calculate total duration
@@ -1981,11 +1972,11 @@ export default function CalendarScreen({ fullscreen = false }: CalendarScreenPro
 
       let durationText = "";
       if (hours > 0 && minutes > 0) {
-        durationText = `${hours} hour${hours > 1 ? "s" : ""} ${minutes} min`;
+        durationText = `${t("calDurationHours", { count: hours })} ${t("mcDurationMinutes", { count: minutes })}`;
       } else if (hours > 0) {
-        durationText = `${hours} hour${hours > 1 ? "s" : ""}`;
+        durationText = t("calDurationHours", { count: hours });
       } else {
-        durationText = `${minutes} min`;
+        durationText = t("mcDurationMinutes", { count: minutes });
       }
 
       // Parse date and time
@@ -2010,9 +2001,9 @@ export default function CalendarScreen({ fullscreen = false }: CalendarScreenPro
         appointment.status === "scheduled"
           ? t("upcomingApt")
           : appointment.status === "awaiting_outcome"
-            ? "Awaiting outcome"
+            ? t("statusAwaitingOutcome")
             : appointment.status === "no_show"
-              ? "No-show"
+              ? t("statusNoShow")
               : appointment.status;
 
       // Format client name (truncate if needed)
@@ -2369,7 +2360,7 @@ export default function CalendarScreen({ fullscreen = false }: CalendarScreenPro
     } catch (error: any) {
       showBanner(
         t("apiFailed") || "Error",
-        error?.message ?? "Failed to cancel leave",
+        error?.message ?? t("leaveDetailCancelFailed"),
         "error",
         2500,
       );
@@ -2455,12 +2446,8 @@ export default function CalendarScreen({ fullscreen = false }: CalendarScreenPro
     setApplyBoxBreakTimes(resolvedStart, resolvedEnd);
   };
 
-  const formatApplyBoxTime = (hours: number, minutes: number) => {
-    const period = hours >= 12 ? "pm" : "am";
-    const displayHours = hours % 12 || 12;
-    const displayMinutes = minutes.toString().padStart(2, "0");
-    return `${displayHours}:${displayMinutes} ${period}`;
-  };
+  const formatApplyBoxTime = (hours: number, minutes: number) =>
+    dayjs().startOf("day").hour(hours).minute(minutes).format("h:mm a");
 
   const handleApplyBoxTimeSelect = (hours: number, minutes: number) => {
     if (applyBoxTimePickerTarget === "start") {
@@ -2575,7 +2562,7 @@ export default function CalendarScreen({ fullscreen = false }: CalendarScreenPro
         if (response.success) {
           showBanner(
             t("success") || "Success",
-            response.message || "Leave applied.",
+            response.message || t("applyLeaveLeaveApplied"),
             "success",
             2500,
           );
@@ -2585,7 +2572,7 @@ export default function CalendarScreen({ fullscreen = false }: CalendarScreenPro
           showBanner(
             t("apiFailed") || "Error",
             (response as { message?: string }).message ||
-              "Failed to apply leave.",
+              t("applyLeaveLeaveFailed"),
             "error",
             2500,
           );
@@ -2660,7 +2647,7 @@ export default function CalendarScreen({ fullscreen = false }: CalendarScreenPro
           showBanner(
             t("apiFailed") || "Error",
             (response as { message?: string }).message ||
-              "Failed to apply break.",
+              t("applyLeaveBreakFailed"),
             "error",
             2500,
           );
@@ -2669,7 +2656,8 @@ export default function CalendarScreen({ fullscreen = false }: CalendarScreenPro
     } catch (error: unknown) {
       showBanner(
         t("apiFailed") || "Error",
-        (error as { message?: string })?.message || "Something went wrong.",
+        (error as { message?: string })?.message ||
+          t("applyLeaveSomethingWrong"),
         "error",
         2500,
       );
@@ -2966,7 +2954,7 @@ export default function CalendarScreen({ fullscreen = false }: CalendarScreenPro
                     fzWeek(fontSize.size8),
                   ]}
                 >
-                  {cancelled ? "CANCELLED" : appointment.title}
+                  {cancelled ? t("cancelled").toUpperCase() : appointment.title}
                 </Text>
               )}
               {!cancelled && fit.lines >= 3 && (
@@ -3018,7 +3006,7 @@ export default function CalendarScreen({ fullscreen = false }: CalendarScreenPro
                     fz(fontSize.size12),
                   ]}
                 >
-                  {cancelled ? "CANCELLED" : toTitleCase(appointment.title)}
+                  {cancelled ? t("cancelled").toUpperCase() : toTitleCase(appointment.title)}
                 </Text>
                 {!cancelled && (
                   <Text
@@ -3050,11 +3038,11 @@ export default function CalendarScreen({ fullscreen = false }: CalendarScreenPro
   const renderListCard = (appointment: CalendarAppointment) => {
     const cancelled = isCancelled(appointment);
     const palette = cancelled ? cancelledPalette : getPalette(appointment.id);
-    const hour = Math.floor(appointment.start_minutes / 60);
-    const minute = appointment.start_minutes % 60;
-    const period = hour >= 12 ? "PM" : "AM";
-    const displayHour = hour % 12 || 12;
-    const timeStr = `${displayHour}:${minute.toString().padStart(2, "0")}`;
+    const startTime = dayjs()
+      .startOf("day")
+      .add(appointment.start_minutes, "minute");
+    const period = startTime.format("A");
+    const timeStr = startTime.format("h:mm");
     return (
       <TouchableOpacity
         key={appointment.id}
@@ -3094,7 +3082,7 @@ export default function CalendarScreen({ fullscreen = false }: CalendarScreenPro
                 cancelled && styles.cancelledLabel,
               ]}
             >
-              {cancelled ? "CANCELLED" : appointment.title}
+              {cancelled ? t("cancelled").toUpperCase() : appointment.title}
             </Text>
           </View>
           <MaterialIcons
@@ -4242,9 +4230,10 @@ export default function CalendarScreen({ fullscreen = false }: CalendarScreenPro
                     {overlapListItems.map((appt) => {
                       const apptCancelled = appt.originalAppointment?.status === "cancelled";
                       const apptPalette = apptCancelled ? cancelledPalette : getPalette(appt.id);
-                      const hour = Math.floor(appt.start_minutes / 60);
-                      const minute = appt.start_minutes % 60;
-                      const timeLabel = `${hour % 12 || 12}:${minute.toString().padStart(2, "0")} ${hour >= 12 ? "PM" : "AM"}`;
+                      const timeLabel = dayjs()
+                        .startOf("day")
+                        .add(appt.start_minutes, "minute")
+                        .format("h:mm A");
                       return (
                         <TouchableOpacity
                           key={appt.id}
@@ -4263,7 +4252,7 @@ export default function CalendarScreen({ fullscreen = false }: CalendarScreenPro
                               {appt.originalAppointment?.user ?? appt.client_name}
                             </Text>
                             <Text numberOfLines={1} style={[styles.overlapListService, apptCancelled && styles.cancelledLabel]}>
-                              {apptCancelled ? "CANCELLED" : appt.title}
+                              {apptCancelled ? t("cancelled").toUpperCase() : appt.title}
                             </Text>
                           </View>
                           <Text style={styles.overlapListTime}>{timeLabel}</Text>

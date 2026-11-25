@@ -698,11 +698,11 @@ function BusinessPlansModalContent({
           }
         }
       } else {
-        setError("Failed to load subscription plans");
+        setError(t("failedToLoadSubscriptionPlans"));
         setApiError(true);
       }
     } catch (err: any) {
-      setError(err.message || "Failed to load subscription plans");
+      setError(err.message || t("failedToLoadSubscriptionPlans"));
       setApiError(true);
       showBanner(
         t("error"),
@@ -851,7 +851,7 @@ function BusinessPlansModalContent({
           const message =
             err instanceof Error
               ? err.message
-              : "Failed to start payment. Purchase configuration is missing. Please try again later.";
+              : t("bizPlansPurchaseConfigMissing");
           setLocalBanner({
             visible: true,
             title: t("error"),
@@ -947,7 +947,9 @@ function BusinessPlansModalContent({
     if (setupIntent && setupIntent.includes("_secret_")) {
       paymentConfig.setupIntentClientSecret = setupIntent;
       if (!showSubscribeInsteadOfTrial) {
-        paymentConfig.primaryButtonLabel = `Start ${trialDays} Days Free Trial`;
+        paymentConfig.primaryButtonLabel = t("bizPlansStartFreeTrial", {
+          days: trialDays,
+        });
       }
       setIsSetupIntent(true);
     } else if (paymentIntent && paymentIntent.trim() !== "") {
@@ -963,7 +965,7 @@ function BusinessPlansModalContent({
 
     const { error: initError } = await initPaymentSheet(paymentConfig);
     if (initError) {
-      throw new Error(initError.message || "Failed to initialize payment");
+      throw new Error(initError.message || t("apptDetPaymentInitFailed"));
     }
 
     const { error: presentError } = await presentPaymentSheet();
@@ -971,8 +973,8 @@ function BusinessPlansModalContent({
       if (!presentError.code?.includes("Canceled")) {
         setLocalBanner({
           visible: true,
-          title: t("paymentFailed") ?? "Payment Failed",
-          message: presentError.message || "Payment could not be completed",
+          title: t("apptDetPaymentFailed"),
+          message: presentError.message || t("apptDetPaymentNotCompleted"),
           type: "error",
         });
         setTimeout(() => {
@@ -994,9 +996,7 @@ function BusinessPlansModalContent({
 
     try {
       if (!trialDays.trim()) {
-        throw new Error(
-          "Failed to start payment. Purchase configuration is missing. Please try again later.",
-        );
+        throw new Error(t("bizPlansPurchaseConfigMissing"));
       }
 
       const selectedAddOns = selectedServicesByPlanId[planId] ?? [];
@@ -1016,7 +1016,7 @@ function BusinessPlansModalContent({
         error.data?.message ??
         error.data?.error ??
         error.message ??
-        "Failed to process payment";
+        t("apptDetPaymentProcessFailed");
 
       if (errorMessage.toLowerCase().includes("cancel")) {
         return;

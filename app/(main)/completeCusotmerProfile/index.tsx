@@ -29,9 +29,11 @@ import Logger from "@/src/services/logger";
 import { userEndpoints } from "@/src/services/endpoints";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { validateName } from "@/src/services/validationService";
+import { useTranslation } from "react-i18next";
 import RegisterTermsModal from "@/src/components/registerTermsModal";
 
 export default function completeCusotmerProfile() {
+  const { t } = useTranslation();
   const router = useRouter();
   const dispatch = useAppDispatch();
   const { colors } = useTheme();
@@ -178,8 +180,8 @@ export default function completeCusotmerProfile() {
         }
       } else {
         showBanner(
-          "Error",
-          response.message || "Failed to update profile",
+          t("error"),
+          response.message || t("failedToUpdateProfile"),
           "error",
           3000,
         );
@@ -187,8 +189,8 @@ export default function completeCusotmerProfile() {
     } catch (error: any) {
       Logger.error("Failed to update profile:", error);
       showBanner(
-        "Error",
-        error.message || "Failed to update profile. Please try again.",
+        t("error"),
+        error.message || t("failedToUpdateProfileTryAgain"),
         "error",
         3000,
       );
@@ -266,8 +268,8 @@ export default function completeCusotmerProfile() {
   }, [currentStep]);
 
   const continueLabel = useMemo(() => {
-    return "Continue";
-  }, [currentStep, totalSteps]);
+    return t("continue");
+  }, [currentStep, totalSteps, t]);
 
   return (
     <SafeAreaView style={styles.safeArea}>

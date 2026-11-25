@@ -1,8 +1,10 @@
+import i18n from "i18next";
+
 /** Thrown when the user leaves mid-upload and the upload is cancelled on purpose. */
 export class UploadCancelledError extends Error {
   isCancelled = true;
   constructor() {
-    super("Upload cancelled");
+    super(i18n.t("uploadCancelledMsg"));
   }
 }
 

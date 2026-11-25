@@ -10,6 +10,7 @@ import {
 } from "./endpoints";
 import { ApiService } from "./api";
 import Logger from "./logger";
+import i18n from "i18next";
 import {
   prepareImageForUpload,
   prepareImagesForUpload,
@@ -165,12 +166,12 @@ const getErrorMessage = (error: any): string => {
   // Handle network errors
   if (!error.response) {
     if (error.code === "ECONNABORTED") {
-      return "Request timeout. Please check your connection and try again.";
+      return i18n.t("apiSvcErrTimeout");
     }
     if (error.message === "Network Error") {
-      return "Network error. Please check your internet connection.";
+      return i18n.t("apiSvcErrNetwork");
     }
-    return "Unable to connect to server. Please try again later.";
+    return i18n.t("apiSvcErrCannotConnect");
   }
 
   const { status, data } = error.response;
@@ -182,37 +183,43 @@ const getErrorMessage = (error: any): string => {
         data?.detail ||
         data?.message ||
         data?.error ||
-        "Invalid request. Please check your input."
+        i18n.t("apiSvcErrInvalidRequest")
       );
     case 401:
-      return "Unauthorized. Please check your API token.";
+      return i18n.t("apiSvcErrUnauthorizedToken");
     case 403:
-      return "You don't have permission to perform this action.";
+      return i18n.t("apiSvcErrNoPermission");
     case 404:
-      return (
-        data?.detail || data?.message || data?.error || "Resource not found."
-      );
-    case 422:
       return (
         data?.detail ||
         data?.message ||
         data?.error ||
-        "Validation error. Please check your input."
+        i18n.t("apiSvcErrNotFound")
+      );
+    case 422:
+      // detail can be an object (e.g. beard_style 422 with the valid slugs)
+      return (
+        (typeof data?.detail === "string"
+          ? data.detail
+          : data?.detail?.message) ||
+        data?.message ||
+        data?.error ||
+        i18n.t("apiSvcErrValidation")
       );
     case 429:
-      return "Too many requests. Please try again later.";
+      return i18n.t("apiSvcErrTooManyRequests");
     case 500:
-      return "Server error. Please try again later.";
+      return i18n.t("apiSvcErrServer");
     case 502:
-      return "Bad gateway. Please try again later.";
+      return i18n.t("apiSvcErrBadGateway");
     case 503:
-      return "Service unavailable. Please try again later.";
+      return i18n.t("apiSvcErrUnavailable");
     default:
       return (
         data?.detail ||
         data?.message ||
         data?.error ||
-        `An error occurred (${status}). Please try again.`
+        i18n.t("apiSvcErrStatus", { status })
       );
   }
 };
@@ -296,12 +303,22 @@ export const normalizeGenerateSubscriptionResponse = (
 export type TryOnChoice = {
   category?: string | null;
   gender?: "male" | "female" | null;
+  /** Men on a hair category: beard slug when Beard & Mustache is checked */
+  beardStyle?: string | null;
+  /** false = beard only (Hairstyle unchecked) */
+  includeHairstyle?: boolean;
 };
 
 const appendTryOnChoice = (formData: FormData, choice?: TryOnChoice) => {
   if (!choice?.category) return;
   formData.append("category", choice.category);
   if (choice.gender) formData.append("gender", choice.gender);
+  if (choice.beardStyle) {
+    formData.append("beard_style", choice.beardStyle);
+    if (choice.includeHairstyle === false) {
+      formData.append("include_hairstyle", "false");
+    }
+  }
 };
 
 /**
@@ -327,7 +344,7 @@ export class AiToolsService {
   }> {
     const hasInternet = await checkInternetConnection();
     if (!hasInternet) {
-      const error = new Error("No internet connection");
+      const error = new Error(i18n.t("apiSvcErrNoInternet"));
       (error as any).isNoInternet = true;
       logAiToolError("POST", hairTryonEndpoints.hairPipeline, error);
       throw error;
@@ -388,7 +405,7 @@ export class AiToolsService {
   }> {
     const hasInternet = await checkInternetConnection();
     if (!hasInternet) {
-      const error = new Error("No internet connection");
+      const error = new Error(i18n.t("apiSvcErrNoInternet"));
       (error as any).isNoInternet = true;
       throw error;
     }
@@ -414,7 +431,7 @@ export class AiToolsService {
     // Check internet connection
     const hasInternet = await checkInternetConnection();
     if (!hasInternet) {
-      const error = new Error("No internet connection");
+      const error = new Error(i18n.t("apiSvcErrNoInternet"));
       (error as any).isNoInternet = true;
       logAiToolError("POST", hairTryonEndpoints.generateWithReplicate, error);
       throw error;
@@ -474,7 +491,7 @@ export class AiToolsService {
     // Check internet connection
     const hasInternet = await checkInternetConnection();
     if (!hasInternet) {
-      const error = new Error("No internet connection");
+      const error = new Error(i18n.t("apiSvcErrNoInternet"));
       (error as any).isNoInternet = true;
       logAiToolError("POST", socialMediaEndpoints.generatePost, error);
       throw error;
@@ -527,7 +544,7 @@ export class AiToolsService {
     // Check internet connection
     const hasInternet = await checkInternetConnection();
     if (!hasInternet) {
-      const error = new Error("No internet connection");
+      const error = new Error(i18n.t("apiSvcErrNoInternet"));
       (error as any).isNoInternet = true;
       logAiToolError("POST", socialMediaEndpoints.generateCollage, error);
       throw error;
@@ -589,7 +606,7 @@ export class AiToolsService {
     // Check internet connection
     const hasInternet = await checkInternetConnection();
     if (!hasInternet) {
-      const error = new Error("No internet connection");
+      const error = new Error(i18n.t("apiSvcErrNoInternet"));
       (error as any).isNoInternet = true;
       logAiToolError("POST", socialMediaEndpoints.generateReel, error);
       throw error;
@@ -677,7 +694,7 @@ export class AiToolsService {
     // Check internet connection
     const hasInternet = await checkInternetConnection();
     if (!hasInternet) {
-      const error = new Error("No internet connection");
+      const error = new Error(i18n.t("apiSvcErrNoInternet"));
       (error as any).isNoInternet = true;
       logAiToolError("POST", businessEndpoints.generateSubscription, error);
       throw error;
@@ -730,7 +747,7 @@ export class AiToolsService {
     // Check internet connection
     const hasInternet = await checkInternetConnection();
     if (!hasInternet) {
-      const error = new Error("No internet connection");
+      const error = new Error(i18n.t("apiSvcErrNoInternet"));
       (error as any).isNoInternet = true;
       onError(error);
       return;
@@ -885,7 +902,7 @@ export class AiToolsService {
                     parsed.detail ||
                     parsed.message ||
                     parsed.error ||
-                    "An error occurred";
+                    i18n.t("anErrorOccurred");
                   if (__DEV__) {
                     Logger.error("AI API error:", parsed);
                   }
@@ -927,9 +944,7 @@ export class AiToolsService {
               clearInterval(pollingInterval);
               pollingInterval = null;
             }
-            const error = new Error(
-              "Request timeout: No response received from the server",
-            );
+            const error = new Error(i18n.t("apiSvcErrStreamTimeout"));
             (error as any).status = 408;
             reject(error);
             return;
@@ -975,7 +990,7 @@ export class AiToolsService {
                 }
                 // Still complete with empty response
                 onComplete(
-                  fullResponse || "No response received. Please try again.",
+                  fullResponse || i18n.t("apiSvcErrNoResponse"),
                   newSessionId,
                 );
                 resolve();
@@ -986,7 +1001,9 @@ export class AiToolsService {
               }
             } else {
               // Handle HTTP error
-              let errorMessage = `Chat service error (HTTP ${xhr.status})`;
+              let errorMessage = i18n.t("apiSvcErrChatHttp", {
+                status: xhr.status,
+              });
               try {
                 const errorData = xhr.responseText;
                 if (errorData) {
@@ -1020,7 +1037,7 @@ export class AiToolsService {
             pollingInterval = null;
           }
           isComplete = true;
-          const error = new Error("Network error occurred");
+          const error = new Error(i18n.t("apiSvcErrNetworkOccurred"));
           (error as any).status = 0;
           reject(error);
         };

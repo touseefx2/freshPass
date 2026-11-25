@@ -1,5 +1,6 @@
 import { Platform, I18nManager } from "react-native";
 import * as Location from "expo-location";
+import i18n from "i18next";
 import { ensureLocationServicesOn } from "@/src/services/locationPermissionService";
 import Logger from "@/src/services/logger";
 import {
@@ -224,8 +225,7 @@ export const resolveCurrentLocation = async ({
   if (!servicesEnabled) {
     return {
       status: "error",
-      message:
-        "Location services are turned off. Please enable them and try again.",
+      message: i18n.t("locResolveServicesOff"),
     };
   }
 
@@ -233,7 +233,7 @@ export const resolveCurrentLocation = async ({
   if (status !== Location.PermissionStatus.GRANTED) {
     return {
       status: "error",
-      message: "Location permission is required to continue.",
+      message: i18n.t("locResolvePermissionRequired"),
     };
   }
 
@@ -267,15 +267,13 @@ export const resolveCurrentLocation = async ({
       Logger.warn("Reverse geocode failed", reverseError);
       const providerStatus = await Location.getProviderStatusAsync();
       Logger.warn("Provider status", providerStatus);
-      notice =
-        "We found your coordinates but couldn’t fetch the address. Please confirm the details below.";
+      notice = i18n.t("locResolveAddressNotice");
     }
 
     if (!reverseAddress && apiKey) {
       googleParsed = await resolveAddressViaGoogle(coordinates, apiKey);
       if (!googleParsed) {
-        notice =
-          "We found your coordinates but couldn’t fetch the address. Please confirm the details below.";
+        notice = i18n.t("locResolveAddressNotice");
       }
     }
 
@@ -330,8 +328,8 @@ export const resolveCurrentLocation = async ({
       message:
         message === "LOCATION_UNAVAILABLE" ||
         message.toLowerCase().includes("unavailable")
-          ? "Current location is unavailable. Check that precise location is enabled or adjust your device settings."
-          : "Unable to fetch your current location. Try again.",
+          ? i18n.t("locResolveUnavailable")
+          : i18n.t("locResolveFetchFailed"),
     };
   }
 };

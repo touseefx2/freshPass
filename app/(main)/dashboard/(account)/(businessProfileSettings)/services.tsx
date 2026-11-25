@@ -331,8 +331,8 @@ export default function ManageServicesScreen() {
     } catch (error: any) {
       Logger.error("Failed to fetch services module data:", error);
       showBanner(
-        "Error",
-        error?.message || "Failed to fetch services. Please try again.",
+        t("error"),
+        error?.message || t("svcSetFetchFailedTryAgain"),
         "error",
         3000,
       );
@@ -468,15 +468,15 @@ export default function ManageServicesScreen() {
             return updated;
           });
           showBanner(
-            "Success",
-            response.message || "Service deleted successfully.",
+            t("success"),
+            response.message || t("svcSetDeleteSuccess"),
             "success",
             3000,
           );
         } else {
           showBanner(
-            "Error",
-            response.message || "Failed to delete service.",
+            t("error"),
+            response.message || t("svcSetDeleteFailed"),
             "error",
             3000,
           );
@@ -484,8 +484,8 @@ export default function ManageServicesScreen() {
       } catch (error: any) {
         Logger.error("Failed to delete service:", error);
         showBanner(
-          "Error",
-          error?.message || "Failed to delete service. Please try again.",
+          t("error"),
+          error?.message || t("svcSetDeleteFailedTryAgain"),
           "error",
           3000,
         );
@@ -548,24 +548,24 @@ export default function ManageServicesScreen() {
 
       if (response.success) {
         showBanner(
-          "Success",
-          response.message || "Services updated successfully",
+          t("success"),
+          response.message || t("svcSetUpdateSuccess"),
           "success",
           3000,
         );
         return true;
       }
       showBanner(
-        "Error",
-        response.message || "Failed to update services",
+        t("error"),
+        response.message || t("svcSetUpdateFailed"),
         "error",
         3000,
       );
     } catch (error: any) {
       Logger.error("Failed to update services:", error);
       showBanner(
-        "Error",
-        error?.message || "Failed to update services. Please try again.",
+        t("error"),
+        error?.message || t("svcSetUpdateFailedTryAgain"),
         "error",
         3000,
       );
@@ -637,7 +637,7 @@ export default function ManageServicesScreen() {
                 <View style={styles.popularSection}>
                   <View style={styles.popularTitleRow}>
                     <Text style={styles.popularTitle}>
-                      Popular starting points:
+                      {t("popularStartingPoints")}
                     </Text>
                   </View>
                   {popularSuggestions
@@ -658,7 +658,7 @@ export default function ManageServicesScreen() {
                             <View style={styles.selectButtonShadow} />
                             <View style={styles.selectButton}>
                               <Text style={styles.selectButtonText}>
-                                Select
+                                {t("select")}
                               </Text>
                             </View>
                           </View>

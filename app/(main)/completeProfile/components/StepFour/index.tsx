@@ -42,6 +42,7 @@ import {
   openLocationSettings,
 } from "@/src/services/locationPermissionService";
 import { resolveCurrentLocation } from "@/src/constant/functions";
+import { Trans, useTranslation } from "react-i18next";
 
 const generateSessionToken = () =>
   Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
@@ -79,6 +80,7 @@ const createStyles = (theme: Theme) =>
   });
 
 export default function StepFour() {
+  const { t } = useTranslation();
   const dispatch = useAppDispatch();
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors as Theme), [colors]);
@@ -356,7 +358,7 @@ export default function StepFour() {
     if (!permissionResult.granted) {
       setLocationMessage(
         permissionResult.errorMessage ??
-          "Location permission is required to use your current location.",
+          t("locationScreenPermissionRequired"),
       );
       if (permissionResult.shouldOpenSettings) {
         await openLocationSettings();
@@ -384,7 +386,7 @@ export default function StepFour() {
       details.formattedAddress ??
       details.street ??
       selectedAddress ??
-      "Using current location";
+      t("stepFourUsingCurrentLocation");
 
     // Reset original location ref when new address is selected via current location
     originalLocationRef.current = null;
@@ -405,7 +407,7 @@ export default function StepFour() {
     });
 
     setLocationNotice(details.notice ?? null);
-  }, [apiKey, area, dispatch, selectedAddress, streetAddress, zipCode]);
+  }, [apiKey, area, dispatch, selectedAddress, streetAddress, zipCode, t]);
 
   const handleStreetAddressChange = useCallback(
     (value: string) => {
@@ -482,20 +484,27 @@ export default function StepFour() {
         <View style={styles.titleSec}>
           {isMapStage ? (
             <Text style={styles.title}>
-              Is the pin placed correctly,{" "}
-              <Text style={styles.firstName}>{firstName}?</Text>
+              {firstName ? (
+                <Trans
+                  i18nKey="locationScreenPinQuestionWithName"
+                  values={{ name: firstName }}
+                  components={{ name: <Text style={styles.firstName} /> }}
+                />
+              ) : (
+                t("locationScreenPinQuestion")
+              )}
             </Text>
           ) : (
             <Text style={styles.title}>
               {isConfirmStage
-                ? "Confirm your business address"
-                : "Enter your business address"}
+                ? t("stepFourConfirmBusinessAddress")
+                : t("enterYourBusinessAddress")}
             </Text>
           )}
           <Text style={styles.subtitle}>
             {isConfirmStage || isMapStage
-              ? "Let us know the location you'll be operating from so the customers can find and book you easily."
-              : "This helps clients find and visit you."}
+              ? t("locationScreenOperatingFrom")
+              : t("locationScreenSearchSubtitle")}
           </Text>
         </View>
       </Pressable>

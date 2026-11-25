@@ -4,6 +4,8 @@
  * See backend subscriptions-list-endpoint.md §§4–7.
  */
 
+import dayjs from "dayjs";
+import i18n from "i18next";
 import {
   getSubscriptionDateDisplay,
   isStripeCancelled,
@@ -20,9 +22,20 @@ export type CustomerSubscriptionPillTone =
   | "neutral"
   | "info";
 
+export type CustomerSubscriptionPillKey =
+  | "paused"
+  | "paymentFailed"
+  | "processing"
+  | "ended"
+  | "trial"
+  | "cancelled"
+  | "active";
+
 export type CustomerSubscriptionPill = {
+  /** Translated text for display — compare `key`, never `label`. */
   label: string;
   tone: CustomerSubscriptionPillTone;
+  key: CustomerSubscriptionPillKey;
 };
 
 export type CustomerSubscriptionListFields = SubscriptionAccessFields & {
@@ -41,24 +54,24 @@ export function getCustomerSubscriptionPill(
   const status = sub.status?.trim().toLowerCase() ?? "";
 
   if (status === "paused") {
-    return { label: "Paused", tone: "neutral" };
+    return { label: i18n.t("paused"), tone: "neutral", key: "paused" };
   }
   if (status === "expired") {
-    return { label: "Payment failed", tone: "danger" };
+    return { label: i18n.t("paymentFailedStatus"), tone: "danger", key: "paymentFailed" };
   }
   if (status === "pending") {
-    return { label: "Processing", tone: "neutral" };
+    return { label: i18n.t("bcdProcessing"), tone: "neutral", key: "processing" };
   }
   if (!subscriptionGrantsAccess(sub)) {
-    return { label: "Ended", tone: "neutral" };
+    return { label: i18n.t("cslEnded"), tone: "neutral", key: "ended" };
   }
   if (sub.stripeStatus?.trim().toLowerCase() === "trialing") {
-    return { label: "Trial", tone: "info" };
+    return { label: i18n.t("trial"), tone: "info", key: "trial" };
   }
   if (sub.endsAt || isStripeCancelled(sub.stripeStatus)) {
-    return { label: "Cancelled", tone: "warning" };
+    return { label: i18n.t("cancelled"), tone: "warning", key: "cancelled" };
   }
-  return { label: "Active", tone: "success" };
+  return { label: i18n.t("active"), tone: "success", key: "active" };
 }
 
 /** Prefer totalPrice (includes add-ons); fall back to plan price. */
@@ -110,13 +123,13 @@ export function getCustomerScheduleDateLabel(
 ): string {
   switch (kind) {
     case "accessUntil":
-      return "Access until";
+      return i18n.t("accessUntil");
     case "endedOn":
-      return "Ended on";
+      return i18n.t("endedOn");
     case "trialEnds":
-      return "Trial ends";
+      return i18n.t("trialEnds");
     default:
-      return "Renewal";
+      return i18n.t("renewal");
   }
 }
 
@@ -153,9 +166,10 @@ export function formatCustomerServiceDuration(
   hours: number,
   minutes: number,
 ): string {
-  if (hours > 0 && minutes > 0) return `${hours}h ${minutes}m`;
-  if (hours > 0) return `${hours}h`;
-  if (minutes > 0) return `${minutes}m`;
+  if (hours > 0 && minutes > 0)
+    return i18n.t("cslDurationHoursMinutes", { hours, minutes });
+  if (hours > 0) return i18n.t("cslDurationHours", { hours });
+  if (minutes > 0) return i18n.t("cslDurationMinutes", { minutes });
   return "";
 }
 
@@ -165,8 +179,7 @@ export function formatCustomerSubscriptionDate(
   if (!dateString) return "";
   const parsed = parseSubscriptionInstant(dateString);
   if (!parsed) return dateString;
-  const month = parsed.toLocaleString("en-US", { month: "short" });
-  return `${month} ${parsed.getDate()}, ${parsed.getFullYear()}`;
+  return dayjs(parsed).format("MMM D, YYYY");
 }
 
 /** Format schedule date for UI; keep MM/DD/YYYY renewal dates as returned by API. */

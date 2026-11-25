@@ -1,4 +1,5 @@
 import { ApiService } from "./api";
+import i18n from "i18next";
 import { jobEndpoints } from "./endpoints";
 import { markGoldDone } from "@/src/utils/goldFrames";
 import type {
@@ -72,7 +73,9 @@ export async function fetchBusinessJobPosts(
   const response = await ApiService.get<ApiEnvelope<Page>>(
     jobEndpoints.businessPosts(businessId, params),
   );
-  const { rows, meta } = readPage(unwrap(response, "Failed to load jobs"));
+  const { rows, meta } = readPage(
+    unwrap(response, i18n.t("jobSvcLoadJobsFailed")),
+  );
   return { posts: rows.map(normalizeJobPost), meta };
 }
 
@@ -88,7 +91,7 @@ export async function fetchJobPost(id: string | number): Promise<JobPost> {
   const response = await ApiService.get<ApiEnvelope<unknown>>(
     jobEndpoints.byId(id),
   );
-  const post = normalizeJobPost(unwrap(response, "Failed to load job"));
+  const post = normalizeJobPost(unwrap(response, i18n.t("jobSvcLoadJobFailed")));
   lastViewedJobPost = post;
   return post;
 }
@@ -141,7 +144,7 @@ export async function applyToJobPost(
     },
   );
   return normalizeJobApplication(
-    unwrap(response, "Failed to send application"),
+    unwrap(response, i18n.t("jobSvcSendApplicationFailed")),
   );
 }
 
@@ -153,7 +156,7 @@ export async function fetchMyJobApplications(
     jobEndpoints.myApplications(params),
   );
   const { rows, meta } = readPage(
-    unwrap(response, "Failed to load applications"),
+    unwrap(response, i18n.t("jobSvcLoadApplicationsFailed")),
   );
   return { applications: rows.map(normalizeJobApplication), meta };
 }
@@ -171,7 +174,9 @@ export async function fetchMyJobPosts(
       per_page: params.per_page,
     }),
   );
-  const { rows, meta } = readPage(unwrap(response, "Failed to load job posts"));
+  const { rows, meta } = readPage(
+    unwrap(response, i18n.t("jobSvcLoadPostsFailed")),
+  );
   return { posts: rows.map(normalizeJobPost), meta };
 }
 
@@ -179,7 +184,7 @@ export async function fetchMyJobPost(id: string | number): Promise<JobPost> {
   const response = await ApiService.get<ApiEnvelope<unknown>>(
     jobEndpoints.mineById(id),
   );
-  return normalizeJobPost(unwrap(response, "Failed to load job post"));
+  return normalizeJobPost(unwrap(response, i18n.t("jobSvcLoadPostFailed")));
 }
 
 /** GET /api/job-posts/mine/{id}/applications — rows have `applicant`. */
@@ -191,7 +196,7 @@ export async function fetchJobPostApplications(
     jobEndpoints.applications(id, params),
   );
   const { rows, meta } = readPage(
-    unwrap(response, "Failed to load applicants"),
+    unwrap(response, i18n.t("jobSvcLoadApplicantsFailed")),
   );
   return { applications: rows.map(normalizeJobApplication), meta };
 }
@@ -202,7 +207,7 @@ export async function createJobPost(payload: JobPostPayload): Promise<JobPost> {
     jobEndpoints.create,
     payload,
   );
-  const post = normalizeJobPost(unwrap(response, "Failed to post job"));
+  const post = normalizeJobPost(unwrap(response, i18n.t("jobSvcPostJobFailed")));
   publishJobPostChange({ type: "saved", post });
   markGoldDone("hiring");
   return post;
@@ -217,7 +222,9 @@ export async function updateJobPost(
     jobEndpoints.update(id),
     payload,
   );
-  const post = normalizeJobPost(unwrap(response, "Failed to save job post"));
+  const post = normalizeJobPost(
+    unwrap(response, i18n.t("jobSvcSavePostFailed")),
+  );
   publishJobPostChange({ type: "saved", post });
   return post;
 }
@@ -228,7 +235,7 @@ export async function deleteJobPost(id: string | number): Promise<void> {
     jobEndpoints.delete(id),
   );
   if (response && response.success === false) {
-    throw new Error(response.message || "Failed to delete job post");
+    throw new Error(response.message || i18n.t("jobSvcDeletePostFailed"));
   }
   publishJobPostChange({ type: "deleted", id: Number(id) });
 }

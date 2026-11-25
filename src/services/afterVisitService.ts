@@ -1,3 +1,4 @@
+import i18n from "i18next";
 import { ApiService } from "./api";
 import { appointmentsEndpoints, reviewsEndpoints } from "./endpoints";
 import type {
@@ -45,7 +46,7 @@ export async function fetchViewAndPay(
   const response = await ApiService.get<ApiResponse<ViewAndPay>>(
     appointmentsEndpoints.viewAndPay(appointmentId),
   );
-  return unwrap(response, "Could not load this visit.");
+  return unwrap(response, i18n.t("avLoadError"));
 }
 
 /**
@@ -81,7 +82,7 @@ export async function claimPaidInPerson(
     appointmentsEndpoints.paidInPerson(appointmentId),
     body,
   );
-  return unwrap(response, "Could not send this. Please try again.");
+  return unwrap(response, i18n.t("avClaimFailed"));
 }
 
 /**
@@ -98,7 +99,7 @@ export async function confirmInPersonPayment<T = unknown>(
     appointmentsEndpoints.confirmInPersonPayment(appointmentId),
     { paid_method: method, tip_amount: cashTip },
   );
-  return unwrap(response, "Could not confirm the payment.");
+  return unwrap(response, i18n.t("avsConfirmPaymentFailed"));
 }
 
 /**
@@ -132,7 +133,7 @@ export async function completeAppointment<T = unknown>(
     body,
     headers ? { headers } : undefined,
   );
-  return unwrap(response, "Could not complete this appointment.");
+  return unwrap(response, i18n.t("avsCompleteFailed"));
 }
 
 /** Business: the salon payment didn't arrive (only while a claim waits). */
@@ -145,7 +146,7 @@ export async function rejectInPersonPayment<T = unknown>(
     appointmentsEndpoints.rejectInPersonPayment(appointmentId),
     trimmed ? { reason: trimmed } : {},
   );
-  return unwrap(response, "Could not update the payment.");
+  return unwrap(response, i18n.t("avsUpdatePaymentFailed"));
 }
 
 export async function fetchBookAgain(
@@ -154,7 +155,7 @@ export async function fetchBookAgain(
   const response = await ApiService.get<ApiResponse<BookAgainData>>(
     appointmentsEndpoints.bookAgain(appointmentId),
   );
-  return unwrap(response, "Could not load this booking.");
+  return unwrap(response, i18n.t("baLoadError"));
 }
 
 export type ReviewSuggestion = { id: number; title: string };
@@ -235,7 +236,7 @@ export async function submitVisitReview(params: {
       : undefined,
   );
   if (!response.success) {
-    throw new Error(response.message || "Failed to submit review.");
+    throw new Error(response.message || i18n.t("avsSubmitReviewFailed"));
   }
   return response.data ?? null;
 }

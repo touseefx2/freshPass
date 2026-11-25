@@ -1,4 +1,5 @@
 import React, { useMemo, useState, useEffect, useCallback } from "react";
+import dayjs from "dayjs";
 import {
   View,
   Text,
@@ -172,15 +173,10 @@ function parseSectionParam(param: string | undefined): MemorySection | null {
   return null;
 }
 
-const MONTH_SHORT = [
-  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
-];
-
 function formatDateLabel(dateStr: string): string {
   try {
-    const d = new Date(dateStr + "T12:00:00");
-    return `${d.getDate()} ${MONTH_SHORT[d.getMonth()]} ${d.getFullYear()}`;
+    const d = dayjs(dateStr + "T12:00:00");
+    return d.isValid() ? d.format("D MMM YYYY") : dateStr;
   } catch {
     return dateStr;
   }

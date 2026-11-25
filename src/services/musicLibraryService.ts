@@ -1,5 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as FileSystem from "expo-file-system/legacy";
+import i18n from "i18next";
 import Logger from "@/src/services/logger";
 
 /**
@@ -87,8 +88,8 @@ function mapResult(r: any): LibraryTrack | null {
   }
   return {
     id: String(r.id),
-    title: String(r.title || "Untitled").trim(),
-    artist: String(r.creator || "Unknown artist").trim(),
+    title: String(r.title || i18n.t("musicLibUntitled")).trim(),
+    artist: String(r.creator || i18n.t("musicLibUnknownArtist")).trim(),
     durationMs: typeof r.duration === "number" ? r.duration : 0,
     streamUrl: r.url,
     license: String(r.license || "").toLowerCase(),

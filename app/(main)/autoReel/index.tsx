@@ -2028,7 +2028,9 @@ export default function AutoReelScreen() {
                       </Text>
                       <Text style={[styles.classSub, { color: theme.lightGreen5 }]} numberOfLines={1}>
                         {cls.date} · {formatClassPrice(cls.enrollment_price ?? cls.price)}
-                        {cls.seats_left != null ? ` · ${cls.seats_left} seats left` : ""}
+                        {cls.seats_left != null
+                          ? ` · ${t("mcSeatsLeft", { count: cls.seats_left })}`
+                          : ""}
                       </Text>
                     </View>
                     {cls.id === selectedClassId ? (

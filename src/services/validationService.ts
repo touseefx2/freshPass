@@ -3,6 +3,54 @@
  * Simple and reusable validation functions
  */
 
+import i18n from "i18next";
+
+/**
+ * Callers pass an English field name (or its translated label). Known names get
+ * full-sentence keys; anything else falls back to a generic `{{field}}` message.
+ */
+const NAME_FIELD_KEYS: {
+  english: string;
+  labelKey: string;
+  required: string;
+  invalid: string;
+}[] = [
+  {
+    english: "Full name",
+    labelKey: "fullName",
+    required: "valFullNameRequired",
+    invalid: "valFullNameInvalid",
+  },
+  {
+    english: "Business name",
+    labelKey: "businessName",
+    required: "valBusinessNameRequired",
+    invalid: "valBusinessNameInvalid",
+  },
+  {
+    english: "Name",
+    labelKey: "feedbackName",
+    required: "valNameRequired",
+    invalid: "valNameInvalid",
+  },
+  {
+    english: "Your full name",
+    labelKey: "yourFullName",
+    required: "valYourFullNameRequired",
+    invalid: "valYourFullNameInvalid",
+  },
+];
+
+const nameFieldError = (fieldName: string, kind: "required" | "invalid"): string => {
+  const known = NAME_FIELD_KEYS.find(
+    (f) => f.english === fieldName || i18n.t(f.labelKey) === fieldName,
+  );
+  if (known) return i18n.t(known[kind]);
+  return i18n.t(kind === "required" ? "valFieldRequired" : "valFieldInvalid", {
+    field: fieldName,
+  });
+};
+
 /**
  * Validates email format
  * @param email - Email string to validate
@@ -10,14 +58,14 @@
  */
 export const validateEmail = (email: string): { isValid: boolean; error: string | null } => {
   if (!email || email.trim().length === 0) {
-    return { isValid: false, error: "Email is required" };
+    return { isValid: false, error: i18n.t("valEmailRequired") };
   }
 
   // Same pattern as the server/web: one @, a dot after it, no empty parts
   const emailRegex = /^[^\s@]+@[^\s@.]+(\.[^\s@.]+)+$/;
 
   if (!emailRegex.test(email.trim())) {
-    return { isValid: false, error: "Please enter a valid email address." };
+    return { isValid: false, error: i18n.t("valEmailInvalid") };
   }
 
   return { isValid: true, error: null };
@@ -30,12 +78,12 @@ export const validateEmail = (email: string): { isValid: boolean; error: string 
  */
 export const validatePassword = (password: string): { isValid: boolean; error: string | null } => {
   if (!password || password.length === 0) {
-    return { isValid: false, error: "Password is required" };
+    return { isValid: false, error: i18n.t("valPasswordRequired") };
   }
 
   // Minimum 8 characters
   if (password.length < 8) {
-    return { isValid: false, error: "Password must be at least 8 characters long" };
+    return { isValid: false, error: i18n.t("valPasswordMinLength") };
   }
 
   return { isValid: true, error: null };
@@ -52,11 +100,11 @@ export const validatePasswordMatch = (
   confirmPassword: string
 ): { isValid: boolean; error: string | null } => {
   if (!confirmPassword || confirmPassword.length === 0) {
-    return { isValid: false, error: "Please confirm your password" };
+    return { isValid: false, error: i18n.t("valConfirmPassword") };
   }
 
   if (password !== confirmPassword) {
-    return { isValid: false, error: "Passwords do not match" };
+    return { isValid: false, error: i18n.t("valPasswordsDoNotMatch") };
   }
 
   return { isValid: true, error: null };
@@ -73,7 +121,7 @@ export const validateName = (
   fieldName: string = "Name"
 ): { isValid: boolean; error: string | null } => {
   if (!name || name.trim().length === 0) {
-    return { isValid: false, error: `${fieldName} is required` };
+    return { isValid: false, error: nameFieldError(fieldName, "required") };
   }
 
   // Name should only contain letters, numbers, spaces, hyphens, and apostrophes
@@ -83,7 +131,7 @@ export const validateName = (
   if (!nameRegex.test(name.trim())) {
     return {
       isValid: false,
-      error: `${fieldName} should only contain letters, numbers and be 2-50 characters long`,
+      error: nameFieldError(fieldName, "invalid"),
     };
   }
 
@@ -103,7 +151,7 @@ export const validateDescription = (
   maxLength: number = 1000
 ): { isValid: boolean; error: string | null } => {
   if (!description || description.trim().length === 0) {
-    return { isValid: false, error: "Description is required" };
+    return { isValid: false, error: i18n.t("valDescriptionRequired") };
   }
 
   const trimmedDescription = description.trim();
@@ -111,14 +159,14 @@ export const validateDescription = (
   if (trimmedDescription.length < minLength) {
     return {
       isValid: false,
-      error: `Description must be at least ${minLength} characters long`,
+      error: i18n.t("valDescriptionMinLength", { min: minLength }),
     };
   }
 
   if (trimmedDescription.length > maxLength) {
     return {
       isValid: false,
-      error: `Description must not exceed ${maxLength} characters`,
+      error: i18n.t("valDescriptionMaxLength", { max: maxLength }),
     };
   }
 

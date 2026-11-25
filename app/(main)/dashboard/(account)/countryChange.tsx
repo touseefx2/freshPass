@@ -640,7 +640,11 @@ export default function CountryChangeScreen() {
                     {isSelected && <View style={styles.radioButtonInner} />}
                   </View>
                   <CountryFlag code={country.code} style={styles.countryFlag} />
-                  <Text style={styles.countryName}>{country.name}</Text>
+                  <Text style={styles.countryName}>
+                    {t(`countryName${country.code}`, {
+                      defaultValue: country.name,
+                    })}
+                  </Text>
                 </TouchableOpacity>
                 {isSelected && (
                   <View style={styles.zipCodeContainer}>

@@ -1,4 +1,5 @@
 import dayjs from "dayjs";
+import i18n from "i18next";
 
 /** Phone's IANA zone ("America/Chicago"); undefined on old Android builds that can't tell. */
 export function getDeviceTimeZone(): string | undefined {
@@ -147,15 +148,23 @@ export function bookingTimeError(error: unknown): string | null {
   return null;
 }
 
+/** Label is an i18n key read through a getter, so it follows the app language. */
+const usZone = (zone: string, labelKey: string): { zone: string; label: string } => ({
+  zone,
+  get label() {
+    return i18n.t(labelKey);
+  },
+});
+
 /** Zones an owner can pick in Location settings (US only, per backend). */
 export const US_TIME_ZONES: { zone: string; label: string }[] = [
-  { zone: "America/New_York", label: "Eastern Time (New York)" },
-  { zone: "America/Chicago", label: "Central Time (Chicago)" },
-  { zone: "America/Denver", label: "Mountain Time (Denver)" },
-  { zone: "America/Phoenix", label: "Mountain Time, no DST (Phoenix)" },
-  { zone: "America/Los_Angeles", label: "Pacific Time (Los Angeles)" },
-  { zone: "America/Anchorage", label: "Alaska Time (Anchorage)" },
-  { zone: "Pacific/Honolulu", label: "Hawaii Time (Honolulu)" },
+  usZone("America/New_York", "tzEasternNewYork"),
+  usZone("America/Chicago", "tzCentralChicago"),
+  usZone("America/Denver", "tzMountainDenver"),
+  usZone("America/Phoenix", "tzMountainPhoenix"),
+  usZone("America/Los_Angeles", "tzPacificLosAngeles"),
+  usZone("America/Anchorage", "tzAlaskaAnchorage"),
+  usZone("Pacific/Honolulu", "tzHawaiiHonolulu"),
 ];
 
 /** "Central Time (Chicago)" for a US zone, else "Asia/Karachi (PKT)". */

@@ -142,8 +142,8 @@ export default function ManagePortfolioPhotosScreen() {
     } catch (error: any) {
       Logger.error("Failed to fetch portfolio module data:", error);
       showBanner(
-        "Error",
-        error?.message || "Failed to fetch portfolio photos. Please try again.",
+        t("error"),
+        error?.message || t("pfFetchFailedTryAgain"),
         "error",
         3000,
       );
@@ -194,12 +194,9 @@ export default function ManagePortfolioPhotosScreen() {
       }
     } catch (error) {
       Logger.error("Error selecting image from gallery:", error);
-      Alert.alert(
-        "Error",
-        "Failed to select image from gallery. Please try again.",
-      );
+      Alert.alert(t("error"), t("failedToSelectImageFromGallery"));
     }
-  }, [photoQueue]);
+  }, [photoQueue, t]);
 
   const handleTakePhoto = useCallback(async () => {
     const hasPermission = await handleCameraPermission();
@@ -229,7 +226,7 @@ export default function ManagePortfolioPhotosScreen() {
       Logger.error("Error taking photo:", error);
       Alert.alert(t("error"), t("failedToTakePhoto"));
     }
-  }, []);
+  }, [t]);
 
   const handleDeletePhoto = useCallback((photo: PortfolioItem) => {
     setPhotos((prev) => prev.filter((p) => p.id !== photo.id));
@@ -274,8 +271,8 @@ export default function ManagePortfolioPhotosScreen() {
         // Every new photo must upload so the new ids line up with them
         if (preparedPhotos.length !== newPhotos.length) {
           showBanner(
-            "Error",
-            "Could not prepare photos for upload. Please try again.",
+            t("error"),
+            t("failedToPrepareWorkImages"),
             "error",
             3000,
           );
@@ -349,16 +346,16 @@ export default function ManagePortfolioPhotosScreen() {
 
       if (response.success) {
         showBanner(
-          "Success",
-          response.message || "Portfolio photos updated successfully",
+          t("success"),
+          response.message || t("pfUpdateSuccess"),
           "success",
           3000,
         );
         router.back();
       } else {
         showBanner(
-          "Error",
-          response.message || "Failed to update portfolio photos",
+          t("error"),
+          response.message || t("pfUpdateFailed"),
           "error",
           3000,
         );
@@ -366,9 +363,8 @@ export default function ManagePortfolioPhotosScreen() {
     } catch (error: any) {
       Logger.error("Failed to update portfolio photos:", error);
       showBanner(
-        "Error",
-        error?.message ||
-          "Failed to update portfolio photos. Please try again.",
+        t("error"),
+        error?.message || t("pfUpdateFailedTryAgain"),
         "error",
         3000,
       );

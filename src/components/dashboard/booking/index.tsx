@@ -1,4 +1,5 @@
 import React, { useMemo, useState, useEffect, useCallback } from "react";
+import dayjs from "dayjs";
 import {
   StyleSheet,
   View,
@@ -412,23 +413,23 @@ export default function BookingScreen() {
       case "ongoing":
         return t("upcomingApt");
       case "active":
-        return "Active";
+        return t("active");
       case "complete":
-        return "Complete";
+        return t("apptDetStatusComplete");
       case "cancelled":
-        return "You canceled";
+        return t("apptDetYouCanceled");
       case "expired":
-        return "Expired";
+        return t("expired");
       case "without_scheduled":
-        return "Without Scheduled";
+        return t("bookingListWithoutScheduled");
       case "pending":
-        return "Pending";
+        return t("pending");
       case "awaiting_outcome":
         return t("statusAwaitingOutcome");
       case "no_show":
         return t("statusNoShow");
       default:
-        return "Active";
+        return t("active");
     }
   };
 
@@ -482,36 +483,15 @@ export default function BookingScreen() {
 
       // Parse time format "HH:mm"
       const [hours, minutes] = time.split(":").map(Number);
-      const dateObj = new Date(year, month - 1, day, hours, minutes);
+      const dateObj = dayjs(new Date(year, month - 1, day, hours, minutes));
 
       // Format as "Day, Mon DD at H:MM AM/PM"
-      const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-      const months = [
-        "Jan",
-        "Feb",
-        "Mar",
-        "Apr",
-        "May",
-        "Jun",
-        "Jul",
-        "Aug",
-        "Sep",
-        "Oct",
-        "Nov",
-        "Dec",
-      ];
-
-      const dayName = days[dateObj.getDay()];
-      const monthName = months[dateObj.getMonth()];
-      let hours12 = dateObj.getHours();
-      const ampm = hours12 >= 12 ? "PM" : "AM";
-      hours12 = hours12 % 12;
-      hours12 = hours12 ? hours12 : 12;
-      const minutesStr = dateObj.getMinutes().toString().padStart(2, "0");
-
-      return `${dayName}, ${monthName} ${day} at ${hours12}:${minutesStr} ${ampm}`;
+      return t("apptDetDateAtTime", {
+        date: dateObj.format("ddd, MMM D"),
+        time: dateObj.format("h:mm A"),
+      });
     } catch (error) {
-      return `${date} at ${time}`;
+      return t("apptDetDateAtTime", { date, time });
     }
   };
 
@@ -542,20 +522,20 @@ export default function BookingScreen() {
     if (appointment.appointmentType === "subscription") {
       if (appointment.subscriptionVisits) {
         const { remaining } = appointment.subscriptionVisits;
-        return `${remaining} visit${remaining !== 1 ? "s" : ""} left`;
+        return t("bookingListVisitsLeft", { count: remaining });
       }
-      return appointment.subscription || "Subscription";
+      return appointment.subscription || t("subscription");
     } else {
       // For service type, return service info
       if (
         Array.isArray(appointment.services) &&
         appointment.services.length > 0
       ) {
-        return `${appointment.services.length} service${
-          appointment.services.length !== 1 ? "s" : ""
-        }`;
+        return t("proServicesCount", {
+          count: appointment.services.length,
+        });
       }
-      return "Service";
+      return t("service");
     }
   };
 
@@ -583,7 +563,7 @@ export default function BookingScreen() {
     const serviceName =
       allServices.length > 0
         ? allServices.map((s: any) => s.name).join(" + ")
-        : "Service";
+        : t("service");
 
     const location = apiAppointment.businessAddress
       ? apiAppointment.businessAddress.length > 20
@@ -591,10 +571,10 @@ export default function BookingScreen() {
         : apiAppointment.businessAddress
       : undefined;
 
-    const staffName = apiAppointment.staffName || "Anyone";
+    const staffName = apiAppointment.staffName || t("bkFlowAnyone");
     const staffIsOwner =
       apiAppointment.staffIsOwner === true &&
-      staffName.toLowerCase() !== "anyone";
+      (apiAppointment.staffName || "Anyone").toLowerCase() !== "anyone";
 
     const membershipType = formatMembershipInfo(apiAppointment);
 

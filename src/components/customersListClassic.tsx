@@ -320,7 +320,7 @@ export default function CustomersListClassic() {
           />
           <View style={styles.rowContent}>
             <Text style={styles.rowName} numberOfLines={1}>
-              {item.name?.trim() || "Unknown"}
+              {item.name?.trim() || t("bcuUnknown")}
             </Text>
             <Text style={styles.rowSubtitle} numberOfLines={1}>
               {getBusinessCustomerContactLine(item)}

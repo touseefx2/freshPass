@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import dayjs from "dayjs";
 import {
   StyleSheet,
   View,
@@ -861,9 +862,10 @@ function formatTime(time: string | null | undefined): string {
   const [hours, minutes] = time.split(":");
   const hourNum = parseInt(hours, 10);
   if (Number.isNaN(hourNum)) return time;
-  const ampm = hourNum >= 12 ? "PM" : "AM";
-  const displayHour = hourNum % 12 || 12;
-  return `${displayHour}:${minutes} ${ampm}`;
+  return dayjs()
+    .hour(hourNum)
+    .minute(parseInt(minutes, 10) || 0)
+    .format("h:mm A");
 }
 
 function getTodayDayName(): string {

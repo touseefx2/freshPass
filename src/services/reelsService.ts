@@ -1,3 +1,4 @@
+import i18n from "i18next";
 import { ApiService } from "@/src/services/api";
 import {
   autoReelEndpoints,
@@ -72,7 +73,7 @@ export async function generateReelFromTemplate(
     payload,
   );
   if (!response?.data) {
-    throw new Error(response?.message || "Failed to start generation");
+    throw new Error(response?.message || i18n.t("reelsSvcStartGenerationFailed"));
   }
   return response.data;
 }
@@ -96,7 +97,7 @@ export async function createAutoReel(
     payload,
   );
   if (!response?.data) {
-    throw new Error(response?.message || "Failed to start auto reel");
+    throw new Error(response?.message || i18n.t("reelsSvcStartAutoReelFailed"));
   }
   return response.data;
 }
@@ -106,7 +107,7 @@ export async function getAutoReel(id: number | string): Promise<AutoReel> {
     autoReelEndpoints.getById(id),
   );
   if (!response?.data) {
-    throw new Error(response?.message || "Auto reel not found");
+    throw new Error(response?.message || i18n.t("reelsSvcAutoReelNotFound"));
   }
   return response.data;
 }
@@ -137,7 +138,7 @@ export async function retryAutoReel(id: number | string): Promise<AutoReel> {
     autoReelEndpoints.retry(id),
   );
   if (!response?.data) {
-    throw new Error(response?.message || "Failed to retry auto reel");
+    throw new Error(response?.message || i18n.t("reelsSvcRetryAutoReelFailed"));
   }
   return response.data;
 }
@@ -156,7 +157,7 @@ export async function publishAutoReel(
     payload,
   );
   if (!response?.data) {
-    throw new Error(response?.message || "Failed to publish reel");
+    throw new Error(response?.message || i18n.t("reelsSvcPublishFailed"));
   }
   markGoldDone("createReel");
   return response.data;
@@ -179,7 +180,7 @@ export async function buildAutoReel(
     payload,
   );
   if (!response?.data) {
-    throw new Error(response?.message || "Failed to build reel");
+    throw new Error(response?.message || i18n.t("reelsSvcBuildFailed"));
   }
   return response.data;
 }
@@ -193,7 +194,7 @@ export async function regenerateAutoReel(id: number | string): Promise<AutoReel>
     autoReelEndpoints.regenerate(id),
   );
   if (!response?.data) {
-    throw new Error(response?.message || "Failed to regenerate reel");
+    throw new Error(response?.message || i18n.t("reelsSvcRegenerateFailed"));
   }
   return response.data;
 }
@@ -223,7 +224,7 @@ export async function getGenerationStatus(
     reelTemplateEndpoints.generationStatus(reelId),
   );
   if (!response?.data) {
-    throw new Error(response?.message || "Failed to get status");
+    throw new Error(response?.message || i18n.t("reelsSvcGetStatusFailed"));
   }
   return response.data;
 }
@@ -236,7 +237,7 @@ export async function createReel(
     payload,
   );
   if (!response?.data) {
-    throw new Error(response?.message || "Failed to create reel");
+    throw new Error(response?.message || i18n.t("reelsSvcCreateFailed"));
   }
   if (response.data.status === "published") markGoldDone("createReel");
   return response.data;
@@ -267,7 +268,7 @@ export async function getMyReel(id: number | string): Promise<OwnerReel> {
     reelsEndpoints.mineById(id),
   );
   if (!response?.data) {
-    throw new Error(response?.message || "Reel not found");
+    throw new Error(response?.message || i18n.t("reelsSvcReelNotFound"));
   }
   return response.data;
 }
@@ -281,7 +282,7 @@ export async function updateReel(
     payload,
   );
   if (!response?.data) {
-    throw new Error(response?.message || "Failed to update reel");
+    throw new Error(response?.message || i18n.t("reelsSvcUpdateFailed"));
   }
   return response.data;
 }
@@ -291,7 +292,7 @@ export async function publishReel(id: number | string): Promise<OwnerReel> {
     reelsEndpoints.publish(id),
   );
   if (!response?.data) {
-    throw new Error(response?.message || "Failed to publish reel");
+    throw new Error(response?.message || i18n.t("reelsSvcPublishFailed"));
   }
   markGoldDone("createReel");
   return response.data;
@@ -302,7 +303,7 @@ export async function unpublishReel(id: number | string): Promise<OwnerReel> {
     reelsEndpoints.unpublish(id),
   );
   if (!response?.data) {
-    throw new Error(response?.message || "Failed to unpublish reel");
+    throw new Error(response?.message || i18n.t("reelsSvcUnpublishFailed"));
   }
   return response.data;
 }
@@ -319,7 +320,7 @@ export async function getBusinessReelStats(
     reelsEndpoints.mineStats({ mine }),
   );
   if (!response?.data) {
-    throw new Error(response?.message || "Failed to load stats");
+    throw new Error(response?.message || i18n.t("reelsSvcLoadStatsFailed"));
   }
   return response.data;
 }
@@ -331,7 +332,7 @@ export async function getReelStats(
     reelsEndpoints.mineReelStats(id),
   );
   if (!response?.data) {
-    throw new Error(response?.message || "Failed to load reel stats");
+    throw new Error(response?.message || i18n.t("reelsSvcLoadReelStatsFailed"));
   }
   return response.data;
 }
@@ -445,7 +446,7 @@ export async function getPublicReel(
     reelsEndpoints.getById(id, coords),
   );
   if (!response?.data) {
-    throw new Error(response?.message || "Reel not found");
+    throw new Error(response?.message || i18n.t("reelsSvcReelNotFound"));
   }
   return response.data;
 }
@@ -639,7 +640,7 @@ export async function fetchReelLook(
     reelsEndpoints.look(id),
   );
   if (!response?.data) {
-    throw new Error(response?.message || "Failed to load look options");
+    throw new Error(response?.message || i18n.t("reelsSvcLoadLookOptionsFailed"));
   }
   return response.data;
 }
@@ -664,7 +665,7 @@ export async function startReelTryOn(
   const data = response?.data ?? (response as unknown as ReelTryOnStartResponse);
   if (!data?.job_id) {
     throw new Error(
-      (response as any)?.message || "Failed to start try-on",
+      (response as any)?.message || i18n.t("reelsSvcStartTryOnFailed"),
     );
   }
   return data as ReelTryOnStartResponse;
@@ -680,7 +681,7 @@ export async function getReelTryOnStatus(
   const data = response?.data ?? (response as unknown as ReelTryOnStatusResponse);
   if (!data?.job_id) {
     throw new Error(
-      (response as any)?.message || "Failed to load try-on status",
+      (response as any)?.message || i18n.t("reelsSvcLoadTryOnStatusFailed"),
     );
   }
   return data as ReelTryOnStatusResponse;
@@ -698,7 +699,7 @@ export async function saveAiLook(params: {
     },
   );
   if (!response?.data) {
-    throw new Error(response?.message || "Failed to save look");
+    throw new Error(response?.message || i18n.t("reelsSvcSaveLookFailed"));
   }
   return response.data;
 }
@@ -763,7 +764,7 @@ export async function postReelComment(
   });
   const created = response?.data?.data ?? response?.data;
   if (!created || typeof created !== "object" || !("id" in created)) {
-    throw new Error(response?.message || "Failed to post comment");
+    throw new Error(response?.message || i18n.t("reelsSvcPostCommentFailed"));
   }
   return created as ReelComment;
 }

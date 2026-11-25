@@ -4,6 +4,7 @@
  */
 import type { ChatContactItem } from "@/src/state/slices/generalSlice";
 import { ApiService } from "./api";
+import i18n from "i18next";
 import {
   getDefaultAvatarImage,
 } from "@/src/services/remoteConfigService";
@@ -71,12 +72,12 @@ function formatTimeLabel(isoString: string | null): string {
   if (dateOnly.getTime() === today.getTime()) {
     const diffMs = now.getTime() - date.getTime();
     const diffMins = Math.floor(diffMs / 60000);
-    if (diffMins < 1) return "Just now";
-    if (diffMins < 60) return `${diffMins} min`;
+    if (diffMins < 1) return i18n.t("justNow");
+    if (diffMins < 60) return i18n.t("chatSvcMinAgo", { count: diffMins });
     const diffHrs = Math.floor(diffMins / 60);
-    return `${diffHrs} hr`;
+    return i18n.t("chatSvcHrAgo", { count: diffHrs });
   }
-  if (dateOnly.getTime() === yesterday.getTime()) return "Yesterday";
+  if (dateOnly.getTime() === yesterday.getTime()) return i18n.t("yesterday");
   const d = `${date.getDate()}`.padStart(2, "0");
   const m = `${date.getMonth() + 1}`.padStart(2, "0");
   const y = date.getFullYear();
@@ -86,11 +87,11 @@ function formatTimeLabel(isoString: string | null): string {
 export function contactToChatItem(c: ApiContact): ChatContactItem {
   const createdAt =
     c.last_message_at ?? c.latest_message?.created_at ?? "1970-01-01T00:00:00Z";
-  let message = "No message";
+  let message = i18n.t("chatSvcNoMessage");
   if (c.latest_message) {
     if (c.latest_message.message) message = c.latest_message.message;
-    else if (c.latest_message.attachments?.length) message = "Attachment";
-    else message = "No message";
+    else if (c.latest_message.attachments?.length) message = i18n.t("chatSvcAttachment");
+    else message = i18n.t("chatSvcNoMessage");
   }
   const unreadCount = c.unread_count ?? 0;
   return {

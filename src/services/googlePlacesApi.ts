@@ -1,6 +1,7 @@
 import { PlacePrediction, ParsedAddress } from "@/src/types/location";
 import { parseAddressComponents } from "../constant/functions";
 import Logger from "@/src/services/logger";
+import i18n from "i18next";
 
 const apiKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ?? "";
 const TIMEOUT_MS = 12000; // 12 seconds
@@ -8,10 +9,9 @@ const PLACES_COUNTRY_RESTRICTION = "us";
 const NON_US_ADDRESS_ERROR =
   "Only United States addresses are supported.";
 
-const DEFAULT_SUGGESTION_ERROR =
-  "Unable to load suggestions. Please try again.";
-const DEFAULT_PLACE_DETAILS_ERROR =
-  "Unable to fetch place details. Please try again.";
+// i18n keys, translated when used
+const DEFAULT_SUGGESTION_ERROR_KEY = "unableToLoadSuggestions";
+const DEFAULT_PLACE_DETAILS_ERROR_KEY = "unableToFetchPlaceDetails";
 
 export const logPlacesApiFailure = (
   context: string,
@@ -29,30 +29,30 @@ export const getSuggestionErrorMessage = (
   errorMessage?: string,
 ): string => {
   if (status === "OVER_QUERY_LIMIT") {
-    return "Address search limit reached. Please try again later.";
+    return i18n.t("placesSvcSearchLimit");
   }
 
   if (status === "REQUEST_DENIED") {
     if (errorMessage?.toLowerCase().includes("billing")) {
-      return "Address search is unavailable. Google Maps billing may need to be enabled.";
+      return i18n.t("placesSvcBillingUnavailable");
     }
-    return "Address search access was denied. Please contact support.";
+    return i18n.t("placesSvcSearchDenied");
   }
 
   if (status === "INVALID_REQUEST") {
-    return "Invalid search request. Please try again.";
+    return i18n.t("placesSvcInvalidRequest");
   }
 
   if (errorMessage) {
     return errorMessage;
   }
 
-  return DEFAULT_SUGGESTION_ERROR;
+  return i18n.t(DEFAULT_SUGGESTION_ERROR_KEY);
 };
 
 export const resolveSuggestionError = (
   error: unknown,
-  fallback = DEFAULT_SUGGESTION_ERROR,
+  fallback: string = i18n.t(DEFAULT_SUGGESTION_ERROR_KEY),
 ): string => {
   if (!(error instanceof Error)) {
     return fallback;
@@ -67,11 +67,11 @@ export const resolveSuggestionError = (
   }
 
   if (error.message.includes("timeout") || error.message.includes("timed out")) {
-    return "Request timed out. Please try again.";
+    return i18n.t("placesSvcTimedOut");
   }
 
   if (error.message.includes("HTTP error")) {
-    return "Network error while loading suggestions. Please try again.";
+    return i18n.t("placesSvcSuggestionsNetwork");
   }
 
   return error.message || fallback;
@@ -79,7 +79,7 @@ export const resolveSuggestionError = (
 
 export const resolvePlaceDetailsError = (
   error: unknown,
-  fallback = DEFAULT_PLACE_DETAILS_ERROR,
+  fallback: string = i18n.t(DEFAULT_PLACE_DETAILS_ERROR_KEY),
 ): string => {
   if (!(error instanceof Error)) {
     return fallback;
@@ -94,23 +94,23 @@ export const resolvePlaceDetailsError = (
   }
 
   if (error.message.includes("timeout") || error.message.includes("timed out")) {
-    return "Request timed out. Please try again.";
+    return i18n.t("placesSvcTimedOut");
   }
 
   if (error.message.includes("HTTP error")) {
-    return "Network error while loading place details. Please try again.";
+    return i18n.t("placesSvcDetailsNetwork");
   }
 
   if (error.message === "REQUEST_DENIED") {
-    return "Place details access was denied. Please contact support.";
+    return i18n.t("placesSvcDetailsDenied");
   }
 
   if (error.message === "OVER_QUERY_LIMIT") {
-    return "Place details limit reached. Please try again later.";
+    return i18n.t("placesSvcDetailsLimit");
   }
 
   if (error.message === NON_US_ADDRESS_ERROR) {
-    return NON_US_ADDRESS_ERROR;
+    return i18n.t("placesSvcUsOnly");
   }
 
   return error.message || fallback;

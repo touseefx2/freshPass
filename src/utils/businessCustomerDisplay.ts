@@ -1,4 +1,5 @@
 import dayjs from "dayjs";
+import i18n from "i18next";
 import type {
   BusinessCustomer,
   BusinessCustomerAppointmentService,
@@ -62,29 +63,29 @@ export function getBusinessCustomerListStatus(
   const status = customer.currentStatus?.trim().toLowerCase() ?? "";
 
   if (!status) {
-    return { label: "No subscription", tone: "neutral" };
+    return { label: i18n.t("noSubscription"), tone: "neutral" };
   }
   if (status === "active") {
-    return { label: "Active", tone: "success" };
+    return { label: i18n.t("active"), tone: "success" };
   }
   if (status === "trialing" || status === "trial") {
-    return { label: "Trial", tone: "info" };
+    return { label: i18n.t("trial"), tone: "info" };
   }
   if (status === "cancelled" || status === "canceled") {
-    return { label: "Cancelled", tone: "warning" };
+    return { label: i18n.t("cancelled"), tone: "warning" };
   }
   if (status === "paused") {
-    return { label: "Paused", tone: "neutral" };
+    return { label: i18n.t("paused"), tone: "neutral" };
   }
   if (status === "expired") {
-    return { label: "Expired", tone: "danger" };
+    return { label: i18n.t("expired"), tone: "danger" };
   }
   if (status === "pending") {
-    return { label: "Processing", tone: "neutral" };
+    return { label: i18n.t("bcdProcessing"), tone: "neutral" };
   }
 
   return {
-    label: customer.currentStatus ?? "Unknown",
+    label: customer.currentStatus ?? i18n.t("bcuUnknown"),
     tone: "neutral",
   };
 }
@@ -171,7 +172,7 @@ export function formatRemainingOfQuantity(
   remaining: number,
   quantity: number,
 ): string {
-  return `${remaining} of ${quantity} left`;
+  return i18n.t("remainingOfQuantity", { remaining, quantity });
 }
 
 export function getSubscriptionServiceTotals(
@@ -202,17 +203,17 @@ export function formatSubscriptionPriceSubtitle(
   },
 ): string {
   const price = formatBusinessCustomerPrice(sub.price);
-  const perMonth = labels?.perMonth ?? "/ month";
+  const perMonth = labels?.perMonth ?? i18n.t("perMonth");
   const parts = [`${price} ${perMonth}`.trim()];
 
   if (sub.endsAt && sub.hasAccess) {
     const date = formatBusinessCustomerDate(sub.endsAt);
     parts.push(
-      labels?.accessUntil?.(date) ?? `access until ${date}`,
+      labels?.accessUntil?.(date) ?? i18n.t("accessUntilDate", { date }),
     );
   } else if (sub.currentPeriodEnd && sub.hasAccess) {
     const date = formatBusinessCustomerDate(sub.currentPeriodEnd);
-    parts.push(labels?.renews?.(date) ?? `renews ${date}`);
+    parts.push(labels?.renews?.(date) ?? i18n.t("renewsOnDate", { date }));
   }
 
   return parts.join(" · ");
@@ -232,7 +233,7 @@ export function formatAppointmentDateTime(
 
 export function getStaffDisplayName(
   staffName?: string | null,
-  fallback = "Any available",
+  fallback: string = i18n.t("bcdAnyAvailable"),
 ): string {
   const trimmed = staffName?.trim();
   return trimmed || fallback;
@@ -240,7 +241,7 @@ export function getStaffDisplayName(
 
 export function formatVisitsSummary(visits: BusinessCustomerVisits): string {
   const left = visits.bookable ?? visits.remaining;
-  return `${left} of ${visits.total} visits left`;
+  return i18n.t("subCustVisitsSummary", { left, total: visits.total });
 }
 
 export function getServiceRemainingLabel(
@@ -253,7 +254,7 @@ export function getServiceRemainingLabel(
 }
 
 export function formatStatusLabel(status?: string | null): string {
-  if (!status?.trim()) return "Unknown";
+  if (!status?.trim()) return i18n.t("bcuUnknown");
   return status
     .trim()
     .replace(/_/g, " ")

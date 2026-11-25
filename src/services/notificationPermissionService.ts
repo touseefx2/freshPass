@@ -2,6 +2,7 @@ import * as Notifications from "expo-notifications";
 import { Platform, Alert, Linking } from "react-native";
 import Constants from "expo-constants";
 import { openNativeNotificationSettings } from "@/modules/open-notification-settings";
+import i18n from "i18next";
 import Logger from "./logger";
 
 /** Don't block login/register if APNs/FCM never responds (e.g. iOS Simulator). */
@@ -147,8 +148,7 @@ export const requestNotificationPermission =
         return {
           granted: false,
           canRequestAgain: true,
-          message:
-            "Notification permission is required to receive booking alerts.",
+          message: i18n.t("notifPermRequired"),
         };
       }
 
@@ -156,15 +156,14 @@ export const requestNotificationPermission =
       return {
         granted: false,
         canRequestAgain: false,
-        message:
-          "Notification permission was denied. Please enable notifications in your device settings to receive booking alerts.",
+        message: i18n.t("notifPermDenied"),
       };
     } catch (error) {
       Logger.error("Error requesting notification permission:", error);
       return {
         granted: false,
         canRequestAgain: true,
-        message: "Unable to request notification permission. Please try again.",
+        message: i18n.t("notifPermRequestFailed"),
       };
     }
   };
@@ -177,15 +176,15 @@ export const showNotificationPermissionAlert = (
   onOpenSettings: () => void,
 ) => {
   Alert.alert(
-    "Notification Permission Required",
+    i18n.t("notifPermRequiredTitle"),
     message,
     [
       {
-        text: "Cancel",
+        text: i18n.t("cancel"),
         style: "cancel",
       },
       {
-        text: "Open Settings",
+        text: i18n.t("mediaPermOpenSettings"),
         onPress: onOpenSettings,
       },
     ],
@@ -235,8 +234,8 @@ export const openNotificationSettings = async (): Promise<void> => {
   } catch (error) {
     Logger.error("Error opening settings:", error);
     Alert.alert(
-      "Unable to open settings",
-      "Please manually enable notification permissions in your device settings.",
+      i18n.t("mediaPermUnableOpenSettings"),
+      i18n.t("notifPermManualEnable"),
     );
   }
 };

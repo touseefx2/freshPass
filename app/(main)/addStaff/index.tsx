@@ -26,6 +26,7 @@ import { useRouter, useLocalSearchParams } from "expo-router";
 import { useTheme, useAppSelector, useAppDispatch } from "@/src/hooks/hooks";
 import AppImage from "@/src/components/AppImage";
 import { useTranslation } from "react-i18next";
+import dayjs from "dayjs";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import {
@@ -123,12 +124,8 @@ const defaultDayData = (): DayData => ({
   breaks: [],
 });
 
-const formatTime = (hours: number, minutes: number): string => {
-  const period = hours >= 12 ? "PM" : "AM";
-  const displayHours = hours % 12 || 12;
-  const displayMinutes = minutes.toString().padStart(2, "0");
-  return `${displayHours}:${displayMinutes} ${period}`;
-};
+const formatTime = (hours: number, minutes: number): string =>
+  dayjs().hour(hours).minute(minutes).format("h:mm A");
 
 const formatTimeRange = (
   fromHours: number,

@@ -1,3 +1,4 @@
+import i18n from "i18next";
 import { ApiService } from "./api";
 import { appointmentsEndpoints } from "./endpoints";
 
@@ -109,17 +110,17 @@ export function formatTipAmount(amount: number, currency = "usd"): string {
 export function getTipHeaderTitle(recipient: TipRecipient): string {
   const name = capitalizeWords(recipient.name);
   if (recipient.type === "business") {
-    return `Tip the team at ${name}`;
+    return i18n.t("tipSvcHeaderTeam", { name });
   }
-  return `Tip ${name}`;
+  return i18n.t("tipSvcHeaderPerson", { name });
 }
 
 export function getTipPromptLabel(recipient: TipRecipient): string {
   const name = capitalizeWords(recipient.name);
   if (recipient.type === "business") {
-    return `Say thanks to the team at ${name} with a tip.`;
+    return i18n.t("tipSvcPromptTeam", { name });
   }
-  return `Happy with your visit? Say thanks to ${name} with a tip.`;
+  return i18n.t("tipUiPromptWithName", { name });
 }
 
 export async function fetchTipDetails(
@@ -133,7 +134,7 @@ export async function fetchTipDetails(
     return response.data;
   }
 
-  throw new Error(response.message || "Failed to fetch tip details");
+  throw new Error(response.message || i18n.t("tipSvcFetchDetailsFailed"));
 }
 
 export async function createTipPaymentSheet(
@@ -150,7 +151,7 @@ export async function createTipPaymentSheet(
   }
 
   const error = new Error(
-    response.message || "Failed to create tip payment sheet",
+    response.message || i18n.t("tipSvcCreatePaymentSheetFailed"),
   ) as Error & { data?: { message?: string } };
   error.data = { message: response.message };
   throw error;

@@ -955,7 +955,7 @@ export default function subscriptionCustomer() {
       const dateDisplay = getCustomerSubscriptionDateDisplay(item);
       const canBook = canBookCustomerSubscription(item);
       const canCancel = canCancelCustomerSubscription(item);
-      const showCancelledBanner = pill.label === "Cancelled" && canBook;
+      const showCancelledBanner = pill.key === "cancelled" && canBook;
       const visits = resolveVisits(item);
       const visitsLeft = visits ? (visits.bookable ?? visits.remaining) : null;
       const hasBookableService =

@@ -22,6 +22,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { useVideoPlayer, VideoView } from "expo-video";
 import { useTranslation } from "react-i18next";
+import i18n from "i18next";
 import {
   useFocusEffect,
   useLocalSearchParams,
@@ -446,7 +447,7 @@ function normalizeAiRequestResponse(
       url: getUrl(imgs[key]),
     })).filter((v): v is typeof v & { url: string } => Boolean(v.url));
     if (views.length > 0) {
-      sections.push({ name: "Results", views });
+      sections.push({ name: i18n.t("proResults"), views });
     }
     return { status, message, sections, requestPayload };
   }
@@ -725,7 +726,7 @@ function OriginalMediaCard({
             color={theme.white}
           />
           <Text style={styles.originalMediaAudioLabel} numberOfLines={1}>
-            {item.type || "File"}
+            {item.type || t("aiResultsFile")}
           </Text>
         </View>
       )}

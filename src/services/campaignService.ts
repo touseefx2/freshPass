@@ -1,4 +1,5 @@
 import { ApiService } from "./api";
+import i18n from "i18next";
 import type {
   Campaign,
   CampaignAllowance,
@@ -77,7 +78,10 @@ const toNumList = (value: unknown): number[] =>
     : [];
 
 /** `{ success, data }` → data; throws the server message on success:false. */
-function unwrapData(res: unknown, fallback = "Something went wrong"): unknown {
+function unwrapData(
+  res: unknown,
+  fallback: string = i18n.t("somethingWentWrong"),
+): unknown {
   const body = asRecord(res);
   if (!body) return res;
   if (body.success === false) {

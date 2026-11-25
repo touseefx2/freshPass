@@ -1,5 +1,6 @@
 import { ApiService } from "@/src/services/api";
 import { appointmentsEndpoints } from "@/src/services/endpoints";
+import i18n from "i18next";
 
 export type AssignAnyoneStaffParams = {
   business_id: number;
@@ -57,6 +58,6 @@ export async function assignAnyoneStaff(
   }
 
   throw new Error(
-    response?.message || "No staff available for this time slot.",
+    response?.message || i18n.t("bnowNoStaffForSlot"),
   );
 }

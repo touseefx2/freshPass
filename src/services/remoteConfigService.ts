@@ -3,6 +3,7 @@ import Constants from "expo-constants";
 import * as Application from "expo-application";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getFirebaseProjectConfig } from "@/src/config/firebaseNative";
+import i18n from "i18next";
 import Logger from "@/src/services/logger";
 
 const INSTANCE_ID_KEY = "@freshpass/firebase_rc_instance_id";
@@ -53,8 +54,8 @@ const DEFAULT_MEDIA_FALLBACKS: DefaultMediaRemoteConfig = {
 
 const DEFAULT_MEDIA_RC_CACHE = "@freshpass/default_media_remote_config";
 
-const PURCHASE_CONFIG_MISSING_ERROR =
-  "Failed to start payment. Purchase configuration is missing. Please try again later.";
+/** i18n key, translated when thrown */
+const PURCHASE_CONFIG_MISSING_ERROR = "remoteCfgPurchaseConfigMissing";
 
 let purchaseConfigMemoryCache: PurchaseRemoteConfig | null = null;
 let defaultMediaMemoryCache: DefaultMediaRemoteConfig | null = null;
@@ -209,7 +210,7 @@ export async function resolvePurchaseRemoteConfig(options?: {
   }
 
   Logger.warn("[PurchaseRC] ❌ No purchase config from Remote Config or cache");
-  throw new Error(PURCHASE_CONFIG_MISSING_ERROR);
+  throw new Error(i18n.t(PURCHASE_CONFIG_MISSING_ERROR));
 }
 
 /** App open: always fetch Remote Config and override local cache with latest. */

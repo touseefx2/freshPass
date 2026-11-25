@@ -31,8 +31,10 @@ import {
 import AcceptTermsModal from "@/src/components/acceptTermsModal";
 import { setUserDetails } from "@/src/state/slices/userSlice";
 import { prepareImageForUpload } from "@/src/utils/prepareImageForUpload";
+import { useTranslation } from "react-i18next";
 
 export default function CompleteStaffProfile() {
+  const { t } = useTranslation();
   const router = useRouter();
   const dispatch = useAppDispatch();
   const { colors } = useTheme();
@@ -164,8 +166,8 @@ export default function CompleteStaffProfile() {
         }
       } else {
         showBanner(
-          "Error",
-          response.message || "Failed to save step data",
+          t("error"),
+          response.message || t("cpSaveStepFailed"),
           "error",
           3000,
         );
@@ -173,8 +175,8 @@ export default function CompleteStaffProfile() {
     } catch (error: any) {
       Logger.error("Failed to submit onboarding step:", error);
       showBanner(
-        "Error",
-        error.message || "Failed to save step data. Please try again.",
+        t("error"),
+        error.message || t("cpSaveStepFailedTryAgain"),
         "error",
         3000,
       );
@@ -250,10 +252,10 @@ export default function CompleteStaffProfile() {
 
   const continueLabel = useMemo(() => {
     if (currentStep > 1) {
-      return "Save";
+      return t("save");
     }
-    return "Create";
-  }, [currentStep]);
+    return t("create");
+  }, [currentStep, t]);
 
   const handleAcceptTermsContinue = useCallback(() => {
     setShowAcceptTermsModal(false);

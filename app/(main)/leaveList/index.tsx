@@ -191,7 +191,9 @@ export default function LeaveList() {
           <Text style={styles.dateText}>{startStr}</Text>
         </View>
         <View style={[styles.cardRow, styles.cardRowLast]}>
-          <Text style={styles.dateText}>to {endStr}</Text>
+          <Text style={styles.dateText}>
+            {t("leaveListToDate", { date: endStr })}
+          </Text>
         </View>
       </TouchableOpacity>
     );

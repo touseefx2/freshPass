@@ -35,6 +35,7 @@ import CountryPickerItem from "@/src/components/countryPickerItem";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { useTranslation } from "react-i18next";
+import dayjs from "dayjs";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import {
@@ -140,6 +141,11 @@ const MONTHS = [
   { value: "Nov", label: "Nov" },
   { value: "Dec", label: "Dec" },
 ];
+// Month names shown in the app language; the value stays the English key
+const getMonthLabel = (value: string) => {
+  const index = MONTHS.findIndex((m) => m.value === value);
+  return index >= 0 ? dayjs(new Date(2000, index, 1)).format("MMM") : value;
+};
 const CURRENT_YEAR = new Date().getFullYear();
 const YEARS = Array.from({ length: 100 }, (_, i) =>
   (CURRENT_YEAR - i).toString(),
@@ -595,12 +601,12 @@ export default function StepOne() {
 
   useEffect(() => {
     if (fullName.trim().length > 0) {
-      const validation = validateName(fullName.trim(), "Full name");
+      const validation = validateName(fullName.trim(), t("fullName"));
       setFullNameError(validation.error);
     } else {
       setFullNameError(null);
     }
-  }, [fullName]);
+  }, [fullName, t]);
 
   return (
     <View style={styles.container}>
@@ -729,9 +735,8 @@ export default function StepOne() {
                   ]}
                 >
                   {dateOfBirth?.month
-                    ? MONTHS.find((m) => m.value === dateOfBirth.month)
-                        ?.label || dateOfBirth.month
-                    : "Sep"}
+                    ? getMonthLabel(dateOfBirth.month)
+                    : getMonthLabel("Sep")}
                 </Text>
               </View>
               <Feather
@@ -811,9 +816,7 @@ export default function StepOne() {
         onSelect={(value) => handleDateSelect("month", value)}
         onClose={() => setDateDropdownVisible(null)}
         buttonRef={monthFieldRef}
-        displayValue={(value) =>
-          MONTHS.find((m) => m.value === value)?.label || value
-        }
+        displayValue={(value) => getMonthLabel(value)}
       />
 
       <DatePickerDropdown

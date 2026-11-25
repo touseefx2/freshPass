@@ -1,3 +1,4 @@
+import i18n from "i18next";
 import { ApiService } from "./api";
 import { stripeEndpoints } from "./endpoints";
 import { getStripeModeHeaders } from "./stripeService";
@@ -65,7 +66,7 @@ export function getLastAccountSessionError(): StripeConnectApiError | null {
 function toConnectError(error: unknown): StripeConnectApiError {
   const err = error as { message?: string; status?: number };
   return new StripeConnectApiError(
-    err?.message || "Failed to reach Stripe Connect",
+    err?.message || i18n.t("stripeConnReachFailed"),
     err?.status,
   );
 }
@@ -100,7 +101,7 @@ export async function createAccountSessionClientSecret(
     }
 
     throw new StripeConnectApiError(
-      response?.message || "Failed to create account session",
+      response?.message || i18n.t("stripeConnCreateSessionFailed"),
     );
   } catch (error) {
     const mapped = toConnectError(error);
@@ -126,7 +127,7 @@ export async function fetchConnectStatus(
     }
 
     throw new StripeConnectApiError(
-      response?.message || "Failed to fetch Stripe onboarding status",
+      response?.message || i18n.t("stripeConnFetchStatusFailed"),
     );
   } catch (error) {
     throw toConnectError(error);

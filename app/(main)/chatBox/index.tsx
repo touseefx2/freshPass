@@ -34,6 +34,7 @@ import AppImage from "@/src/components/AppImage";
 import { useDownloadMedia } from "@/src/hooks/useDownloadMedia";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { useTranslation } from "react-i18next";
+import dayjs from "dayjs";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import {
@@ -183,36 +184,11 @@ function getMessageImageUrl(url: string | null | undefined): string {
 }
 
 function formatMessageTime(isoString: string): string {
-  const date = new Date(isoString);
-  const hours = date.getHours();
-  const mins = date.getMinutes();
-  const ampm = hours >= 12 ? "PM" : "AM";
-  const h = hours % 12 || 12;
-  const m = `${mins}`.padStart(2, "0");
-  return `${h}:${m} ${ampm}`;
+  return dayjs(new Date(isoString)).format("h:mm A");
 }
 
 function formatMessageDateTime(isoString: string): string {
-  const date = new Date(isoString);
-  const day = date.getDate();
-  const months = [
-    "Jan",
-    "Feb",
-    "Mar",
-    "Apr",
-    "May",
-    "Jun",
-    "Jul",
-    "Aug",
-    "Sep",
-    "Oct",
-    "Nov",
-    "Dec",
-  ];
-  const month = months[date.getMonth()];
-  const year = date.getFullYear();
-  const time = formatMessageTime(isoString);
-  return `${day} ${month} ${year}, ${time}`;
+  return dayjs(new Date(isoString)).format("D MMM YYYY, h:mm A");
 }
 
 const URL_REGEX = /(https?:\/\/[^\s]+)/g;

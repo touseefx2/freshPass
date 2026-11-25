@@ -21,6 +21,7 @@ import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
 import { useTheme, useAppDispatch, useAppSelector } from "@/src/hooks/hooks";
 import AppImage from "@/src/components/AppImage";
 import { useTranslation } from "react-i18next";
+import dayjs from "dayjs";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import {
   setActionLoader,
@@ -120,13 +121,7 @@ function formatPolicyDateTime(iso: string | null): string | null {
   if (!iso) return null;
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return null;
-  return date.toLocaleString(undefined, {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
+  return dayjs(date).format("MMM D, YYYY, h:mm A");
 }
 
 function normalizeCardLastFour(value: unknown): string | null {
@@ -830,33 +825,9 @@ export default function BookingDetailsById() {
       const dateObj = new Date(year, month - 1, day, hours, minutes);
 
       // Format as "Day, Mon DD at H:MM AM/PM"
-      const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-      const months = [
-        "Jan",
-        "Feb",
-        "Mar",
-        "Apr",
-        "May",
-        "Jun",
-        "Jul",
-        "Aug",
-        "Sep",
-        "Oct",
-        "Nov",
-        "Dec",
-      ];
-
-      const dayName = days[dateObj.getDay()];
-      const monthName = months[dateObj.getMonth()];
-      let hours12 = dateObj.getHours();
-      const ampm = hours12 >= 12 ? "PM" : "AM";
-      hours12 = hours12 % 12;
-      hours12 = hours12 ? hours12 : 12;
-      const minutesStr = dateObj.getMinutes().toString().padStart(2, "0");
-
       return t("apptDetDateAtTime", {
-        date: `${dayName}, ${monthName} ${day}`,
-        time: `${hours12}:${minutesStr} ${ampm}`,
+        date: dayjs(dateObj).format("ddd, MMM D"),
+        time: dayjs(dateObj).format("h:mm A"),
       });
     } catch (error) {
       return t("apptDetDateAtTime", { date, time });
@@ -1285,36 +1256,6 @@ export default function BookingDetailsById() {
     }
   };
 
-  const monthsFull = [
-    "January",
-    "February",
-    "March",
-    "April",
-    "May",
-    "June",
-    "July",
-    "August",
-    "September",
-    "October",
-    "November",
-    "December",
-  ];
-  const monthsShort = [
-    "Jan",
-    "Feb",
-    "Mar",
-    "Apr",
-    "May",
-    "Jun",
-    "Jul",
-    "Aug",
-    "Sep",
-    "Oct",
-    "Nov",
-    "Dec",
-  ];
-  const daysShort = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-
   const formatAppointmentParts = () => {
     if (!booking?.appointmentDate || !booking?.appointmentTime) {
       return { dateLabel: booking?.dateTime ?? "---", timeLabel: "" };
@@ -1324,12 +1265,8 @@ export default function BookingDetailsById() {
       const [hours, minutes] = booking.appointmentTime.split(":").map(Number);
       const dateObj = new Date(year, month - 1, day, hours, minutes);
 
-      const dateLabel = `${monthsFull[dateObj.getMonth()]} ${day}, ${year}`;
-
-      let startHours12 = dateObj.getHours();
-      const startAmpm = startHours12 >= 12 ? "PM" : "AM";
-      startHours12 = startHours12 % 12 || 12;
-      const startMinStr = dateObj.getMinutes().toString().padStart(2, "0");
+      const start = dayjs(dateObj);
+      const dateLabel = start.format("MMMM D, YYYY");
 
       let durationMinutes = 0;
       if (booking.duration) {
@@ -1339,17 +1276,13 @@ export default function BookingDetailsById() {
         if (mMatch) durationMinutes += parseInt(mMatch[1]);
       }
 
-      let timeLabel = `${startHours12}:${startMinStr} ${startAmpm}`;
+      let timeLabel = start.format("h:mm A");
       if (durationMinutes > 0) {
-        const endDate = new Date(dateObj.getTime() + durationMinutes * 60000);
-        let endHours12 = endDate.getHours();
-        const endAmpm = endHours12 >= 12 ? "PM" : "AM";
-        endHours12 = endHours12 % 12 || 12;
-        const endMinStr = endDate.getMinutes().toString().padStart(2, "0");
-        if (startAmpm === endAmpm) {
-          timeLabel = `${startHours12}:${startMinStr} – ${endHours12}:${endMinStr} ${endAmpm}`;
+        const end = start.add(durationMinutes, "minute");
+        if (start.format("A") === end.format("A")) {
+          timeLabel = `${start.format("h:mm")} – ${end.format("h:mm A")}`;
         } else {
-          timeLabel = `${startHours12}:${startMinStr} ${startAmpm} – ${endHours12}:${endMinStr} ${endAmpm}`;
+          timeLabel = `${start.format("h:mm A")} – ${end.format("h:mm A")}`;
         }
       }
 
@@ -1371,7 +1304,7 @@ export default function BookingDetailsById() {
       }
       if (Number.isNaN(d.getTime())) return null;
       return t("apptDetBookedOn", {
-        date: `${monthsShort[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`,
+        date: dayjs(d).format("MMM D, YYYY"),
       });
     } catch {
       return null;

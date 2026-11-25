@@ -1,3 +1,4 @@
+import i18n from "i18next";
 import { ApiService } from "./api";
 import { promotionEndpoints } from "./endpoints";
 import type {
@@ -40,11 +41,11 @@ const toNumList = (value: unknown): number[] =>
     : [];
 
 /** `{ success, data }` → data; throws the server message on success:false. */
-function unwrapData(res: unknown, fallback = "Something went wrong"): unknown {
+function unwrapData(res: unknown, fallback?: string): unknown {
   const body = asRecord(res);
   if (!body) return res;
   if (body.success === false) {
-    throw Object.assign(new Error(toStr(body.message) ?? fallback), {
+    throw Object.assign(new Error(toStr(body.message) ?? fallback ?? i18n.t("somethingWentWrong")), {
       data: body,
     });
   }

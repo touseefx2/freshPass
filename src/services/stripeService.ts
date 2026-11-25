@@ -4,6 +4,7 @@ import {
   useStripe,
 } from "@stripe/stripe-react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import i18n from "i18next";
 import { ApiService } from "./api";
 import { appointmentsEndpoints, stripeEndpoints } from "./endpoints";
 import Logger from "./logger";
@@ -155,9 +156,7 @@ export async function resolveStripePublishableKey(): Promise<string> {
 export const useStripeAccount = async (connectedAccountId?: string | null) => {
   const publishableKey = await resolveStripePublishableKey();
   if (!publishableKey) {
-    throw new Error(
-      "Stripe is not configured. Please check your connection and try again.",
-    );
+    throw new Error(i18n.t("stripeSvcNotConfigured"));
   }
   await initStripe({
     publishableKey,
@@ -212,7 +211,7 @@ export const fetchPaymentSheetParams = async (
     }
 
     throw new Error(
-      response.message || "Failed to fetch payment sheet parameters",
+      response.message || i18n.t("stripeSvcFetchPaymentSheetFailed"),
     );
   } catch (error) {
     throw error;
@@ -292,7 +291,7 @@ export const fetchAppointmentPaymentSheetParams = async (
     }
 
     throw new Error(
-      response.message || "Failed to fetch payment sheet parameters",
+      response.message || i18n.t("stripeSvcFetchPaymentSheetFailed"),
     );
   } catch (error) {
     throw error;
@@ -366,7 +365,7 @@ export const startAppointmentCheckout = async (
     };
   }
 
-  throw new Error(response.message || "Failed to start checkout");
+  throw new Error(response.message || i18n.t("stripeSvcStartCheckoutFailed"));
 };
 
 export type AppointmentCheckoutStatusValue =
@@ -417,7 +416,7 @@ export const fetchAppointmentCheckoutStatus = async (
     };
   }
 
-  throw new Error(response.message || "Failed to fetch checkout status");
+  throw new Error(response.message || i18n.t("stripeSvcFetchCheckoutStatusFailed"));
 };
 
 /**
@@ -507,7 +506,7 @@ export const fetchAiToolsPaymentSheetParams = async (
     }
 
     throw new Error(
-      response.message || "Failed to fetch payment sheet parameters",
+      response.message || i18n.t("stripeSvcFetchPaymentSheetFailed"),
     );
   } catch (error) {
     throw error;
@@ -599,7 +598,7 @@ export const startProductCheckout = async (
     };
   }
 
-  throw new Error(response.message || "Failed to start product checkout");
+  throw new Error(response.message || i18n.t("stripeSvcStartProductCheckoutFailed"));
 };
 
 export { StripeProvider, useStripe };

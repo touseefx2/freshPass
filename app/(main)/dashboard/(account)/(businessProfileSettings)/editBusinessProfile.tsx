@@ -767,8 +767,8 @@ export default function EditBusinessProfileScreen() {
 
       if (response.success) {
         showBanner(
-          "Success",
-          response.message || "Business profile updated successfully",
+          t("success"),
+          response.message || t("ebpUpdateSuccess"),
           "success",
           3000,
         );
@@ -776,8 +776,8 @@ export default function EditBusinessProfileScreen() {
         router.back();
       } else {
         showBanner(
-          "Error",
-          response.message || "Failed to update business profile",
+          t("error"),
+          response.message || t("ebpUpdateFailed"),
           "error",
           3000,
         );
@@ -785,8 +785,8 @@ export default function EditBusinessProfileScreen() {
     } catch (error: any) {
       Logger.error("Failed to update business profile:", error);
       showBanner(
-        "Error",
-        error.message || "Failed to update business profile. Please try again.",
+        t("error"),
+        error.message || t("ebpUpdateFailedTryAgain"),
         "error",
         3000,
       );

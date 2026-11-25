@@ -1,6 +1,7 @@
 import * as ImagePicker from "expo-image-picker";
 import Constants from "expo-constants";
 import { AppState, Platform, Alert, Linking } from "react-native";
+import i18n from "i18next";
 import Logger from "./logger";
 
 export interface MediaPermissionResult {
@@ -25,35 +26,21 @@ AppState.addEventListener("change", (state) => {
   }
 });
 
-const GALLERY_DENIED_MESSAGE =
-  "Photo library permission is required to select photos.";
-const GALLERY_SETTINGS_MESSAGE =
-  "Photo library access was denied. Please enable photo access in your device settings.";
-const CAMERA_DENIED_MESSAGE = "Camera permission is required to take photos.";
-const CAMERA_SETTINGS_MESSAGE =
-  "Camera access was denied. Please enable camera access in your device settings.";
-
 const getMessages = (kind: MediaPermissionKind) =>
   kind === "library"
     ? {
-        denied: GALLERY_DENIED_MESSAGE,
-        settings: GALLERY_SETTINGS_MESSAGE,
-        iosAlert:
-          "Photo library access is turned off. Enable it in Settings to select photos.",
-        iosError:
-          "Photo library permission is required. Please enable it in Settings.",
-        settingsFallback:
-          "Please manually enable Photos for Fresh Pass:\n\nSettings → Fresh Pass → Photos → All Photos",
+        denied: i18n.t("mediaPermGalleryDenied"),
+        settings: i18n.t("mediaPermGallerySettings"),
+        iosAlert: i18n.t("mediaPermGalleryIosAlert"),
+        iosError: i18n.t("mediaPermGalleryIosError"),
+        settingsFallback: i18n.t("mediaPermGallerySettingsFallback"),
       }
     : {
-        denied: CAMERA_DENIED_MESSAGE,
-        settings: CAMERA_SETTINGS_MESSAGE,
-        iosAlert:
-          "Camera access is turned off. Enable it in Settings to take photos.",
-        iosError:
-          "Camera permission is required. Please enable it in Settings.",
-        settingsFallback:
-          "Please manually enable Camera for Fresh Pass:\n\nSettings → Fresh Pass → Camera",
+        denied: i18n.t("mediaPermCameraDenied"),
+        settings: i18n.t("mediaPermCameraSettings"),
+        iosAlert: i18n.t("mediaPermCameraIosAlert"),
+        iosError: i18n.t("mediaPermCameraIosError"),
+        settingsFallback: i18n.t("mediaPermCameraSettingsFallback"),
       };
 
 const getExistingPermission = (kind: MediaPermissionKind) =>
@@ -117,7 +104,10 @@ const requestMediaPermission = async (
     return {
       granted: false,
       canRequestAgain: true,
-      message: `Unable to request ${kind === "library" ? "photo library" : "camera"} permission. Please try again.`,
+      message:
+        kind === "library"
+          ? i18n.t("mediaPermRequestFailedLibrary")
+          : i18n.t("mediaPermRequestFailedCamera"),
     };
   }
 };
@@ -130,15 +120,15 @@ export const showMediaPermissionAlert = (
   onOpenSettings: () => void,
 ) => {
   Alert.alert(
-    "Permission Required",
+    i18n.t("mediaPermPermissionRequired"),
     message,
     [
       {
-        text: "Cancel",
+        text: i18n.t("cancel"),
         style: "cancel",
       },
       {
-        text: "Open Settings",
+        text: i18n.t("mediaPermOpenSettings"),
         onPress: onOpenSettings,
       },
     ],
@@ -183,7 +173,7 @@ export const openMediaSettings = async (
     await Linking.openSettings();
   } catch (error) {
     Logger.error("Error opening settings:", error);
-    Alert.alert("Unable to open settings", messages.settingsFallback);
+    Alert.alert(i18n.t("mediaPermUnableOpenSettings"), messages.settingsFallback);
   }
 };
 
@@ -233,8 +223,8 @@ const handleMediaPermission = async (
     return false;
   }
 
-  Alert.alert("Permission Required", result.message || messages.denied, [
-    { text: "OK" },
+  Alert.alert(i18n.t("mediaPermPermissionRequired"), result.message || messages.denied, [
+    { text: i18n.t("ok") },
   ]);
   return false;
 };

@@ -2846,10 +2846,10 @@ export default function BusinessDetailScreen() {
   const formatTime = (time: string | null) => {
     if (!time) return t("closed");
     const [hours, minutes] = time.split(":");
-    const hour = parseInt(hours);
-    const ampm = hour >= 12 ? "PM" : "AM";
-    const displayHour = hour % 12 || 12;
-    return `${displayHour}:${minutes} ${ampm}`;
+    return dayjs()
+      .hour(parseInt(hours))
+      .minute(parseInt(minutes))
+      .format("h:mm A");
   };
 
   const businessHours = useMemo(() => {
@@ -2942,9 +2942,9 @@ export default function BusinessDetailScreen() {
       const minutes = service.duration_minutes || 0;
       let duration = "";
       if (hours > 0 && minutes > 0) {
-        duration = `${hours}h ${minutes}m`;
+        duration = t("durShortHM", { hours, minutes });
       } else if (hours > 0) {
-        duration = `${hours}h`;
+        duration = t("durShortH", { hours });
       } else if (minutes > 0) {
         duration = t("bizDetDurationMins", { minutes });
       } else {

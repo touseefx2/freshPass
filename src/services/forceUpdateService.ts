@@ -6,6 +6,7 @@ import {
   readRemoteConfigEntry,
 } from "@/src/services/remoteConfigService";
 import Logger from "@/src/services/logger";
+import i18n from "i18next";
 
 /** Firebase Remote Config parameter keys — set these in Firebase Console */
 export const FORCE_UPDATE_RC_KEYS = {
@@ -31,8 +32,8 @@ const DEFAULTS = {
   forceUpdateIos: false,
   minVersionAndroid: "0.0.0",
   minVersionIos: "0.0.0",
-  message:
-    "A new version of FreshPass is required to continue. Please update from the store.",
+  // i18n key, translated when read
+  messageKey: "forceUpdateSvcDefaultMessage",
   androidStoreUrl: "",
   iosStoreUrl: "",
 };
@@ -119,7 +120,7 @@ export async function fetchForceUpdateConfig(): Promise<ForceUpdateConfig> {
     Platform.OS === "ios" ? minVersionIos : minVersionAndroid;
   const message =
     readRemoteConfigEntry(entries, FORCE_UPDATE_RC_KEYS.message)?.trim() ||
-    DEFAULTS.message;
+    i18n.t(DEFAULTS.messageKey);
   const androidStoreUrl =
     readRemoteConfigEntry(
       entries,

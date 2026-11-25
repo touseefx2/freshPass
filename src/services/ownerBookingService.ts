@@ -1,3 +1,4 @@
+import i18n from "i18next";
 import { ApiService } from "./api";
 import {
   appointmentsEndpoints,
@@ -426,7 +427,7 @@ export async function createOwnerBooking(
     }>(appointmentsEndpoints.create, body);
     if (response.success && response.data) return response.data;
     throw new OwnerBookingError(
-      response.message || "Could not book this appointment.",
+      response.message || i18n.t("ownerBookingCouldNotBook"),
       {},
     );
   } catch (error) {
@@ -436,7 +437,7 @@ export async function createOwnerBooking(
       data?: { message?: string; errors?: Record<string, string[]> };
     };
     throw new OwnerBookingError(
-      err?.data?.message || err?.message || "Could not book this appointment.",
+      err?.data?.message || err?.message || i18n.t("ownerBookingCouldNotBook"),
       err?.data?.errors ?? {},
     );
   }

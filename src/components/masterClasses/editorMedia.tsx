@@ -200,7 +200,7 @@ export function useClassMediaUpload(
           ? t("mcVideoTooLarge")
           : err?.isNoInternet
             ? t("mcNoInternet")
-            : typeof err?.message === "string" && err.message && !/^Upload failed/.test(err.message)
+            : typeof err?.message === "string" && err.message && !err?.isGenericUploadFailure && !/^Upload failed/.test(err.message)
               ? err.message
               : t("mcUploadFailed"),
       );
@@ -243,6 +243,7 @@ export function useClassMediaUpload(
             ? t("mcNoInternet")
             : typeof err?.message === "string" &&
                 err.message &&
+                !err?.isGenericUploadFailure &&
                 !/^Upload failed/.test(err.message)
               ? err.message
               : t("mcUploadFailed"),

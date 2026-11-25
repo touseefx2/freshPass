@@ -27,6 +27,7 @@ import { useRouter } from "expo-router";
 import BusinessHoursBottomSheet from "@/src/components/businessHoursBottomSheet";
 import CustomToggle from "@/src/components/customToggle";
 import { Skeleton } from "@/src/components/skeletons";
+import dayjs from "dayjs";
 import { getDefaultHoursFromBounds } from "@/src/utils/businessHoursBounds";
 
 const DAYS = [
@@ -57,12 +58,8 @@ interface BusinessHours {
   [key: string]: DayData;
 }
 
-const formatTime = (hours: number, minutes: number): string => {
-  const period = hours >= 12 ? "PM" : "AM";
-  const displayHours = hours % 12 || 12;
-  const displayMinutes = minutes.toString().padStart(2, "0");
-  return `${displayHours}:${displayMinutes} ${period}`;
-};
+const formatTime = (hours: number, minutes: number): string =>
+  dayjs().hour(hours).minute(minutes).format("h:mm A");
 
 const formatTimeRange = (
   fromHours: number,
@@ -727,14 +724,14 @@ export default function StaffAvailabilityScreen() {
 
   const getDayDisplayText = (day: string): string | React.ReactNode => {
     if (isBusinessDayClosed(day)) {
-      return "Business closed";
+      return t("addStaffBusinessClosed");
     }
 
     const dayData = businessHours[day];
 
     // If day is closed, show "Closed"
     if (!dayData?.isOpen) {
-      return "Closed";
+      return t("closed");
     }
 
     // If day is open but no valid hours are set, show "---" to indicate hours need to be set
@@ -755,7 +752,7 @@ export default function StaffAvailabilityScreen() {
           <Text style={styles.dayHoursLine}>{mainHours}</Text>
           {dayData.breaks.map((breakTime, index) => (
             <Text key={index} style={styles.dayHorsBreak}>
-              Break:{" "}
+              {t("breakLabel")}{" "}
               {formatTimeRange(
                 breakTime.fromHours,
                 breakTime.fromMinutes,
@@ -890,7 +887,9 @@ export default function StaffAvailabilityScreen() {
                           }
                           disabled={businessClosed}
                         />
-                        <Text style={styles.dayName}>{day}</Text>
+                        <Text style={styles.dayName}>
+                          {dayjs().day(index).format("dddd")}
+                        </Text>
                         <View style={styles.dayHoursContainer}>
                           {typeof displayText === "string" ? (
                             <Text

@@ -977,36 +977,15 @@ export default function DashboardContent({
 
       // Parse time format "HH:mm"
       const [hours, minutes] = time.split(":").map(Number);
-      const dateObj = new Date(year, month - 1, day, hours, minutes);
+      const dateObj = dayjs(new Date(year, month - 1, day, hours, minutes));
 
       // Format as "Day, Mon DD at H:MM AM/PM"
-      const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-      const months = [
-        "Jan",
-        "Feb",
-        "Mar",
-        "Apr",
-        "May",
-        "Jun",
-        "Jul",
-        "Aug",
-        "Sep",
-        "Oct",
-        "Nov",
-        "Dec",
-      ];
-
-      const dayName = days[dateObj.getDay()];
-      const monthName = months[dateObj.getMonth()];
-      let hours12 = dateObj.getHours();
-      const ampm = hours12 >= 12 ? "PM" : "AM";
-      hours12 = hours12 % 12;
-      hours12 = hours12 ? hours12 : 12;
-      const minutesStr = dateObj.getMinutes().toString().padStart(2, "0");
-
-      return `${dayName}, ${monthName} ${day} at ${hours12}:${minutesStr} ${ampm}`;
+      return t("apptDetDateAtTime", {
+        date: dateObj.format("ddd, MMM D"),
+        time: dateObj.format("h:mm A"),
+      });
     } catch (error) {
-      return `${date} at ${time}`;
+      return t("apptDetDateAtTime", { date, time });
     }
   };
 
@@ -1016,23 +995,22 @@ export default function DashboardContent({
         const left =
           appointment.subscriptionVisits.bookable ??
           appointment.subscriptionVisits.remaining;
-        const subscriptionName = "Subscription";
-        return `${subscriptionName} • ${left} visit${
-          left !== 1 ? "s" : ""
-        } left`;
+        return `${t("subscription")} • ${t("bookingListVisitsLeft", {
+          count: left,
+        })}`;
       }
-      return appointment.subscription || "Subscription";
+      return appointment.subscription || t("subscription");
     } else {
       // For service type, return service info
       if (
         Array.isArray(appointment.services) &&
         appointment.services.length > 0
       ) {
-        return `${appointment.services.length} service${
-          appointment.services.length !== 1 ? "s" : ""
-        }`;
+        return t("proServicesCount", {
+          count: appointment.services.length,
+        });
       }
-      return "Service";
+      return t("service");
     }
   };
 
@@ -1107,7 +1085,7 @@ export default function DashboardContent({
               ? appointment.staffIsOwner
                 ? `${appointment.staffName} · ${t("owner")}`
                 : appointment.staffName
-              : "Anyone";
+              : t("bkFlowAnyone");
 
           const serviceData =
             appointment.appointmentType === "subscription"
@@ -1117,11 +1095,11 @@ export default function DashboardContent({
           const name =
             serviceData && serviceData.length > 0
               ? serviceData.map((service: any) => service.name).join(" + ")
-              : "Services";
+              : t("services");
 
           return {
             id: appointment.id,
-            badgeText: "Upcoming appointment",
+            badgeText: t("upcomingAppointment"),
             dateTime: dateTime,
             businessLogoUrl: imageUrl,
             services: name,
@@ -1406,14 +1384,13 @@ export default function DashboardContent({
 
       <View style={styles.section}>
         <ShowProTips
-          heading={proTipData?.heading ?? "Pro Tips"}
+          heading={proTipData?.heading ?? t("homeProTipsHeading")}
           subheading={
-            proTipData?.subheading ??
-            "Expert advice to keep you and your clients looking and feeling great."
+            proTipData?.subheading ?? t("homeProTipsSubheading")
           }
-          actionLabel={proTipData?.action_label ?? "Action"}
-          benefitLabel={proTipData?.benefit_label ?? "Benefit"}
-          standardLabel={proTipData?.standard_label ?? "Standard"}
+          actionLabel={proTipData?.action_label ?? t("tipDetailAction")}
+          benefitLabel={proTipData?.benefit_label ?? t("tipDetailBenefit")}
+          standardLabel={proTipData?.standard_label ?? t("tipDetailStandard")}
           cards={proTipData?.cards ?? []}
           loading={proTipLoading}
           error={proTipError}

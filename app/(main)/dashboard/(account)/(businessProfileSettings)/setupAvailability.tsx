@@ -26,6 +26,7 @@ import { useRouter } from "expo-router";
 import BusinessHoursBottomSheet from "@/src/components/businessHoursBottomSheet";
 import CustomToggle from "@/src/components/customToggle";
 import { Skeleton } from "@/src/components/skeletons";
+import dayjs from "dayjs";
 
 const DAYS = [
   "Sunday",
@@ -69,12 +70,8 @@ interface BusinessHours {
   [key: string]: DayData;
 }
 
-const formatTime = (hours: number, minutes: number): string => {
-  const period = hours >= 12 ? "PM" : "AM";
-  const displayHours = hours % 12 || 12;
-  const displayMinutes = minutes.toString().padStart(2, "0");
-  return `${displayHours}:${displayMinutes} ${period}`;
-};
+const formatTime = (hours: number, minutes: number): string =>
+  dayjs().hour(hours).minute(minutes).format("h:mm A");
 
 const formatTimeRange = (
   fromHours: number,
@@ -359,15 +356,15 @@ export default function SetupAvailabilityScreen() {
     } catch (error: any) {
       Logger.error("Failed to fetch availability:", error);
       showBanner(
-        "Error",
-        error.message || "Failed to fetch availability. Please try again.",
+        t("error"),
+        error.message || t("failedToFetchAvailability"),
         "error",
         3000,
       );
     } finally {
       setLoading(false);
     }
-  }, [showBanner]);
+  }, [showBanner, t]);
 
   useEffect(() => {
     fetchAvailability();
@@ -481,12 +478,12 @@ export default function SetupAvailabilityScreen() {
     const dayData = businessHours[day];
 
     if (!dayData) {
-      return "Closed";
+      return t("closed");
     }
 
     // If day is closed, show "Closed"
     if (!dayData.isOpen) {
-      return "Closed";
+      return t("closed");
     }
 
     // If day is open but no valid hours are set, show "---" to indicate hours need to be set
@@ -507,7 +504,7 @@ export default function SetupAvailabilityScreen() {
           <Text style={styles.dayHoursLine}>{mainHours}</Text>
           {dayData.breaks.map((breakTime, index) => (
             <Text key={index} style={styles.dayHorsBreak}>
-              Break:{" "}
+              {t("breakLabel")}{" "}
               {formatTimeRange(
                 breakTime.fromHours,
                 breakTime.fromMinutes,
@@ -547,8 +544,8 @@ export default function SetupAvailabilityScreen() {
 
       if (response.success) {
         showBanner(
-          "Success",
-          response.message || "Availability updated successfully",
+          t("success"),
+          response.message || t("availabilityUpdatedSuccess"),
           "success",
           3000,
         );
@@ -556,8 +553,8 @@ export default function SetupAvailabilityScreen() {
         router.back();
       } else {
         showBanner(
-          "Error",
-          response.message || "Failed to update availability",
+          t("error"),
+          response.message || t("failedToUpdateAvailability"),
           "error",
           3000,
         );
@@ -565,8 +562,8 @@ export default function SetupAvailabilityScreen() {
     } catch (error: any) {
       Logger.error("Failed to update availability:", error);
       showBanner(
-        "Error",
-        error.message || "Failed to update availability. Please try again.",
+        t("error"),
+        error.message || t("failedToUpdateAvailabilityTryAgain"),
         "error",
         3000,
       );
@@ -613,7 +610,9 @@ export default function SetupAvailabilityScreen() {
                           value={isOpen}
                           onValueChange={(value) => handleToggleDay(day, value)}
                         />
-                        <Text style={styles.dayName}>{day}</Text>
+                        <Text style={styles.dayName}>
+                          {dayjs().day(index).format("dddd")}
+                        </Text>
                         <View style={styles.dayHoursContainer}>
                           {typeof displayText === "string" ? (
                             <Text style={styles.dayHours}>{displayText}</Text>
@@ -642,7 +641,11 @@ export default function SetupAvailabilityScreen() {
 
       {!loading && (
         <View style={styles.continueButtonContainer}>
-          <Button title="Update" onPress={handleUpdate} disabled={isUpdating} />
+          <Button
+            title={t("update")}
+            onPress={handleUpdate}
+            disabled={isUpdating}
+          />
         </View>
       )}
 

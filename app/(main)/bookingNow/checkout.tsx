@@ -57,6 +57,8 @@ import {
 } from "@/src/services/promotionService";
 import type { QuotePromotion } from "@/src/types/promotion";
 import { useTranslation } from "react-i18next";
+import i18n from "i18next";
+import dayjs from "dayjs";
 import {
   formatCustomerScheduleDate,
   getCustomerScheduleDateLabel,
@@ -124,7 +126,7 @@ const buildAppointmentFormData = (
 
 const getAppointmentImageErrorMessage = (error: any): string => {
   if (error?.status === 413) {
-    return "Photos are too large. Please remove some and try again.";
+    return i18n.t("ckoutPhotosTooLarge");
   }
   // Booking your own business: ApiService already set the translated message
   if (error?.data?.data?.error_code === "own_business" && error?.message) {
@@ -140,7 +142,7 @@ const getAppointmentImageErrorMessage = (error: any): string => {
     }
   }
   return (
-    error?.message || "Failed to book appointment. Please try again."
+    error?.message || i18n.t("ckoutBookFailed")
   );
 };
 
@@ -230,29 +232,13 @@ interface SubscriptionData {
 const formatSlotTo12h = (time24: string): string => {
   if (typeof time24 !== "string" || !/^\d{1,2}:\d{2}/.test(time24)) return "";
   const [h, m] = time24.split(":").map(Number);
-  const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h === 12 ? 12 : h;
-  return `${h12}:${m.toString().padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`;
+  return dayjs().hour(h).minute(m).format("h:mm A");
 };
 
 const formatDateDisplay = (dateStr: string): string => {
   if (!dateStr) return "";
   const d = new Date(dateStr + "T12:00:00");
-  const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-  const months = [
-    "Jan",
-    "Feb",
-    "Mar",
-    "Apr",
-    "May",
-    "Jun",
-    "Jul",
-    "Aug",
-    "Sep",
-    "Oct",
-    "Nov",
-    "Dec",
-  ];
-  return `${days[d.getDay()]}, ${months[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
+  return dayjs(d).format("ddd, MMM D, YYYY");
 };
 
 const resolveStaffImageUri = (
@@ -731,8 +717,8 @@ function CheckoutContent() {
         );
         if (preparedImages.length !== galleryImageUris.length) {
           showBanner(
-            "Error",
-            "Some photos could not be prepared. Please try again.",
+            t("error"),
+            t("ckoutPhotosPrepareFailed"),
             "error",
             3000,
           );
@@ -747,7 +733,7 @@ function CheckoutContent() {
 
       return ApiService.post(appointmentsEndpoints.create, body);
     },
-    [galleryImageUris, showBanner, tryOnImageUrls],
+    [galleryImageUris, showBanner, tryOnImageUrls, t],
   );
 
   /** Pay-now: same booking body as create, but hits checkout (no appointment yet). */
@@ -768,8 +754,8 @@ function CheckoutContent() {
         );
         if (preparedImages.length !== galleryImageUris.length) {
           showBanner(
-            "Error",
-            "Some photos could not be prepared. Please try again.",
+            t("error"),
+            t("ckoutPhotosPrepareFailed"),
             "error",
             3000,
           );
@@ -783,7 +769,7 @@ function CheckoutContent() {
 
       return startAppointmentCheckout(body);
     },
-    [galleryImageUris, showBanner, tryOnImageUrls],
+    [galleryImageUris, showBanner, tryOnImageUrls, t],
   );
 
   // Use Redux directly - no local state needed
@@ -1162,8 +1148,8 @@ function CheckoutContent() {
   const completeSubscriptionBooking = async () => {
     if (!resolvedCheckoutBusinessId) {
       showBanner(
-        "Booking Failed",
-        "Business ID is missing. Please go back and try again.",
+        t("ckoutBookingFailedTitle"),
+        t("bnowBusinessIdMissing"),
         "error",
         4000,
       );
@@ -1171,8 +1157,8 @@ function CheckoutContent() {
     }
     if (!reduxSelectedDate || !reduxSelectedTimeSlot) {
       showBanner(
-        "Select time",
-        "Please select a date and time slot.",
+        t("bnowSelectTime"),
+        t("bnowSelectDateTimeSlot"),
         "warning",
         4000,
       );
@@ -1192,8 +1178,8 @@ function CheckoutContent() {
     ) {
       dispatch(setActionLoader(false));
       showBanner(
-        "Booking Failed",
-        "Staff could not be assigned. Please go back and try again.",
+        t("ckoutBookingFailedTitle"),
+        t("ckoutStaffNotAssigned"),
         "error",
         4000,
       );
@@ -1270,7 +1256,7 @@ function CheckoutContent() {
           appointmentId && dateFormatted
             ? `${dateFormatted}${appointmentId}`
             : `${Date.now()}${Math.floor(Math.random() * 10000)}`;
-        showBanner("Success", "Your booking is confirmed.", "success", 3000);
+        showBanner(t("success"), t("ckoutBookingConfirmed"), "success", 3000);
         router.push({
           pathname: "/(main)/bookingDetail",
           params: {
@@ -1292,9 +1278,9 @@ function CheckoutContent() {
         });
       } else {
         showBanner(
-          "Booking Failed",
+          t("ckoutBookingFailedTitle"),
           response?.message ||
-            "Failed to book appointment. Please try again.",
+            t("ckoutBookFailed"),
           "error",
           4000,
         );
@@ -1302,9 +1288,9 @@ function CheckoutContent() {
     } catch (error: any) {
       dispatch(setActionLoader(false));
       Logger.error("Appointment API Error:", error);
-      if (handleTimeRefused(error, "Booking Failed")) return;
+      if (handleTimeRefused(error, t("ckoutBookingFailedTitle"))) return;
       showBanner(
-        "Booking Failed",
+        t("ckoutBookingFailedTitle"),
         getAppointmentImageErrorMessage(error),
         "error",
         4000,
@@ -1315,8 +1301,8 @@ function CheckoutContent() {
   const handleBookNow = async () => {
     if (!resolvedCheckoutBusinessId) {
       showBanner(
-        "Booking Failed",
-        "Business ID is missing. Please go back and try again.",
+        t("ckoutBookingFailedTitle"),
+        t("bnowBusinessIdMissing"),
         "error",
         4000,
       );
@@ -1325,8 +1311,8 @@ function CheckoutContent() {
     if (isSubscriptionMode) {
       if (!reduxSelectedTimeSlot) {
         showBanner(
-          "Time Slot Required",
-          "Please select a time slot to proceed with booking.",
+          t("ckoutTimeSlotRequired"),
+          t("ckoutSelectTimeSlotToBook"),
           "warning",
           4000,
         );
@@ -1334,8 +1320,8 @@ function CheckoutContent() {
       }
       if (!subscriptionData) {
         showBanner(
-          "Subscription Required",
-          "Subscription data is missing. Please try again.",
+          t("ckoutSubscriptionRequired"),
+          t("ckoutSubscriptionMissing"),
           "error",
           4000,
         );
@@ -1343,8 +1329,8 @@ function CheckoutContent() {
       }
       if (selectedSubscriptionServiceIds.length === 0) {
         showBanner(
-          "No Service Selected",
-          "Please select at least one plan service before confirming booking.",
+          t("noServiceSelected"),
+          t("ckoutSelectPlanService"),
           "warning",
           4000,
         );
@@ -1373,9 +1359,9 @@ function CheckoutContent() {
 
         if (!quoteResponse?.success || !quoteResponse.data) {
           showBanner(
-            "Error",
+            t("error"),
             quoteResponse?.message ||
-              "Could not load the cancellation policy. Please try again.",
+              t("ckoutPolicyLoadFailed"),
             "error",
             4000,
           );
@@ -1395,10 +1381,10 @@ function CheckoutContent() {
       } catch (error: any) {
         Logger.error("Membership cancellation policy quote error:", error);
         showBanner(
-          "Error",
+          t("error"),
           error?.response?.data?.message ||
             error?.message ||
-            "Could not load the cancellation policy. Please try again.",
+            t("ckoutPolicyLoadFailed"),
           "error",
           4000,
         );
@@ -1413,8 +1399,8 @@ function CheckoutContent() {
 
     if (!reduxSelectedTimeSlot) {
       showBanner(
-        "Time Slot Required",
-        "Please select a time slot to proceed with booking.",
+        t("ckoutTimeSlotRequired"),
+        t("ckoutSelectTimeSlotToBook"),
         "warning",
         4000,
       );
@@ -1422,8 +1408,8 @@ function CheckoutContent() {
     }
     if (selectedServices.length === 0) {
       showBanner(
-        "No Service Selected",
-        "Please select at least one service to proceed with checkout.",
+        t("noServiceSelected"),
+        t("pleaseSelectAtLeastOneService"),
         "warning",
         4000,
       );
@@ -1465,9 +1451,9 @@ function CheckoutContent() {
 
       if (!quoteResponse?.success || !quoteResponse.data) {
         showBanner(
-          "Error",
+          t("error"),
           quoteResponse?.message ||
-            "Could not load the cancellation policy. Please try again.",
+            t("ckoutPolicyLoadFailed"),
           "error",
           4000,
         );
@@ -1483,10 +1469,10 @@ function CheckoutContent() {
     } catch (error: any) {
       Logger.error("Cancellation policy quote error:", error);
       showBanner(
-        "Error",
+        t("error"),
         error?.response?.data?.message ||
           error?.message ||
-          "Could not load the cancellation policy. Please try again.",
+          t("ckoutPolicyLoadFailed"),
         "error",
         4000,
       );
@@ -1505,8 +1491,8 @@ function CheckoutContent() {
   ) => {
     if (!resolvedCheckoutBusinessId) {
       showBanner(
-        "Booking Failed",
-        "Business ID is missing. Please go back and try again.",
+        t("ckoutBookingFailedTitle"),
+        t("bnowBusinessIdMissing"),
         "error",
         4000,
       );
@@ -1514,8 +1500,8 @@ function CheckoutContent() {
     }
     if (!reduxSelectedDate || !reduxSelectedTimeSlot) {
       showBanner(
-        "Select time",
-        "Please select a date and time slot.",
+        t("bnowSelectTime"),
+        t("bnowSelectDateTimeSlot"),
         "warning",
         4000,
       );
@@ -1535,8 +1521,8 @@ function CheckoutContent() {
     ) {
       dispatch(setActionLoader(false));
       showBanner(
-        "Booking Failed",
-        "Staff could not be assigned. Please go back and try again.",
+        t("ckoutBookingFailedTitle"),
+        t("ckoutStaffNotAssigned"),
         "error",
         4000,
       );
@@ -1643,8 +1629,8 @@ function CheckoutContent() {
 
         if (!checkoutId) {
           showBanner(
-            "Payment Failed",
-            "Checkout could not be started. Please try again.",
+            t("apptDetPaymentFailed"),
+            t("ckoutCheckoutStartFailed"),
             "error",
             4000,
           );
@@ -1705,7 +1691,7 @@ function CheckoutContent() {
 
           if (initError) {
             throw new Error(
-              initError.message || "Failed to initialize payment",
+              initError.message || t("apptDetPaymentInitFailed"),
             );
           }
 
@@ -1715,8 +1701,8 @@ function CheckoutContent() {
           if (presentError) {
             if (!presentError.code?.includes("Canceled")) {
               showBanner(
-                "Payment Failed",
-                presentError.message || "Payment could not be completed",
+                t("apptDetPaymentFailed"),
+                presentError.message || t("apptDetPaymentNotCompleted"),
                 "error",
                 4000,
               );
@@ -1740,8 +1726,8 @@ function CheckoutContent() {
                 null;
 
               showBanner(
-                "Success",
-                "Payment successful! Your booking is confirmed.",
+                t("success"),
+                t("apptDetPaymentSuccessConfirmed"),
                 "success",
                 3000,
               );
@@ -1793,9 +1779,9 @@ function CheckoutContent() {
             if (checkoutStatus.status === "failed") {
               // Backend message already covers reason + refund; show as-is.
               showBanner(
-                "Booking not completed",
+                t("ckoutBookingNotCompletedTitle"),
                 checkoutStatus.message ||
-                  "Your booking could not be completed. Please pick another time.",
+                  t("ckoutBookingNotCompleted"),
                 "error",
                 6000,
               );
@@ -1805,8 +1791,8 @@ function CheckoutContent() {
 
             // Still pending after timeout — webhook will finish booking.
             showBanner(
-              "Payment Received",
-              "Your payment was received. Your booking will appear in your appointments shortly.",
+              t("ckoutPaymentReceivedTitle"),
+              t("ckoutPaymentReceived"),
               "success",
               5000,
             );
@@ -1902,7 +1888,7 @@ function CheckoutContent() {
               ? `${dateFormatted}${appointmentId}`
               : `${Date.now()}${Math.floor(Math.random() * 10000)}`;
 
-          showBanner("Success", "Your booking is confirmed.", "success", 3000);
+          showBanner(t("success"), t("ckoutBookingConfirmed"), "success", 3000);
 
           router.push({
             pathname: "/(main)/bookingDetail",
@@ -1928,8 +1914,8 @@ function CheckoutContent() {
         }
       } else {
         showBanner(
-          "Booking Failed",
-          response?.message || "Failed to book appointment. Please try again.",
+          t("ckoutBookingFailedTitle"),
+          response?.message || t("ckoutBookFailed"),
           "error",
           4000,
         );
@@ -1950,7 +1936,9 @@ function CheckoutContent() {
       if (
         handleTimeRefused(
           error,
-          paymentMethod === "payNow" ? "Payment Failed" : "Booking Failed",
+          paymentMethod === "payNow"
+            ? t("apptDetPaymentFailed")
+            : t("ckoutBookingFailedTitle"),
         )
       ) {
         return;
@@ -1962,9 +1950,11 @@ function CheckoutContent() {
         error?.message;
 
       showBanner(
-        paymentMethod === "payNow" ? "Payment Failed" : "Booking Failed",
         paymentMethod === "payNow"
-          ? apiMessage || "Failed to process payment"
+            ? t("apptDetPaymentFailed")
+            : t("ckoutBookingFailedTitle"),
+        paymentMethod === "payNow"
+          ? apiMessage || t("apptDetPaymentProcessFailed")
           : getAppointmentImageErrorMessage(error),
         "error",
         4000,
@@ -2000,9 +1990,9 @@ function CheckoutContent() {
 
           if (!setupResponse?.success || !setupResponse.data) {
             showBanner(
-              "Error",
+              t("error"),
               setupResponse?.message ||
-                "This business is not set up to accept online payments yet.",
+                t("ckoutOnlinePaymentsNotSetUp"),
               "error",
               4000,
             );
@@ -2042,7 +2032,7 @@ function CheckoutContent() {
             const { error: initError } = await initPaymentSheet(paymentConfig);
             if (initError) {
               throw new Error(
-                initError.message || "Failed to initialize card setup",
+                initError.message || t("ckoutCardSetupInitFailed"),
               );
             }
 
@@ -2052,8 +2042,8 @@ function CheckoutContent() {
             if (presentError) {
               if (!presentError.code?.includes("Canceled")) {
                 showBanner(
-                  "Card Setup Failed",
-                  presentError.message || "Could not save your card.",
+                  t("ckoutCardSetupFailedTitle"),
+                  presentError.message || t("ckoutCardSaveFailed"),
                   "error",
                   4000,
                 );
@@ -2070,10 +2060,10 @@ function CheckoutContent() {
         } catch (error: any) {
           Logger.error("Card setup error:", error);
           showBanner(
-            "Error",
+            t("error"),
             error?.response?.data?.message ||
               error?.message ||
-              "Could not save your card. Please try again.",
+              t("ckoutCardSaveFailedRetry"),
             "error",
             4000,
           );
@@ -2547,7 +2537,7 @@ function CheckoutContent() {
         <View style={styles.processingOverlay}>
           <View style={styles.processingContainer}>
             <ActivityIndicator size="large" color={theme.primary} />
-            <Text style={styles.processingText}>Processing payment...</Text>
+            <Text style={styles.processingText}>{t("processingPayment")}</Text>
           </View>
         </View>
       )}

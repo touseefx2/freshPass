@@ -53,8 +53,10 @@ import {
 import type { AdditionalServiceItem } from "@/src/state/slices/generalSlice";
 import AiHairTryOnConsentModal from "@/src/components/aiHairTryOnConsentModal";
 import TryOnCategoryPicker, {
+  DEFAULT_TRY_ON_PARTS,
   type TryOnCategory,
   type TryOnGender,
+  type TryOnParts,
 } from "@/src/components/tryOnCategoryPicker";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { AiToolsService } from "@/src/services/aiToolsService";
@@ -99,8 +101,16 @@ export default function Tools() {
   const styles = useMemo(() => createStyles(colors as Theme), [colors]);
   const theme = colors as Theme;
   const toolType = params.toolType || "";
-  const headerTitle =
-    toolType === "Hair Tryon" ? t("aiTryOnTitle") : toolType || t("aiTools");
+  // toolType stays the English id; only the shown title is translated
+  const TOOL_TITLE_KEYS: Record<string, string> = {
+    "Hair Tryon": "aiTryOnTitle",
+    "Generate Post": "generatePost",
+    "Generate Collage": "generateCollage",
+    "Generate Reel": "generateReel",
+  };
+  const headerTitle = TOOL_TITLE_KEYS[toolType]
+    ? t(TOOL_TITLE_KEYS[toolType])
+    : toolType || t("aiTools");
   const businessId = user?.business_id ?? "";
   const userId = Number(user?.id);
 
@@ -188,13 +198,31 @@ export default function Tools() {
     null,
   );
   const [tryOnGender, setTryOnGender] = useState<TryOnGender | null>(null);
+  // Men on a hair category: Hairstyle / Beard & Mustache (+ beard style)
+  const [tryOnParts, setTryOnParts] = useState<TryOnParts>(
+    DEFAULT_TRY_ON_PARTS,
+  );
   const selectedTryOnCategory =
     tryOnCategories.find((c) => c.slug === tryOnCategorySlug) ?? null;
+  const beardApplies =
+    !!selectedTryOnCategory?.asksGender && tryOnGender === "male";
+  const beardStyleMissing =
+    beardApplies && tryOnParts.beard && !tryOnParts.beardStyle;
   // No list (load failed) → old behaviour: no category sent
   const tryOnChoiceReady =
     tryOnCategories.length === 0 ||
     (!!selectedTryOnCategory &&
-      (!selectedTryOnCategory.asksGender || !!tryOnGender));
+      (!selectedTryOnCategory.asksGender || !!tryOnGender) &&
+      !beardStyleMissing);
+
+  // Category or gender change → back to default (hairstyle only)
+  const handleSelectTryOnGender = useCallback(
+    (gender: TryOnGender) => {
+      if (gender !== tryOnGender) setTryOnParts(DEFAULT_TRY_ON_PARTS);
+      setTryOnGender(gender);
+    },
+    [tryOnGender],
+  );
 
   const fetchTryOnCategories = useCallback(async () => {
     setTryOnCategoriesLoading(true);
@@ -224,7 +252,10 @@ export default function Tools() {
 
   const handleSelectTryOnCategory = useCallback(
     (slug: string) => {
-      if (slug !== tryOnCategorySlug) setTryOnGender(null);
+      if (slug !== tryOnCategorySlug) {
+        setTryOnGender(null);
+        setTryOnParts(DEFAULT_TRY_ON_PARTS);
+      }
       setTryOnCategorySlug(slug);
     },
     [tryOnCategorySlug],
@@ -714,6 +745,12 @@ export default function Tools() {
       ? {
           category: selectedTryOnCategory.slug,
           gender: selectedTryOnCategory.asksGender ? tryOnGender : null,
+          ...(beardApplies && tryOnParts.beard && tryOnParts.beardStyle
+            ? {
+                beardStyle: tryOnParts.beardStyle,
+                includeHairstyle: tryOnParts.hairstyle,
+              }
+            : {}),
         }
       : undefined;
 
@@ -776,10 +813,13 @@ export default function Tools() {
       // 422 naming category/gender = choice not accepted (app-side bug): don't
       // show the raw detail; refresh the list and ask to pick again. Other
       // 422s (bad image etc.) fall through to the backend message.
+      // Beard 422s (unknown style, beard on non-hair category…) are shown
+      // as-is per backend guide.
       const detail = error.data?.detail;
       const rejectsChoice =
         typeof detail === "string"
-          ? /\b(category|gender)\b/i.test(detail)
+          ? /\b(category|gender)\b/i.test(detail) &&
+            !/beard|hairstyle/i.test(detail)
           : Array.isArray(detail) &&
             detail.some(
               (d: any) =>
@@ -790,6 +830,7 @@ export default function Tools() {
         Logger.error("Try-on choice rejected (422):", error.data);
         setTryOnCategorySlug(null);
         setTryOnGender(null);
+        setTryOnParts(DEFAULT_TRY_ON_PARTS);
         void fetchTryOnCategories();
         showBanner(t("error"), t("tryOnChoiceInvalid"), "error", 4000);
         return;
@@ -806,6 +847,8 @@ export default function Tools() {
     fetchTryOnCategories,
     selectedTryOnCategory,
     tryOnGender,
+    beardApplies,
+    tryOnParts,
     hairTryonPrompt,
     hairTryonSelectedType,
     hairTryonSourceImage,
@@ -867,6 +910,15 @@ export default function Tools() {
       }
       if (selectedTryOnCategory?.asksGender && !tryOnGender) {
         showBanner(t("validationError"), t("tryOnPickGender"), "warning", 3000);
+        return;
+      }
+      if (beardStyleMissing) {
+        showBanner(
+          t("validationError"),
+          t("tryOnPickBeardStyle"),
+          "warning",
+          3000,
+        );
         return;
       }
       if (!hairTryonSourceImage) {
@@ -1483,7 +1535,10 @@ export default function Tools() {
           selectedSlug={tryOnCategorySlug}
           onSelectCategory={handleSelectTryOnCategory}
           gender={tryOnGender}
-          onSelectGender={setTryOnGender}
+          onSelectGender={handleSelectTryOnGender}
+          parts={tryOnParts}
+          onChangeParts={setTryOnParts}
+          busy={isGenerating}
         />
 
         <View style={styles.fieldContainer}>
@@ -1647,9 +1702,11 @@ export default function Tools() {
             />
             {toolType === "Hair Tryon" && !hairTryonFormReady && (
               <Text style={styles.hairTryonHelperText}>
-                {hairTryonSelectedType === "withPromptAndImage"
-                  ? t("tryOnHelperCustom")
-                  : t("tryOnHelperPhoto")}
+                {beardStyleMissing
+                  ? t("tryOnPickBeardStyle")
+                  : hairTryonSelectedType === "withPromptAndImage"
+                    ? t("tryOnHelperCustom")
+                    : t("tryOnHelperPhoto")}
               </Text>
             )}
           </>

@@ -1473,7 +1473,7 @@ function ReelFeedItemBase({
         ]}
         onPress={handleTogglePlayPause}
         accessibilityRole="button"
-        accessibilityLabel={isPaused ? "Play" : "Pause"}
+        accessibilityLabel={isPaused ? t("play") : t("pause")}
       />
 
       {centerIcon ? (

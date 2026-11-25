@@ -51,7 +51,7 @@ export function useDownloadMedia() {
       } catch {
         showBanner(
           t("error"),
-          t("somethingWentWrong") || "Download failed.",
+          t("somethingWentWrong"),
           "error",
           3000,
         );

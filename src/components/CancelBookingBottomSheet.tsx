@@ -43,6 +43,15 @@ const CUSTOMER_REASONS = [
 
 const PRO_REASONS = ["Can't make it", "Had to leave", "Other"];
 
+/** Reasons are sent to the API in English; only the shown label is translated. */
+const REASON_LABEL_KEYS: Record<string, string> = {
+  "Not feeling well": "cancelReasonNotFeelingWell",
+  "Can't make it": "cancelReasonCantMakeIt",
+  "Bad weather": "cancelReasonBadWeather",
+  "Had to leave": "cancelReasonHadToLeave",
+  Other: "other",
+};
+
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
     reasonItem: {
@@ -172,7 +181,9 @@ export default function CancelBookingBottomSheet({
               />
             )}
           </View>
-          <Text style={styles.reasonText}>{reason}</Text>
+          <Text style={styles.reasonText}>
+            {REASON_LABEL_KEYS[reason] ? t(REASON_LABEL_KEYS[reason]) : reason}
+          </Text>
         </TouchableOpacity>
       ))}
       {selectedReason === "Other" ? (

@@ -1,4 +1,5 @@
 import { ApiService } from "./api";
+import i18n from "i18next";
 import { cartEndpoints } from "./endpoints";
 import { store } from "@/src/state/store";
 import {
@@ -161,7 +162,7 @@ function storeCart(response: ApiEnvelope<unknown>, fallback: string): MarketCart
 export async function fetchCart(): Promise<MarketCart | null> {
   if (!canUseCart()) return null;
   const response = await ApiService.get<ApiEnvelope<unknown>>(cartEndpoints.cart);
-  return storeCart(response, "Failed to load cart");
+  return storeCart(response, i18n.t("cartSvcLoadFailed"));
 }
 
 /** GET /api/cart/count — units in the cart for the header badge. */
@@ -169,7 +170,7 @@ export async function fetchCartCount(): Promise<number> {
   if (!canUseCart()) return 0;
   const response = await ApiService.get<ApiEnvelope<unknown>>(cartEndpoints.count);
   if (!response?.success) {
-    throw new Error(response?.message || "Failed to load cart count");
+    throw new Error(response?.message || i18n.t("cartSvcCountFailed"));
   }
   const data = asRecord(response.data);
   const count = toNum(data?.itemCount ?? response.data);
@@ -197,7 +198,7 @@ export async function addCartItem(params: {
     cartEndpoints.items,
     body,
   );
-  return storeCart(response, "Failed to add to cart");
+  return storeCart(response, i18n.t("cartSvcAddFailed"));
 }
 
 /** PATCH /api/cart/items/{lineId} — quantity 1–99 (cart line id, not product id). */
@@ -210,7 +211,7 @@ export async function updateCartItemQuantity(
     cartEndpoints.item(lineId),
     { quantity: Math.max(1, Math.min(99, Math.round(quantity))) },
   );
-  return storeCart(response, "Failed to update cart");
+  return storeCart(response, i18n.t("cartSvcUpdateFailed"));
 }
 
 /** DELETE /api/cart/items/{lineId}. */
@@ -221,7 +222,7 @@ export async function removeCartItem(
   const response = await ApiService.delete<ApiEnvelope<unknown>>(
     cartEndpoints.item(lineId),
   );
-  return storeCart(response, "Failed to remove item");
+  return storeCart(response, i18n.t("cartSvcRemoveFailed"));
 }
 
 const CART_ERROR_FIELDS = ["quantity", "variant_id", "product_id"];

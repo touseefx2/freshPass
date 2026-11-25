@@ -398,7 +398,7 @@ export const getAccountSuspendedMessage = (error: any): string | null => {
   return (
     body?.message ||
     body?.error ||
-    "Your account has been suspended by FreshPass."
+    i18n.t("apiSvcAccountSuspendedMsg")
   );
 };
 
@@ -410,7 +410,7 @@ export const signOutSuspendedAccount = async (message?: string) => {
   await handleLogout({ skipApi: true });
   Alert.alert(
     i18n.isInitialized ? i18n.t("accountSuspendedTitle") : "Account suspended",
-    message || "Your account has been suspended by FreshPass.",
+    message || i18n.t("apiSvcAccountSuspendedMsg"),
   );
 };
 
@@ -429,12 +429,12 @@ const getErrorMessage = (error: AxiosError): string => {
   // Handle network errors
   if (!error.response) {
     if (error.code === "ECONNABORTED") {
-      return "Request timeout. Please check your connection and try again.";
+      return i18n.t("apiSvcErrTimeout");
     }
     if (error.message === "Network Error") {
-      return "Network error. Please check your internet connection.";
+      return i18n.t("apiSvcErrNetwork");
     }
-    return "Unable to connect to server. Please try again later.";
+    return i18n.t("apiSvcErrCannotConnect");
   }
 
   const { status, data } = error.response;
@@ -445,43 +445,43 @@ const getErrorMessage = (error: AxiosError): string => {
       return (
         (data as any)?.message ||
         (data as any)?.error ||
-        "Invalid request. Please check your input."
+        i18n.t("apiSvcErrInvalidRequest")
       );
     case 401:
-      return "Unauthorized. Please login again.";
+      return i18n.t("apiSvcErrUnauthorizedLogin");
     case 403:
       // Prefer the server's reason, e.g. "You can only change reels you created."
       return (
         (data as any)?.message ||
-        "You don't have permission to perform this action."
+        i18n.t("apiSvcErrNoPermission")
       );
     case 404:
-      return "Resource not found.";
+      return i18n.t("apiSvcErrNotFound");
     case 409:
       return (
         (data as any)?.message ||
         (data as any)?.error ||
-        "Please restart the app and try again."
+        i18n.t("apiSvcErrRestartApp")
       );
     case 422:
       return (
         (data as any)?.message ||
         (data as any)?.error ||
-        "Validation error. Please check your input."
+        i18n.t("apiSvcErrValidation")
       );
     case 429:
-      return "Too many requests. Please try again later.";
+      return i18n.t("apiSvcErrTooManyRequests");
     case 500:
-      return "Server error. Please try again later.";
+      return i18n.t("apiSvcErrServer");
     case 502:
-      return "Bad gateway. Please try again later.";
+      return i18n.t("apiSvcErrBadGateway");
     case 503:
-      return "Service unavailable. Please try again later.";
+      return i18n.t("apiSvcErrUnavailable");
     default:
       return (
         (data as any)?.message ||
         (data as any)?.error ||
-        `An error occurred (${status}). Please try again.`
+        i18n.t("apiSvcErrStatus", { status })
       );
   }
 };
@@ -539,7 +539,7 @@ apiClient.interceptors.response.use(
         }
       }
 
-      const sessionError = new Error("Session expired. Please login again.");
+      const sessionError = new Error(i18n.t("apiSvcErrSessionExpired"));
       (sessionError as any).status = 401;
       (sessionError as any).isSessionExpired = true;
       return Promise.reject(sessionError);
@@ -619,8 +619,8 @@ apiClient.interceptors.response.use(
 
     if (isTimeout && onShowToast) {
       onShowToast(
-        "Request Timeout",
-        "The request took too long to complete. Please try again.",
+        i18n.t("apiSvcRequestTimeoutTitle"),
+        i18n.t("apiSvcRequestTimeoutMsg"),
         "error",
       );
     }
@@ -774,14 +774,14 @@ export class ApiService {
     const hasInternet = await checkInternetConnection();
     if (!hasInternet) {
       removeAbortController(abortController);
-      const error = new Error("No internet connection");
+      const error = new Error(i18n.t("apiSvcErrNoInternet"));
       (error as any).isNoInternet = true;
 
       // Show toast for no internet connection
       if (onShowToast) {
         onShowToast(
-          "No Internet Connection",
-          "Please check your internet connection and try again.",
+          i18n.t("noInternetConnection"),
+          i18n.t("pleaseCheckInternetConnection"),
           "error",
         );
       }

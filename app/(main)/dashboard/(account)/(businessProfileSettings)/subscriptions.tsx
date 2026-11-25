@@ -13,6 +13,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather, MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
+import i18n from "i18next";
 import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
@@ -100,7 +101,7 @@ const getPopularSuggestions = (
   return [
     {
       id: "basic_plan",
-      packageName: "Basic Plan",
+      packageName: i18n.t("subsSetBasicPlan"),
       servicesPerMonth: 2,
       price: 145.99,
       currency: "USD",

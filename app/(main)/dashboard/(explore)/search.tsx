@@ -888,8 +888,8 @@ export default function SearchScreen() {
                     {(item.serviceName || item.serviceId != null) && (
                       <Text style={styles.recentItemSubtitle} numberOfLines={1}>
                         {item.serviceName
-                          ? `Service: ${item.serviceName}`
-                          : `Service ID: ${item.serviceId}`}
+                          ? t("searchRecentService", { name: item.serviceName })
+                          : t("searchRecentServiceId", { id: item.serviceId })}
                       </Text>
                     )}
                   </View>
